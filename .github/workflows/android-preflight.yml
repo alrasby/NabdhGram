@@ -1,0 +1,72 @@
+name: Android build preflight (pinned Telegram source)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout NabdhGram repository
+        uses: actions/checkout@v4
+        with:
+          path: nabdhgram
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK components
+        uses: android-actions/setup-android@v3
+      - name: Install required SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+      - name: Clone pinned Telegram Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMIT="$(tr -d '\r\n' < nabdhgram/upstream/TELEGRAM_COMMIT)"
+          [[ "$COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          git clone --filter=blob:none https://github.com/DrKLO/Telegram.git Telegram-upstream
+          git -C Telegram-upstream checkout --detach "$COMMIT"
+          git -C Telegram-upstream submodule update --init --recursive --depth=1 --jobs=4
+          test "$(git -C Telegram-upstream rev-parse HEAD)" = "$COMMIT"
+          bash nabdhgram/scripts/verify-upstream.sh Telegram-upstream
+      - name: Gradle configuration smoke test
+        id: gradle
+        continue-on-error: true
+        shell: bash
+        working-directory: Telegram-upstream
+        run: |
+          set -o pipefail
+          chmod +x ./gradlew
+          ./gradlew help --no-daemon --stacktrace 2>&1 | tee ../gradle-preflight.log
+      - name: Report preflight status
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Android preflight"
+            echo "Pinned Telegram commit: `$(cat nabdhgram/upstream/TELEGRAM_COMMIT)`"
+            echo "Gradle configuration: **${{ steps.gradle.outcome }}**"
+            echo "This smoke test does not compile, sign, or publish an APK."
+            echo "Review gradle-preflight.log for missing build configuration or credentials."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Gradle diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-preflight-log
+          path: gradle-preflight.log
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Fail if Gradle configuration failed
+        if: steps.gradle.outcome == 'failure'
+        run: exit 1
