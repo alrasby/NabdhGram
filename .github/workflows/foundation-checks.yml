@@ -1,0 +1,29 @@
+name: Foundation checks
+
+on:
+  push:
+    paths:
+      - 'scripts/**'
+      - 'docs/**'
+      - '.github/workflows/foundation-checks.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shell-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bootstrap scripts syntax
+        shell: bash
+        run: |
+          bash -n scripts/bootstrap-upstream.sh
+          bash -n scripts/verify-upstream.sh
+      - name: Ensure no Android APK is misrepresented
+        run: |
+          test -f docs/BUILD_SETUP.md
+          test -f docs/UPSTREAM.md
+          echo "Foundation checks passed; Android compilation not configured yet."
