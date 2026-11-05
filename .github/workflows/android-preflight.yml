@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   preflight:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - name: Checkout NabdhGram repository
@@ -16,18 +16,21 @@ jobs:
         with:
           path: nabdhgram
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android SDK components
-        uses: android-actions/setup-android@v3
       - name: Install required SDK and NDK
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+          : "${ANDROID_HOME:?GitHub runner must provide Android SDK}"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          # Accept SDK package licenses non-interactively using the runner's installed tools.
+          "$SDKMANAGER" --licenses < <(yes) > /dev/null
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+          "$SDKMANAGER" --list_installed | grep -E 'platforms;android-36|build-tools;36.0.0|ndk;27.2.12479018'
       - name: Clone pinned Telegram Android source
         shell: bash
         run: |
