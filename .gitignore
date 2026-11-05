@@ -1,0 +1,28 @@
+# Local credentials
+local.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+.env
+.env.*
+!.env.example
+secrets.properties
+google-services.json
+
+# Android and Gradle outputs
+.gradle/
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.hprof
+
+# Editors and OS
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
