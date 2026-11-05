@@ -1,0 +1,118 @@
+name: Android debug APK build (pinned upstream)
+
+on:
+  workflow_dispatch:
+    inputs:
+      gradle_task:
+        description: 'Gradle task to attempt (use tasks report to choose a variant if needed)'
+        required: true
+        default: 'assembleDebug'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  debug-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout NabdhGram automation
+        uses: actions/checkout@v4
+        with:
+          path: nabdhgram
+      - name: Configure Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${ANDROID_HOME:?Android SDK missing on runner}"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --licenses < <(yes) >/dev/null
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+      - name: Checkout pinned Telegram source
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMIT="$(tr -d '\r\n' < nabdhgram/upstream/TELEGRAM_COMMIT)"
+          [[ "$COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          git clone --filter=blob:none https://github.com/DrKLO/Telegram.git Telegram-upstream
+          git -C Telegram-upstream checkout --detach "$COMMIT"
+          git -C Telegram-upstream submodule update --init --recursive --depth=1 --jobs=4
+          test "$(git -C Telegram-upstream rev-parse HEAD)" = "$COMMIT"
+          bash nabdhgram/scripts/verify-upstream.sh Telegram-upstream
+      - name: Inventory available Gradle tasks
+        id: tasks
+        continue-on-error: true
+        working-directory: Telegram-upstream
+        shell: bash
+        run: |
+          set -o pipefail
+          chmod +x ./gradlew
+          ./gradlew tasks --all --no-daemon 2>&1 | tee ../gradle-tasks.log
+      - name: Attempt Android debug APK build
+        id: build
+        continue-on-error: true
+        working-directory: Telegram-upstream
+        shell: bash
+        env:
+          GRADLE_TASK: ${{ inputs.gradle_task }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$GRADLE_TASK" =~ ^[A-Za-z0-9:_-]+$ ]]; then
+            echo "Invalid Gradle task name" | tee ../gradle-build.log
+            exit 2
+          fi
+          set -o pipefail
+          ./gradlew "$GRADLE_TASK" --no-daemon --stacktrace 2>&1 | tee ../gradle-build.log
+      - name: List generated APKs
+        if: always()
+        shell: bash
+        run: |
+          if test -d Telegram-upstream; then
+            find Telegram-upstream -type f -name '*.apk' -print | tee apk-files.txt
+          fi
+      - name: Upload APK if produced
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-upstream-debug-apk
+          path: Telegram-upstream/**/*.apk
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-build-diagnostics
+          path: |
+            gradle-tasks.log
+            gradle-build.log
+            apk-files.txt
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Report build outcome
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Pinned Telegram Android debug build"
+            echo "Build step outcome: **${{ steps.build.outcome }}**"
+            echo "Requested task: \`${{ inputs.gradle_task }}\`"
+            echo "This workflow builds unmodified upstream Telegram, NOT a NabdhGram-branded app."
+            echo "No release signing or distribution is performed."
+            echo "See android-debug-build-diagnostics for Gradle errors."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail if APK build failed or no APK produced
+        if: always()
+        shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          test "$BUILD_OUTCOME" = success
+          test -s apk-files.txt
