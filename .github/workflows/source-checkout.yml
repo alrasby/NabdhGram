@@ -1,0 +1,57 @@
+name: Telegram upstream checkout validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: 'Official Telegram commit SHA or tag (default: master)'
+        required: false
+        default: 'master'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate-checkout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout NabdhGram tooling
+        uses: actions/checkout@v4
+        with:
+          path: nabdhgram
+
+      - name: Clone official Telegram source and its submodules
+        shell: bash
+        env:
+          UPSTREAM_REF: ${{ inputs.upstream_ref }}
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/DrKLO/Telegram.git Telegram-upstream
+          cd Telegram-upstream
+          git checkout --detach "$UPSTREAM_REF"
+          git submodule update --init --recursive --depth=1 --jobs=4
+
+      - name: Validate source and record revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash nabdhgram/scripts/verify-upstream.sh Telegram-upstream
+          {
+            echo "upstream_commit=$(git -C Telegram-upstream rev-parse HEAD)"
+            echo "upstream_url=https://github.com/DrKLO/Telegram"
+            echo "submodules:"
+            git -C Telegram-upstream submodule status --recursive
+          } > upstream-revision.txt
+          cat upstream-revision.txt
+          echo "## Source checkout validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "Revision: `$(git -C Telegram-upstream rev-parse HEAD)`" >> "$GITHUB_STEP_SUMMARY"
+          echo "This job does not import code into NabdhGram or produce an APK." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload revision manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-upstream-revision
+          path: upstream-revision.txt
+          retention-days: 30
