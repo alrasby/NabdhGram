@@ -1,0 +1,30 @@
+name: Upstream source audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 6 * * 4'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-upstream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect upstream metadata without cloning native submodules
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-remote https://github.com/DrKLO/Telegram.git HEAD | tee upstream-head.txt
+          test -s upstream-head.txt
+          echo "## Telegram Android upstream" >> "$GITHUB_STEP_SUMMARY"
+          echo "HEAD: `$(cut -f1 upstream-head.txt)`" >> "$GITHUB_STEP_SUMMARY"
+          echo "This workflow reports a revision only. It does not import source, build an APK, or merge updates." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upstream-head
+          path: upstream-head.txt
+          retention-days: 14
