@@ -105,7 +105,11 @@ jobs:
           grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' apk-signature.txt
           if [ "${{ steps.brand.outputs.icon_status }}" = "approved-master-applied" ]; then
             grep -Eq "application-icon-[0-9]+:.*nabdhgram_launcher" apk-badging.txt
-            echo "Verified: packaged launcher icon resolves to NabdhGram-specific resource."
+            grep -Eq "launchable-activity:.*icon='[^']*nabdhgram_launcher" apk-badging.txt
+            echo "Verified: packaged launcher activity-alias resolves to NabdhGram-specific icon."
+            echo "launchable-activity from aapt:"
+            grep '^launchable-activity:' apk-badging.txt
+
           else
             echo "::warning::Approved icon not configured; skipping branded icon assertion."
           fi
