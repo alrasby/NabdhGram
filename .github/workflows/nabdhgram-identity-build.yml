@@ -70,6 +70,26 @@ jobs:
           set -o pipefail
           chmod +x ./gradlew
           ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-build.log
+      - name: Verify APK identity, signing and size
+        if: steps.compile.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk"
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          test -x "$AAPT"
+          test -x "$APKSIGNER"
+          "$AAPT" dump badging "$APK" > apk-badging.txt
+          "$APKSIGNER" verify --verbose "$APK" > apk-signature.txt
+          grep -q "package: name='net.nabdhserv.nabdhgram.beta'" apk-badging.txt
+          grep -q "application-label:'NabdhGram'" apk-badging.txt
+          grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' apk-signature.txt
+          sha256sum "$APK" > apk-sha256.txt
+          cat apk-sha256.txt
+          grep -E "^(package:|application-label:|sdkVersion:|targetSdkVersion:)" apk-badging.txt
+          cat apk-signature.txt
       - name: Collect APK paths
         if: always()
         shell: bash
@@ -93,6 +113,9 @@ jobs:
             nabdhgram-build.log
             identity-patch.log
             apk-paths.txt
+            apk-badging.txt
+            apk-signature.txt
+            apk-sha256.txt
           if-no-files-found: ignore
           retention-days: 14
       - name: Report status
