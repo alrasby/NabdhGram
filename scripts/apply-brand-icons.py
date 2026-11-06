@@ -60,6 +60,26 @@ def main():
         text = text.replace(before, 'android:icon="@mipmap/nabdhgram_launcher"')
         text = text.replace(round_before, 'android:roundIcon="@mipmap/nabdhgram_launcher_round"')
         manifest.write_text(text, encoding="utf-8")
+        # The launcher resolves an enabled activity-alias, not just the
+        # application icon. Explicitly brand the enabled DefaultIcon alias.
+        library_manifest = root / "TMessagesProj" / "src" / "main" / "AndroidManifest.xml"
+        library_xml = library_manifest.read_text(encoding="utf-8")
+        import re
+        alias_pattern = r'<activity-alias\b[^>]*android:name="org\.telegram\.messenger\.DefaultIcon"[^>]*>'
+        alias_match = re.search(alias_pattern, library_xml, re.DOTALL)
+        if alias_match is None:
+            raise SystemExit("Expected enabled DefaultIcon launcher alias not found")
+        alias = alias_match.group(0)
+        if 'android:icon=' in alias or 'android:roundIcon=' in alias:
+            raise SystemExit("Unexpected existing DefaultIcon alias icon; inspect upstream changes")
+        alias = alias[:-1] + (
+            ' android:icon="@mipmap/nabdhgram_launcher"'
+            ' android:roundIcon="@mipmap/nabdhgram_launcher_round">'
+        )
+        library_xml = library_xml[:alias_match.start()] + alias + library_xml[alias_match.end():]
+        library_manifest.write_text(library_xml, encoding="utf-8")
+        print("DefaultIcon launcher activity-alias now explicitly uses NabdhGram artwork.")
+
         print("Debug manifest launcher resources: nabdhgram_launcher / nabdhgram_launcher_round")
     print("Approved NabdhGram launcher artwork integrated; verify adaptive icon crop on device.")
 
