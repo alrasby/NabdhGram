@@ -1,0 +1,54 @@
+name: NabdhGram Android identity audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout NabdhGram
+        uses: actions/checkout@v4
+        with:
+          path: nabdhgram
+      - name: Clone pinned Telegram source
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMIT="$(tr -d '\r\n' < nabdhgram/upstream/TELEGRAM_COMMIT)"
+          [[ "$COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          git clone --filter=blob:none https://github.com/DrKLO/Telegram.git Telegram-upstream
+          git -C Telegram-upstream checkout --detach "$COMMIT"
+          test "$(git -C Telegram-upstream rev-parse HEAD)" = "$COMMIT"
+      - name: Audit package identity and launcher resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "# NabdhGram Android identity audit"
+            echo
+            echo "Pinned commit: $(cat nabdhgram/upstream/TELEGRAM_COMMIT)"
+            echo
+            echo "## Application configuration"
+            grep -nE 'APP_PACKAGE|applicationId|applicationIdSuffix|namespace|signingConfig|versionName|versionCode' Telegram-upstream/TMessagesProj_App/build.gradle || true
+            echo
+            echo "## Package and provider authority references"
+            git -C Telegram-upstream grep -n -E 'APP_PACKAGE|applicationId|authorities=|android:authorities|FileProvider' -- '*.gradle' '*AndroidManifest.xml' | head -n 180 || true
+            echo
+            echo "## Launcher icons and app name resource paths"
+            find Telegram-upstream/TMessagesProj_App Telegram-upstream/TMessagesProj -type f \( -name '*launcher*' -o -name '*ic_launcher*' -o -name 'strings.xml' \) 2>/dev/null | head -n 120 || true
+            echo
+            echo "## Config and signing file names (not contents)"
+            find Telegram-upstream/TMessagesProj/config -maxdepth 2 -type f 2>/dev/null | sed 's@^@- @' | head -n 70 || true
+          } > identity-audit.txt
+          wc -l identity-audit.txt
+      - name: Upload identity audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nabdhgram-identity-audit
+          path: identity-audit.txt
+          retention-days: 14
