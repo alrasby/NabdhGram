@@ -41,7 +41,7 @@ def main():
         raise SystemExit(f"Expected upstream app manifest missing: {manifest}")
     xml = manifest.read_text(encoding="utf-8")
     import re
-    match = re.search(r"<application\\b[^>]*>", xml, flags=re.DOTALL)
+    match = re.search(r"<application\b[^>]*>", xml, flags=re.DOTALL)
     if not match:
         raise SystemExit("No <application> element in upstream app manifest")
     tag = match.group(0)
