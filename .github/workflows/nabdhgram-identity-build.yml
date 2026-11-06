@@ -46,6 +46,23 @@ jobs:
           grep -qx 'APP_PACKAGE=net.nabdhserv.nabdhgram' Telegram-upstream/gradle.properties
           grep -q 'NabdhGramAppName' Telegram-upstream/TMessagesProj_App/src/main/AndroidManifest.xml
 
+      - name: Apply exact approved icon when source asset is present
+        id: brand
+        shell: bash
+        run: |
+          set -euo pipefail
+          MASTER="nabdhgram/branding/approved/nabdhgram-master.png"
+          if [ -f "$MASTER" ]; then
+            python3 -m pip install --disable-pip-version-check Pillow
+            python3 nabdhgram/scripts/apply-brand-icons.py Telegram-upstream "$MASTER"
+            echo "icon_status=approved-master-applied" >> "$GITHUB_OUTPUT"
+            echo "Approved icon source SHA-256:"
+            sha256sum "$MASTER"
+          else
+            echo "icon_status=not-configured" >> "$GITHUB_OUTPUT"
+            echo "::notice::Approved master PNG not committed at branding/approved/nabdhgram-master.png; launcher icon is not branded."
+          fi
+
       - name: Disable upstream Google Services configuration for experimental debug build
         shell: bash
         run: |
@@ -127,7 +144,8 @@ jobs:
             echo "Gradle result: **${{ steps.compile.outcome }}**"
             echo "Expected debug ID: `net.nabdhserv.nabdhgram.beta`"
             echo "Firebase/Google Services integration is disabled for this experimental debug build; push notifications may not work."
-            echo "Launcher artwork and custom Telegram API configuration are not yet integrated."
+            echo "Launcher icon status: **${{ steps.brand.outputs.icon_status }}**" 
+            echo "Custom Telegram API configuration is not yet integrated."
             echo "Do not distribute this experimental APK."
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Fail on build error or missing APK
