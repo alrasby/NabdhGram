@@ -27,8 +27,7 @@ def main():
         if im.format != "PNG" or im.width != im.height or im.width < 512:
             raise SystemExit("Approved master must be a square PNG >=512px")
         rgba = im.convert("RGBA")
-        res = root / "TMessagesProj_App" / "src" / "main" / "res"
-        for density, px in SIZES.items():
+        # Upstream keeps the launcher icon in the library module, and the\n        # debug manifest references it. Replace resources in BOTH modules so\n        # Gradle resource overlays cannot silently retain Telegram artwork.\n        resource_roots = [\n            root / "TMessagesProj_App" / "src" / "main" / "res",\n            root / "TMessagesProj" / "src" / "main" / "res",\n        ]\n        for res in resource_roots:\n            install_resources(res, rgba)\n    print("Approved NabdhGram launcher artwork applied in app AND library modules.")\n\ndef install_resources(res, rgba):\n        for density, px in SIZES.items():
             folder = res / f"mipmap-{density}"
             folder.mkdir(parents=True, exist_ok=True)
             scaled = rgba.resize((px, px), Image.Resampling.LANCZOS)
@@ -49,7 +48,7 @@ def main():
                 '    <foreground android:drawable="@drawable/nabdhgram_launcher_master" />\n'
                 '</adaptive-icon>\n', encoding="utf-8"
             )
-    print("Approved NabdhGram launcher artwork integrated; verify adaptive icon crop on device.")
+    print(f"Installed approved icon resources into {res}")
 
 if __name__ == "__main__":
     main()
