@@ -55,6 +55,17 @@ def main():
         tag = tag[:-1] + ' tools:replace="android:label">'
     xml = xml[:match.start()] + tag + xml[match.end():]
     manifest.write_text(xml, encoding="utf-8")
+    # The afat debug flavor uses a separate higher-priority manifest. Its
+    # application label must agree with the main app manifest or merger fails.
+    debug_manifest = root / "TMessagesProj" / "config" / "debug" / "AndroidManifest_SDK23.xml"
+    if not debug_manifest.is_file():
+        raise SystemExit(f"Expected debug manifest missing: {debug_manifest}")
+    debug_xml = debug_manifest.read_text(encoding="utf-8")
+    debug_xml = debug_xml.replace('android:label="@string/AppNameBeta"', 'android:label="@string/NabdhGramAppName"')
+    if debug_xml == debug_manifest.read_text(encoding="utf-8"):
+        raise SystemExit("Expected upstream debug application label was not found")
+    debug_xml = debug_xml.replace('tools:replace="android:supportsRtl"', 'tools:replace="android:supportsRtl,android:label"')
+    debug_manifest.write_text(debug_xml, encoding="utf-8")
     print(f"Identity overlay applied: {APP_ID}.beta / {LABEL}")
     print("NOTE: This does not yet apply approved icon assets or configure private Telegram API credentials.")
 
