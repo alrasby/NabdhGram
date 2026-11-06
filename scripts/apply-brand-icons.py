@@ -65,7 +65,7 @@ def main():
         library_manifest = root / "TMessagesProj" / "src" / "main" / "AndroidManifest.xml"
         library_xml = library_manifest.read_text(encoding="utf-8")
         import re
-        alias_pattern = r'<activity-alias\\b[^>]*android:name="org\\.telegram\\.messenger\\.DefaultIcon"[^>]*>'
+        alias_pattern = r'<activity-alias\b[^>]*android:name="org\.telegram\.messenger\.DefaultIcon"[^>]*>'
         alias_match = re.search(alias_pattern, library_xml, re.DOTALL)
         if alias_match is None:
             raise SystemExit("Expected enabled DefaultIcon launcher alias not found")
