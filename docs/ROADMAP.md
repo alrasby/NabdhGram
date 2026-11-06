@@ -26,7 +26,8 @@
 ### A. Authentication, onboarding and accessibility
 - Email login code flow **when Telegram server offers it**, alongside supported code-to-existing-session, QR, passkey, SMS or calls as applicable. Email recovery is not necessarily login email.
 - Explain SMS non-delivery, resend timers and official alternatives; cannot bypass Telegram's server-imposed SMS/Premium payments.
-- Arabic RTL and English/localization following system; improve Arabic search and typography where technically feasible.
+- **Multilingual by design from v1.0:** inherit Telegram's supported interface languages and language packs; follow system language by default, with an independent in-app language override. NabdhGram-specific strings are fully reviewed in Arabic and English at launch, with other translations added and tested progressively and English fallback for missing keys. RTL must be tested (Arabic, Persian, Urdu), and Arabic search/typography improved where technically feasible.
+- Interface language and message translation target language must be independently configurable. See [Localization Architecture](LOCALIZATION.md).
 - Clean, accessible onboarding and settings.
 
 ### B. Identity and personalization
