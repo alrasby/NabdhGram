@@ -45,6 +45,22 @@ jobs:
           python3 nabdhgram/scripts/apply-identity.py Telegram-upstream 2>&1 | tee identity-patch.log
           grep -qx 'APP_PACKAGE=net.nabdhserv.nabdhgram' Telegram-upstream/gradle.properties
           grep -q 'NabdhGramAppName' Telegram-upstream/TMessagesProj_App/src/main/AndroidManifest.xml
+
+      - name: Disable upstream Google Services configuration for experimental debug build
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("Telegram-upstream/TMessagesProj_App/build.gradle")
+          content = p.read_text(encoding="utf-8")
+          plugin = "apply plugin: 'com.google.gms.google-services'"
+          if content.count(plugin) != 1:
+              raise SystemExit("Expected exactly one Google Services plugin declaration")
+          p.write_text(content.replace(plugin, "// Experimental NabdhGram debug build: no Firebase project configured yet"), encoding="utf-8")
+          print("Google Services Gradle processing disabled for experimental debug build only.")
+          PY
+
       - name: Build branded debug APK
         id: compile
         continue-on-error: true
@@ -87,6 +103,7 @@ jobs:
             echo "## NabdhGram identity build"
             echo "Gradle result: **${{ steps.compile.outcome }}**"
             echo "Expected debug ID: `net.nabdhserv.nabdhgram.beta`"
+            echo "Firebase/Google Services integration is disabled for this experimental debug build; push notifications may not work."
             echo "Launcher artwork and custom Telegram API configuration are not yet integrated."
             echo "Do not distribute this experimental APK."
           } >> "$GITHUB_STEP_SUMMARY"
