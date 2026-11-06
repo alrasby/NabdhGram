@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 nabdhgram/scripts/apply-identity.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-identity.py Telegram-upstream 2>&1 | tee identity-patch.log
           grep -qx 'APP_PACKAGE=net.nabdhserv.nabdhgram' Telegram-upstream/gradle.properties
           grep -q 'NabdhGramAppName' Telegram-upstream/TMessagesProj_App/src/main/AndroidManifest.xml
       - name: Build branded debug APK
@@ -75,6 +75,7 @@ jobs:
           name: nabdhgram-identity-build-log
           path: |
             nabdhgram-build.log
+            identity-patch.log
             apk-paths.txt
           if-no-files-found: ignore
           retention-days: 14
