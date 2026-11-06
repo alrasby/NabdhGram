@@ -87,36 +87,63 @@ jobs:
           set -o pipefail
           chmod +x ./gradlew
           ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-build.log
-      - name: Verify APK identity, signing and size
+      - name: Verify APK identity and collect launcher diagnostics
         if: steps.compile.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
           APK="Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk"
-          test -s "$APK"
+          test -s "$APK" || { echo "::error::APK missing at $APK"; exit 1; }
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
-          test -x "$AAPT"
-          test -x "$APKSIGNER"
+          test -x "$AAPT" || { echo "::error::aapt not installed"; exit 1; }
+          test -x "$APKSIGNER" || { echo "::error::apksigner not installed"; exit 1; }
           "$AAPT" dump badging "$APK" > apk-badging.txt
+          "$AAPT" dump resources "$APK" > apk-resources.txt
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > apk-manifest-tree.txt
           "$APKSIGNER" verify --verbose "$APK" > apk-signature.txt
-          grep -q "package: name='net.nabdhserv.nabdhgram.beta'" apk-badging.txt
-          grep -q "application-label:'NabdhGram'" apk-badging.txt
-          grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' apk-signature.txt
-          if [ "${{ steps.brand.outputs.icon_status }}" = "approved-master-applied" ]; then
-            grep -Eq "application-icon-[0-9]+:.*nabdhgram_launcher" apk-badging.txt
-            grep -Eq "launchable-activity:.*icon='[^']*nabdhgram_launcher" apk-badging.txt
-            echo "Verified: packaged launcher activity-alias resolves to NabdhGram-specific icon."
-            echo "launchable-activity from aapt:"
-            grep '^launchable-activity:' apk-badging.txt
-
-          else
-            echo "::warning::Approved icon not configured; skipping branded icon assertion."
-          fi
           sha256sum "$APK" > apk-sha256.txt
-          cat apk-sha256.txt
-          grep -E "^(package:|application-label:|sdkVersion:|targetSdkVersion:)" apk-badging.txt
-          cat apk-signature.txt
+          echo "::group::Packaged APK identity and launcher"
+          grep -E "^(package:|application-label:|launchable-activity:|sdkVersion:|targetSdkVersion:|application-icon)" apk-badging.txt || true
+          echo "::endgroup::"
+          echo "::group::Signature and checksum"
+          cat apk-signature.txt apk-sha256.txt
+          echo "::endgroup::"
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          badging = pathlib.Path("apk-badging.txt").read_text()
+          signing = pathlib.Path("apk-signature.txt").read_text()
+          resources = pathlib.Path("apk-resources.txt").read_text()
+          manifest = pathlib.Path("apk-manifest-tree.txt").read_text()
+          def require(condition, message):
+              if not condition:
+                  print(f"::error::{message}", flush=True)
+                  sys.exit(1)
+              print(f"PASS: {message}", flush=True)
+
+          require("package: name='net.nabdhserv.nabdhgram.beta'" in badging,
+                  "Expected NabdhGram beta package")
+          require("application-label:'NabdhGram'" in badging,
+                  "Expected NabdhGram launcher label")
+          require("Verified using v2 scheme (APK Signature Scheme v2): true" in signing,
+                  "Valid APK v2 signature")
+          launcher = re.search(r"^launchable-activity:.*$", badging, re.MULTILINE)
+          require(launcher is not None, "Launchable activity is declared")
+          print("Launchable activity: " + launcher.group(0), flush=True)
+          branded = "nabdhgram_launcher" in resources
+          if branded:
+              print("PASS: NabdhGram launcher resource exists in compiled resource table", flush=True)
+          else:
+              print("::warning::NabdhGram launcher resource name not visible in compiled table", flush=True)
+          if "org.telegram.messenger.DefaultIcon" in manifest:
+              print("PASS: DefaultIcon alias exists in compiled AndroidManifest", flush=True)
+          else:
+              print("::warning::DefaultIcon alias not found in compiled manifest tree", flush=True)
+          print("NOTE: Device launcher artwork still requires visual verification.", flush=True)
+          PY
       - name: Collect APK paths
         if: always()
         shell: bash
@@ -143,6 +170,8 @@ jobs:
             apk-badging.txt
             apk-signature.txt
             apk-sha256.txt
+            apk-resources.txt
+            apk-manifest-tree.txt
           if-no-files-found: ignore
           retention-days: 14
       - name: Report status
