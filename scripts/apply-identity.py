@@ -34,12 +34,27 @@ def main():
     if label_file.exists():
         raise SystemExit(f"Refusing to overwrite existing resource: {label_file}")
     label_file.write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="NabdhGramAppName">NabdhGram</string>\n</resources>\n', encoding="utf-8")
-    # Launcher label is set by manifest overlay in the application module.
+    # The pinned upstream already has an application-module manifest. Edit its
+    # existing <application> element rather than creating a second manifest.
     manifest = root / "TMessagesProj_App" / "src" / "main" / "AndroidManifest.xml"
-    if manifest.exists():
-        raise SystemExit(f"Review existing app manifest before patching: {manifest}")
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text('<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">\n  <application android:label="@string/NabdhGramAppName" tools:replace="android:label" />\n</manifest>\n', encoding="utf-8")
+    if not manifest.is_file():
+        raise SystemExit(f"Expected upstream app manifest missing: {manifest}")
+    xml = manifest.read_text(encoding="utf-8")
+    import re
+    match = re.search(r"<application\\b[^>]*>", xml, flags=re.DOTALL)
+    if not match:
+        raise SystemExit("No <application> element in upstream app manifest")
+    tag = match.group(0)
+    if 'android:label=' in tag:
+        tag = re.sub(r'android:label="[^"]*"', 'android:label="@string/NabdhGramAppName"', tag, count=1)
+    else:
+        tag = tag[:-1] + ' android:label="@string/NabdhGramAppName">'
+    if 'tools:replace=' in tag:
+        tag = re.sub(r'tools:replace="([^"]*)"', lambda m: 'tools:replace="' + (m.group(1) if 'android:label' in m.group(1).split(',') else m.group(1) + ',android:label') + '"', tag, count=1)
+    else:
+        tag = tag[:-1] + ' tools:replace="android:label">'
+    xml = xml[:match.start()] + tag + xml[match.end():]
+    manifest.write_text(xml, encoding="utf-8")
     print(f"Identity overlay applied: {APP_ID}.beta / {LABEL}")
     print("NOTE: This does not yet apply approved icon assets or configure private Telegram API credentials.")
 
