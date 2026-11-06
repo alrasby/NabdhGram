@@ -21,7 +21,7 @@ python3 -m pip install Pillow
 python3 scripts/apply-brand-icons.py /path/to/Telegram-upstream /secure/path/nabdhgram-master-1536.png
 ```
 
-**Important:** The approved PNG is not yet committed to this repository or wired into the CI build. Do not describe a build as fully branded until the exact approved master has been supplied to the build and the result has been checked on an Android device. Prefer an explicitly reviewed binary asset commit or a secure controlled asset source; do not download an unverified internet image.
+**CI integration:** The workflow now looks for `branding/approved/nabdhgram-master.png` inside the NabdhGram repository checkout. If this file exists, it applies the exact master image to the upstream checkout before compiling. If it is absent, the workflow explicitly reports `not-configured` and builds without branded launcher art. The approved PNG is **not currently committed**. Do not describe a build as fully branded until the original approved master is added and the result is checked on an Android device. Never replace the approved original with a generated approximation. The original approved icon is expected to have its intended background and safe padding; adaptive launcher masks may crop its edges.
 
 ## Remaining production blockers
 - NabdhGram-owned Telegram API credentials and compliant login behavior.
