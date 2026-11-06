@@ -107,6 +107,31 @@ jobs:
           cat apk-sha256.txt
           grep -E "^(package:|application-label:|sdkVersion:|targetSdkVersion:)" apk-badging.txt
           cat apk-signature.txt
+      - name: Check branded launcher images inside compiled APK
+        if: steps.compile.outcome == 'success' && steps.brand.outputs.icon_status == 'approved-master-applied'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          from PIL import Image, ImageChops
+          from io import BytesIO
+          apk = Path("Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk")
+          master = Image.open("nabdhgram/branding/approved/nabdhgram-master.png").convert("RGBA")
+          expected = master.resize((192, 192), Image.Resampling.LANCZOS)
+          with ZipFile(apk) as archive:
+              icons = [n for n in archive.namelist() if n.startswith("res/") and "ic_launcher" in n and n.endswith(".png")]
+              matched = []
+              for name in icons:
+                  with Image.open(BytesIO(archive.read(name))) as candidate:
+                      if candidate.size == (192, 192) and ImageChops.difference(candidate.convert("RGBA"), expected).getbbox() is None:
+                          matched.append(name)
+              print("Compiled launcher PNG resources:", icons)
+              print("Matching approved launcher PNG resources:", matched)
+              if not matched:
+                  raise SystemExit("ERROR: Approved launcher artwork not found in compiled APK resources")
+          PY
       - name: Collect APK paths
         if: always()
         shell: bash
