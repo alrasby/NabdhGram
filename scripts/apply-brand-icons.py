@@ -32,7 +32,7 @@ def main():
             folder = res / f"mipmap-{density}"
             folder.mkdir(parents=True, exist_ok=True)
             scaled = rgba.resize((px, px), Image.Resampling.LANCZOS)
-            for name in ("ic_launcher.png", "ic_launcher_round.png"):
+            for name in ("nabdhgram_launcher.png", "nabdhgram_launcher_round.png"):
                 scaled.save(folder / name, format="PNG", optimize=True)
         # App-module overlay supersedes Telegram library's adaptive-icon resources.
         # Use the exact approved image as the adaptive foreground without inventing new art.
@@ -41,7 +41,7 @@ def main():
         rgba.save(drawable / "nabdhgram_launcher_master.png", format="PNG", optimize=True)
         anydpi = res / "mipmap-anydpi-v26"
         anydpi.mkdir(parents=True, exist_ok=True)
-        for name in ("ic_launcher.xml", "ic_launcher_round.xml"):
+        for name in ("nabdhgram_launcher.xml", "nabdhgram_launcher_round.xml"):
             (anydpi / name).write_text(
                 '<?xml version="1.0" encoding="utf-8"?>\n'
                 '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
@@ -49,6 +49,18 @@ def main():
                 '    <foreground android:drawable="@drawable/nabdhgram_launcher_master" />\n'
                 '</adaptive-icon>\n', encoding="utf-8"
             )
+        # Point the manifest explicitly to NabdhGram-specific resource names.
+        # The upstream Telegram resources are intentionally left intact.
+        manifest = root / "TMessagesProj" / "config" / "debug" / "AndroidManifest_SDK23.xml"
+        text = manifest.read_text(encoding="utf-8")
+        before = 'android:icon="@mipmap/ic_launcher"'
+        round_before = 'android:roundIcon="@mipmap/ic_launcher_round"'
+        if text.count(before) != 1 or text.count(round_before) != 1:
+            raise SystemExit("Expected upstream launcher icon references not found exactly once")
+        text = text.replace(before, 'android:icon="@mipmap/nabdhgram_launcher"')
+        text = text.replace(round_before, 'android:roundIcon="@mipmap/nabdhgram_launcher_round"')
+        manifest.write_text(text, encoding="utf-8")
+        print("Debug manifest launcher resources: nabdhgram_launcher / nabdhgram_launcher_round")
     print("Approved NabdhGram launcher artwork integrated; verify adaptive icon crop on device.")
 
 if __name__ == "__main__":
