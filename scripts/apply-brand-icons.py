@@ -13,7 +13,7 @@ SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 ARTWORK_FRACTION = 0.60
 # Android masks already crop the adaptive canvas. 0.60 caused the mark to
 # occupy only a small portion of the final launcher circle on One UI.
-ADAPTIVE_ARTWORK_FRACTION = 0.92
+ADAPTIVE_ARTWORK_FRACTION = 0.66
 LEGACY_ARTWORK_FRACTION = 0.86
 
 def safe_canvas(artwork, pixels, background):
@@ -54,11 +54,11 @@ def main():
             raise SystemExit("Approved master must be a square PNG >=512px")
         rgba = im.convert("RGBA")
         # Remove transparent-only margins without altering the artwork.
-        alpha_bbox = rgba.getchannel("A").getbbox()
+        alpha_bbox = rgba.getchannel("A").point(lambda a: 255 if a >= 8 else 0).getbbox()
         if alpha_bbox is None:
             raise SystemExit("Approved master PNG has no visible artwork")
         rgba = rgba.crop(alpha_bbox)
-        print(f"Visible artwork bounds: {alpha_bbox}")
+        print(f"Visible artwork bounds (alpha >= 8): {alpha_bbox}")
         res = root / "TMessagesProj_App" / "src" / "main" / "res"
         # Derive a neutral edge color from the approved source itself.
         # The full artwork is preserved, but inset to the Android safe zone.
