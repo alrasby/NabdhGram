@@ -29,34 +29,17 @@ def main():
         '        items.add(UItem.asHeader(getString(R.string.SettingsHelp)));',
         '''        // NabdhGram feature hub; currently a transparent status overview.
         // Do not present planned capabilities as already active.
-        items.add(UItem.asHeader(getString(R.string.NabdhGramSettingsTitle)));
         items.add(SettingCell.Factory.of(80, IconBackgroundColors.CYAN.top,
                 IconBackgroundColors.CYAN.bottom, R.drawable.settings_privacy,
-                getString(R.string.NabdhShieldTitle), getString(R.string.NabdhShieldStatus)));
-        items.add(SettingCell.Factory.of(81, IconBackgroundColors.BLUE.top,
-                IconBackgroundColors.BLUE.bottom, R.drawable.settings_features,
-                getString(R.string.NabdhGramFeaturesTitle), getString(R.string.NabdhGramFeaturesStatus)));
+                getString(R.string.NabdhGramSettingsTitle), getString(R.string.NabdhGramFeaturesStatus)));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(getString(R.string.SettingsHelp)));''', "settings hub")
     s = once(s, '        switch (item.id) {\n            case 1:',
         '''        switch (item.id) {
-            case 80: {
-                AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-                builder.setTitle(getString(R.string.NabdhShieldTitle));
-                builder.setMessage(getString(R.string.NabdhShieldExplanation));
-                builder.setPositiveButton(getString(R.string.OK), null);
-                showDialog(builder.create());
+            case 80:
+                presentSettingFragment(new NabdhGramSettingsActivity());
                 break;
-            }
-            case 81: {
-                AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-                builder.setTitle(getString(R.string.NabdhGramFeaturesTitle));
-                builder.setMessage(getString(R.string.NabdhGramFeaturesExplanation));
-                builder.setPositiveButton(getString(R.string.OK), null);
-                showDialog(builder.create());
-                break;
-            }
             case 1:''', "settings click")
     # Telegram's LocaleController resolves only registered language-pack keys.
     # Custom resource IDs may return LOC_ERR:null even when R.string compiles.
@@ -70,12 +53,81 @@ def main():
         raise SystemExit(f"Expected at least 8 NabdhGram strings, found {count}")
     print(f"Patched {count} custom Settings string lookups")
     p.write_text(s, encoding="utf-8")
+    # A real subpage for all current and future NabdhGram feature settings.
+    feature_page = root / "TMessagesProj/src/main/java/org/telegram/ui/NabdhGramSettingsActivity.java"
+    feature_page.write_text(r'''package org.telegram.ui;
+
+import android.content.Context;
+import android.graphics.Typeface;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+
+import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ActionBar;
+
+public class NabdhGramSettingsActivity extends BaseFragment {
+    @Override
+    public View createView(Context context) {
+        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        actionBar.setTitle(context.getString(R.string.NabdhGramSettingsTitle));
+        actionBar.setAllowOverlayTitle(true);
+        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+            @Override
+            public void onItemClick(int id) {
+                if (id == -1) finishFragment();
+            }
+        });
+        ScrollView scroll = new ScrollView(context);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int) (20 * context.getResources().getDisplayMetrics().density);
+        content.setPadding(pad, pad, pad, pad);
+        scroll.addView(content);
+        section(context, content, R.string.NabdhShieldTitle, R.string.NabdhShieldExplanation);
+        section(context, content, R.string.NabdhGramFeaturesTitle, R.string.NabdhGramFeaturesExplanation);
+        fragmentView = scroll;
+        return fragmentView;
+    }
+
+    private void section(Context context, LinearLayout parent, int titleRes, int descriptionRes) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int d = (int) (16 * context.getResources().getDisplayMetrics().density);
+        card.setPadding(d, d, d, d);
+        card.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.bottomMargin = d;
+        parent.addView(card, lp);
+        TextView heading = new TextView(context);
+        heading.setText(context.getString(titleRes));
+        heading.setTextSize(18);
+        heading.setTypeface(null, Typeface.BOLD);
+        heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        card.addView(heading);
+        TextView description = new TextView(context);
+        description.setText(context.getString(descriptionRes));
+        description.setTextSize(14);
+        description.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(-1, -2);
+        textLp.topMargin = d / 2;
+        card.addView(description, textLp);
+    }
+}
+''', encoding="utf-8")
+
     # SettingsActivity compiles in :TMessagesProj, so its R.string symbols must
     # be generated by that module, not :TMessagesProj_App.
     values = root / "TMessagesProj/src/main/res"
     strings = {
         "values": {
-            "NabdhGramCredits": "NabdhGram v13.1.1 (7237) release arm64-v8a\\nBased on Telegram v13.1.1 (7237)\\nDesigned by @alrasby",
+            "NabdhGramCredits": "NabdhGram - Based on Telegram v13.1.1 (7237)\\nDesigned by @alrasby",
             "NabdhGramSettingsTitle": "NabdhGram Settings",
             "NabdhShieldTitle": "NabdhShield",
             "NabdhShieldStatus": "Local link safety — in development",
