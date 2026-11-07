@@ -11,9 +11,9 @@ SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 # Android's adaptive-icon safe region is the central 66/108 of the canvas.
 # Keep the complete approved artwork inside that region for all launcher masks.
 ARTWORK_FRACTION = 0.60
-# Android masks already crop the adaptive canvas. 0.60 caused the mark to
-# occupy only a small portion of the final launcher circle on One UI.
-ADAPTIVE_ARTWORK_FRACTION = 0.66
+# The approved mark is wide and short; 0.66 left excessive empty space on One UI.
+# 0.86 is centered and must be visually checked for clipping on adaptive masks.
+ADAPTIVE_ARTWORK_FRACTION = 0.86
 LEGACY_ARTWORK_FRACTION = 0.86
 
 def safe_canvas(artwork, pixels, background):
