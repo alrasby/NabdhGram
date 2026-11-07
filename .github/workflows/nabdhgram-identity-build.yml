@@ -99,6 +99,12 @@ jobs:
             echo "::notice::Welcome logo not committed yet: branding/approved/nabdhgram-welcome-transparent.png"
           fi
 
+      - name: Apply NabdhGram diagnostic-only network overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-network-diagnostics.py Telegram-upstream
+
       - name: Disable upstream Google Services configuration for experimental debug build
         shell: bash
         run: |
