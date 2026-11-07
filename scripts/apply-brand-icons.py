@@ -11,9 +11,10 @@ SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 # Android's adaptive-icon safe region is the central 66/108 of the canvas.
 # Keep the complete approved artwork inside that region for all launcher masks.
 ARTWORK_FRACTION = 0.60
-# The approved mark is wide and short; 0.66 left excessive empty space on One UI.
-# 0.86 is centered and must be visually checked for clipping on adaptive masks.
-ADAPTIVE_ARTWORK_FRACTION = 0.86
+# Keep the visible mark inside Android's 66/108 adaptive safe circle.
+# The approved source can include an opaque dark surround, so crop its visible
+# logo first rather than enlarging a padded square and letting Android clip it.
+ADAPTIVE_ARTWORK_FRACTION = 0.60
 LEGACY_ARTWORK_FRACTION = 0.86
 
 def safe_canvas(artwork, pixels, background):
@@ -58,7 +59,38 @@ def main():
         if alpha_bbox is None:
             raise SystemExit("Approved master PNG has no visible artwork")
         rgba = rgba.crop(alpha_bbox)
-        print(f"Visible artwork bounds (alpha >= 8): {alpha_bbox}")
+        print(f"Alpha artwork bounds (alpha >= 8): {alpha_bbox}")
+        # The approved PNG may have an opaque black/dark background. Alpha
+        # cropping alone then leaves the bright logo tiny in a padded square.
+        # Locate the bright silver/teal mark against its dark surround.
+        # This only crops source pixels; it never redraws or recolors the logo.
+        if rgba.getchannel("A").getextrema()[0] >= 250:
+            width, height = rgba.size
+            corners = [rgba.getpixel(p)[:3] for p in
+                       ((0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1))]
+            corner_spread = max(max(c[k] for c in corners) - min(c[k] for c in corners)
+                                for k in range(3))
+            corner_brightness = max(max(c) for c in corners)
+            if corner_spread <= 28 and corner_brightness <= 65:
+                rgb = rgba.convert("RGB")
+                # Bright teal and silver elements stand out above the dark base.
+                bright = rgb.convert("L").point(lambda v: 255 if v >= 78 else 0)
+                mark_bbox = bright.getbbox()
+                if mark_bbox:
+                    x0, y0, x1, y1 = mark_bbox
+                    area = (x1 - x0) * (y1 - y0)
+                    # Guard against stray pixels and unexpectedly large crops.
+                    if 0.015 * width * height <= area <= 0.90 * width * height:
+                        margin = max(2, round(max(x1 - x0, y1 - y0) * 0.06))
+                        mark_bbox = (max(0, x0 - margin), max(0, y0 - margin),
+                                     min(width, x1 + margin), min(height, y1 + margin))
+                        rgba = rgba.crop(mark_bbox)
+                        print(f"Dark-background visible mark bounds: {mark_bbox}")
+                    else:
+                        print("Logo crop skipped: unexpected bright-area bounds")
+            else:
+                print("Logo crop skipped: source corners are not uniformly dark")
+        print(f"Effective artwork dimensions: {rgba.width}x{rgba.height}")
         res = root / "TMessagesProj_App" / "src" / "main" / "res"
         # Derive a neutral edge color from the approved source itself.
         # The full artwork is preserved, but inset to the Android safe zone.
