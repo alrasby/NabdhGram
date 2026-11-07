@@ -52,7 +52,7 @@ def main():
         // Match the original intro illustration bounds; do not stretch or crop.
         frameLayout2.addView(nabdhgramWelcomeLogo,
                 LayoutHelper.createFrame(ICON_WIDTH_DP, ICON_HEIGHT_DP, Gravity.CENTER));
-        textureView.setVisibility(View.INVISIBLE);""",
+        // Keep TextureView VISIBLE: upstream EGL initialization and drawing depend on its SurfaceTexture.""",
         "intro texture view")
     content = replace_once(content,
         """            public void onPageSelected(int i) {
@@ -62,7 +62,7 @@ def main():
                 currentViewPagerPage = i;
                 if (nabdhgramWelcomeLogo != null && nabdhgramIntroTexture != null) {
                     nabdhgramWelcomeLogo.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
-                    nabdhgramIntroTexture.setVisibility(i == 0 ? View.INVISIBLE : View.VISIBLE);
+                    // Do not toggle TextureView visibility; changing it destroys the EGL surface on some devices.
                 }
             }""",
         "page selection")
