@@ -30,7 +30,7 @@ def main():
     with Image.open(asset) as im:
         if im.width < 512 or im.height < 512 or im.mode not in ("RGBA", "LA", "P"):
             raise SystemExit("Welcome logo must be >=512px with transparency")
-        if im.getextrema()[-1][0] == 255 if im.mode in ("RGBA", "LA") else "transparency" not in im.info:
+        if (im.getextrema()[-1][0] == 255) if im.mode in ("RGBA", "LA") else ("transparency" not in im.info):
             raise SystemExit("Welcome logo has no transparent pixels")
     content = source.read_text(encoding="utf-8")
     content = replace_once(content,
