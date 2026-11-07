@@ -80,6 +80,12 @@ jobs:
             echo "::notice::Approved master PNG not committed at branding/approved/nabdhgram-master.png; launcher icon is not branded."
           fi
 
+      - name: Apply NabdhGram welcome screen copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-welcome.py Telegram-upstream
+
       - name: Disable upstream Google Services configuration for experimental debug build
         shell: bash
         run: |
