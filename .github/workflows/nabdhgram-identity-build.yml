@@ -111,6 +111,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-network-diagnostics.py Telegram-upstream
 
+      - name: Apply NabdhShield local link analysis core
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdhshield-link-core.py Telegram-upstream nabdhgram/features/nabdhshield/NabdhShieldLinkAnalyzer.java
+
       - name: Disable upstream Google Services configuration for experimental debug build
         shell: bash
         run: |
