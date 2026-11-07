@@ -11,6 +11,9 @@ SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 # Android's adaptive-icon safe region is the central 66/108 of the canvas.
 # Keep the complete approved artwork inside that region for all launcher masks.
 ARTWORK_FRACTION = 0.60
+# Android masks already crop the adaptive canvas. 0.60 caused the mark to
+# occupy only a small portion of the final launcher circle on One UI.
+ADAPTIVE_ARTWORK_FRACTION = 0.92
 LEGACY_ARTWORK_FRACTION = 0.86
 
 def safe_canvas(artwork, pixels, background):
@@ -25,7 +28,7 @@ def safe_canvas(artwork, pixels, background):
 def foreground_canvas(artwork, pixels):
     from PIL import Image
     canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
-    side = round(pixels * ARTWORK_FRACTION)
+    side = round(pixels * ADAPTIVE_ARTWORK_FRACTION)
     resized = artwork.copy()
     resized.thumbnail((side, side), Image.Resampling.LANCZOS)
     canvas.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
