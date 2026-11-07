@@ -16,12 +16,19 @@ Pinned upstream: `TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsMana
 - Native networking is under `TMessagesProj/jni/tgnet/`. Avoid ad hoc reconnect loops or native changes before measuring.
 - Preserve official proxy settings as an optional user-controlled fallback, never silently enable one.
 
+## New baseline evidence (2026-11-07)
+- User reports **the official Telegram Android app has the same intermittent slow/direct connection behavior as NabdhGram** on the same Wi-Fi and mobile networks, without proxy or VPN.
+- This makes a NabdhGram-only regression less likely, and raises the priority of transport/routing/ISP/DC reachability diagnosis. It does **not** prove deliberate blocking.
+- Avoid shipping a speculative native networking change. First compare official app and NabdhGram side by side, including Telegram Web if possible, and record whether reconnecting is spontaneous or follows network switching.
+- Relevant official guidance: https://core.telegram.org/proxy documents user-configured MTProto/SOCKS5 as an optional fallback, but direct connectivity cannot be guaranteed under complete blocking.
+
 ## Phase N0 — reproduce and compare (no APK code changes)
 1. Record whether the symptom occurs on Wi-Fi, mobile data, or both, with proxy/VPN disabled.
 2. For each network, compare 3 attempts: launch, send a short message to Saved Messages, load one existing image, wait 2 minutes and return.
 3. Record qualitative connection status (Connecting/Updating/Connected), approximate duration and whether recovery occurred after network switching. No account details.
 4. Test with Android app battery setting **Unrestricted** only if disconnections occur while backgrounded; compare without it.
-5. Distinguish app-specific from network-wide symptoms by testing official Telegram on the same network at the same time, if available.
+5. Official Telegram has already been reported to exhibit the same symptoms. Capture paired timings rather than repeat this question.
+6. Optional: test Telegram Web on the same connection, to distinguish native MTProto path symptoms from broader connectivity trouble.
 
 ## Phase N1 — optional in-app diagnostic panel (v1.0 Network Intelligence)
 - Show Telegram connection state, Android transport type (Wi-Fi/cellular), whether the OS reports validated connectivity, and anonymized counts of transitions/retries.
@@ -46,4 +53,4 @@ Pinned upstream: `TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsMana
 - Report implementation, build, and device-test status separately.
 
 ## Current next input
-Ask user whether slow/intermittent connection occurs on Wi-Fi, mobile data, or both, and whether only in background. Do not select an optimization before this baseline.
+Already established: Wi-Fi **and** mobile data affected; official Telegram **also** affected. Next: determine whether failure happens with app open in foreground, or only after screen-off/background; compare Telegram Web if possible. Do not select an optimization before this baseline.
