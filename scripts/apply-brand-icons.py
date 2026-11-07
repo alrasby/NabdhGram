@@ -8,13 +8,12 @@ from pathlib import Path
 import sys
 
 SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
-# Android's adaptive-icon safe region is the central 66/108 of the canvas.
-# Keep the complete approved artwork inside that region for all launcher masks.
-ARTWORK_FRACTION = 0.60
-# The approved mark is wide and short; 0.66 left excessive empty space on One UI.
-# 0.86 is centered and must be visually checked for clipping on adaptive masks.
-ADAPTIVE_ARTWORK_FRACTION = 0.86
-LEGACY_ARTWORK_FRACTION = 0.86
+# Android adaptive foregrounds are scaled and masked by launchers. The central
+# 66/108 area is guaranteed visible; drawing outside it is not reliable.
+# A full-size foreground (0.86) gets cropped, and One UI shows only a small mark.
+ADAPTIVE_SAFE_FRACTION = 66 / 108
+ADAPTIVE_ARTWORK_FRACTION = 0.60
+LEGACY_ARTWORK_FRACTION = 0.94
 
 def safe_canvas(artwork, pixels, background):
     from PIL import Image
@@ -28,6 +27,8 @@ def safe_canvas(artwork, pixels, background):
 def foreground_canvas(artwork, pixels):
     from PIL import Image
     canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
+    if not 0 < ADAPTIVE_ARTWORK_FRACTION <= ADAPTIVE_SAFE_FRACTION:
+        raise ValueError("Adaptive artwork exceeds Android guaranteed safe area")
     side = round(pixels * ADAPTIVE_ARTWORK_FRACTION)
     resized = artwork.copy()
     resized.thumbnail((side, side), Image.Resampling.LANCZOS)
@@ -59,6 +60,12 @@ def main():
             raise SystemExit("Approved master PNG has no visible artwork")
         rgba = rgba.crop(alpha_bbox)
         print(f"Visible artwork bounds (alpha >= 8): {alpha_bbox}")
+        print(f"Cropped artwork dimensions: {rgba.width}x{rgba.height}")
+        # If the approved asset is a wide, low logo rather than a square icon,
+        # sizing by width alone will necessarily leave vertical whitespace.
+        # Report it instead of silently stretching or redrawing the identity.
+        if rgba.width > 1.6 * rgba.height:
+            print("WARNING: wide logo asset; a square approved master is recommended for launcher use.")
         res = root / "TMessagesProj_App" / "src" / "main" / "res"
         # Derive a neutral edge color from the approved source itself.
         # The full artwork is preserved, but inset to the Android safe zone.
