@@ -20,6 +20,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Restore Gradle dependency and build caches
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
       - name: Install Android SDK and NDK
         shell: bash
         run: |
@@ -63,6 +68,12 @@ jobs:
           grep -qx 'APP_PACKAGE=net.nabdhserv.nabdhgram' Telegram-upstream/gradle.properties
           grep -q 'NabdhGramAppName' Telegram-upstream/TMessagesProj_App/src/main/AndroidManifest.xml
 
+      - name: Install image processing dependency once
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check Pillow
+
       - name: Apply exact approved icon when source asset is present
         id: brand
         shell: bash
@@ -70,7 +81,6 @@ jobs:
           set -euo pipefail
           MASTER="nabdhgram/branding/approved/nabdhgram-welcome-transparent.png"
           if [ -f "$MASTER" ]; then
-            python3 -m pip install --disable-pip-version-check Pillow
             python3 nabdhgram/scripts/apply-brand-icons.py Telegram-upstream "$MASTER"
             echo "icon_status=approved-welcome-master-applied" >> "$GITHUB_OUTPUT"
             echo "Approved icon source SHA-256:"
@@ -92,7 +102,6 @@ jobs:
           set -euo pipefail
           LOGO="nabdhgram/branding/approved/nabdhgram-welcome-transparent.png"
           if [ -f "$LOGO" ]; then
-            python3 -m pip install --disable-pip-version-check Pillow
             python3 nabdhgram/scripts/apply-welcome-logo.py Telegram-upstream "$LOGO"
             echo "Approved compact welcome logo integrated."
           else
