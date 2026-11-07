@@ -69,19 +69,19 @@ def main():
         values = res / "values"
         values.mkdir(parents=True, exist_ok=True)
         (values / "nabdhgram_launcher_colors.xml").write_text(
-            '<?xml version="1.0" encoding="utf-8"?>\\n'
-            '<resources><color name="nabdhgram_launcher_background">#%02X%02X%02X</color></resources>\\n'
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<resources><color name="nabdhgram_launcher_background">#%02X%02X%02X</color></resources>\n'
             % background[:3], encoding="utf-8"
         )
         anydpi = res / "mipmap-anydpi-v26"
         anydpi.mkdir(parents=True, exist_ok=True)
         for name in ("nabdhgram_launcher.xml", "nabdhgram_launcher_round.xml"):
             (anydpi / name).write_text(
-                '<?xml version="1.0" encoding="utf-8"?>\\n'
-                '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\\n'
-                '    <background android:drawable="@color/nabdhgram_launcher_background" />\\n'
-                '    <foreground android:drawable="@drawable/nabdhgram_launcher_foreground" />\\n'
-                '</adaptive-icon>\\n', encoding="utf-8"
+                '<?xml version="1.0" encoding="utf-8"?>\n'
+                '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+                '    <background android:drawable="@color/nabdhgram_launcher_background" />\n'
+                '    <foreground android:drawable="@drawable/nabdhgram_launcher_foreground" />\n'
+                '</adaptive-icon>\n', encoding="utf-8"
             )
         # Point the manifest explicitly to NabdhGram-specific resource names.
         # The upstream Telegram resources are intentionally left intact.
