@@ -68,16 +68,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          MASTER="nabdhgram/branding/approved/nabdhgram-master.png"
+          MASTER="nabdhgram/branding/approved/nabdhgram-welcome-transparent.png"
           if [ -f "$MASTER" ]; then
             python3 -m pip install --disable-pip-version-check Pillow
             python3 nabdhgram/scripts/apply-brand-icons.py Telegram-upstream "$MASTER"
-            echo "icon_status=approved-master-applied" >> "$GITHUB_OUTPUT"
+            echo "icon_status=approved-welcome-master-applied" >> "$GITHUB_OUTPUT"
             echo "Approved icon source SHA-256:"
             sha256sum "$MASTER"
           else
             echo "icon_status=not-configured" >> "$GITHUB_OUTPUT"
-            echo "::notice::Approved master PNG not committed at branding/approved/nabdhgram-master.png; launcher icon is not branded."
+            echo "::error::Approved logo missing at branding/approved/nabdhgram-welcome-transparent.png; cannot build correctly branded APK."\n            exit 1
           fi
 
       - name: Apply NabdhGram welcome screen copy
