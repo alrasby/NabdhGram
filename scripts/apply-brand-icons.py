@@ -11,11 +11,12 @@ SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 # Android's adaptive-icon safe region is the central 66/108 of the canvas.
 # Keep the complete approved artwork inside that region for all launcher masks.
 ARTWORK_FRACTION = 0.60
+LEGACY_ARTWORK_FRACTION = 0.86
 
 def safe_canvas(artwork, pixels, background):
     from PIL import Image
     canvas = Image.new("RGBA", (pixels, pixels), background)
-    side = round(pixels * ARTWORK_FRACTION)
+    side = round(pixels * LEGACY_ARTWORK_FRACTION)
     resized = artwork.copy()
     resized.thumbnail((side, side), Image.Resampling.LANCZOS)
     canvas.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
@@ -67,6 +68,17 @@ def main():
             scaled = safe_canvas(rgba, px, background)
             for name in ("nabdhgram_launcher.png", "nabdhgram_launcher_round.png"):
                 scaled.save(folder / name, format="PNG", optimize=True)
+        splash_dir = res / "values-v31"
+        splash_dir.mkdir(parents=True, exist_ok=True)
+        (splash_dir / "nabdhgram_splash.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<resources><style name="Theme.TMessages.Start" parent="Theme.AppCompat.Light">'
+            '<item name="android:windowActionBar">false</item>'
+            '<item name="android:windowNoTitle">true</item>'
+            '<item name="android:windowSplashScreenAnimatedIcon">@drawable/nabdhgram_launcher_foreground</item>'
+            '<item name="android:windowSplashScreenBackground">#04252A</item>'
+            '</style></resources>\n', encoding="utf-8"
+        )
         drawable = res / "drawable-nodpi"
         drawable.mkdir(parents=True, exist_ok=True)
         foreground_canvas(rgba, 1080).save(
