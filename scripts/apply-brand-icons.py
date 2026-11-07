@@ -16,18 +16,18 @@ def safe_canvas(artwork, pixels, background):
     from PIL import Image
     canvas = Image.new("RGBA", (pixels, pixels), background)
     side = round(pixels * ARTWORK_FRACTION)
-    resized = artwork.resize((side, side), Image.Resampling.LANCZOS)
-    offset = (pixels - side) // 2
-    canvas.alpha_composite(resized, (offset, offset))
+    resized = artwork.copy()
+    resized.thumbnail((side, side), Image.Resampling.LANCZOS)
+    canvas.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
     return canvas
 
 def foreground_canvas(artwork, pixels):
     from PIL import Image
     canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
     side = round(pixels * ARTWORK_FRACTION)
-    resized = artwork.resize((side, side), Image.Resampling.LANCZOS)
-    offset = (pixels - side) // 2
-    canvas.alpha_composite(resized, (offset, offset))
+    resized = artwork.copy()
+    resized.thumbnail((side, side), Image.Resampling.LANCZOS)
+    canvas.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
     return canvas
 
 
@@ -49,6 +49,12 @@ def main():
         if im.format != "PNG" or im.width != im.height or im.width < 512:
             raise SystemExit("Approved master must be a square PNG >=512px")
         rgba = im.convert("RGBA")
+        # Remove transparent-only margins without altering the artwork.
+        alpha_bbox = rgba.getchannel("A").getbbox()
+        if alpha_bbox is None:
+            raise SystemExit("Approved master PNG has no visible artwork")
+        rgba = rgba.crop(alpha_bbox)
+        print(f"Visible artwork bounds: {alpha_bbox}")
         res = root / "TMessagesProj_App" / "src" / "main" / "res"
         # Derive a neutral edge color from the approved source itself.
         # The full artwork is preserved, but inset to the Android safe zone.
