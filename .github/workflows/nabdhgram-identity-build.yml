@@ -86,6 +86,19 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-welcome.py Telegram-upstream
 
+      - name: Apply approved transparent welcome logo when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOGO="nabdhgram/branding/approved/nabdhgram-welcome-transparent.png"
+          if [ -f "$LOGO" ]; then
+            python3 -m pip install --disable-pip-version-check Pillow
+            python3 nabdhgram/scripts/apply-welcome-logo.py Telegram-upstream "$LOGO"
+            echo "Approved compact welcome logo integrated."
+          else
+            echo "::notice::Welcome logo not committed yet: branding/approved/nabdhgram-welcome-transparent.png"
+          fi
+
       - name: Disable upstream Google Services configuration for experimental debug build
         shell: bash
         run: |
