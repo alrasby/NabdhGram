@@ -8,6 +8,28 @@ from pathlib import Path
 import sys
 
 SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
+# Android's adaptive-icon safe region is the central 66/108 of the canvas.
+# Keep the complete approved artwork inside that region for all launcher masks.
+ARTWORK_FRACTION = 0.60
+
+def safe_canvas(artwork, pixels, background):
+    from PIL import Image
+    canvas = Image.new("RGBA", (pixels, pixels), background)
+    side = round(pixels * ARTWORK_FRACTION)
+    resized = artwork.resize((side, side), Image.Resampling.LANCZOS)
+    offset = (pixels - side) // 2
+    canvas.alpha_composite(resized, (offset, offset))
+    return canvas
+
+def foreground_canvas(artwork, pixels):
+    from PIL import Image
+    canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
+    side = round(pixels * ARTWORK_FRACTION)
+    resized = artwork.resize((side, side), Image.Resampling.LANCZOS)
+    offset = (pixels - side) // 2
+    canvas.alpha_composite(resized, (offset, offset))
+    return canvas
+
 
 def main():
     if len(sys.argv) != 3:
@@ -28,26 +50,38 @@ def main():
             raise SystemExit("Approved master must be a square PNG >=512px")
         rgba = im.convert("RGBA")
         res = root / "TMessagesProj_App" / "src" / "main" / "res"
+        # Derive a neutral edge color from the approved source itself.
+        # The full artwork is preserved, but inset to the Android safe zone.
+        background = rgba.getpixel((0, 0))
+        if background[3] != 255:
+            background = (4, 37, 42, 255)
         for density, px in SIZES.items():
             folder = res / f"mipmap-{density}"
             folder.mkdir(parents=True, exist_ok=True)
-            scaled = rgba.resize((px, px), Image.Resampling.LANCZOS)
+            scaled = safe_canvas(rgba, px, background)
             for name in ("nabdhgram_launcher.png", "nabdhgram_launcher_round.png"):
                 scaled.save(folder / name, format="PNG", optimize=True)
-        # App-module overlay supersedes Telegram library's adaptive-icon resources.
-        # Use the exact approved image as the adaptive foreground without inventing new art.
         drawable = res / "drawable-nodpi"
         drawable.mkdir(parents=True, exist_ok=True)
-        rgba.save(drawable / "nabdhgram_launcher_master.png", format="PNG", optimize=True)
+        foreground_canvas(rgba, 1080).save(
+            drawable / "nabdhgram_launcher_foreground.png", format="PNG", optimize=True
+        )
+        values = res / "values"
+        values.mkdir(parents=True, exist_ok=True)
+        (values / "nabdhgram_launcher_colors.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\\n'
+            '<resources><color name="nabdhgram_launcher_background">#%02X%02X%02X</color></resources>\\n'
+            % background[:3], encoding="utf-8"
+        )
         anydpi = res / "mipmap-anydpi-v26"
         anydpi.mkdir(parents=True, exist_ok=True)
         for name in ("nabdhgram_launcher.xml", "nabdhgram_launcher_round.xml"):
             (anydpi / name).write_text(
-                '<?xml version="1.0" encoding="utf-8"?>\n'
-                '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                '    <background android:drawable="@android:color/transparent" />\n'
-                '    <foreground android:drawable="@drawable/nabdhgram_launcher_master" />\n'
-                '</adaptive-icon>\n', encoding="utf-8"
+                '<?xml version="1.0" encoding="utf-8"?>\\n'
+                '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\\n'
+                '    <background android:drawable="@color/nabdhgram_launcher_background" />\\n'
+                '    <foreground android:drawable="@drawable/nabdhgram_launcher_foreground" />\\n'
+                '</adaptive-icon>\\n', encoding="utf-8"
             )
         # Point the manifest explicitly to NabdhGram-specific resource names.
         # The upstream Telegram resources are intentionally left intact.
