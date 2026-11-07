@@ -30,6 +30,14 @@ def main():
         raise SystemExit("Unexpected upstream intro logo block; refusing unsafe edit")
     j += len(end)
     content = content[:i] + '        titles[0] = "NabdhGram";' + content[j:]
+    # The branded text title intentionally removes the upstream telegram_logo ImageSpan.
+    # IntroActivity.updateColors() still tints logoDrawable unconditionally in upstream,
+    # which crashes the welcome screen with a NullPointerException on launch.
+    # Keep the custom title and guard the obsolete drawable access.
+    content = replace_once(content,
+        '        logoDrawable.setColorFilter(Theme.multAlpha(getThemedColor(Theme.key_actionBarDefaultTitle), 0.9f), PorterDuff.Mode.MULTIPLY);',
+        '        if (logoDrawable != null) {\n            logoDrawable.setColorFilter(Theme.multAlpha(getThemedColor(Theme.key_actionBarDefaultTitle), 0.9f), PorterDuff.Mode.MULTIPLY);\n        }'.replace('\n', '\n'),
+        "nullable removed intro title drawable")
     source.write_text(content, encoding="utf-8")
     print("NabdhGram welcome title, description, and start button applied.")
     print("NOTE: visual intro animation/logo remains upstream until a separately approved transparent asset is integrated.")
