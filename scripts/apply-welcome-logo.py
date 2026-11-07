@@ -78,9 +78,10 @@ def main():
             }""",
         """            public void onPageSelected(int i) {
                 currentViewPagerPage = i;
-                if (nabdhgramWelcomeLogo != null && nabdhgramIntroTexture != null) {
-                    nabdhgramWelcomeLogo.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
-                    // Do not toggle TextureView visibility; changing it destroys the EGL surface on some devices.
+                if (nabdhgramWelcomeLogo != null) {
+                    View cover = (View) nabdhgramWelcomeLogo.getParent();
+                    cover.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
+                    // TextureView remains attached and visible for native EGL.
                 }
             }""",
         "page selection")
