@@ -49,8 +49,21 @@ def main():
     pattern = r'getString\(R\.string\.(NabdhGram\w+|NabdhShield\w+)\)'
     s, count = re.subn(pattern,
                        lambda m: 'getParentActivity().getString(R.string.' + m.group(1) + ')', s)
-    if count < 8:
-        raise SystemExit(f"Expected at least 8 NabdhGram strings, found {count}")
+    # Only three custom labels remain in SettingsActivity after PR #43.
+    # All other feature labels are resolved directly in the new subpage.
+    expected_labels = {
+        "NabdhGramCredits",
+        "NabdhGramSettingsTitle",
+        "NabdhGramFeaturesStatus",
+    }
+    found_labels = set(re.findall(
+        r'getParentActivity\(\)\.getString\(R\.string\.(NabdhGram\w+|NabdhShield\w+)\)', s
+    ))
+    if count != len(expected_labels) or found_labels != expected_labels:
+        raise SystemExit(
+            f"Expected Settings labels {sorted(expected_labels)}, "
+            f"found {sorted(found_labels)} (replacements: {count})"
+        )
     print(f"Patched {count} custom Settings string lookups")
     p.write_text(s, encoding="utf-8")
     # A real subpage for all current and future NabdhGram feature settings.
