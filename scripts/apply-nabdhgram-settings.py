@@ -49,8 +49,11 @@ def main():
     pattern = r'getString\(R\.string\.(NabdhGram\w+|NabdhShield\w+)\)'
     s, count = re.subn(pattern,
                        lambda m: 'getParentActivity().getString(R.string.' + m.group(1) + ')', s)
-    if count < 8:
-        raise SystemExit(f"Expected at least 8 NabdhGram strings, found {count}")
+    # The main SettingsActivity now has exactly three custom lookups:
+    # credits, the NabdhGram Settings title, and its short description.
+    # Feature-page labels are resolved separately in NabdhGramSettingsActivity.
+    if count != 3:
+        raise SystemExit(f"Expected 3 NabdhGram main-settings strings, found {count}")
     print(f"Patched {count} custom Settings string lookups")
     p.write_text(s, encoding="utf-8")
     # A real subpage for all current and future NabdhGram feature settings.
