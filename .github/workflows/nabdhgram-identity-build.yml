@@ -105,6 +105,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-dialogs-title.py Telegram-upstream
 
+      - name: Apply NabdhGram settings hub and credits
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdhgram-settings.py Telegram-upstream
+
       - name: Apply privacy-minimal network diagnostics
         shell: bash
         run: |
