@@ -94,7 +94,11 @@ public class NabdhGramSettingsActivity extends BaseFragment {
         content.setPadding(pad, pad, pad, pad);
         scroll.addView(content);
         section(context, content, R.string.NabdhShieldTitle, R.string.NabdhShieldExplanation);
-        section(context, content, R.string.NabdhGramFeaturesTitle, R.string.NabdhGramFeaturesExplanation);
+        section(context, content, R.string.NabdhPrivacyTitle, R.string.NabdhPrivacyExplanation);
+        section(context, content, R.string.NabdhProductivityTitle, R.string.NabdhProductivityExplanation);
+        section(context, content, R.string.NabdhLanguageTitle, R.string.NabdhLanguageExplanation);
+        section(context, content, R.string.NabdhNetworkTitle, R.string.NabdhNetworkExplanation);
+        section(context, content, R.string.NabdhAppearanceTitle, R.string.NabdhAppearanceExplanation);
         fragmentView = scroll;
         return fragmentView;
     }
@@ -132,6 +136,16 @@ public class NabdhGramSettingsActivity extends BaseFragment {
         "values": {
             "NabdhGramCredits": "NabdhGram - Based on Telegram v13.1.1 (7237)\\nDesigned by @alrasby",
             "NabdhGramSettingsTitle": "NabdhGram Settings",
+            "NabdhPrivacyTitle": "Privacy and messaging",
+            "NabdhPrivacyExplanation": "Planned: Smart Chat Preview, Privacy Screen and local chat protection. Not enabled yet.",
+            "NabdhProductivityTitle": "Productivity",
+            "NabdhProductivityExplanation": "Planned: Focus Lens, Message Workspace and Catch Me Up. Not enabled yet.",
+            "NabdhLanguageTitle": "Language and voice",
+            "NabdhLanguageExplanation": "Planned: in-chat translation, optional live translation and Voice Clarity. Not enabled yet.",
+            "NabdhNetworkTitle": "Network and media",
+            "NabdhNetworkExplanation": "Planned: Network Intelligence, download controls and media improvements. Not enabled yet.",
+            "NabdhAppearanceTitle": "Appearance",
+            "NabdhAppearanceExplanation": "Planned: Glass themes, fonts and personalization. Not enabled yet.",
             "NabdhShieldTitle": "NabdhShield",
             "NabdhShieldStatus": "Local link safety — in development",
             "NabdhGramFeaturesTitle": "NabdhGram Features",
@@ -140,8 +154,18 @@ public class NabdhGramSettingsActivity extends BaseFragment {
             "NabdhGramFeaturesExplanation": "Planned: Focus Lens, Message Workspace, Catch Me Up, Smart Chat Preview, Privacy Screen, translation, Voice Clarity and Network Intelligence. Email sign-in codes are available only when Telegram servers offer them. No independent email login is implemented."
         },
         "values-ar": {
-            "NabdhGramCredits": "NabdhGram v13.1.1 (7237) release arm64-v8a\\nBased on Telegram v13.1.1 (7237)\\nDesigned by @alrasby",
+            "NabdhGramCredits": "NabdhGram - Based on Telegram v13.1.1 (7237)\\nDesigned by @alrasby",
             "NabdhGramSettingsTitle": "إعدادات نبض جرام",
+            "NabdhPrivacyTitle": "الخصوصية والمراسلة",
+            "NabdhPrivacyExplanation": "قيد التطوير: معاينة المحادثات الذكية، شاشة الخصوصية، وحماية المحادثات محليًا. لم تُفعّل بعد.",
+            "NabdhProductivityTitle": "الإنتاجية",
+            "NabdhProductivityExplanation": "قيد التطوير: Focus Lens وMessage Workspace وCatch Me Up. لم تُفعّل بعد.",
+            "NabdhLanguageTitle": "اللغات والصوت",
+            "NabdhLanguageExplanation": "قيد التطوير: الترجمة داخل المحادثات والترجمة المباشرة الاختيارية وتحسين الصوت. لم تُفعّل بعد.",
+            "NabdhNetworkTitle": "الشبكة والوسائط",
+            "NabdhNetworkExplanation": "قيد التطوير: ذكاء الشبكة، التحكم في التنزيلات، وتحسين الوسائط. لم تُفعّل بعد.",
+            "NabdhAppearanceTitle": "المظهر",
+            "NabdhAppearanceExplanation": "قيد التطوير: ثيمات Glass والخطوط وخيارات التخصيص. لم تُفعّل بعد.",
             "NabdhShieldTitle": "NabdhShield — درع نبض",
             "NabdhShieldStatus": "فحص الروابط المحلي — قيد التطوير",
             "NabdhGramFeaturesTitle": "مميزات نبض جرام",
