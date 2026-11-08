@@ -23,17 +23,19 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
 anchor = "        boolean needInvalidate = false;"
 if s.count(anchor) != 1:
     raise SystemExit("DialogCell draw stage anchor changed")
-s = s.replace(anchor, """        // Render behind the existing Telegram text, avatars, badges and selection.
+s = s.replace(anchor, """        // Render behind Telegram text and avatars; pressed/selected cards get teal feedback.
         // Pinned rows get a distinct teal-tinted surface without reordering dialogs.
         final int nabdhSurface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
         final boolean nabdhDark = android.graphics.Color.red(nabdhSurface)
                 + android.graphics.Color.green(nabdhSurface)
                 + android.graphics.Color.blue(nabdhSurface) < 360;
-        final boolean nabdhPinned = drawPin || drawPinForced;
+        final boolean nabdhPinned = getIsPinned();
+        final boolean nabdhActive = isPressed() || isSelected();
         final int nabdhTint = nabdhPinned
                 ? (nabdhDark ? 0xFF104B52 : 0xFFE0F5F2)
                 : (nabdhDark ? 0xFF172D36 : 0xFFF6FBFB);
-        nabdhCardPaint.setColor(nabdhTint);
+        nabdhCardPaint.setColor(nabdhActive
+                ? (nabdhDark ? 0xFF146E75 : 0xFFB6E9E6) : nabdhTint);
         nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
         final float nabdhInset = dp(7);
         nabdhCardBounds.set(nabdhInset, dp(3), getMeasuredWidth() - nabdhInset,
