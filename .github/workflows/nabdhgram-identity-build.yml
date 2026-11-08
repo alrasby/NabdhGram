@@ -166,6 +166,13 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-pinned-sections.py Telegram-upstream
 
+      - name: Verify NabdhGram Glass overlays before Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-pinned-sections.py nabdhgram/scripts/check-glass-overlay.py
+          python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+
       - name: Apply privacy-minimal network diagnostics
         shell: bash
         run: |
