@@ -92,7 +92,7 @@ for lang, mapping in summaries.items():
     xml = res.read_text(encoding="utf-8")
     if xml.count("</resources>") != 1:
         raise SystemExit(f"Unexpected XML resources in {res}")
-    entries = "".join(f'    <string name="NabdhGlass{k}Summary">{escape(v)}</string>\\n' for k, v in mapping.items())
+    entries = "".join(f'    <string name="NabdhGlass{k}Summary">{escape(v)}</string>\n' for k, v in mapping.items())
     res.write_text(xml.replace("</resources>", entries + "</resources>", 1), encoding="utf-8")
 
 child = pages[1]
