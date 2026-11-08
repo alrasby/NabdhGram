@@ -20,9 +20,9 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
     private final android.graphics.Paint nabdhCardPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
     private final android.graphics.RectF nabdhCardBounds = new android.graphics.RectF();
 """ + field_anchor, 1)
-anchor = "        boolean needInvalidate = false;"
-if s.count(anchor) != 1:
-    raise SystemExit("DialogCell draw stage anchor changed")
+# Draw after Telegram's base pinned/archive background, before message content.
+# Painting at the beginning of onDraw would be hidden by the later base fill.
+anchor = "        canvas.restore();\\n\\n        updateHelper.updateAnimationValues();"
 s = s.replace(anchor, """        // Render behind Telegram text and avatars; pressed/selected cards get teal feedback.
         // Pinned rows get a distinct teal-tinted surface without reordering dialogs.
         final int nabdhSurface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
