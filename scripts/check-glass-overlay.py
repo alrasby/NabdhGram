@@ -22,7 +22,7 @@ checks = {
 checks["pinned section inserted once"] = adapter.count("new ItemInternal(VIEW_TYPE_HEADER_3,\n                        mContext.getString(org.telegram.messenger.R.string.NabdhGlassPinnedChats)") == 1
 checks["normal section inserted once"] = adapter.count("new ItemInternal(VIEW_TYPE_HEADER_3,\n                        mContext.getString(org.telegram.messenger.R.string.NabdhGlassAllChats)") == 1
 checks["home list only"] = "dialogsType == DialogsActivity.DIALOGS_TYPE_DEFAULT && folderId == 0" in adapter
-checks["out-of-order guard"] = "final boolean ordered = pinnedFirst < 0" in adapter
+checks["out-of-order guard"] = "boolean ordered = pinnedFirst < 0" in adapter and "ordered = false;" in adapter
 
 for lang in ("values", "values-ar"):
     xml = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
