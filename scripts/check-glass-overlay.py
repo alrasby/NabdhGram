@@ -28,9 +28,11 @@ for lang in ("values", "values-ar"):
     xml = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     strings = ET.parse(xml).getroot()
     for name in ("NabdhGlassPinnedChats", "NabdhGlassAllChats"):
-        checks[f"{lang}: {name} unique"] = sum(
-            e.attrib.get("name") == name for e in strings.findall("string")
-        ) == 1
+        found = sum(e.attrib.get("name") == name for e in strings.findall("string"))
+        print(f"Resource count {lang}/{name}: {found}", flush=True)
+        if found != 1:
+            print("Nearby resource names: " + repr([e.attrib.get("name") for e in strings.findall("string") if "Glass" in e.attrib.get("name", "")]), flush=True)
+        checks[f"{lang}: {name} unique"] = found == 1
 
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
