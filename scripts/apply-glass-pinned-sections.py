@@ -71,6 +71,39 @@ replacement = """        if (!messagesController.hiddenUndoChats.isEmpty()) {
 
     public int getItemHeight(int position) {"""
 s = s.replace(anchor, replacement, 1)
+# Style only the two added headers; reuse upstream HeaderCell and RTL logic.
+header_anchor = """            case VIEW_TYPE_HEADER_3: {
+                HeaderCell cell = (HeaderCell) holder.itemView;
+                cell.setText((String) getItem(i));
+                break;
+            }"""
+if s.count(header_anchor) != 1:
+    raise SystemExit("HeaderCell bind anchor changed")
+s = s.replace(header_anchor, """            case VIEW_TYPE_HEADER_3: {
+                HeaderCell cell = (HeaderCell) holder.itemView;
+                String heading = (String) getItem(i);
+                cell.setText(heading);
+                boolean nabdhHeading = dialogsType == DialogsActivity.DIALOGS_TYPE_DEFAULT && folderId == 0
+                        && (heading.equals(mContext.getString(org.telegram.messenger.R.string.NabdhGlassPinnedChats))
+                        || heading.equals(mContext.getString(org.telegram.messenger.R.string.NabdhGlassAllChats)));
+                if (nabdhHeading) {
+                    int base = Theme.getColor(Theme.key_windowBackgroundWhite);
+                    boolean dark = android.graphics.Color.red(base) + android.graphics.Color.green(base)
+                            + android.graphics.Color.blue(base) < 360;
+                    android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+                    bg.setColor(dark ? 0xFF103D44 : 0xFFE4F6F4);
+                    bg.setCornerRadius(AndroidUtilities.dp(15));
+                    bg.setStroke(AndroidUtilities.dp(1), dark ? 0xFF287C84 : 0xFFBADFDD);
+                    cell.setBackground(bg);
+                    cell.setTextColor(dark ? 0xFF72E5DE : 0xFF087C83);
+                    cell.setPadding(AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8), 0);
+                } else {
+                    cell.setBackground(null);
+                    cell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader));
+                    cell.setPadding(0, 0, 0, 0);
+                }
+                break;
+            }""", 1)
 p.write_text(s, encoding="utf-8")
 
 # The existing feature settings resources are created earlier in the workflow.
