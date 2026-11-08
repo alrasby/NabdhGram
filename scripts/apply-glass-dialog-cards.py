@@ -22,7 +22,7 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
 """ + field_anchor, 1)
 # Draw after Telegram's base pinned/archive background, before message content.
 # Painting at the beginning of onDraw would be hidden by the later base fill.
-anchor = "        canvas.restore();\\n\\n        updateHelper.updateAnimationValues();"
+anchor = "        canvas.restore();\n\n        updateHelper.updateAnimationValues();"
 s = s.replace(anchor, """        // Render behind Telegram text and avatars; pressed/selected cards get teal feedback.
         // Pinned rows get a distinct teal-tinted surface without reordering dialogs.
         final int nabdhSurface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
