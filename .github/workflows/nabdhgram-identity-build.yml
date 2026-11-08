@@ -163,6 +163,12 @@ jobs:
           print("Google Services Gradle processing disabled for experimental debug build only.")
           PY
 
+      - name: Limit experimental APK to arm64-v8a
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream
+
       - name: Build branded debug APK
         id: compile
         continue-on-error: true
@@ -231,6 +237,29 @@ jobs:
               print("::warning::DefaultIcon alias not found in compiled manifest tree", flush=True)
           print("NOTE: Device launcher artwork still requires visual verification.", flush=True)
           PY
+      - name: Publish verified APK with a clean filename
+        if: steps.compile.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk dist/nabdhgram.apk
+          cmp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk dist/nabdhgram.apk
+          python3 - <<'PY'
+          import pathlib, zipfile, sys
+          apk = pathlib.Path("dist/nabdhgram.apk")
+          with zipfile.ZipFile(apk) as z:
+              abis = sorted({p.split("/")[1] for p in z.namelist() if p.startswith("lib/") and p.count("/") >= 2})
+          print(f"Packaged native ABIs: {abis}")
+          print(f"APK size: {apk.stat().st_size / 1024 / 1024:.2f} MiB")
+          if abis != ["arm64-v8a"]:
+              sys.exit("APK contains unexpected or missing native ABIs")
+          PY
+          sha256sum dist/nabdhgram.apk
+          echo "### NabdhGram APK" >> "$GITHUB_STEP_SUMMARY"
+          echo "Filename: \`nabdhgram.apk\` (arm64-v8a only)" >> "$GITHUB_STEP_SUMMARY"
+          du -h dist/nabdhgram.apk >> "$GITHUB_STEP_SUMMARY"
+
       - name: Collect APK paths
         if: always()
         shell: bash
@@ -242,7 +271,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nabdhgram-identity-debug-apk
-          path: Telegram-upstream/**/*.apk
+          path: dist/nabdhgram.apk
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload diagnostics
@@ -281,4 +310,4 @@ jobs:
           BUILD_RESULT: ${{ steps.compile.outcome }}
         run: |
           test "$BUILD_RESULT" = success
-          test -s apk-paths.txt
+          test -s dist/nabdhgram.apk
