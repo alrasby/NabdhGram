@@ -43,26 +43,25 @@ replacement = """        if (!messagesController.hiddenUndoChats.isEmpty()) {
                 && !parentFragment.isReplyTo) {
             int pinnedFirst = -1;
             int regularFirst = -1;
-            boolean seenPinned = false;
             for (int i = 0; i < itemInternals.size(); ++i) {
                 ItemInternal row = itemInternals.get(i);
                 if (row.viewType != VIEW_TYPE_DIALOG || row.dialog == null || row.isFolder) {
                     continue;
                 }
-                if (row.pinned) {
-                    if (pinnedFirst < 0) {
-                        pinnedFirst = i;
-                    }
-                    seenPinned = true;
-                } else if (seenPinned) {
+                if (row.pinned && pinnedFirst < 0) {
+                    pinnedFirst = i;
+                }
+                if (!row.pinned && regularFirst < 0) {
                     regularFirst = i;
-                    break;
                 }
             }
-            if (pinnedFirst >= 0 && regularFirst > pinnedFirst) {
-                // Insert from the end to preserve original list indices and order.
+            // A section must also be visible when there are only pinned chats,
+            // or only regular chats. Inserting from the back preserves offsets.
+            if (regularFirst >= 0 && (pinnedFirst < 0 || regularFirst > pinnedFirst)) {
                 itemInternals.add(regularFirst, new ItemInternal(VIEW_TYPE_HEADER_3,
                         mContext.getString(org.telegram.messenger.R.string.NabdhGlassAllChats)));
+            }
+            if (pinnedFirst >= 0) {
                 itemInternals.add(pinnedFirst, new ItemInternal(VIEW_TYPE_HEADER_3,
                         mContext.getString(org.telegram.messenger.R.string.NabdhGlassPinnedChats)));
             }
