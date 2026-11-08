@@ -160,6 +160,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-dialog-sections.py Telegram-upstream
 
+      - name: Apply NabdhGram Glass pinned and regular sections
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-pinned-sections.py Telegram-upstream
+
       - name: Apply privacy-minimal network diagnostics
         shell: bash
         run: |
