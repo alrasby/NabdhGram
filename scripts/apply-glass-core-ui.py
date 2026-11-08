@@ -92,4 +92,48 @@ replacement = """            setOrientation(VERTICAL);
             titleView = new TextView(context);"""
 s = replace_once(s, anchor, replacement, "Login phone-page brand")
 login.write_text(s, encoding="utf-8")
-print("Installed NabdhGram Glass chat card paint and official login-page branding.")
+# A real contiguous group behind pinned rows, without changing the adapter's
+# data order, list item type, click targets, swipe actions or scroll recycling.
+dialogs = root / "TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java"
+s = dialogs.read_text(encoding="utf-8")
+anchor = "            viewPage.listView.setClipToPadding(false);"
+group = """            viewPage.listView.setClipToPadding(false);
+            // NabdhGram Glass: visually separate the currently visible pinned
+            // block. Draw behind rows; no overlay intercepts user gestures.
+            viewPage.listView.addItemDecoration(new RecyclerView.ItemDecoration() {
+                private final Paint glassGroupFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+                private final Paint glassGroupStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+                private final RectF glassGroupBounds = new RectF();
+
+                @Override
+                public void onDraw(Canvas canvas, RecyclerView parent, RecyclerView.State state) {
+                    float first = Float.MAX_VALUE;
+                    float last = -Float.MAX_VALUE;
+                    boolean started = false;
+                    for (int i = 0; i < parent.getChildCount(); i++) {
+                        View child = parent.getChildAt(i);
+                        if (!(child instanceof DialogCell) || !((DialogCell) child).getIsPinned()) {
+                            if (started) break;
+                            continue;
+                        }
+                        started = true;
+                        float y = child.getTranslationY();
+                        first = Math.min(first, child.getTop() + y);
+                        last = Math.max(last, child.getBottom() + y);
+                    }
+                    if (!started || last <= first) return;
+                    int base = Theme.getColor(Theme.key_windowBackgroundWhite);
+                    boolean dark = Color.red(base) + Color.green(base) + Color.blue(base) < 360;
+                    glassGroupBounds.set(dp(2), first, parent.getWidth() - dp(2), last);
+                    glassGroupFill.setColor(dark ? 0xFF082D35 : 0xFFDDF3F2);
+                    glassGroupFill.setStyle(Paint.Style.FILL);
+                    canvas.drawRoundRect(glassGroupBounds, dp(24), dp(24), glassGroupFill);
+                    glassGroupStroke.setColor(dark ? 0xFF1D8589 : 0xFF9AD7D4);
+                    glassGroupStroke.setStyle(Paint.Style.STROKE);
+                    glassGroupStroke.setStrokeWidth(dp(1));
+                    canvas.drawRoundRect(glassGroupBounds, dp(24), dp(24), glassGroupStroke);
+                }
+            });"""
+s = replace_once(s, anchor, group, "DialogsActivity pinned group")
+dialogs.write_text(s, encoding="utf-8")
+print("Installed NabdhGram Glass grouped pinned chats, chat cards and official login branding.")
