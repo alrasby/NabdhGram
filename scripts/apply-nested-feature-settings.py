@@ -87,6 +87,40 @@ __PRIVACY__
 # Correct fully qualified nested class reference: the class is in ActionBar.
 source = source.replace("org.telegram.ui.ActionBar.ActionBar.ActionBarMenuOnItemClick", "org.telegram.ui.ActionBar.ActionBar.ActionBarMenuOnItemClick")
 source = source.replace("__PRIVACY__", privacy)
+# Telegram already provides server-side Scheduled Messages from any chat's
+# Send-button long-press menu. Surface this existing feature in Privacy,
+# rather than introducing another sending queue or fake enable switch.
+schedule_anchor = "            addPrivacyControls(context, content);"
+if source.count(schedule_anchor) != 1:
+    raise SystemExit("Privacy category body changed")
+source = source.replace(schedule_anchor, schedule_anchor + """
+            TextView scheduleTitle = new TextView(context);
+            scheduleTitle.setText(context.getString(R.string.NabdhScheduleTitle));
+            scheduleTitle.setTextSize(18);
+            scheduleTitle.setTypeface(null, Typeface.BOLD);
+            scheduleTitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            LinearLayout.LayoutParams scheduleParams = new LinearLayout.LayoutParams(-1, -2);
+            scheduleParams.topMargin = (int) (20 * context.getResources().getDisplayMetrics().density);
+            content.addView(scheduleTitle, scheduleParams);
+            TextView scheduleInfo = new TextView(context);
+            scheduleInfo.setText(context.getString(R.string.NabdhScheduleInstructions));
+            scheduleInfo.setTextSize(14);
+            scheduleInfo.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+            content.addView(scheduleInfo);
+""", 1)
+for lang, heading, instructions in [
+    ("values", "Scheduled messages", "Available now through Telegram: open a chat, write a message, then long-press Send and choose Schedule Message. Telegram handles delivery; this setting does not create a second scheduler."),
+    ("values-ar", "الرسائل المجدولة", "متاحة حاليًا عبر Telegram: افتح محادثة، واكتب رسالة، ثم اضغط مطولًا على زر الإرسال واختر جدولة الرسالة. يتولى Telegram الإرسال دون إنشاء نظام جدولة مكرر.")
+]:
+    f = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
+    from xml.sax.saxutils import escape
+    xml = f.read_text(encoding="utf-8")
+    if xml.count("</resources>") != 1:
+        raise SystemExit("Settings strings resource structure changed")
+    xml = xml.replace("</resources>", '    <string name="NabdhScheduleTitle">' + escape(heading) + '</string>\\n' +
+                      '    <string name="NabdhScheduleInstructions">' + escape(instructions) + '</string>\\n</resources>')
+    f.write_text(xml, encoding="utf-8")
+
 target = root / "TMessagesProj/src/main/java/org/telegram/ui/NabdhGramFeatureCategoryActivity.java"
 target.write_text(source, encoding="utf-8")
 print("Created six navigable NabdhGram category pages; Privacy Screen moved into Privacy category.")
