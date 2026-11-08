@@ -130,6 +130,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdhgram-settings.py Telegram-upstream
 
+      - name: Apply opt-in Privacy Screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-privacy-screen.py Telegram-upstream
+
       - name: Apply privacy-minimal network diagnostics
         shell: bash
         run: |
