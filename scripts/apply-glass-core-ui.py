@@ -136,4 +136,13 @@ group = """            viewPage.listView.setClipToPadding(false);
             });"""
 s = replace_once(s, anchor, group, "DialogsActivity pinned group")
 dialogs.write_text(s, encoding="utf-8")
-print("Installed NabdhGram Glass grouped pinned chats, chat cards and official login branding.")
+# Keep native navigation behavior and accessibility; only customize the
+# existing selected-tab pill so it shares the NabdhGram turquoise identity.
+tabs = root / "TMessagesProj/src/main/java/org/telegram/ui/MainTabsLayout.java"
+s = tabs.read_text(encoding="utf-8")
+s = replace_once(s,
+    "selectorPaint.setColor(Theme.multAlpha(Theme.getColor(Theme.key_glass_tabSelected, resourcesProvider), 0.09f));",
+    "selectorPaint.setColor(0x4422C6C3);",
+    "MainTabsLayout selected tab highlight")
+tabs.write_text(s, encoding="utf-8")
+print("Installed NabdhGram Glass pinned group, chat cards, tab highlight and login brand.")
