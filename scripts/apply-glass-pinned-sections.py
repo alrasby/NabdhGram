@@ -58,8 +58,20 @@ replacement = """        if (!messagesController.hiddenUndoChats.isEmpty()) {
             // Telegram normally puts pinned chats before regular chats.
             // If another list mode violates that assumption, avoid misleading
             // section labels rather than pretending the list is regrouped.
-            final boolean ordered = pinnedFirst < 0 || regularFirst < 0
+            boolean ordered = pinnedFirst < 0 || regularFirst < 0
                     || pinnedFirst < regularFirst;
+            // Folder-specific lists and transient reorder states can have
+            // pinned dialogs after ordinary ones. Avoid incorrect sections.
+            if (regularFirst >= 0) {
+                for (int i = regularFirst + 1; i < itemInternals.size(); ++i) {
+                    ItemInternal row = itemInternals.get(i);
+                    if (row.viewType == VIEW_TYPE_DIALOG && row.dialog != null
+                            && !row.isFolder && row.pinned) {
+                        ordered = false;
+                        break;
+                    }
+                }
+            }
             // Insert from the end to preserve original dialog indices.
             if (ordered && regularFirst >= 0 && (pinnedFirst < 0 || regularFirst > pinnedFirst)) {
                 itemInternals.add(regularFirst, new ItemInternal(VIEW_TYPE_HEADER_3,
