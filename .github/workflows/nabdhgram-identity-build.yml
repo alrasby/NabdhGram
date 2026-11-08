@@ -68,6 +68,15 @@ jobs:
           grep -qx 'APP_PACKAGE=net.nabdhserv.nabdhgram' Telegram-upstream/gradle.properties
           grep -q 'NabdhGramAppName' Telegram-upstream/TMessagesProj_App/src/main/AndroidManifest.xml
 
+      - name: Configure developer-owned Telegram API credentials
+        shell: bash
+        env:
+          NABDHGRAM_API_ID: ${{ secrets.NABDHGRAM_API_ID }}
+          NABDHGRAM_API_HASH: ${{ secrets.NABDHGRAM_API_HASH }}
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-telegram-api.py Telegram-upstream
+
       - name: Install image processing dependency once
         shell: bash
         run: |
@@ -250,7 +259,7 @@ jobs:
             echo "Expected debug ID: `net.nabdhserv.nabdhgram`"
             echo "Firebase/Google Services integration is disabled for this experimental debug build; push notifications may not work."
             echo "Launcher icon status: **${{ steps.brand.outputs.icon_status }}**" 
-            echo "Custom Telegram API configuration is not yet integrated."
+            echo "Developer-owned Telegram API configuration required via GitHub Actions secrets."
             echo "Do not distribute this experimental APK."
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Fail on build error or missing APK
