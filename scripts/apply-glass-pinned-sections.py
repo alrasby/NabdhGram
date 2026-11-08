@@ -55,13 +55,17 @@ replacement = """        if (!messagesController.hiddenUndoChats.isEmpty()) {
                     regularFirst = i;
                 }
             }
-            // A section must also be visible when there are only pinned chats,
-            // or only regular chats. Inserting from the back preserves offsets.
-            if (regularFirst >= 0 && (pinnedFirst < 0 || regularFirst > pinnedFirst)) {
+            // Telegram normally puts pinned chats before regular chats.
+            // If another list mode violates that assumption, avoid misleading
+            // section labels rather than pretending the list is regrouped.
+            final boolean ordered = pinnedFirst < 0 || regularFirst < 0
+                    || pinnedFirst < regularFirst;
+            // Insert from the end to preserve original dialog indices.
+            if (ordered && regularFirst >= 0 && (pinnedFirst < 0 || regularFirst > pinnedFirst)) {
                 itemInternals.add(regularFirst, new ItemInternal(VIEW_TYPE_HEADER_3,
                         mContext.getString(org.telegram.messenger.R.string.NabdhGlassAllChats)));
             }
-            if (pinnedFirst >= 0) {
+            if (ordered && pinnedFirst >= 0) {
                 itemInternals.add(pinnedFirst, new ItemInternal(VIEW_TYPE_HEADER_3,
                         mContext.getString(org.telegram.messenger.R.string.NabdhGlassPinnedChats)));
             }
