@@ -142,6 +142,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nested-feature-settings.py Telegram-upstream
 
+      - name: Apply NabdhGram Glass settings design
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-settings.py Telegram-upstream
+
       - name: Apply privacy-minimal network diagnostics
         shell: bash
         run: |
