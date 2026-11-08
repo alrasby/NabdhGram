@@ -131,8 +131,15 @@ for lang, pinned, regular in [
     x = f.read_text(encoding="utf-8")
     if x.count("</resources>") != 1:
         raise SystemExit("NabdhGram strings resources changed: " + str(f))
+    # The Glass settings overlay already defines NabdhGlassPinnedChats.
+    # Reuse it instead of creating a duplicate Android string resource.
+    import xml.etree.ElementTree as ET
+    existing = [e.attrib.get("name") for e in ET.fromstring(x).findall("string")]
+    if existing.count("NabdhGlassPinnedChats") != 1:
+        raise SystemExit("Existing Glass pinned heading must occur exactly once: " + str(f))
+    if "NabdhGlassAllChats" in existing:
+        raise SystemExit("Glass all-chats heading unexpectedly exists: " + str(f))
     x = x.replace("</resources>",
-        '    <string name="NabdhGlassPinnedChats">' + escape(pinned) + '</string>\n' +
         '    <string name="NabdhGlassAllChats">' + escape(regular) + '</string>\n</resources>')
     f.write_text(x, encoding="utf-8")
 print("Installed pinned and regular chat headers on the main dialogs list.")
