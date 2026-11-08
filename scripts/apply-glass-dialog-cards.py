@@ -25,36 +25,40 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
 anchor = "        canvas.restore();\n\n        updateHelper.updateAnimationValues();"
 if s.count(anchor) != 1:
     raise SystemExit(f"DialogCell card rendering anchor changed: {s.count(anchor)}")
-s = s.replace(anchor, """        // Render behind Telegram text and avatars; pressed/selected cards get teal feedback.
-        // Pinned rows get a distinct teal-tinted surface without reordering dialogs.
-        // Skip swipe/reveal/archived animations: never paint over Telegram gestures.
+s = s.replace(anchor, """        canvas.restore();
+
+        // NabdhGram Glass: draw only for normal dialog rows, after Telegram
+        // backgrounds and before message content. Do not interfere with archive,
+        // swipe-to-reveal, tablet slide effects, or transient edit animations.
         if (translationX == 0 && currentRevealProgress == 0.0f
-                && rightFragmentOpenedProgress == 0.0f && !drawArchive) {
-        final int nabdhSurface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
-        final boolean nabdhDark = android.graphics.Color.red(nabdhSurface)
-                + android.graphics.Color.green(nabdhSurface)
-                + android.graphics.Color.blue(nabdhSurface) < 360;
-        final boolean nabdhPinned = getIsPinned();
-        final boolean nabdhActive = isPressed() || isSelected || isSelected();
-        final int nabdhTint = nabdhPinned
-                ? (nabdhDark ? 0xFF104B52 : 0xFFE0F5F2)
-                : (nabdhDark ? 0xFF172D36 : 0xFFF6FBFB);
-        nabdhCardPaint.setColor(nabdhActive
-                ? (nabdhDark ? 0xFF146E75 : 0xFFB6E9E6) : nabdhTint);
-        nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
-        final float nabdhInset = dp(7);
-        nabdhCardBounds.set(nabdhInset, dp(3), getMeasuredWidth() - nabdhInset,
-                getMeasuredHeight() - dp(3));
-        canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
-        nabdhCardPaint.setColor(nabdhPinned
-                ? (nabdhDark ? 0xFF1CA6A6 : 0xFF8ACFCC)
-                : (nabdhDark ? 0xFF24545D : 0xFFD9EAEA));
-        nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
-        nabdhCardPaint.setStrokeWidth(dp(1));
-        canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
-        nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
+                && rightFragmentOpenedProgress == 0.0f && !drawArchive
+                && currentDialogFolderId == 0 && !isTopic
+                && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12)) {
+            final int surface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
+            final boolean dark = android.graphics.Color.red(surface)
+                    + android.graphics.Color.green(surface)
+                    + android.graphics.Color.blue(surface) < 360;
+            final boolean pinned = getIsPinned();
+            final boolean selected = isPressed() || isSelected || isSelected();
+            final int fill = selected
+                    ? (dark ? 0xFF146E75 : 0xFFB6E9E6)
+                    : pinned ? (dark ? 0xFF104B52 : 0xFFE0F5F2)
+                    : (dark ? 0xFF172D36 : 0xFFF6FBFB);
+            nabdhCardPaint.setColor(fill);
+            nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
+            nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
+                    getMeasuredHeight() - dp(3));
+            canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
+            nabdhCardPaint.setColor(pinned
+                    ? (dark ? 0xFF1CA6A6 : 0xFF8ACFCC)
+                    : (dark ? 0xFF24545D : 0xFFD9EAEA));
+            nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
+            nabdhCardPaint.setStrokeWidth(dp(1));
+            canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
+            nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
         }
 
-""" + anchor, 1)
+        updateHelper.updateAnimationValues();""", 1)
+
 p.write_text(s, encoding="utf-8")
 print("NabdhGram Glass dialog card drawing overlay installed.")
