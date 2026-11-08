@@ -9,25 +9,23 @@ if len(sys.argv) != 2:
 
 root = Path(sys.argv[1])
 ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
-adapter = (ui / "Adapters/DialogsAdapter.java").read_text(encoding="utf-8")
+dialogs = (ui / "DialogsActivity.java").read_text(encoding="utf-8")
 cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
 checks = {
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
     "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
     "dialog card excludes swipe/archive": "!drawArchive" in cell and "currentRevealProgress == 0.0f" in cell,
     "dialog selection feedback": "isPressed() || isSelected || isSelected()" in cell,
-    "pinned section markers": "NabdhGlassPinnedChats" in adapter,
+    "decoration section headings": "NabdhGlassPinnedChats" in dialogs and "NabdhGlassOtherChats" in dialogs,
+    "decoration not adapter mutation": "new RecyclerView.ItemDecoration()" in dialogs
+        and "itemInternals.add(regularFirst" not in dialogs,
+    "main chats only": "viewPage.dialogsType == DIALOGS_TYPE_DEFAULT && folderId == 0 && communityId == 0" in dialogs,
 }
-# Generated adapter references the pinned title twice: during binding and insertion.
-checks["pinned section inserted once"] = adapter.count("new ItemInternal(VIEW_TYPE_HEADER_3,\n                        mContext.getString(org.telegram.messenger.R.string.NabdhGlassPinnedChats)") == 1
-checks["normal section inserted once"] = adapter.count("new ItemInternal(VIEW_TYPE_HEADER_3,\n                        mContext.getString(org.telegram.messenger.R.string.NabdhGlassAllChats)") == 1
-checks["home list only"] = "dialogsType == DialogsActivity.DIALOGS_TYPE_DEFAULT && folderId == 0" in adapter
-checks["out-of-order guard"] = "boolean ordered = pinnedFirst < 0" in adapter and "ordered = false;" in adapter
 
 for lang in ("values", "values-ar"):
     xml = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     strings = ET.parse(xml).getroot()
-    for name in ("NabdhGlassPinnedChats", "NabdhGlassAllChats"):
+    for name in ("NabdhGlassPinnedChats", "NabdhGlassOtherChats"):
         found = sum(e.attrib.get("name") == name for e in strings.findall("string"))
         print(f"Resource count {lang}/{name}: {found}", flush=True)
         if found != 1:
