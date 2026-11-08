@@ -26,7 +26,10 @@ def main():
     if not props.is_file() or not app.is_file():
         raise SystemExit("Not a Telegram Android source tree")
     replace_once(props, "APP_PACKAGE=org.telegram.messenger", f"APP_PACKAGE={APP_ID}")
-    # Debug builds use .beta upstream. Keep this suffix for initial development builds.
+    # Use the final independent package ID even for internal debug builds.
+    # The upstream Gradle debug build type appends .beta unless explicitly removed.
+    replace_once(app, '            applicationIdSuffix ".beta"\n', '')
+    print("Removed upstream debug applicationIdSuffix .beta")
     # Override the launcher label in an app-level resource overlay without touching translations.
     values = root / "TMessagesProj_App" / "src" / "main" / "res" / "values"
     values.mkdir(parents=True, exist_ok=True)
@@ -66,7 +69,7 @@ def main():
         raise SystemExit("Expected upstream debug application label was not found")
     debug_xml = debug_xml.replace('tools:replace="android:supportsRtl"', 'tools:replace="android:supportsRtl,android:label"')
     debug_manifest.write_text(debug_xml, encoding="utf-8")
-    print(f"Identity overlay applied: {APP_ID}.beta / {LABEL}")
+    print(f"Identity overlay applied: {APP_ID} / {LABEL}")
     print("NOTE: This does not yet apply approved icon assets or configure private Telegram API credentials.")
 
 if __name__ == "__main__":

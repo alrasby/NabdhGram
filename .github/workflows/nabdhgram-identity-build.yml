@@ -87,7 +87,8 @@ jobs:
             sha256sum "$MASTER"
           else
             echo "icon_status=not-configured" >> "$GITHUB_OUTPUT"
-            echo "::error::Approved launcher image missing: branding/approved/AppIcon.png"\n            exit 1
+            echo "::error::Approved launcher image missing: branding/approved/AppIcon.png"
+            exit 1
           fi
 
       - name: Apply NabdhGram welcome screen copy
@@ -187,8 +188,8 @@ jobs:
                   sys.exit(1)
               print(f"PASS: {message}", flush=True)
 
-          require("package: name='net.nabdhserv.nabdhgram.beta'" in badging,
-                  "Expected NabdhGram beta package")
+          require("package: name='net.nabdhserv.nabdhgram'" in badging,
+                  "Expected NabdhGram independent package")
           require("application-label:'NabdhGram'" in badging,
                   "Expected NabdhGram launcher label")
           require("Verified using v2 scheme (APK Signature Scheme v2): true" in signing,
@@ -246,7 +247,7 @@ jobs:
           {
             echo "## NabdhGram identity build"
             echo "Gradle result: **${{ steps.compile.outcome }}**"
-            echo "Expected debug ID: `net.nabdhserv.nabdhgram.beta`"
+            echo "Expected debug ID: `net.nabdhserv.nabdhgram`"
             echo "Firebase/Google Services integration is disabled for this experimental debug build; push notifications may not work."
             echo "Launcher icon status: **${{ steps.brand.outputs.icon_status }}**" 
             echo "Custom Telegram API configuration is not yet integrated."
