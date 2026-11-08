@@ -23,14 +23,19 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
 # Draw after Telegram's base pinned/archive background, before message content.
 # Painting at the beginning of onDraw would be hidden by the later base fill.
 anchor = "        canvas.restore();\n\n        updateHelper.updateAnimationValues();"
+if s.count(anchor) != 1:
+    raise SystemExit(f"DialogCell card rendering anchor changed: {s.count(anchor)}")
 s = s.replace(anchor, """        // Render behind Telegram text and avatars; pressed/selected cards get teal feedback.
         // Pinned rows get a distinct teal-tinted surface without reordering dialogs.
+        // Skip swipe/reveal/archived animations: never paint over Telegram gestures.
+        if (translationX == 0 && currentRevealProgress == 0.0f
+                && rightFragmentOpenedProgress == 0.0f && !drawArchive) {
         final int nabdhSurface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
         final boolean nabdhDark = android.graphics.Color.red(nabdhSurface)
                 + android.graphics.Color.green(nabdhSurface)
                 + android.graphics.Color.blue(nabdhSurface) < 360;
         final boolean nabdhPinned = getIsPinned();
-        final boolean nabdhActive = isPressed() || isSelected();
+        final boolean nabdhActive = isPressed() || isSelected || isSelected();
         final int nabdhTint = nabdhPinned
                 ? (nabdhDark ? 0xFF104B52 : 0xFFE0F5F2)
                 : (nabdhDark ? 0xFF172D36 : 0xFFF6FBFB);
@@ -48,6 +53,7 @@ s = s.replace(anchor, """        // Render behind Telegram text and avatars; pre
         nabdhCardPaint.setStrokeWidth(dp(1));
         canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
         nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
+        }
 
 """ + anchor, 1)
 p.write_text(s, encoding="utf-8")
