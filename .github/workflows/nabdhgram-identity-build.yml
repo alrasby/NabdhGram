@@ -136,6 +136,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-privacy-screen.py Telegram-upstream
 
+      - name: Apply nested NabdhGram feature settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nested-feature-settings.py Telegram-upstream
+
       - name: Apply privacy-minimal network diagnostics
         shell: bash
         run: |
