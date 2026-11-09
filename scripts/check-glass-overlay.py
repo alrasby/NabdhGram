@@ -18,7 +18,10 @@ composer = (ui / "Components/ChatActivityEnterView.java").read_text(encoding="ut
 contacts = (ui / "ContactsActivity.java").read_text(encoding="utf-8")
 native_settings = (ui / "SettingsActivity.java").read_text(encoding="utf-8")
 profile = (ui / "ProfileActivity.java").read_text(encoding="utf-8")
+shared_config = (root / "TMessagesProj/src/main/java/org/telegram/messenger/SharedConfig.java").read_text(encoding="utf-8")
 checks = {
+    "rounded bubble default with saved preference": 'public static int bubbleRadius = 19;' in shared_config
+        and 'bubbleRadius = preferences.getInt("bubbleRadius", 19);' in shared_config,
     "native settings rounded touch selector": "listView.setSelectorRadius(17);" in native_settings,
     "profile rounded touch selector": "listView.setSelectorRadius(17);" in profile,
     "contacts rounded selector": "listView.setSelectorRadius(17);" in contacts,
