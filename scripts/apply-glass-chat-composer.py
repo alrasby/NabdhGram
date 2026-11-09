@@ -27,7 +27,7 @@ replacement = """        // NabdhGram Glass: light, theme-aware input surface. K
         nabdhInputGlass.setCornerRadius(dp(19));
         nabdhInputGlass.setStroke(dp(1), nabdhDarkInput ? 0xFF39727A : 0xFFBDDAD8);
         messageEditText.setBackground(nabdhInputGlass);
-        messageEditText.setPadding(0, dp(9), 0, dp(10));
+        messageEditText.setPadding(dp(8), dp(9), dp(8), dp(10));
         messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));"""
 s=s.replace(anchor,replacement,1)
 p.write_text(s,encoding="utf-8")
