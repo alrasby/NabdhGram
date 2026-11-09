@@ -16,7 +16,11 @@ selector = (ui / "Components/RecyclerListView.java").read_text(encoding="utf-8")
 typefaces = (root / "TMessagesProj/src/main/java/org/telegram/messenger/AndroidUtilities.java").read_text(encoding="utf-8")
 composer = (ui / "Components/ChatActivityEnterView.java").read_text(encoding="utf-8")
 contacts = (ui / "ContactsActivity.java").read_text(encoding="utf-8")
+native_settings = (ui / "SettingsActivity.java").read_text(encoding="utf-8")
+profile = (ui / "ProfileActivity.java").read_text(encoding="utf-8")
 checks = {
+    "native settings rounded touch selector": "listView.setSelectorRadius(17);" in native_settings,
+    "profile rounded touch selector": "listView.setSelectorRadius(17);" in profile,
     "contacts rounded selector": "listView.setSelectorRadius(17);" in contacts,
     "chat composer rounded theme surface": "messageEditText.setBackground(nabdhInputGlass)" in composer
         and "nabdhInputGlass.setCornerRadius(dp(19))" in composer
