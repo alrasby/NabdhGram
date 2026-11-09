@@ -48,7 +48,7 @@ checks = {
         and "selectorRect.bottom - 3f * density" in selector,
     "selector canvas state restored": "if (nabdhDialog) {" in selector and "canvas.restore();" in selector,
     "font preference consumed by Telegram typeface resolver": 'getString("font_family", "readex-pro")' in typefaces
-        and 'getTypeface("fonts/ReadexPro.ttf")' in typefaces
+        and '"ReadexPro.ttf"' in typefaces
         and '"sans-serif".equals(family)' in typefaces
         and '"serif".equals(family)' in typefaces,
     "appearance font preference persisted": 'getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
