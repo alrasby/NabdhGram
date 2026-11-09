@@ -43,7 +43,7 @@ s = s.replace(anchor, """        canvas.restore();
             final int fill = selected
                     ? (dark ? 0xFF146E75 : 0xFFB6E9E6)
                     : pinned ? (dark ? 0xFF104B52 : 0xFFE0F5F2)
-                    : (dark ? 0xFF172D36 : 0xFFF6FBFB);
+                    : (dark ? 0xFF203A42 : 0xFFEAF6F5);
             nabdhCardPaint.setColor(fill);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
             nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
@@ -51,7 +51,7 @@ s = s.replace(anchor, """        canvas.restore();
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             nabdhCardPaint.setColor(pinned
                     ? (dark ? 0xFF1CA6A6 : 0xFF8ACFCC)
-                    : (dark ? 0xFF24545D : 0xFFD9EAEA));
+                    : (dark ? 0xFF39727A : 0xFFBDDAD8));
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
             nabdhCardPaint.setStrokeWidth(dp(1));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
