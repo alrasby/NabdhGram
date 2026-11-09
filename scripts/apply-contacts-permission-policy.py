@@ -61,7 +61,7 @@ contacts.write_text(s, encoding="utf-8")
 tabs = p.parent / "MainTabsActivity.java"
 s = tabs.read_text(encoding="utf-8")
 start = s.index("    private void checkContactsTabBadge() {")
-end = s.index("\\n    @Override\\n    public void onPause()", start)
+end = s.index("\n    @Override\n    public void onPause()", start)
 old_block = s[start:end]
 if 'tabs[INDEX_CONTACTS].setCounter("!", true, true);' not in old_block:
     raise SystemExit("Contacts badge source changed")
