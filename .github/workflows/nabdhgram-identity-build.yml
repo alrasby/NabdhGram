@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - design/glass-chat-cards
+      - fix/contacts-permission-prompts
 
 permissions:
   contents: read
@@ -126,6 +127,14 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/apply-dialogs-title.py Telegram-upstream
+
+      - name: Disable automatic contacts permission nags
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-contacts-permission-policy.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-contacts-permission-policy.py
+          grep -q 'boolean hasNotContactsPermission = false;' Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java
 
       - name: Apply NabdhGram settings hub and credits
         shell: bash
