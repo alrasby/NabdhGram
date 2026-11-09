@@ -27,7 +27,10 @@ replacement = """        // NabdhGram Glass: light, theme-aware input surface. K
         nabdhInputGlass.setCornerRadius(dp(19));
         nabdhInputGlass.setStroke(dp(1), nabdhDarkInput ? 0xFF39727A : 0xFFBDDAD8);
         messageEditText.setBackground(nabdhInputGlass);
-        // Preserve Telegram's original editor padding and measured height.
+        // Restore Telegram's vertical insets: the EditText is measured
+        // independently of the panel and must retain its 9/10dp padding.
+        messageEditText.setPadding(0, dp(9), 0, dp(10));
+        messageEditText.setTextDirection(android.view.View.TEXT_DIRECTION_FIRST_STRONG);
         messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));"""
 s=s.replace(anchor,replacement,1)
 p.write_text(s,encoding="utf-8")
