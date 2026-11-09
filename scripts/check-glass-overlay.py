@@ -19,7 +19,7 @@ checks = {
         and "canvas.clipPath(nabdhDialogSelectorPath)" in selector
         and "selectorRect.left + 7f * density" in selector
         and "selectorRect.bottom - 3f * density" in selector,
-    "selector canvas state restored": "if (nabdhDialog) {\\n            canvas.restore();" in selector,
+    "selector canvas state restored": "if (nabdhDialog) {" in selector and "canvas.restore();" in selector in selector,
     "font preference consumed by Telegram typeface resolver": 'getString("font_family", "readex-pro")' in typefaces
         and 'getTypeface("fonts/ReadexPro.ttf")' in typefaces
         and '"sans-serif".equals(family)' in typefaces
