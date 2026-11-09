@@ -49,7 +49,7 @@ addition = r'''
                         if (!pinned && wasPinned) return 2;
                         // Chats without pinned dialogs still need a clear
                         // section heading. Skip Telegram's non-dialog headers.
-                        if (!pinned && !(previous instanceof TLRPC.Dialog)) return 2;
+                        if (!pinned && position == 0) return 2;
                         return 0;
                     }
 
