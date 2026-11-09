@@ -14,7 +14,11 @@ cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
 settings = (ui / "NabdhGramSettingsActivity.java").read_text(encoding="utf-8")
 selector = (ui / "Components/RecyclerListView.java").read_text(encoding="utf-8")
 typefaces = (root / "TMessagesProj/src/main/java/org/telegram/messenger/AndroidUtilities.java").read_text(encoding="utf-8")
+composer = (ui / "Components/ChatActivityEnterView.java").read_text(encoding="utf-8")
 checks = {
+    "chat composer rounded theme surface": "messageEditText.setBackground(nabdhInputGlass)" in composer
+        and "nabdhInputGlass.setCornerRadius(dp(19))" in composer
+        and "Theme.key_chat_messagePanelBackground" in composer,
     "dialog selector rounded clipping installed": "selectorView instanceof org.telegram.ui.Cells.DialogCell" in selector
         and "canvas.clipPath(nabdhDialogSelectorPath)" in selector
         and "selectorRect.left + 7f * density" in selector
