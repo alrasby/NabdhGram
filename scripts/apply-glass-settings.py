@@ -227,7 +227,7 @@ s = s.replace(anchor, anchor + """
                     int size = seekBar.getProgress() + 14;
                     org.telegram.messenger.SharedConfig.fontSize = size;
                     org.telegram.messenger.SharedConfig.fontSizeIsDefault = false;
-                    context.getSharedPreferences("mainconfig", Context.MODE_PRIVATE)
+                    context.getSharedPreferences("userconfing", Context.MODE_PRIVATE)
                             .edit().putInt("fons_size", size).commit();
                 }
             });

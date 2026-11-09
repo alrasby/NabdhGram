@@ -61,13 +61,16 @@ s = settings.read_text(encoding="utf-8")
 pattern = r"getParentActivity\(\)\.getString\(R\.string\.(NabdhGram\w+|NabdhShield\w+)\)"
 s, replaced = re.subn(pattern, lambda m:
     "NabdhStrings.get(getParentActivity(), R.string." + m.group(1) + ")", s)
-if replaced != 3:
-    raise SystemExit(f"Expected three NabdhGram settings entry labels, got {replaced}")
+if replaced not in (0, 3):
+    raise SystemExit(f"Partially localized NabdhGram settings entry labels: {replaced}")
+if replaced == 0 and "NabdhStrings.get(getParentActivity()," not in s:
+    raise SystemExit("NabdhGram settings entry labels were not localized")
 # Keep upstream's experimental options, but give the heading the active UI language.
 old = 'UItem.asHeader("Experimental")'
-if s.count(old) != 1:
-    raise SystemExit("Telegram Experimental header anchor changed")
-s = s.replace(old, 'UItem.asHeader(org.telegram.messenger.LocaleController.isRTL ? "خيارات تجريبية" : "Experimental")', 1)
+if s.count(old) == 1:
+    s = s.replace(old, 'UItem.asHeader(org.telegram.messenger.LocaleController.isRTL ? "خيارات تجريبية" : "Experimental")', 1)
+elif "خيارات تجريبية" not in s:
+    raise SystemExit("Telegram Experimental header is neither original nor localized")
 settings.write_text(s, encoding="utf-8")
 
 dialogs = java / "DialogsActivity.java"
