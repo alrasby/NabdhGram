@@ -13,6 +13,8 @@ dialogs = (ui / "DialogsActivity.java").read_text(encoding="utf-8")
 cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
 settings = (ui / "NabdhGramSettingsActivity.java").read_text(encoding="utf-8")
 checks = {
+    "appearance font preference persisted": 'getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
+        and 'putString("font_family", family).apply()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
     "settings card native ripple": "new android.graphics.drawable.RippleDrawable(" in settings
         and "card.setBackground(touchSurface)" in settings,
     "pinned outline avoids clipped groups": "hasFirstPinnedRow" in dialogs
@@ -38,7 +40,7 @@ checks = {
 for lang in ("values", "values-ar"):
     xml = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     strings = ET.parse(xml).getroot()
-    for name in ("NabdhGlassPinnedChats", "NabdhGlassOtherChats"):
+    for name in ("NabdhGlassPinnedChats", "NabdhGlassOtherChats", "NabdhFontTitle", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope"):
         found = sum(e.attrib.get("name") == name for e in strings.findall("string"))
         print(f"Resource count {lang}/{name}: {found}", flush=True)
         if found != 1:
