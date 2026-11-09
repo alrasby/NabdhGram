@@ -35,7 +35,8 @@ checks = {
         and "Theme.key_windowBackgroundWhiteBlackText, 24, 15" in universal,
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
         and "if (nabdhFontDirty)" in launch,
-    "composer retains native padding": "messageEditText.setPadding(dp(8), dp(9)" not in composer,
+    "composer retains native padding and RTL": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
+        and "TEXT_DIRECTION_FIRST_STRONG" in composer,
     "rounded bubble default with saved preference": 'public static int bubbleRadius = 19;' in shared_config
         and 'bubbleRadius = preferences.getInt("bubbleRadius", 19);' in shared_config,
     "native settings rounded touch selector": "listView.setSelectorRadius(17);" in native_settings,
