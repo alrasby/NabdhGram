@@ -193,6 +193,60 @@ s = s.replace(anchor, anchor + """
             note.setTextSize(13);
             note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
             fontCard.addView(note);
+            TextView uiSizeTitle = new TextView(context);
+            uiSizeTitle.setText(nabdhText(context, R.string.NabdhFontUiSize));
+            uiSizeTitle.setTextSize(16);
+            uiSizeTitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            fontCard.addView(uiSizeTitle);
+            android.widget.SeekBar uiScale = new android.widget.SeekBar(context);
+            uiScale.setMax(30);
+            uiScale.setProgress(Math.max(0, Math.min(30, prefs.getInt("ui_scale_percent", 100) - 85)));
+            fontCard.addView(uiScale);
+            uiScale.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                    if (fromUser) prefs.edit().putInt("ui_scale_percent", progress + 85).apply();
+                }
+                @Override public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                    prefs.edit().putInt("ui_scale_percent", seekBar.getProgress() + 85).commit();
+                }
+            });
+            TextView chatSizeTitle = new TextView(context);
+            chatSizeTitle.setText(nabdhText(context, R.string.NabdhFontChatSize));
+            chatSizeTitle.setTextSize(16);
+            chatSizeTitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            fontCard.addView(chatSizeTitle);
+            android.widget.SeekBar chatScale = new android.widget.SeekBar(context);
+            chatScale.setMax(8);
+            chatScale.setProgress(Math.max(0, Math.min(8, org.telegram.messenger.SharedConfig.fontSize - 14)));
+            fontCard.addView(chatScale);
+            chatScale.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {}
+                @Override public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                    int size = seekBar.getProgress() + 14;
+                    org.telegram.messenger.SharedConfig.fontSize = size;
+                    org.telegram.messenger.SharedConfig.fontSizeIsDefault = false;
+                    context.getSharedPreferences("mainconfig", Context.MODE_PRIVATE)
+                            .edit().putInt("fons_size", size).commit();
+                }
+            });
+            android.widget.Switch boldOption = new android.widget.Switch(context);
+            boldOption.setText(nabdhText(context, R.string.NabdhFontBold));
+            boldOption.setTextSize(16);
+            boldOption.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            boldOption.setChecked(prefs.getBoolean("font_bold", false));
+            boldOption.setOnCheckedChangeListener((button, checked) -> {
+                prefs.edit().putBoolean("font_bold", checked).commit();
+                org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
+            });
+            fontCard.addView(boldOption);
+            TextView refreshInfo = new TextView(context);
+            refreshInfo.setText(nabdhText(context, R.string.NabdhFontRefreshInfo));
+            refreshInfo.setTextSize(13);
+            refreshInfo.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+            fontCard.addView(refreshInfo);
+
             for (int i = 0; i < families.length; i++) {
                 if (families[i].equals(selectedFont)) {
                     fontTitle.setTypeface(fonts[i], android.graphics.Typeface.BOLD);
@@ -214,5 +268,43 @@ for lang, labels in {
     keys = ("NabdhFontTitle", "NabdhFontReadex", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope", "NabdhFontVazirmatn", "NabdhFontNotoSansArabic", "NabdhFontTajawal", "NabdhFontRubik")
     extra = "".join('    <string name="' + k + '">' + escape(v).replace("'", "\\'") + '</string>\n' for k, v in zip(keys, labels))
     res.write_text(xml.replace("</resources>", extra + "</resources>", 1), encoding="utf-8")
+for locale, texts in {
+    "values": ("Outside chats · text size", "Inside chats · text size", "Bold text", "Reopen chats after changing their text size. The selected values are kept when you restart the app."),
+    "values-ar": ("حجم الخط خارج المحادثات", "حجم الخط داخل المحادثات", "خط عريض", "أعد فتح المحادثة بعد تغيير حجم خطها. تُحفظ اختياراتك بعد إعادة تشغيل التطبيق."),
+}.items():
+    f = root / "TMessagesProj/src/main/res" / locale / "nabdhgram_settings.xml"
+    xml = f.read_text(encoding="utf-8")
+    extra = "".join('    <string name="' + key + '">' + escape(value) + '</string>\n'
+        for key, value in zip(("NabdhFontUiSize", "NabdhFontChatSize",
+                               "NabdhFontBold", "NabdhFontRefreshInfo"), texts))
+    f.write_text(xml.replace("</resources>", extra + "</resources>", 1), encoding="utf-8")
 child.write_text(s, encoding="utf-8")
-print("Applied theme-aware NabdhGram Glass cards to the six settings categories.")
+
+# Telegram's in-app language may differ from Android's device language.
+# Resolve NabdhGram-owned resources using the locale selected in Telegram.
+for target in pages:
+    java_source = target.read_text(encoding="utf-8")
+    class_name = "NabdhGramSettingsActivity" if target == main else "NabdhGramFeatureCategoryActivity"
+    class_anchor = "public class " + class_name + " extends BaseFragment {"
+    if java_source.count(class_anchor) != 1:
+        raise SystemExit("NabdhGram settings localization class changed: " + class_name)
+    resolver = """    private static String nabdhText(Context context, int resId) {
+        java.util.Locale selected = org.telegram.messenger.LocaleController.getInstance().getCurrentLocale();
+        if (selected == null) {
+            return context.getString(resId);
+        }
+        android.content.res.Configuration config =
+                new android.content.res.Configuration(context.getResources().getConfiguration());
+        config.setLocale(selected);
+        return context.createConfigurationContext(config).getString(resId);
+    }
+
+"""
+    java_source = java_source.replace(class_anchor, class_anchor + "\n" + resolver, 1)
+    # Rewrite only app-owned texts; system labels retain Telegram's own localizer.
+    java_source = java_source.replace("context.getString(", "nabdhText(context, ")
+    # Restore the resolver's fallback to avoid recursion.
+    java_source = java_source.replace("return nabdhText(context, resId);", "return context.getString(resId);")
+    target.write_text(java_source, encoding="utf-8")
+
+print("Applied localized Glass typography controls and settings cards.")

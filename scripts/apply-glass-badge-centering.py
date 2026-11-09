@@ -10,17 +10,30 @@ s = p.read_text(encoding="utf-8")
 # Arabic/Latin font families can have different ascent and descent values.
 replacements = (
     ("countTop + dpf2(3f));\n                    countAnimationStableLayout.draw(canvas);",
-     "countTop + (dp(BADGE_SIZE) - countAnimationStableLayout.getHeight()) / 2f);\n                    countAnimationStableLayout.draw(canvas);"),
+     "countTop + nabdhBadgeTextOffset(countAnimationStableLayout));\n                    countAnimationStableLayout.draw(canvas);"),
     ("countTop + dpf2(3f));\n                    countAnimationInLayout.draw(canvas);",
-     "countTop + (dp(BADGE_SIZE) - countAnimationInLayout.getHeight()) / 2f);\n                    countAnimationInLayout.draw(canvas);"),
+     "countTop + nabdhBadgeTextOffset(countAnimationInLayout));\n                    countAnimationInLayout.draw(canvas);"),
     ("countTop + dpf2(3f));\n                    countLayout.draw(canvas);",
-     "countTop + (dp(BADGE_SIZE) - countLayout.getHeight()) / 2f);\n                    countLayout.draw(canvas);"),
+     "countTop + nabdhBadgeTextOffset(countLayout));\n                    countLayout.draw(canvas);"),
     ("countTop + dpf2(3f));\n                    countOldLayout.draw(canvas);",
-     "countTop + (dp(BADGE_SIZE) - countOldLayout.getHeight()) / 2f);\n                    countOldLayout.draw(canvas);"),
+     "countTop + nabdhBadgeTextOffset(countOldLayout));\n                    countOldLayout.draw(canvas);"),
 )
 for old, new in replacements:
     if s.count(old) != 1:
         raise SystemExit(f"Badge text drawing anchor changed: {old[:65]}")
     s = s.replace(old, new, 1)
+field_anchor = "    private boolean drawCount;"
+if s.count(field_anchor) != 1:
+    raise SystemExit("Unread badge text helper anchor changed")
+s = s.replace(field_anchor, """    // Compute the real text baseline using the chosen font's ascent/descent.
+    // StaticLayout height alone includes font padding and visually shifts digits.
+    private float nabdhBadgeTextOffset(android.text.StaticLayout layout) {
+        if (layout == null || layout.getLineCount() == 0) return dp(3);
+        android.graphics.Paint.FontMetrics fm = Theme.dialogs_countTextPaint2.getFontMetrics();
+        float glyphMiddle = layout.getLineBaseline(0) + (fm.ascent + fm.descent) / 2f;
+        return dp(BADGE_SIZE) / 2f - glyphMiddle;
+    }
+
+""" + field_anchor, 1)
 p.write_text(s, encoding="utf-8")
 print("Unread count badge text centered for all animation states.")

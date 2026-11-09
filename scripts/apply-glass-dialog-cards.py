@@ -34,16 +34,18 @@ s = s.replace(anchor, """        canvas.restore();
                 && rightFragmentOpenedProgress == 0.0f
                 // drawArchive defaults to true for ordinary Telegram dialogs;
                 // it is NOT an archive-row test. Use folder ID instead.
-                && currentDialogFolderId == 0 && !isTopic
+                && !isTopic
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12)) {
             final int surface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
             final boolean dark = android.graphics.Color.red(surface)
                     + android.graphics.Color.green(surface)
                     + android.graphics.Color.blue(surface) < 360;
+            final boolean archived = isFolderCell();
             final boolean pinned = getIsPinned();
             final boolean selected = isPressed() || isSelected || isSelected();
             final int fill = selected
                     ? (dark ? 0xFF146E75 : 0xFFB6E9E6)
+                    : archived ? (dark ? 0xFF25434A : 0xFFE6EFF0)
                     : pinned ? (dark ? 0xFF104B52 : 0xFFE0F5F2)
                     : (dark ? 0xFF203A42 : 0xFFEAF6F5);
             // Keep Telegram's selection feedback, but confine our Glass
@@ -53,7 +55,8 @@ s = s.replace(anchor, """        canvas.restore();
             nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
                     getMeasuredHeight() - dp(3));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
-            nabdhCardPaint.setColor(pinned
+            nabdhCardPaint.setColor(archived ? (dark ? 0xFF4E777D : 0xFFC4DBDD)
+                    : pinned
                     ? (dark ? 0xFF1CA6A6 : 0xFF8ACFCC)
                     : (dark ? 0xFF39727A : 0xFFBDDAD8));
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);

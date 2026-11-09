@@ -136,8 +136,12 @@ addition = r'''
                             View child = parent.getChildAt(i);
                             int section = sectionAt(parent.getChildAdapterPosition(child));
                             if (section != 0) {
-                                String title = context.getString(section == 1
-                                        ? R.string.NabdhGlassPinnedChats : R.string.NabdhGlassOtherChats);
+                                java.util.Locale appLocale = org.telegram.messenger.LocaleController.getInstance().getCurrentLocale();
+                                boolean arabic = appLocale != null && "ar".equals(appLocale.getLanguage());
+                                String title = arabic
+                                        ? (section == 1 ? "المحادثات المثبتة" : "بقية المحادثات")
+                                        : context.getString(section == 1
+                                            ? R.string.NabdhGlassPinnedChats : R.string.NabdhGlassOtherChats);
                                 canvas.drawText(title, x, child.getTop() - dp(12), labelPaint);
                             }
                         }
