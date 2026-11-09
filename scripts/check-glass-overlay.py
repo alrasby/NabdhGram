@@ -30,6 +30,10 @@ checks = {
     "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "readex-pro")' in launch,
     "native font scan skips editors": "!(view instanceof android.widget.EditText)" in launch,
     "native font scan only when layout dirty": "nabdhFontLayoutListener = () -> nabdhFontDirty = true;" in launch,
+    "unread badges centered for every count animation": all(
+        f"(dp(BADGE_SIZE) - {layout}.getHeight()) / 2f" in cell
+        for layout in ("countLayout", "countOldLayout", "countAnimationStableLayout", "countAnimationInLayout")
+    ),
     "native bubble geometry preserved": "nabdhBubbleEdge" not in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8"),
     "settings headers safe inset": "new HeaderCell(context, 24, resourcesProvider)" in universal
         and "Theme.key_windowBackgroundWhiteBlackText, 24, 15" in universal,
