@@ -21,7 +21,6 @@ replacement = """        canvas.drawPath(path, p);
         // existing Telegram shape, preserving grouping and tail geometry.
         if (paintToUse == null && gradientShader != null
                 && currentType == TYPE_TEXT && !themePreview && !isSelected) {
-            Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);
             nabdhBubbleEdge.setStyle(Paint.Style.STROKE);
             nabdhBubbleEdge.setStrokeWidth(dp(1));
             nabdhBubbleEdge.setColor(isOut ? 0x66FFFFFF : 0x4483B5B5);
