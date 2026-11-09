@@ -40,8 +40,14 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                         selected = Typeface.create(family,
                                 (bold ? Typeface.BOLD : Typeface.NORMAL)
                                 | (italic ? Typeface.ITALIC : Typeface.NORMAL));
-                    } else if ("readex-pro".equals(family)) {
-                        Typeface bundled = getTypeface("fonts/ReadexPro.ttf");
+                    } else if ("readex-pro".equals(family) || "vazirmatn".equals(family)
+                            || "noto-sans-arabic".equals(family) || "tajawal".equals(family)
+                            || "rubik".equals(family)) {
+                        String fontFile = "vazirmatn".equals(family) ? "Vazirmatn.ttf"
+                                : "noto-sans-arabic".equals(family) ? "NotoSansArabic.ttf"
+                                : "tajawal".equals(family) ? "Tajawal.ttf"
+                                : "rubik".equals(family) ? "Rubik.ttf" : "ReadexPro.ttf";
+                        Typeface bundled = getTypeface("fonts/" + fontFile);
                         if (bundled != null) {
                             selected = Typeface.create(bundled,
                                     (bold ? Typeface.BOLD : Typeface.NORMAL)
