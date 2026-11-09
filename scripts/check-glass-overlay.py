@@ -22,7 +22,7 @@ checks = {
     "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
     "dialog card excludes swipe/archive": "!drawArchive" in cell and "currentRevealProgress == 0.0f" in cell,
     "dialog selection feedback": "isPressed() || isSelected || isSelected()" in cell,
-    "regular section without pinned chats": "if (!pinned && !(previous instanceof TLRPC.Dialog)) return 2;" in dialogs,
+    "regular section without pinned chats": "if (!pinned && position == 0) return 2;" in dialogs,
     "decoration section headings": "NabdhGlassPinnedChats" in dialogs and "NabdhGlassOtherChats" in dialogs,
     "pinned group outline above opaque cards": "public void onDrawOver(Canvas canvas, RecyclerView parent, RecyclerView.State state)" in dialogs
         and "pinnedGroupPaint.setStyle(Paint.Style.STROKE)" in dialogs,
