@@ -56,6 +56,8 @@ addition = r'''
                     public void onDrawOver(Canvas canvas, RecyclerView parent, RecyclerView.State state) {
                         int top = Integer.MAX_VALUE;
                         int bottom = Integer.MIN_VALUE;
+                        boolean hasFirstPinnedRow = false;
+                        boolean hasLastPinnedRow = false;
                         for (int i = 0; i < parent.getChildCount(); i++) {
                             View child = parent.getChildAt(i);
                             int position = parent.getChildAdapterPosition(child);
@@ -64,9 +66,19 @@ addition = r'''
                             if (item instanceof TLRPC.Dialog && ((TLRPC.Dialog) item).pinned) {
                                 top = Math.min(top, child.getTop());
                                 bottom = Math.max(bottom, child.getBottom());
+                                Object previous = position > 0 ? viewPage.dialogsAdapter.getItem(position - 1) : null;
+                                Object next = viewPage.dialogsAdapter.getItem(position + 1);
+                                if (!(previous instanceof TLRPC.Dialog) || !((TLRPC.Dialog) previous).pinned) {
+                                    hasFirstPinnedRow = true;
+                                }
+                                if (!(next instanceof TLRPC.Dialog) || !((TLRPC.Dialog) next).pinned) {
+                                    hasLastPinnedRow = true;
+                                }
                             }
                         }
-                        if (top >= bottom) return;
+                        // Avoid false rounded caps when the pinned group is clipped
+                        // by scrolling. Only draw the outline when both ends are visible.
+                        if (top >= bottom || !hasFirstPinnedRow || !hasLastPinnedRow) return;
                         int surface = Theme.getColor(Theme.key_windowBackgroundWhite);
                         boolean dark = android.graphics.Color.red(surface)
                                 + android.graphics.Color.green(surface)
