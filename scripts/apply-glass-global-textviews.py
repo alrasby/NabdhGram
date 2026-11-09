@@ -38,12 +38,16 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 android.widget.TextView label = (android.widget.TextView) view;
                 android.graphics.Typeface current = label.getTypeface();
                 final String applied = nabdhAppliedFonts.get(label);
+                // Telegram labels may use different weights of the system
+                // sans family. Match their actual family rather than relying
+                // on Typeface object identity, which is not guaranteed.
                 final boolean normalFont = current == null
-                        || current == android.graphics.Typeface.DEFAULT
-                        || current == android.graphics.Typeface.DEFAULT_BOLD
-                        || current == android.graphics.Typeface.SANS_SERIF
-                        || current == android.graphics.Typeface.SERIF
-                        || current == android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL);
+                        || current.equals(android.graphics.Typeface.DEFAULT)
+                        || current.equals(android.graphics.Typeface.DEFAULT_BOLD)
+                        || current.equals(android.graphics.Typeface.SANS_SERIF)
+                        || current.equals(android.graphics.Typeface.SERIF)
+                        || current.equals(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
+                        || current.equals(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
                 if (applied != null || normalFont) {
                     if (!family.equals(applied)) {
                         int style = current == null ? android.graphics.Typeface.NORMAL : current.getStyle();
