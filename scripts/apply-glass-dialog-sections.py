@@ -50,6 +50,36 @@ addition = r'''
                         return 0;
                     }
 
+                    // A thin outline is drawn *above* the opaque DialogCell cards.
+                    // The tinted group fill in onDraw() alone can be hidden by cells.
+                    @Override
+                    public void onDrawOver(Canvas canvas, RecyclerView parent, RecyclerView.State state) {
+                        int top = Integer.MAX_VALUE;
+                        int bottom = Integer.MIN_VALUE;
+                        for (int i = 0; i < parent.getChildCount(); i++) {
+                            View child = parent.getChildAt(i);
+                            int position = parent.getChildAdapterPosition(child);
+                            Object item = position == RecyclerView.NO_POSITION
+                                    ? null : viewPage.dialogsAdapter.getItem(position);
+                            if (item instanceof TLRPC.Dialog && ((TLRPC.Dialog) item).pinned) {
+                                top = Math.min(top, child.getTop());
+                                bottom = Math.max(bottom, child.getBottom());
+                            }
+                        }
+                        if (top >= bottom) return;
+                        int surface = Theme.getColor(Theme.key_windowBackgroundWhite);
+                        boolean dark = android.graphics.Color.red(surface)
+                                + android.graphics.Color.green(surface)
+                                + android.graphics.Color.blue(surface) < 360;
+                        pinnedGroupPaint.setColor(dark ? 0xFF348D92 : 0xFF80C8C2);
+                        pinnedGroupPaint.setStyle(Paint.Style.STROKE);
+                        pinnedGroupPaint.setStrokeWidth(dp(1));
+                        canvas.drawRoundRect(dp(5), top + dp(3),
+                                parent.getWidth() - dp(5), bottom - dp(3),
+                                dp(19), dp(19), pinnedGroupPaint);
+                        pinnedGroupPaint.setStyle(Paint.Style.FILL);
+                    }
+
                     @Override
                     public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
                         int position = parent.getChildAdapterPosition(view);
