@@ -135,9 +135,16 @@ s = s.replace(anchor, anchor + """
             android.widget.RadioGroup choices = new android.widget.RadioGroup(context);
             choices.setOrientation(android.widget.RadioGroup.VERTICAL);
             android.content.SharedPreferences prefs = context.getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE);
-            String selectedFont = prefs.getString("font_family", "sans-serif");
-            String[] families = {"sans-serif", "serif"};
-            int[] names = {R.string.NabdhFontSans, R.string.NabdhFontSerif};
+            String selectedFont = prefs.getString("font_family", "readex-pro");
+            String[] families = {"readex-pro", "sans-serif", "serif"};
+            int[] names = {R.string.NabdhFontReadex, R.string.NabdhFontSans, R.string.NabdhFontSerif};
+            android.graphics.Typeface readexFont;
+            try {
+                readexFont = android.graphics.Typeface.createFromAsset(context.getAssets(), "fonts/ReadexPro.ttf");
+            } catch (RuntimeException missingFont) {
+                readexFont = android.graphics.Typeface.DEFAULT;
+            }
+            final android.graphics.Typeface bundledReadex = readexFont;
             for (int i = 0; i < families.length; i++) {
                 final String family = families[i];
                 android.widget.RadioButton option = new android.widget.RadioButton(context);
@@ -145,12 +152,12 @@ s = s.replace(anchor, anchor + """
                 option.setText(context.getString(names[i]));
                 option.setTextSize(16);
                 option.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-                option.setTypeface(android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL));
+                option.setTypeface("readex-pro".equals(family) ? bundledReadex : android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL));
                 option.setChecked(family.equals(selectedFont));
                 option.setOnClickListener(v -> {
                     prefs.edit().putString("font_family", family).apply();
-                    fontTitle.setTypeface(android.graphics.Typeface.create(family, android.graphics.Typeface.BOLD));
-                    explanation.setTypeface(android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL));
+                    fontTitle.setTypeface("readex-pro".equals(family) ? bundledReadex : android.graphics.Typeface.create(family, android.graphics.Typeface.BOLD));
+                    explanation.setTypeface("readex-pro".equals(family) ? bundledReadex : android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL));
                 });
                 choices.addView(option);
             }
@@ -160,20 +167,20 @@ s = s.replace(anchor, anchor + """
             note.setTextSize(13);
             note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
             content.addView(note);
-            fontTitle.setTypeface(android.graphics.Typeface.create(selectedFont, android.graphics.Typeface.BOLD));
-            explanation.setTypeface(android.graphics.Typeface.create(selectedFont, android.graphics.Typeface.NORMAL));
+            fontTitle.setTypeface("readex-pro".equals(selectedFont) ? bundledReadex : android.graphics.Typeface.create(selectedFont, android.graphics.Typeface.BOLD));
+            explanation.setTypeface("readex-pro".equals(selectedFont) ? bundledReadex : android.graphics.Typeface.create(selectedFont, android.graphics.Typeface.NORMAL));
         }
 """, 1)
 
 for lang, labels in {
-    "values": ("Settings typography", "Sans-serif", "Serif", "Applies to this settings preview only. Chat font and Readex Pro integration are not yet available."),
-    "values-ar": ("خط إعدادات التطبيق", "بدون حواف", "بحواف", "ينطبق حاليًا على معاينة هذه الصفحة فقط. خط المحادثات وخط Readex Pro لم يُدمجا بعد."),
+    "values": ("Settings typography", "Readex Pro", "Sans-serif", "Serif", "Readex Pro is bundled. This choice currently applies to the Appearance page preview; chat typography is unchanged."),
+    "values-ar": ("خط إعدادات التطبيق", "Readex Pro", "بدون حواف", "بحواف", "أُدمج خط Readex Pro في التطبيق. ينطبق الاختيار حاليًا على معاينة صفحة المظهر فقط؛ خط المحادثات لم يتغير بعد."),
 }.items():
     res = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     xml = res.read_text(encoding="utf-8")
     if xml.count("</resources>") != 1:
         raise SystemExit("Unexpected resource structure for font labels")
-    keys = ("NabdhFontTitle", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope")
+    keys = ("NabdhFontTitle", "NabdhFontReadex", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope")
     extra = "".join('    <string name="' + k + '">' + escape(v) + '</string>\n' for k, v in zip(keys, labels))
     res.write_text(xml.replace("</resources>", extra + "</resources>", 1), encoding="utf-8")
 child.write_text(s, encoding="utf-8")
