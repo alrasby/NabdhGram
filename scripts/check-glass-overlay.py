@@ -69,6 +69,12 @@ checks = {
 for lang in ("values", "values-ar"):
     xml = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     strings = ET.parse(xml).getroot()
+    # Android AAPT2 requires apostrophes in string resources to be escaped.
+    for entry in strings.findall("string"):
+        if entry.attrib.get("name") == "NabdhFontScope":
+            value = entry.text or ""
+            if "'" in value.replace(chr(92) + "'", ""):
+                raise SystemExit(f"Unescaped Android apostrophe in {lang}/NabdhFontScope")
     for name in ("NabdhGlassPinnedChats", "NabdhGlassOtherChats", "NabdhFontTitle", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope"):
         found = sum(e.attrib.get("name") == name for e in strings.findall("string"))
         print(f"Resource count {lang}/{name}: {found}", flush=True)
