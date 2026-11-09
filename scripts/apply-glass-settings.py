@@ -173,8 +173,8 @@ s = s.replace(anchor, anchor + """
 """, 1)
 
 for lang, labels in {
-    "values": ("Settings typography", "Readex Pro", "Sans-serif", "Serif", "Readex Pro is bundled. This choice currently applies to the Appearance page preview; chat typography is unchanged."),
-    "values-ar": ("خط إعدادات التطبيق", "Readex Pro", "بدون حواف", "بحواف", "أُدمج خط Readex Pro في التطبيق. ينطبق الاختيار حاليًا على معاينة صفحة المظهر فقط؛ خط المحادثات لم يتغير بعد."),
+    "values": ("Settings typography", "Readex Pro", "Sans-serif", "Serif", "Readex Pro is bundled. The choice is saved for Telegram's supported bundled text styles. Some system text may use a different font; reopen the app to refresh existing screens."),
+    "values-ar": ("خط إعدادات التطبيق", "Readex Pro", "بدون حواف", "بحواف", "أُدمج خط Readex Pro في التطبيق. يُحفظ الاختيار لأنماط النصوص المدعومة في Telegram. قد تستخدم بعض النصوص النظامية خطًا مختلفًا؛ أعد فتح التطبيق لتحديث الشاشات."),
 }.items():
     res = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     xml = res.read_text(encoding="utf-8")
