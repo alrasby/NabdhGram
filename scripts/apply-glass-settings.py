@@ -181,7 +181,7 @@ for lang, labels in {
     if xml.count("</resources>") != 1:
         raise SystemExit("Unexpected resource structure for font labels")
     keys = ("NabdhFontTitle", "NabdhFontReadex", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope")
-    extra = "".join('    <string name="' + k + '">' + escape(v).replace("'", "\\\\'") + '</string>\n' for k, v in zip(keys, labels))
+    extra = "".join('    <string name="' + k + '">' + escape(v).replace("'", "\\'") + '</string>\n' for k, v in zip(keys, labels))
     res.write_text(xml.replace("</resources>", extra + "</resources>", 1), encoding="utf-8")
 child.write_text(s, encoding="utf-8")
 print("Applied theme-aware NabdhGram Glass cards to the six settings categories.")
