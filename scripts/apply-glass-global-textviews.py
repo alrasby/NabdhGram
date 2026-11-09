@@ -47,9 +47,14 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 if (applied != null || normalFont) {
                     if (!family.equals(applied)) {
                         int style = current == null ? android.graphics.Typeface.NORMAL : current.getStyle();
-                        android.graphics.Typeface base = "readex-pro".equals(family)
-                                ? org.telegram.messenger.AndroidUtilities.getTypeface("fonts/ReadexPro.ttf")
-                                : android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL);
+                        String fontFile = "readex-pro".equals(family) ? "ReadexPro.ttf"
+                                : "vazirmatn".equals(family) ? "Vazirmatn.ttf"
+                                : "noto-sans-arabic".equals(family) ? "NotoSansArabic.ttf"
+                                : "tajawal".equals(family) ? "Tajawal.ttf"
+                                : "rubik".equals(family) ? "Rubik.ttf" : null;
+                        android.graphics.Typeface base = fontFile == null
+                                ? android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
+                                : org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + fontFile);
                         if (base != null) {
                             label.setTypeface(base, style);
                             nabdhAppliedFonts.put(label, family);
