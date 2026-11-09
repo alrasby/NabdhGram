@@ -42,13 +42,23 @@ checks = {
     "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "readex-pro")' in launch,
     "native font scan skips editors": "!(view instanceof android.widget.EditText)" in launch,
     "native font scan only when layout dirty": "nabdhFontLayoutListener = () -> nabdhFontDirty = true;" in launch,
+    "font size and weight persisted with scope": all(
+        key in launch for key in ("ui_scale_percent", "font_bold", "nabdhOriginalTextSizes")
+    ) and 'getBoolean("font_bold", false)' in typefaces
+        and '"fons_size"' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
+    "settings selected locale respected": "getCurrentLocale()" in settings
+        and "getCurrentLocale()" in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
+    "profile buttons show pressed surface": "nabdhPressPaint" in
+        (ui / "Components/ProfileActionsView.java").read_text(encoding="utf-8"),
+    "archive gets its own rounded card": "final boolean archived = isFolderCell();" in cell,
     "unread badges centered for every count animation": all(
-        f"(dp(BADGE_SIZE) - {layout}.getHeight()) / 2f" in cell
+        f"nabdhBadgeTextOffset({layout})" in cell
         for layout in ("countLayout", "countOldLayout", "countAnimationStableLayout", "countAnimationInLayout")
     ),
+    "unread badge metrics center": "fm.ascent + fm.descent" in cell,
     "native bubble geometry preserved": "nabdhBubbleEdge" not in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8"),
-    "settings headers safe inset": "new HeaderCell(context, 24, resourcesProvider)" in universal
-        and "Theme.key_windowBackgroundWhiteBlackText, 24, 15" in universal,
+    "settings headers safe inset": "new HeaderCell(context, 32, resourcesProvider)" in universal
+        and "Theme.key_windowBackgroundWhiteBlackText, 32, 15" in universal,
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
         and "if (nabdhFontDirty)" in launch,
     "composer retains native padding and RTL": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
@@ -90,7 +100,7 @@ checks = {
     "dialog card excludes swipe/archive without hiding all rows": "!drawArchive" not in cell
         and "currentRevealProgress == 0.0f" in cell
         and "translationX == 0" in cell
-        and "currentDialogFolderId == 0" in cell,
+        and "isFolderCell()" in cell,
     "dialog selection feedback": "isPressed() || isSelected || isSelected()" in cell,
     "regular section without pinned chats": "if (!pinned && position == 0) return 2;" in dialogs,
     "decoration section headings": "NabdhGlassPinnedChats" in dialogs and "NabdhGlassOtherChats" in dialogs,

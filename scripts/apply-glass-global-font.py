@@ -46,7 +46,11 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                 String family = ApplicationLoader.applicationContext
                         .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
                         .getString("font_family", "readex-pro");
-                boolean bold = assetPath.contains("medium") || assetPath.contains("extrabold");
+                boolean userBold = ApplicationLoader.applicationContext
+                        .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
+                        .getBoolean("font_bold", false);
+                boolean bold = assetPath.contains("medium") || assetPath.contains("extrabold")
+                        || userBold;
                 boolean italic = assetPath.contains("italic");
                 String cacheKey = family + ":" + bold + ":" + italic;
                 synchronized (nabdhFontCache) {

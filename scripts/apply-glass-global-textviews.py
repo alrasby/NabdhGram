@@ -22,6 +22,10 @@ if s.count(field_anchor) != 1:
 fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells.
     private final java.util.WeakHashMap<android.widget.TextView, String> nabdhAppliedFonts =
             new java.util.WeakHashMap<>();
+    private final java.util.WeakHashMap<android.widget.TextView, Float> nabdhOriginalTextSizes =
+            new java.util.WeakHashMap<>();
+    private final java.util.WeakHashMap<android.widget.TextView, Integer> nabdhOriginalTextStyles =
+            new java.util.WeakHashMap<>();
     private boolean nabdhFontApplying;
     private boolean nabdhFontDirty = true;
     private android.view.ViewTreeObserver.OnGlobalLayoutListener nabdhFontLayoutListener;
@@ -32,8 +36,13 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
         if (root == null || nabdhFontApplying) return;
         nabdhFontApplying = true;
         try {
-        final String family = getSharedPreferences("nabdhgram_appearance", MODE_PRIVATE)
-                .getString("font_family", "readex-pro");
+        android.content.SharedPreferences appearance =
+                getSharedPreferences("nabdhgram_appearance", MODE_PRIVATE);
+        final String family = appearance.getString("font_family", "readex-pro");
+        final int uiPercent = Math.max(85, Math.min(115,
+                appearance.getInt("ui_scale_percent", 100)));
+        final boolean forceBold = appearance.getBoolean("font_bold", false);
+        final String renderKey = family + ":" + uiPercent + ":" + forceBold;
         final java.util.ArrayDeque<android.view.View> pending = new java.util.ArrayDeque<>();
         pending.add(root);
         while (!pending.isEmpty()) {
@@ -53,8 +62,18 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                         || current.equals(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
                         || current.equals(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
                 if (applied != null || normalFont) {
-                    if (!family.equals(applied)) {
-                        int style = current == null ? android.graphics.Typeface.NORMAL : current.getStyle();
+                    if (!renderKey.equals(applied)) {
+                        Integer originalStyle = nabdhOriginalTextStyles.get(label);
+                        if (originalStyle == null) {
+                            originalStyle = current == null
+                                    ? android.graphics.Typeface.NORMAL : current.getStyle();
+                            nabdhOriginalTextStyles.put(label, originalStyle);
+                        }
+                        Float originalPx = nabdhOriginalTextSizes.get(label);
+                        if (originalPx == null) {
+                            originalPx = label.getTextSize();
+                            nabdhOriginalTextSizes.put(label, originalPx);
+                        }
                         String fontFile = "readex-pro".equals(family) ? "ReadexPro.ttf"
                                 : "vazirmatn".equals(family) ? "Vazirmatn.ttf"
                                 : "noto-sans-arabic".equals(family) ? "NotoSansArabic.ttf"
@@ -64,8 +83,14 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                                 ? android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
                                 : org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + fontFile);
                         if (base != null) {
-                            label.setTypeface(base, style);
-                            nabdhAppliedFonts.put(label, family);
+                            label.setTypeface(base, forceBold
+                                    ? (originalStyle | android.graphics.Typeface.BOLD)
+                                    : originalStyle);
+                            float sizePx = originalPx * uiPercent / 100f;
+                            if (Math.abs(label.getTextSize() - sizePx) > 0.5f) {
+                                label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx);
+                            }
+                            nabdhAppliedFonts.put(label, renderKey);
                         }
                     }
                 }
