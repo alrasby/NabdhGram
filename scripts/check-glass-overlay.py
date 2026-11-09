@@ -19,7 +19,7 @@ contacts = (ui / "ContactsActivity.java").read_text(encoding="utf-8")
 native_settings = (ui / "SettingsActivity.java").read_text(encoding="utf-8")
 profile = (ui / "ProfileActivity.java").read_text(encoding="utf-8")
 shared_config = (root / "TMessagesProj/src/main/java/org/telegram/messenger/SharedConfig.java").read_text(encoding="utf-8")
-message_drawable = (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
+universal = (ui / "Components/UniversalAdapter.java").read_text(encoding="utf-8")
 launch = (ui / "LaunchActivity.java").read_text(encoding="utf-8")
 font_assets = root / "TMessagesProj/src/main/assets/fonts"
 font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf")
@@ -29,11 +29,13 @@ checks = {
     "font options mapped to Telegram typefaces": all(name in typefaces for name in font_files),
     "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "readex-pro")' in launch,
     "native font scan skips editors": "!(view instanceof android.widget.EditText)" in launch,
-    "native font scan throttled": "now - nabdhFontLastScan >= 300" in launch,
-    "gradient text bubble Glass outline": "canvas.drawPath(path, nabdhBubbleEdge);" in message_drawable
-        and "currentType == TYPE_TEXT && !themePreview && !isSelected" in message_drawable
-        and "private final Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);" in message_drawable
-        and "Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);" not in message_drawable.split("canvas.drawPath(path, p);", 1)[-1],
+    "native font scan only when layout dirty": "nabdhFontLayoutListener = () -> nabdhFontDirty = true;" in launch,
+    "native bubble geometry preserved": "nabdhBubbleEdge" not in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8"),
+    "settings headers safe inset": "new HeaderCell(context, 24, resourcesProvider)" in universal
+        and "Theme.key_windowBackgroundWhiteBlackText, 24, 15" in universal,
+    "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
+        and "if (nabdhFontDirty)" in launch,
+    "composer retains native padding": "messageEditText.setPadding(dp(8), dp(9)" not in composer,
     "rounded bubble default with saved preference": 'public static int bubbleRadius = 19;' in shared_config
         and 'bubbleRadius = preferences.getInt("bubbleRadius", 19);' in shared_config,
     "native settings rounded touch selector": "listView.setSelectorRadius(17);" in native_settings,
