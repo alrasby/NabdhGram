@@ -149,6 +149,22 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nested-feature-settings.py Telegram-upstream
 
+      - name: Bundle licensed Readex Pro font
+        shell: bash
+        run: |
+          set -euo pipefail
+          FONT="nabdhgram/branding/fonts/ReadexPro.ttf"
+          test -s "$FONT"
+          python3 - "$FONT" <<'PY'
+          import pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          if p.read_bytes()[:4] not in (b"\\x00\\x01\\x00\\x00", b"OTTO"):
+              raise SystemExit("Readex Pro font has an invalid sfnt signature")
+          PY
+          test -s nabdhgram/branding/fonts/OFL-ReadexPro.txt
+          mkdir -p Telegram-upstream/TMessagesProj/src/main/assets/fonts
+          cp "$FONT" Telegram-upstream/TMessagesProj/src/main/assets/fonts/ReadexPro.ttf
+
       - name: Apply NabdhGram Glass settings design
         shell: bash
         run: |
