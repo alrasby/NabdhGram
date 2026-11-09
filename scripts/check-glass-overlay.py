@@ -22,7 +22,9 @@ shared_config = (root / "TMessagesProj/src/main/java/org/telegram/messenger/Shar
 message_drawable = (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
 checks = {
     "gradient text bubble Glass outline": "canvas.drawPath(path, nabdhBubbleEdge);" in message_drawable
-        and "currentType == TYPE_TEXT && !themePreview && !isSelected" in message_drawable,
+        and "currentType == TYPE_TEXT && !themePreview && !isSelected" in message_drawable
+        and "private final Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);" in message_drawable
+        and "Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);" not in message_drawable.split("canvas.drawPath(path, p);", 1)[-1],
     "rounded bubble default with saved preference": 'public static int bubbleRadius = 19;' in shared_config
         and 'bubbleRadius = preferences.getInt("bubbleRadius", 19);' in shared_config,
     "native settings rounded touch selector": "listView.setSelectorRadius(17);" in native_settings,
