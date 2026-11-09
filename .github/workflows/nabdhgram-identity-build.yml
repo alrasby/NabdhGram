@@ -165,6 +165,12 @@ jobs:
           mkdir -p Telegram-upstream/TMessagesProj/src/main/assets/fonts
           cp "$FONT" Telegram-upstream/TMessagesProj/src/main/assets/fonts/ReadexPro.ttf
 
+      - name: Apply persisted typography to Telegram text rendering
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-global-font.py Telegram-upstream
+
       - name: Apply NabdhGram Glass settings design
         shell: bash
         run: |
