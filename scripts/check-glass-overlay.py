@@ -36,7 +36,9 @@ checks = {
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
         and "if (nabdhFontDirty)" in launch,
     "composer retains native padding and RTL": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
-        and "TEXT_DIRECTION_FIRST_STRONG" in composer,
+        and "TEXT_DIRECTION_FIRST_STRONG" in composer
+        and "LocaleController.isRTL" in composer
+        and "android.view.Gravity.RIGHT : android.view.Gravity.LEFT" in composer,
     "rounded bubble default with saved preference": 'public static int bubbleRadius = 19;' in shared_config
         and 'bubbleRadius = preferences.getInt("bubbleRadius", 19);' in shared_config,
     "native settings rounded touch selector": "listView.setSelectorRadius(17);" in native_settings,
