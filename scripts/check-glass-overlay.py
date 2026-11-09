@@ -52,7 +52,7 @@ checks = {
         and '"sans-serif".equals(family)' in typefaces
         and '"serif".equals(family)' in typefaces,
     "appearance font preference persisted": 'getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
-        and 'putString("font_family", family).apply()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
+        and 'putString("font_family", family).commit()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
     "settings card native ripple": "new android.graphics.drawable.RippleDrawable(" in settings
         and "card.setBackground(touchSurface)" in settings,
     "pinned outline avoids clipped groups": "hasFirstPinnedRow" in dialogs
