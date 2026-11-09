@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - design/glass-chat-cards
+      - design/glass-pinned-group-container
 
 permissions:
   contents: read
