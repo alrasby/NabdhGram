@@ -17,6 +17,8 @@ checks = {
     "dialog card excludes swipe/archive": "!drawArchive" in cell and "currentRevealProgress == 0.0f" in cell,
     "dialog selection feedback": "isPressed() || isSelected || isSelected()" in cell,
     "decoration section headings": "NabdhGlassPinnedChats" in dialogs and "NabdhGlassOtherChats" in dialogs,
+    "pinned group outline above opaque cards": "public void onDrawOver(Canvas canvas, RecyclerView parent, RecyclerView.State state)" in dialogs
+        and "pinnedGroupPaint.setStyle(Paint.Style.STROKE)" in dialogs,
     "pinned group drawing present": "pinnedGroupPaint.setColor(" in dialogs
         and "canvas.drawRoundRect(dp(4), groupTop + dp(2)" in dialogs,
     "pinned group does not alter adapter": "groupTop = Math.min(groupTop, child.getTop())" in dialogs
