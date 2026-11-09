@@ -21,7 +21,12 @@ profile = (ui / "ProfileActivity.java").read_text(encoding="utf-8")
 shared_config = (root / "TMessagesProj/src/main/java/org/telegram/messenger/SharedConfig.java").read_text(encoding="utf-8")
 message_drawable = (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
 launch = (ui / "LaunchActivity.java").read_text(encoding="utf-8")
+font_assets = root / "TMessagesProj/src/main/assets/fonts"
+font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf")
 checks = {
+    "all selected fonts bundled": all((font_assets / name).is_file() and (font_assets / name).stat().st_size > 10000 for name in font_files),
+    "font options mapped to native renderer": all(name in launch for name in font_files),
+    "font options mapped to Telegram typefaces": all(name in typefaces for name in font_files),
     "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "readex-pro")' in launch,
     "native font scan skips editors": "!(view instanceof android.widget.EditText)" in launch,
     "native font scan throttled": "now - nabdhFontLastScan >= 300" in launch,
