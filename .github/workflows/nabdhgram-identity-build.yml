@@ -2,6 +2,9 @@ name: NabdhGram identity debug build
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - design/glass-chat-cards
@@ -135,6 +138,8 @@ jobs:
           python3 nabdhgram/scripts/apply-contacts-permission-policy.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/apply-contacts-permission-policy.py
           grep -q 'boolean hasNotContactsPermission = false;' Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java
+          grep -q 'checkPermission \&\& !hasMainTabs' Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/ContactsActivity.java
+          grep -q 'tabs\[INDEX_CONTACTS\].setCounter(null, true, true);' Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/MainTabsActivity.java
 
       - name: Apply NabdhGram settings hub and credits
         shell: bash
