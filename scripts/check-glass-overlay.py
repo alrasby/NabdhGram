@@ -20,7 +20,11 @@ native_settings = (ui / "SettingsActivity.java").read_text(encoding="utf-8")
 profile = (ui / "ProfileActivity.java").read_text(encoding="utf-8")
 shared_config = (root / "TMessagesProj/src/main/java/org/telegram/messenger/SharedConfig.java").read_text(encoding="utf-8")
 message_drawable = (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
+launch = (ui / "LaunchActivity.java").read_text(encoding="utf-8")
 checks = {
+    "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "readex-pro")' in launch,
+    "native font scan skips editors": "!(view instanceof android.widget.EditText)" in launch,
+    "native font scan throttled": "now - nabdhFontLastScan >= 300" in launch,
     "gradient text bubble Glass outline": "canvas.drawPath(path, nabdhBubbleEdge);" in message_drawable
         and "currentType == TYPE_TEXT && !themePreview && !isSelected" in message_drawable
         and "private final Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);" in message_drawable
