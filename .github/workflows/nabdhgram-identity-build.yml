@@ -207,6 +207,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-bubble-radius.py Telegram-upstream
 
+      - name: Align native settings section headings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-header-insets.py Telegram-upstream
+
       - name: Apply rounded Glass message composer
         shell: bash
         run: |
@@ -241,7 +247,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m py_compile nabdhgram/scripts/install-open-fonts.py nabdhgram/scripts/apply-glass-global-textviews.py nabdhgram/scripts/apply-glass-bubble-outline.py nabdhgram/scripts/apply-glass-bubble-radius.py nabdhgram/scripts/apply-glass-native-settings-profile.py nabdhgram/scripts/apply-glass-contacts.py nabdhgram/scripts/apply-glass-chat-composer.py nabdhgram/scripts/apply-glass-selector.py nabdhgram/scripts/apply-glass-global-font.py nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-dialog-sections.py nabdhgram/scripts/check-glass-overlay.py nabdhgram/scripts/apply-contacts-permission-policy.py
+          python3 -m py_compile nabdhgram/scripts/apply-glass-header-insets.py nabdhgram/scripts/install-open-fonts.py nabdhgram/scripts/apply-glass-global-textviews.py nabdhgram/scripts/apply-glass-bubble-outline.py nabdhgram/scripts/apply-glass-bubble-radius.py nabdhgram/scripts/apply-glass-native-settings-profile.py nabdhgram/scripts/apply-glass-contacts.py nabdhgram/scripts/apply-glass-chat-composer.py nabdhgram/scripts/apply-glass-selector.py nabdhgram/scripts/apply-glass-global-font.py nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-dialog-sections.py nabdhgram/scripts/check-glass-overlay.py nabdhgram/scripts/apply-contacts-permission-policy.py
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
 
       - name: Apply privacy-minimal network diagnostics
