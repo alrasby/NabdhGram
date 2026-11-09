@@ -2,6 +2,9 @@ name: NabdhGram identity debug build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - design/glass-chat-cards
 
 permissions:
   contents: read
@@ -147,6 +150,25 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-settings.py Telegram-upstream
+
+      - name: Apply NabdhGram Glass chat cards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-dialog-cards.py Telegram-upstream
+
+      - name: Apply NabdhGram Glass pinned and regular chat sections
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-dialog-sections.py Telegram-upstream
+
+      - name: Verify NabdhGram Glass overlays before Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-dialog-sections.py nabdhgram/scripts/check-glass-overlay.py
+          python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
 
       - name: Apply privacy-minimal network diagnostics
         shell: bash

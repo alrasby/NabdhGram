@@ -53,7 +53,47 @@ if s.count(anchor) != 1:
 s = s.replace(anchor, "heading.setTextColor(dark ? 0xFF67E3DE : 0xFF087C83);", 1)
 # Extra card spacing and smaller outer padding; category pages still own their options.
 s = s.replace("lp.bottomMargin = d;", "lp.bottomMargin = d;", 1)
+# Replace long future-feature paragraphs on the overview with concise card summaries.
+# Full descriptions remain available on category detail pages.
+summary_anchor = "description.setText(context.getString(descriptionRes));"
+if s.count(summary_anchor) != 1:
+    raise SystemExit("Expected one category summary label")
+s = s.replace(summary_anchor, """int summaryRes = R.string.NabdhGlassAppearanceSummary;
+        if (titleRes == R.string.NabdhShieldTitle) summaryRes = R.string.NabdhGlassShieldSummary;
+        else if (titleRes == R.string.NabdhPrivacyTitle) summaryRes = R.string.NabdhGlassPrivacySummary;
+        else if (titleRes == R.string.NabdhProductivityTitle) summaryRes = R.string.NabdhGlassProductivitySummary;
+        else if (titleRes == R.string.NabdhLanguageTitle) summaryRes = R.string.NabdhGlassLanguageSummary;
+        else if (titleRes == R.string.NabdhNetworkTitle) summaryRes = R.string.NabdhGlassNetworkSummary;
+        description.setText(context.getString(summaryRes));""", 1)
 main.write_text(s, encoding="utf-8")
+
+# Keep translations in the same module as generated SettingsActivity.
+from xml.sax.saxutils import escape
+summaries = {
+    "values": {
+        "Shield": "Link and file safety • In development",
+        "Privacy": "Privacy Screen • Scheduled messages",
+        "Productivity": "Organize and focus • In development",
+        "Language": "Translation and voice • In development",
+        "Network": "Connection and downloads • In development",
+        "Appearance": "Themes and personalization • In development",
+    },
+    "values-ar": {
+        "Shield": "أمان الروابط والملفات • قيد التطوير",
+        "Privacy": "شاشة الخصوصية • جدولة الرسائل",
+        "Productivity": "التنظيم والتركيز • قيد التطوير",
+        "Language": "الترجمة والصوت • قيد التطوير",
+        "Network": "الاتصال والتنزيلات • قيد التطوير",
+        "Appearance": "السمات والتخصيص • قيد التطوير",
+    },
+}
+for lang, mapping in summaries.items():
+    res = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
+    xml = res.read_text(encoding="utf-8")
+    if xml.count("</resources>") != 1:
+        raise SystemExit(f"Unexpected XML resources in {res}")
+    entries = "".join(f'    <string name="NabdhGlass{k}Summary">{escape(v)}</string>\n' for k, v in mapping.items())
+    res.write_text(xml.replace("</resources>", entries + "</resources>", 1), encoding="utf-8")
 
 child = pages[1]
 s = child.read_text(encoding="utf-8")

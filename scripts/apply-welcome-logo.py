@@ -61,7 +61,16 @@ def main():
         // showing through the transparent PNG. Keep TextureView attached and visible
         // for native EGL lifecycle and the remaining intro pages.
         FrameLayout nabdhgramCover = new FrameLayout(context);
-        nabdhgramCover.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        // NabdhGram Glass: a soft brand gradient behind the approved logo.
+        int nabdhBase = Theme.getColor(Theme.key_windowBackgroundWhite);
+        boolean nabdhDark = android.graphics.Color.red(nabdhBase)
+                + android.graphics.Color.green(nabdhBase)
+                + android.graphics.Color.blue(nabdhBase) < 360;
+        android.graphics.drawable.GradientDrawable nabdhGlass = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                nabdhDark ? new int[] {0xFF082A34, 0xFF116B74} : new int[] {0xFFE8F9F7, 0xFFBCEBE6});
+        nabdhGlass.setCornerRadius(AndroidUtilities.dp(26));
+        nabdhgramCover.setBackground(nabdhGlass);
         frameLayout2.addView(nabdhgramCover,
                 LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, ICON_HEIGHT_DP, Gravity.CENTER));
         nabdhgramWelcomeLogo = new ImageView(context);
