@@ -13,7 +13,7 @@ s = p.read_text(encoding="utf-8")
 field_anchor = "    private int currentBackgroundHeight;\n"
 if s.count(field_anchor) != 1:
     raise SystemExit("MessageDrawable field anchor changed")
-s = s.replace(field_anchor, field_anchor + "    private final Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);\\n".replace("\\\\n", "\\n"), 1)
+s = s.replace(field_anchor, field_anchor + "    private final Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);" + chr(10), 1)
 anchor = """        canvas.drawPath(path, p);
         if (gradientShader != null && isSelected && paintToUse == null) {"""
 replacement = """        canvas.drawPath(path, p);
