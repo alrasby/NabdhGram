@@ -44,7 +44,14 @@ s = s.replace(anchor, """        int surface = Theme.getColor(Theme.key_windowBa
         glassCard.setCornerRadius(22 * context.getResources().getDisplayMetrics().density);
         glassCard.setStroke((int) (context.getResources().getDisplayMetrics().density),
                 dark ? 0xFF187F89 : 0xFFB8E2E3);
-        card.setBackground(glassCard);
+        // Preserve the rounded surface while giving every navigable category
+        // a native pressed ripple, keyboard focus and accessibility feedback.
+        android.graphics.drawable.RippleDrawable touchSurface =
+                new android.graphics.drawable.RippleDrawable(
+                        android.content.res.ColorStateList.valueOf(
+                                dark ? 0x3346D9D2 : 0x2200878D),
+                        glassCard, null);
+        card.setBackground(touchSurface);
         card.setClipToOutline(true);""", 1)
 # Replace simple heading color with brand turquoise while retaining readability.
 anchor = "heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
