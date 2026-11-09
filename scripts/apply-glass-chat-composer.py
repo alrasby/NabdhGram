@@ -30,6 +30,11 @@ replacement = """        // NabdhGram Glass: light, theme-aware input surface. K
         // Restore Telegram's vertical insets: the EditText is measured
         // independently of the panel and must retain its 9/10dp padding.
         messageEditText.setPadding(0, dp(9), 0, dp(10));
+        // Align the empty hint with the application language (RTL Arabic),
+        // while FIRST_STRONG keeps mixed-direction typed text readable.
+        messageEditText.setGravity((org.telegram.messenger.LocaleController.isRTL
+                ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT)
+                | android.view.Gravity.BOTTOM);
         messageEditText.setTextDirection(android.view.View.TEXT_DIRECTION_FIRST_STRONG);
         messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));"""
 s=s.replace(anchor,replacement,1)
