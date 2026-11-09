@@ -23,6 +23,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
     private final java.util.WeakHashMap<android.widget.TextView, String> nabdhAppliedFonts =
             new java.util.WeakHashMap<>();
     private boolean nabdhFontApplying;
+    private boolean nabdhFontDirty = true;
+    private android.view.ViewTreeObserver.OnGlobalLayoutListener nabdhFontLayoutListener;
     private android.view.ViewTreeObserver.OnPreDrawListener nabdhFontPreDrawListener;
 
     private void nabdhApplyVisibleFonts() {
@@ -86,17 +88,24 @@ replacement = """    @Override
     protected void onResume() {
         super.onResume();
         // Refresh after returning from Appearance and after a process restart.
+        nabdhFontDirty = true;
         nabdhApplyVisibleFonts();
         // Run before each visible frame: newly created rows and settings labels
         // receive their font before pixels are drawn, avoiding delayed swaps.
         // Already processed labels are skipped by the weak cache.
         if (nabdhFontPreDrawListener == null) {
             nabdhFontPreDrawListener = () -> {
-                nabdhApplyVisibleFonts();
+                if (nabdhFontDirty) {
+                    nabdhFontDirty = false;
+                    nabdhApplyVisibleFonts();
+                }
                 return true;
             };
             getWindow().getDecorView().getViewTreeObserver()
                     .addOnPreDrawListener(nabdhFontPreDrawListener);
+            nabdhFontLayoutListener = () -> nabdhFontDirty = true;
+            getWindow().getDecorView().getViewTreeObserver()
+                    .addOnGlobalLayoutListener(nabdhFontLayoutListener);
         }
 """
 s = s.replace(anchor,replacement,1)
