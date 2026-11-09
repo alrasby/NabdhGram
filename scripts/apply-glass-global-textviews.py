@@ -22,12 +22,14 @@ if s.count(field_anchor) != 1:
 fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells.
     private final java.util.WeakHashMap<android.widget.TextView, String> nabdhAppliedFonts =
             new java.util.WeakHashMap<>();
-    private long nabdhFontLastScan;
-    private android.view.ViewTreeObserver.OnGlobalLayoutListener nabdhFontLayoutListener;
+    private boolean nabdhFontApplying;
+    private android.view.ViewTreeObserver.OnPreDrawListener nabdhFontPreDrawListener;
 
     private void nabdhApplyVisibleFonts() {
         final android.view.View root = getWindow() == null ? null : getWindow().getDecorView();
-        if (root == null) return;
+        if (root == null || nabdhFontApplying) return;
+        nabdhFontApplying = true;
+        try {
         final String family = getSharedPreferences("nabdhgram_appearance", MODE_PRIVATE)
                 .getString("font_family", "readex-pro");
         final java.util.ArrayDeque<android.view.View> pending = new java.util.ArrayDeque<>();
@@ -73,6 +75,9 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 }
             }
         }
+        } finally {
+            nabdhFontApplying = false;
+        }
     }
 
 """
@@ -82,16 +87,16 @@ replacement = """    @Override
         super.onResume();
         // Refresh after returning from Appearance and after a process restart.
         nabdhApplyVisibleFonts();
-        if (nabdhFontLayoutListener == null) {
-            nabdhFontLayoutListener = () -> {
-                long now = android.os.SystemClock.uptimeMillis();
-                if (now - nabdhFontLastScan >= 300) {
-                    nabdhFontLastScan = now;
-                    nabdhApplyVisibleFonts();
-                }
+        // Run before each visible frame: newly created rows and settings labels
+        // receive their font before pixels are drawn, avoiding delayed swaps.
+        // Already processed labels are skipped by the weak cache.
+        if (nabdhFontPreDrawListener == null) {
+            nabdhFontPreDrawListener = () -> {
+                nabdhApplyVisibleFonts();
+                return true;
             };
             getWindow().getDecorView().getViewTreeObserver()
-                    .addOnGlobalLayoutListener(nabdhFontLayoutListener);
+                    .addOnPreDrawListener(nabdhFontPreDrawListener);
         }
 """
 s = s.replace(anchor,replacement,1)
