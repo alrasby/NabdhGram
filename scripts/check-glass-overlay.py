@@ -87,7 +87,10 @@ checks = {
         and "position + 1 < viewPage.dialogsAdapter.getItemCount()" in dialogs,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
     "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
-    "dialog card excludes swipe/archive": "!drawArchive" in cell and "currentRevealProgress == 0.0f" in cell,
+    "dialog card excludes swipe/archive without hiding all rows": "!drawArchive" not in cell
+        and "currentRevealProgress == 0.0f" in cell
+        and "translationX == 0" in cell
+        and "currentDialogFolderId == 0" in cell,
     "dialog selection feedback": "isPressed() || isSelected || isSelected()" in cell,
     "regular section without pinned chats": "if (!pinned && position == 0) return 2;" in dialogs,
     "decoration section headings": "NabdhGlassPinnedChats" in dialogs and "NabdhGlassOtherChats" in dialogs,

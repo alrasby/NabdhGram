@@ -31,7 +31,9 @@ s = s.replace(anchor, """        canvas.restore();
         // backgrounds and before message content. Do not interfere with archive,
         // swipe-to-reveal, tablet slide effects, or transient edit animations.
         if (translationX == 0 && currentRevealProgress == 0.0f
-                && rightFragmentOpenedProgress == 0.0f && !drawArchive
+                && rightFragmentOpenedProgress == 0.0f
+                // drawArchive defaults to true for ordinary Telegram dialogs;
+                // it is NOT an archive-row test. Use folder ID instead.
                 && currentDialogFolderId == 0 && !isTopic
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12)) {
             final int surface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
