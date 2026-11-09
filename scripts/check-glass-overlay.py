@@ -11,7 +11,13 @@ root = Path(sys.argv[1])
 ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
 dialogs = (ui / "DialogsActivity.java").read_text(encoding="utf-8")
 cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
+settings = (ui / "NabdhGramSettingsActivity.java").read_text(encoding="utf-8")
 checks = {
+    "settings card native ripple": "new android.graphics.drawable.RippleDrawable(" in settings
+        and "card.setBackground(touchSurface)" in settings,
+    "pinned outline avoids clipped groups": "hasFirstPinnedRow" in dialogs
+        and "hasLastPinnedRow" in dialogs
+        and "position + 1 < viewPage.dialogsAdapter.getItemCount()" in dialogs,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
     "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
     "dialog card excludes swipe/archive": "!drawArchive" in cell and "currentRevealProgress == 0.0f" in cell,
