@@ -21,6 +21,7 @@ profile = (ui / "ProfileActivity.java").read_text(encoding="utf-8")
 shared_config = (root / "TMessagesProj/src/main/java/org/telegram/messenger/SharedConfig.java").read_text(encoding="utf-8")
 universal = (ui / "Components/UniversalAdapter.java").read_text(encoding="utf-8")
 launch = (ui / "LaunchActivity.java").read_text(encoding="utf-8")
+document_cell = (ui / "Cells/ChatMessageCell.java").read_text(encoding="utf-8")
 font_assets = root / "TMessagesProj/src/main/assets/fonts"
 font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf")
 localized = (ui / "NabdhStrings.java").read_text(encoding="utf-8")
@@ -58,6 +59,9 @@ checks = {
         and "getCurrentLocale()" in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
     "profile buttons show pressed surface": "nabdhPressPaint" in
         (ui / "Components/ProfileActionsView.java").read_text(encoding="utf-8"),
+    "document title and metadata do not share fixed spacing": 
+        "subtitleY = titleY + Math.max(dp(23), docTitleLayout.getHeight() + dp(7));" in document_cell
+        and "photoHeight = Math.max(photoHeight, docTitleLayout.getHeight() + dp(32));" in document_cell,
     "archive gets its own rounded card": "final boolean archived = isFolderCell();" in cell,
     "unread badges centered for every count animation": all(
         f"nabdhBadgeTextOffset({layout})" in cell
