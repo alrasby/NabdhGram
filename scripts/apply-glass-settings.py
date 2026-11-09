@@ -136,28 +136,38 @@ s = s.replace(anchor, anchor + """
             choices.setOrientation(android.widget.RadioGroup.VERTICAL);
             android.content.SharedPreferences prefs = context.getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE);
             String selectedFont = prefs.getString("font_family", "readex-pro");
-            String[] families = {"readex-pro", "sans-serif", "serif"};
-            int[] names = {R.string.NabdhFontReadex, R.string.NabdhFontSans, R.string.NabdhFontSerif};
-            android.graphics.Typeface readexFont;
-            try {
-                readexFont = android.graphics.Typeface.createFromAsset(context.getAssets(), "fonts/ReadexPro.ttf");
-            } catch (RuntimeException missingFont) {
-                readexFont = android.graphics.Typeface.DEFAULT;
+            String[] families = {"readex-pro", "vazirmatn", "noto-sans-arabic", "tajawal", "rubik", "sans-serif", "serif"};
+            int[] names = {R.string.NabdhFontReadex, R.string.NabdhFontVazirmatn,
+                    R.string.NabdhFontNotoSansArabic, R.string.NabdhFontTajawal,
+                    R.string.NabdhFontRubik, R.string.NabdhFontSans, R.string.NabdhFontSerif};
+            String[] assets = {"ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf",
+                    "Tajawal.ttf", "Rubik.ttf", null, null};
+            android.graphics.Typeface[] fonts = new android.graphics.Typeface[families.length];
+            for (int i = 0; i < families.length; i++) {
+                if (assets[i] != null) {
+                    try {
+                        fonts[i] = android.graphics.Typeface.createFromAsset(context.getAssets(), "fonts/" + assets[i]);
+                    } catch (RuntimeException missingFont) {
+                        fonts[i] = android.graphics.Typeface.DEFAULT;
+                    }
+                } else {
+                    fonts[i] = android.graphics.Typeface.create(families[i], android.graphics.Typeface.NORMAL);
+                }
             }
-            final android.graphics.Typeface bundledReadex = readexFont;
             for (int i = 0; i < families.length; i++) {
                 final String family = families[i];
+                final android.graphics.Typeface selectedTypeface = fonts[i];
                 android.widget.RadioButton option = new android.widget.RadioButton(context);
                 option.setId(View.generateViewId());
                 option.setText(context.getString(names[i]));
                 option.setTextSize(16);
                 option.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-                option.setTypeface("readex-pro".equals(family) ? bundledReadex : android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL));
+                option.setTypeface(selectedTypeface);
                 option.setChecked(family.equals(selectedFont));
                 option.setOnClickListener(v -> {
                     prefs.edit().putString("font_family", family).apply();
-                    fontTitle.setTypeface("readex-pro".equals(family) ? bundledReadex : android.graphics.Typeface.create(family, android.graphics.Typeface.BOLD));
-                    explanation.setTypeface("readex-pro".equals(family) ? bundledReadex : android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL));
+                    fontTitle.setTypeface(selectedTypeface, android.graphics.Typeface.BOLD);
+                    explanation.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                 });
                 choices.addView(option);
             }
@@ -167,20 +177,25 @@ s = s.replace(anchor, anchor + """
             note.setTextSize(13);
             note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
             content.addView(note);
-            fontTitle.setTypeface("readex-pro".equals(selectedFont) ? bundledReadex : android.graphics.Typeface.create(selectedFont, android.graphics.Typeface.BOLD));
-            explanation.setTypeface("readex-pro".equals(selectedFont) ? bundledReadex : android.graphics.Typeface.create(selectedFont, android.graphics.Typeface.NORMAL));
+            for (int i = 0; i < families.length; i++) {
+                if (families[i].equals(selectedFont)) {
+                    fontTitle.setTypeface(fonts[i], android.graphics.Typeface.BOLD);
+                    explanation.setTypeface(fonts[i], android.graphics.Typeface.NORMAL);
+                    break;
+                }
+            }
         }
 """, 1)
 
 for lang, labels in {
-    "values": ("Settings typography", "Readex Pro", "Sans-serif", "Serif", "Readex Pro is bundled. The choice is saved for Telegram's supported bundled text styles. Some system text may use a different font; reopen the app to refresh existing screens."),
-    "values-ar": ("خط إعدادات التطبيق", "Readex Pro", "بدون حواف", "بحواف", "أُدمج خط Readex Pro في التطبيق. يُحفظ الاختيار لأنماط النصوص المدعومة في Telegram. قد تستخدم بعض النصوص النظامية خطًا مختلفًا؛ أعد فتح التطبيق لتحديث الشاشات."),
+    "values": ("Settings typography", "Readex Pro", "Sans-serif", "Serif", "Readex Pro is bundled. The choice is saved for Telegram's supported bundled text styles. Some system text may use a different font; reopen the app to refresh existing screens.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"),
+    "values-ar": ("خط إعدادات التطبيق", "Readex Pro", "بدون حواف", "بحواف", "أُدمج خط Readex Pro في التطبيق. يُحفظ الاختيار لأنماط النصوص المدعومة في Telegram. قد تستخدم بعض النصوص النظامية خطًا مختلفًا؛ أعد فتح التطبيق لتحديث الشاشات.", "وزير متن", "نوتو سانس عربي", "تجوال", "روبيك"),
 }.items():
     res = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     xml = res.read_text(encoding="utf-8")
     if xml.count("</resources>") != 1:
         raise SystemExit("Unexpected resource structure for font labels")
-    keys = ("NabdhFontTitle", "NabdhFontReadex", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope")
+    keys = ("NabdhFontTitle", "NabdhFontReadex", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope", "NabdhFontVazirmatn", "NabdhFontNotoSansArabic", "NabdhFontTajawal", "NabdhFontRubik")
     extra = "".join('    <string name="' + k + '">' + escape(v).replace("'", "\\'") + '</string>\n' for k, v in zip(keys, labels))
     res.write_text(xml.replace("</resources>", extra + "</resources>", 1), encoding="utf-8")
 child.write_text(s, encoding="utf-8")
