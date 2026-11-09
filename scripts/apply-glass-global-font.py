@@ -11,6 +11,25 @@ if len(sys.argv) != 2:
     raise SystemExit("Usage: apply-glass-global-font.py TELEGRAM_SOURCE")
 p = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/messenger/AndroidUtilities.java"
 s = p.read_text(encoding="utf-8")
+bold_anchor = "    public static Typeface bold() {\n"
+if s.count(bold_anchor) != 1:
+    raise SystemExit("AndroidUtilities.bold anchor changed")
+bold_replacement = """    public static Typeface bold() {
+        // A saved custom font must take priority over Android's cached
+        // mediumTypeface. This also refreshes headings when users switch fonts.
+        if (ApplicationLoader.applicationContext != null) {
+            String selectedFamily = ApplicationLoader.applicationContext
+                    .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
+                    .getString("font_family", "readex-pro");
+            if (!"sans-serif".equals(selectedFamily)) {
+                Typeface chosenBold = getTypeface(TYPEFACE_ROBOTO_MEDIUM);
+                if (chosenBold != null) {
+                    return chosenBold;
+                }
+            }
+        }
+"""
+s = s.replace(bold_anchor, bold_replacement, 1)
 anchor = "    public static Typeface getTypeface(String assetPath) {\n"
 if s.count(anchor) != 1:
     raise SystemExit("AndroidUtilities.getTypeface anchor changed")

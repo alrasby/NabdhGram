@@ -29,8 +29,7 @@ addition = r'''
                     private final Paint pinnedGroupPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                     {
                         labelPaint.setTextSize(dp(14));
-                        labelPaint.setTypeface(android.graphics.Typeface.create(
-                                "sans-serif-medium", android.graphics.Typeface.NORMAL));
+                        labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.bold());
                     }
 
                     private int sectionAt(int position) {

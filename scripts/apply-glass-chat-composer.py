@@ -36,7 +36,47 @@ replacement = """        // NabdhGram Glass: light, theme-aware input surface. K
                 ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT)
                 | android.view.Gravity.BOTTOM);
         messageEditText.setTextDirection(android.view.View.TEXT_DIRECTION_FIRST_STRONG);
+        nabdhRefreshComposerFont();
         messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));"""
 s=s.replace(anchor,replacement,1)
+
+resume_anchor = """    public void onResume() {
+        isPaused = false;"""
+if s.count(resume_anchor) != 1:
+    raise SystemExit("ChatActivityEnterView resume anchor changed")
+resume_replacement = """    // Read persisted typography for both the message and its localized hint.
+    // Refresh on return to an existing chat, not just on initial construction.
+    private String nabdhAppliedComposerFamily;
+
+    private void nabdhRefreshComposerFont() {
+        if (messageEditText == null) {
+            return;
+        }
+        String family = getContext().getSharedPreferences(
+                "nabdhgram_appearance", android.content.Context.MODE_PRIVATE)
+                .getString("font_family", "readex-pro");
+        if (family.equals(nabdhAppliedComposerFamily)) {
+            return;
+        }
+        android.graphics.Typeface chosen;
+        if ("sans-serif".equals(family) || "serif".equals(family)) {
+            chosen = android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL);
+        } else {
+            String filename = "vazirmatn".equals(family) ? "Vazirmatn.ttf"
+                    : "noto-sans-arabic".equals(family) ? "NotoSansArabic.ttf"
+                    : "tajawal".equals(family) ? "Tajawal.ttf"
+                    : "rubik".equals(family) ? "Rubik.ttf" : "ReadexPro.ttf";
+            chosen = org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + filename);
+        }
+        if (chosen != null) {
+            messageEditText.setTypeface(chosen);
+            nabdhAppliedComposerFamily = family;
+        }
+    }
+
+    public void onResume() {
+        isPaused = false;
+        nabdhRefreshComposerFont();"""
+s = s.replace(resume_anchor, resume_replacement, 1)
 p.write_text(s,encoding="utf-8")
 print("Glass message entry surface applied.")
