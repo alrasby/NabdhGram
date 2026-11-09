@@ -13,8 +13,7 @@ p = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui/LaunchActiv
 s = p.read_text(encoding="utf-8")
 anchor = """    @Override
     protected void onResume() {
-        super.onResume();
-        isResumed = true;"""
+        super.onResume();"""
 if s.count(anchor) != 1:
     raise SystemExit("LaunchActivity onResume anchor changed")
 field_anchor = "    View feedbackView;\n"
@@ -85,7 +84,7 @@ replacement = """    @Override
             getWindow().getDecorView().getViewTreeObserver()
                     .addOnGlobalLayoutListener(nabdhFontLayoutListener);
         }
-        isResumed = true;"""
+"""
 s = s.replace(anchor,replacement,1)
 p.write_text(s,encoding="utf-8")
 print("NabdhGram visible native labels now honor persisted font.")
