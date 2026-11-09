@@ -12,7 +12,18 @@ ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
 dialogs = (ui / "DialogsActivity.java").read_text(encoding="utf-8")
 cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
 settings = (ui / "NabdhGramSettingsActivity.java").read_text(encoding="utf-8")
+selector = (ui / "Components/RecyclerListView.java").read_text(encoding="utf-8")
+typefaces = (root / "TMessagesProj/src/main/java/org/telegram/messenger/AndroidUtilities.java").read_text(encoding="utf-8")
 checks = {
+    "dialog selector rounded clipping installed": "selectorView instanceof org.telegram.ui.Cells.DialogCell" in selector
+        and "canvas.clipPath(nabdhDialogSelectorPath)" in selector
+        and "selectorRect.left + 7f * density" in selector
+        and "selectorRect.bottom - 3f * density" in selector,
+    "selector canvas state restored": "if (nabdhDialog) {\\n            canvas.restore();" in selector,
+    "font preference consumed by Telegram typeface resolver": 'getString("font_family", "readex-pro")' in typefaces
+        and 'getTypeface("fonts/ReadexPro.ttf")' in typefaces
+        and '"sans-serif".equals(family)' in typefaces
+        and '"serif".equals(family)' in typefaces,
     "appearance font preference persisted": 'getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
         and 'putString("font_family", family).apply()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
     "settings card native ripple": "new android.graphics.drawable.RippleDrawable(" in settings
