@@ -35,6 +35,7 @@ s = s.replace(anchor, """        canvas.restore();
                 // drawArchive defaults to true for ordinary Telegram dialogs;
                 // it is NOT an archive-row test. Use folder ID instead.
                 && !isTopic
+                && !(getParent() instanceof ProfileChannelCell)
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12)) {
             final int surface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
             final boolean dark = android.graphics.Color.red(surface)
