@@ -15,7 +15,9 @@ settings = (ui / "NabdhGramSettingsActivity.java").read_text(encoding="utf-8")
 selector = (ui / "Components/RecyclerListView.java").read_text(encoding="utf-8")
 typefaces = (root / "TMessagesProj/src/main/java/org/telegram/messenger/AndroidUtilities.java").read_text(encoding="utf-8")
 composer = (ui / "Components/ChatActivityEnterView.java").read_text(encoding="utf-8")
+contacts = (ui / "ContactsActivity.java").read_text(encoding="utf-8")
 checks = {
+    "contacts rounded selector": "listView.setSelectorRadius(17);" in contacts,
     "chat composer rounded theme surface": "messageEditText.setBackground(nabdhInputGlass)" in composer
         and "nabdhInputGlass.setCornerRadius(dp(19))" in composer
         and "Theme.key_chat_messagePanelBackground" in composer,
