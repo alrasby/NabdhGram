@@ -67,7 +67,8 @@ addition = r'''
                                 top = Math.min(top, child.getTop());
                                 bottom = Math.max(bottom, child.getBottom());
                                 Object previous = position > 0 ? viewPage.dialogsAdapter.getItem(position - 1) : null;
-                                Object next = viewPage.dialogsAdapter.getItem(position + 1);
+                                Object next = position + 1 < viewPage.dialogsAdapter.getItemCount()
+                                        ? viewPage.dialogsAdapter.getItem(position + 1) : null;
                                 if (!(previous instanceof TLRPC.Dialog) || !((TLRPC.Dialog) previous).pinned) {
                                     hasFirstPinnedRow = true;
                                 }
