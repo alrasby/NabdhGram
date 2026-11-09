@@ -23,7 +23,19 @@ universal = (ui / "Components/UniversalAdapter.java").read_text(encoding="utf-8"
 launch = (ui / "LaunchActivity.java").read_text(encoding="utf-8")
 font_assets = root / "TMessagesProj/src/main/assets/fonts"
 font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf")
+localized = (ui / "NabdhStrings.java").read_text(encoding="utf-8")
+feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
 checks = {
+    "custom labels follow Telegram locale": "getCurrentLocale()" in localized
+        and "createConfigurationContext(config)" in localized
+        and "NabdhStrings.get(context," in settings
+        and "NabdhStrings.get(context," in feature,
+    "chat section headings localized": "NabdhStrings.get(context, section == 1" in dialogs,
+    "appearance RTL layout": "content.setLayoutDirection(" in feature
+        and "LocaleController.isRTL" in feature,
+    "composer native RTL hint renderer enabled": "messageEditText.setSupportRtlHint(true)" in composer,
+    "appearance font options in Glass surface": "fontCard.setBackground(fontGlass)" in feature
+        and "fontCard.addView(choices);" in feature,
     "all selected fonts bundled": all((font_assets / name).is_file() and (font_assets / name).stat().st_size > 10000 for name in font_files),
     "font options mapped to native renderer": all(name in launch for name in font_files),
     "font options mapped to Telegram typefaces": all(name in typefaces for name in font_files),

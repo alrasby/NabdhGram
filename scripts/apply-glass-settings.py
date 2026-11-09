@@ -125,13 +125,27 @@ if s.count(anchor) != 1:
     raise SystemExit("Expected category explanation insertion point")
 s = s.replace(anchor, anchor + """
         if (titleRes == R.string.NabdhAppearanceTitle) {
+            // Dedicated static Glass surface: no blur, no animated gradients.
+            LinearLayout fontCard = new LinearLayout(context);
+            fontCard.setOrientation(LinearLayout.VERTICAL);
+            int fontPad = (int) (18 * context.getResources().getDisplayMetrics().density);
+            fontCard.setPadding(fontPad, fontPad, fontPad, fontPad);
+            GradientDrawable fontGlass = new GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    new int[] {Theme.getColor(Theme.key_windowBackgroundWhite),
+                            dark ? 0xFF103D44 : 0xFFE7F8F7});
+            fontGlass.setCornerRadius(22 * context.getResources().getDisplayMetrics().density);
+            fontGlass.setStroke((int) context.getResources().getDisplayMetrics().density,
+                    dark ? 0xFF187F89 : 0xFFB8E2E3);
+            fontCard.setBackground(fontGlass);
             TextView fontTitle = new TextView(context);
             fontTitle.setText(context.getString(R.string.NabdhFontTitle));
             fontTitle.setTextSize(18);
             fontTitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
             LinearLayout.LayoutParams fontParams = new LinearLayout.LayoutParams(-1, -2);
             fontParams.topMargin = (int) (18 * context.getResources().getDisplayMetrics().density);
-            content.addView(fontTitle, fontParams);
+            content.addView(fontCard, fontParams);
+            fontCard.addView(fontTitle);
             android.widget.RadioGroup choices = new android.widget.RadioGroup(context);
             choices.setOrientation(android.widget.RadioGroup.VERTICAL);
             android.content.SharedPreferences prefs = context.getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE);
@@ -173,12 +187,12 @@ s = s.replace(anchor, anchor + """
                 });
                 choices.addView(option);
             }
-            content.addView(choices);
+            fontCard.addView(choices);
             TextView note = new TextView(context);
             note.setText(context.getString(R.string.NabdhFontScope));
             note.setTextSize(13);
             note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
-            content.addView(note);
+            fontCard.addView(note);
             for (int i = 0; i < families.length; i++) {
                 if (families[i].equals(selectedFont)) {
                     fontTitle.setTypeface(fonts[i], android.graphics.Typeface.BOLD);
@@ -190,8 +204,8 @@ s = s.replace(anchor, anchor + """
 """, 1)
 
 for lang, labels in {
-    "values": ("Settings typography", "Readex Pro", "Sans-serif", "Serif", "Readex Pro is bundled. The choice is saved for Telegram's supported bundled text styles. Some system text may use a different font; reopen the app to refresh existing screens.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"),
-    "values-ar": ("خط إعدادات التطبيق", "Readex Pro", "بدون حواف", "بحواف", "أُدمج خط Readex Pro في التطبيق. يُحفظ الاختيار لأنماط النصوص المدعومة في Telegram. قد تستخدم بعض النصوص النظامية خطًا مختلفًا؛ أعد فتح التطبيق لتحديث الشاشات.", "وزير متن", "نوتو سانس عربي", "تجوال", "روبيك"),
+    "values": ("Application font", "Readex Pro", "Sans-serif", "Serif", "The font is saved and restored when you reopen NabdhGram. Some system-controlled surfaces may retain their own typography.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"),
+    "values-ar": ("خط التطبيق", "Readex Pro", "بدون حواف", "بحواف", "يُحفظ الخط المختار ويُستعاد عند فتح نبض جرام. قد تحتفظ بعض عناصر النظام بخطها الخاص.", "وزير متن", "نوتو سانس عربي", "تجوال", "روبيك"),
 }.items():
     res = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     xml = res.read_text(encoding="utf-8")

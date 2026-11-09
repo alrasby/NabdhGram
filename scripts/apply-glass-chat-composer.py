@@ -36,6 +36,9 @@ replacement = """        // NabdhGram Glass: light, theme-aware input surface. K
                 ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT)
                 | android.view.Gravity.BOTTOM);
         messageEditText.setTextDirection(android.view.View.TEXT_DIRECTION_FIRST_STRONG);
+        // EditTextBoldCursor draws hints on its own canvas, independently
+        // of Android TextView gravity. Enable its native RTL hint positioning.
+        messageEditText.setSupportRtlHint(true);
         nabdhRefreshComposerFont();
         messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));"""
 s=s.replace(anchor,replacement,1)
