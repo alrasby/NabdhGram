@@ -118,5 +118,63 @@ s = s.replace(anchor, """        int base = Theme.getColor(Theme.key_windowBackg
         explanation.setPadding(pad, pad, pad, pad);
         explanation.setBackground(infoCard);
         content.addView(explanation);""", 1)
+# Add a working, locally persisted typography preference to the Appearance page.
+# This changes only NabdhGram-owned settings views, not Telegram chat text.
+anchor = "        content.addView(explanation);"
+if s.count(anchor) != 1:
+    raise SystemExit("Expected category explanation insertion point")
+s = s.replace(anchor, anchor + """
+        if (titleRes == R.string.NabdhAppearanceTitle) {
+            TextView fontTitle = new TextView(context);
+            fontTitle.setText(context.getString(R.string.NabdhFontTitle));
+            fontTitle.setTextSize(18);
+            fontTitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            LinearLayout.LayoutParams fontParams = new LinearLayout.LayoutParams(-1, -2);
+            fontParams.topMargin = (int) (18 * context.getResources().getDisplayMetrics().density);
+            content.addView(fontTitle, fontParams);
+            android.widget.RadioGroup choices = new android.widget.RadioGroup(context);
+            choices.setOrientation(android.widget.RadioGroup.VERTICAL);
+            android.content.SharedPreferences prefs = context.getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE);
+            String selectedFont = prefs.getString("font_family", "sans-serif");
+            String[] families = {"sans-serif", "serif"};
+            int[] names = {R.string.NabdhFontSans, R.string.NabdhFontSerif};
+            for (int i = 0; i < families.length; i++) {
+                final String family = families[i];
+                android.widget.RadioButton option = new android.widget.RadioButton(context);
+                option.setId(View.generateViewId());
+                option.setText(context.getString(names[i]));
+                option.setTextSize(16);
+                option.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+                option.setTypeface(android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL));
+                option.setChecked(family.equals(selectedFont));
+                option.setOnClickListener(v -> {
+                    prefs.edit().putString("font_family", family).apply();
+                    fontTitle.setTypeface(android.graphics.Typeface.create(family, android.graphics.Typeface.BOLD));
+                    explanation.setTypeface(android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL));
+                });
+                choices.addView(option);
+            }
+            content.addView(choices);
+            TextView note = new TextView(context);
+            note.setText(context.getString(R.string.NabdhFontScope));
+            note.setTextSize(13);
+            note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+            content.addView(note);
+            fontTitle.setTypeface(android.graphics.Typeface.create(selectedFont, android.graphics.Typeface.BOLD));
+            explanation.setTypeface(android.graphics.Typeface.create(selectedFont, android.graphics.Typeface.NORMAL));
+        }
+""", 1)
+
+for lang, labels in {
+    "values": ("Settings typography", "Sans-serif", "Serif", "Applies to this settings preview only. Chat font and Readex Pro integration are not yet available."),
+    "values-ar": ("خط إعدادات التطبيق", "بدون حواف", "بحواف", "ينطبق حاليًا على معاينة هذه الصفحة فقط. خط المحادثات وخط Readex Pro لم يُدمجا بعد."),
+}.items():
+    res = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
+    xml = res.read_text(encoding="utf-8")
+    if xml.count("</resources>") != 1:
+        raise SystemExit("Unexpected resource structure for font labels")
+    keys = ("NabdhFontTitle", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope")
+    extra = "".join('    <string name="' + k + '">' + escape(v) + '</string>\\n' for k, v in zip(keys, labels))
+    res.write_text(xml.replace("</resources>", extra + "</resources>", 1), encoding="utf-8")
 child.write_text(s, encoding="utf-8")
 print("Applied theme-aware NabdhGram Glass cards to the six settings categories.")
