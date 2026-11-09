@@ -165,7 +165,9 @@ s = s.replace(anchor, anchor + """
                 option.setTypeface(selectedTypeface);
                 option.setChecked(family.equals(selectedFont));
                 option.setOnClickListener(v -> {
-                    prefs.edit().putString("font_family", family).apply();
+                    // Commit this tiny setting synchronously so immediate app exit
+                    // cannot leave the font selection pending on disk.
+                    prefs.edit().putString("font_family", family).commit();
                     fontTitle.setTypeface(selectedTypeface, android.graphics.Typeface.BOLD);
                     explanation.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                 });
