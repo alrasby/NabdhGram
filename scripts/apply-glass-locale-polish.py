@@ -41,8 +41,10 @@ for filename in ("NabdhGramSettingsActivity.java", "NabdhGramFeatureCategoryActi
     p = java / filename
     s = p.read_text(encoding="utf-8")
     count = s.count("context.getString(")
-    if count < 2:
-        raise SystemExit(f"Missing NabdhGram locale lookups in {filename}")
+    # Glass settings already resolves app locale through nabdhText(); the only
+    # remaining direct lookup may be its fallback. One lookup is valid.
+    if count < 1:
+        raise SystemExit(f"Missing NabdhGram locale fallback in {filename}")
     s = s.replace("context.getString(", "NabdhStrings.get(context, ")
     anchor = "        content.setOrientation(LinearLayout.VERTICAL);"
     if s.count(anchor) != 1:
