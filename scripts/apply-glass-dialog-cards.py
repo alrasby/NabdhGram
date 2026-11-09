@@ -44,6 +44,8 @@ s = s.replace(anchor, """        canvas.restore();
                     ? (dark ? 0xFF146E75 : 0xFFB6E9E6)
                     : pinned ? (dark ? 0xFF104B52 : 0xFFE0F5F2)
                     : (dark ? 0xFF203A42 : 0xFFEAF6F5);
+            // Keep Telegram's selection feedback, but confine our Glass
+            // surface to the same rounded bounds for every dialog row.
             nabdhCardPaint.setColor(fill);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
             nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
