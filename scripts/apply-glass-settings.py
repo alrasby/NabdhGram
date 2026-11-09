@@ -83,7 +83,7 @@ summaries = {
         "Productivity": "Organize and focus • In development",
         "Language": "Translation and voice • In development",
         "Network": "Connection and downloads • In development",
-        "Appearance": "Themes and personalization • In development",
+        "Appearance": "Glass appearance and application fonts • Available",
     },
     "values-ar": {
         "Shield": "أمان الروابط والملفات • قيد التطوير",
@@ -91,7 +91,7 @@ summaries = {
         "Productivity": "التنظيم والتركيز • قيد التطوير",
         "Language": "الترجمة والصوت • قيد التطوير",
         "Network": "الاتصال والتنزيلات • قيد التطوير",
-        "Appearance": "السمات والتخصيص • قيد التطوير",
+        "Appearance": "مظهر Glass وخطوط التطبيق • متاحان",
     },
 }
 for lang, mapping in summaries.items():

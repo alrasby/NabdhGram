@@ -25,7 +25,15 @@ font_assets = root / "TMessagesProj/src/main/assets/fonts"
 font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf")
 localized = (ui / "NabdhStrings.java").read_text(encoding="utf-8")
 feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
+appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
+appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "appearance settings describe working Glass and fonts": "Choose the application font below." in appearance_en
+        and "اختر خط التطبيق أدناه." in appearance_ar
+        and "Glass appearance and application fonts" in appearance_en
+        and "مظهر Glass وخطوط التطبيق" in appearance_ar
+        and "Planned: Glass themes, fonts and personalization. Not enabled yet." not in appearance_en
+        and "قيد التطوير: ثيمات Glass والخطوط وخيارات التخصيص. لم تُفعّل بعد." not in appearance_ar,
     "custom labels follow Telegram locale": "getCurrentLocale()" in localized
         and "createConfigurationContext(config)" in localized
         and "NabdhStrings.get(context," in settings
