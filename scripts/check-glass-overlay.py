@@ -127,7 +127,7 @@ checks = {
     "archive gets its own rounded card": "final boolean archived = isFolderCell();" in cell,
     "archive folder remains outside pinned group": all(
         token in dialogs for token in (
-            "if (dialog.isFolder) return 3;",
+            "if (dialog.isFolder) continue;",
             "if (position == firstPinned) return 1;", 
             "!((TLRPC.Dialog) item).isFolder", 
         )
