@@ -40,15 +40,23 @@ addition = r'''
                         if (!(current instanceof TLRPC.Dialog)) {
                             return 0;
                         }
-                        boolean pinned = ((TLRPC.Dialog) current).pinned;
-                        Object previous = position > 0 ? viewPage.dialogsAdapter.getItem(position - 1) : null;
-                        boolean wasPinned = previous instanceof TLRPC.Dialog
-                                && ((TLRPC.Dialog) previous).pinned;
-                        if (pinned && !wasPinned) return 1;
-                        if (!pinned && wasPinned) return 2;
-                        // Chats without pinned dialogs still need a clear
-                        // section heading. Skip Telegram's non-dialog headers.
-                        if (!pinned && position == 0) return 2;
+                        TLRPC.Dialog dialog = (TLRPC.Dialog) current;
+                        // The archive is represented by a folder dialog. Its
+                        // pinned flag must never make it part of the pinned group.
+                        if (dialog.isFolder) return 3;
+                        boolean earlierNormal = false;
+                        boolean earlierPinned = false;
+                        for (int i = position - 1; i >= 0; --i) {
+                            Object previous = viewPage.dialogsAdapter.getItem(i);
+                            if (previous instanceof TLRPC.Dialog
+                                    && !((TLRPC.Dialog) previous).isFolder) {
+                                earlierNormal = true;
+                                earlierPinned = ((TLRPC.Dialog) previous).pinned;
+                                break;
+                            }
+                        }
+                        if (dialog.pinned && (!earlierNormal || !earlierPinned)) return 1;
+                        if (!dialog.pinned && (!earlierNormal || earlierPinned)) return 2;
                         return 0;
                     }
 
@@ -65,16 +73,19 @@ addition = r'''
                             int position = parent.getChildAdapterPosition(child);
                             Object item = position == RecyclerView.NO_POSITION
                                     ? null : viewPage.dialogsAdapter.getItem(position);
-                            if (item instanceof TLRPC.Dialog && ((TLRPC.Dialog) item).pinned) {
+                            if (item instanceof TLRPC.Dialog && !((TLRPC.Dialog) item).isFolder
+                                    && ((TLRPC.Dialog) item).pinned) {
                                 top = Math.min(top, child.getTop());
                                 bottom = Math.max(bottom, child.getBottom());
                                 Object previous = position > 0 ? viewPage.dialogsAdapter.getItem(position - 1) : null;
                                 Object next = position + 1 < viewPage.dialogsAdapter.getItemCount()
                                         ? viewPage.dialogsAdapter.getItem(position + 1) : null;
-                                if (!(previous instanceof TLRPC.Dialog) || !((TLRPC.Dialog) previous).pinned) {
+                                if (!(previous instanceof TLRPC.Dialog) || ((TLRPC.Dialog) previous).isFolder
+                                        || !((TLRPC.Dialog) previous).pinned) {
                                     hasFirstPinnedRow = true;
                                 }
-                                if (!(next instanceof TLRPC.Dialog) || !((TLRPC.Dialog) next).pinned) {
+                                if (!(next instanceof TLRPC.Dialog) || ((TLRPC.Dialog) next).isFolder
+                                        || !((TLRPC.Dialog) next).pinned) {
                                     hasLastPinnedRow = true;
                                 }
                             }
@@ -117,7 +128,8 @@ addition = r'''
                             int position = parent.getChildAdapterPosition(child);
                             Object item = position == RecyclerView.NO_POSITION
                                     ? null : viewPage.dialogsAdapter.getItem(position);
-                            if (item instanceof TLRPC.Dialog && ((TLRPC.Dialog) item).pinned) {
+                            if (item instanceof TLRPC.Dialog && !((TLRPC.Dialog) item).isFolder
+                                    && ((TLRPC.Dialog) item).pinned) {
                                 groupTop = Math.min(groupTop, child.getTop());
                                 groupBottom = Math.max(groupBottom, child.getBottom());
                             }
@@ -139,8 +151,9 @@ addition = r'''
                                 java.util.Locale appLocale = org.telegram.messenger.LocaleController.getInstance().getCurrentLocale();
                                 boolean arabic = appLocale != null && "ar".equals(appLocale.getLanguage());
                                 String title = arabic
-                                        ? (section == 1 ? "المحادثات المثبتة" : "بقية المحادثات")
-                                        : context.getString(section == 1
+                                        ? (section == 3 ? "المحادثات المؤرشفة"
+                                            : section == 1 ? "المحادثات المثبتة" : "بقية المحادثات")
+                                        : section == 3 ? "Archived chats" : context.getString(section == 1
                                             ? R.string.NabdhGlassPinnedChats : R.string.NabdhGlassOtherChats);
                                 canvas.drawText(title, x, child.getTop() - dp(12), labelPaint);
                             }
