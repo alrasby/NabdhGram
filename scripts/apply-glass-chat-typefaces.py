@@ -19,11 +19,16 @@ for name, constructor in (
     ("chat_explanationTextPaint", "TextPaint"),
 ):
     anchor = f"{name} = new TextPaint({constructor}.ANTI_ALIAS_FLAG);"
-    if source.count(anchor) != 1:
-        raise SystemExit(f"Telegram chat text paint anchor changed: {name}")
+    # The reply TextPaint is initialized in both resource initialization
+    # paths. Apply the family to each one, not only the first occurrence.
+    expected = 2 if name == "chat_replyTextPaint" else 1
+    if source.count(anchor) != expected:
+        raise SystemExit(
+            f"Telegram chat text paint anchor changed: {name} (expected {expected}, found {source.count(anchor)})"
+        )
     source = source.replace(anchor,
                             anchor + "\n                " + name
                             + '.setTypeface(AndroidUtilities.getTypeface("fonts/rregular.ttf"));',
-                            1)
+                            expected)
 path.write_text(source, encoding="utf-8")
 print("Chat message/reply/quote paint now honors selected NabdhGram font.")
