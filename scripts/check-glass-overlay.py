@@ -63,6 +63,16 @@ checks = {
         "subtitleY = titleY + Math.max(dp(23), docTitleLayout.getHeight() + dp(7));" in document_cell
         and "photoHeight = Math.max(photoHeight, docTitleLayout.getHeight() + dp(32));" in document_cell,
     "archive gets its own rounded card": "final boolean archived = isFolderCell();" in cell,
+    "archive folder remains outside pinned group": all(
+        token in dialogs for token in (
+            "if (dialog.isFolder) return 3;",
+            "section == 3 ? \"Archived chats\"",
+            "!((TLRPC.Dialog) item).isFolder",
+        )
+    ),
+    "archive/pinned separation retains original adapter indices":
+        "viewPage.listView.addItemDecoration(new RecyclerView.ItemDecoration()" in dialogs,
+
     "unread badges centered for every count animation": all(
         f"nabdhBadgeTextOffset({layout})" in cell
         for layout in ("countLayout", "countOldLayout", "countAnimationStableLayout", "countAnimationInLayout")
