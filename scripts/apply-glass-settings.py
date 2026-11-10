@@ -72,6 +72,46 @@ s = s.replace(summary_anchor, """int summaryRes = R.string.NabdhGlassAppearanceS
         else if (titleRes == R.string.NabdhLanguageTitle) summaryRes = R.string.NabdhGlassLanguageSummary;
         else if (titleRes == R.string.NabdhNetworkTitle) summaryRes = R.string.NabdhGlassNetworkSummary;
         description.setText(context.getString(summaryRes));""", 1)
+# Native icon-backed Glass category headers. Reuse Telegram artwork rather
+# than inventing emoji/icon fonts, and preserve each card's action semantics.
+header_anchor = "        card.addView(heading);"
+if s.count(header_anchor) != 1:
+    raise SystemExit("NabdhGram card heading anchor changed")
+s = s.replace(header_anchor, """        // NabdhGram Glass: category icon + headline in one adaptive row.
+        // Existing native icons follow the active .attheme accent.
+        int iconRes = titleRes == R.string.NabdhShieldTitle ? R.drawable.settings_privacy
+                : titleRes == R.string.NabdhPrivacyTitle ? R.drawable.settings_devices
+                : titleRes == R.string.NabdhProductivityTitle ? R.drawable.settings_folders
+                : titleRes == R.string.NabdhLanguageTitle ? R.drawable.settings_language
+                : titleRes == R.string.NabdhNetworkTitle ? R.drawable.settings_data
+                : R.drawable.settings_chat;
+        int iconSize = (int) (44 * context.getResources().getDisplayMetrics().density);
+        int innerSize = (int) (25 * context.getResources().getDisplayMetrics().density);
+        LinearLayout titleRow = new LinearLayout(context);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        titleRow.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
+                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        android.widget.FrameLayout iconFrame = new android.widget.FrameLayout(context);
+        GradientDrawable iconGlass = new GradientDrawable();
+        iconGlass.setColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        iconGlass.setCornerRadius(iconSize * 0.30f);
+        iconGlass.setStroke(Math.max(1, (int) context.getResources().getDisplayMetrics().density),
+                Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        iconFrame.setBackground(iconGlass);
+        android.widget.ImageView categoryIcon = new android.widget.ImageView(context);
+        categoryIcon.setImageResource(iconRes);
+        categoryIcon.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        iconFrame.addView(categoryIcon,
+                new android.widget.FrameLayout.LayoutParams(innerSize, innerSize, android.view.Gravity.CENTER));
+        titleRow.addView(iconFrame, new LinearLayout.LayoutParams(iconSize, iconSize));
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        int titleGap = (int) (12 * context.getResources().getDisplayMetrics().density);
+        if (org.telegram.messenger.LocaleController.isRTL) titleParams.rightMargin = titleGap;
+        else titleParams.leftMargin = titleGap;
+        titleRow.addView(heading, titleParams);
+        card.addView(titleRow);""", 1)
+
 main.write_text(s, encoding="utf-8")
 
 # Keep translations in the same module as generated SettingsActivity.
