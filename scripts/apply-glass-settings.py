@@ -74,7 +74,7 @@ card_init = "        LinearLayout card = new LinearLayout(context);"
 if s.count(card_init) != 1:
     raise SystemExit("NabdhGram category card constructor changed")
 s = s.replace(card_init,
-    '        boolean gridCard = "nabdhGridRow".equals(parent.getTag());\\n' + card_init, 1)
+    '        boolean gridCard = "nabdhGridRow".equals(parent.getTag());\n' + card_init, 1)
 card_lp = "        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);"
 if s.count(card_lp) != 1:
     raise SystemExit("NabdhGram category card layout changed")
@@ -180,7 +180,7 @@ calls = [
     ("NabdhNetworkTitle", "NabdhNetworkExplanation"),
     ("NabdhAppearanceTitle", "NabdhAppearanceExplanation"),
 ]
-original_cards = "\\n".join(
+original_cards = "\n".join(
     f"        section(context, content, R.string.{title}, R.string.{description});"
     for title, description in calls
 )
@@ -204,7 +204,7 @@ for i in range(0, len(calls), 2):
     for title, desc in calls[i:i + 2]:
         grid_lines.append(f"            section(context, {row}, R.string.{title}, R.string.{desc});")
 grid_lines.extend(["        } else {", original_cards, "        }"])
-s = s.replace(original_cards, "\\n".join(grid_lines), 1)
+s = s.replace(original_cards, "\n".join(grid_lines), 1)
 
 main.write_text(s, encoding="utf-8")
 
