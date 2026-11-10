@@ -170,8 +170,9 @@ s = s.replace(header_anchor, """        // NabdhGram Glass: category icon + head
                 new LinearLayout.LayoutParams(-2, -2));
         card.addView(titleRow);""", 1)
 
-# Responsive two-column Glass categories on normal handsets, with a
-# single-column fallback for large accessibility text or compact displays.
+# Build responsive rows without assuming the six category invocations are
+# adjacent: the upstream NabdhGram page also contains privacy controls and
+# other generated content between some sections.
 calls = [
     ("NabdhShieldTitle", "NabdhShieldExplanation"),
     ("NabdhPrivacyTitle", "NabdhPrivacyExplanation"),
@@ -180,31 +181,32 @@ calls = [
     ("NabdhNetworkTitle", "NabdhNetworkExplanation"),
     ("NabdhAppearanceTitle", "NabdhAppearanceExplanation"),
 ]
-original_cards = "\n".join(
-    f"        section(context, content, R.string.{title}, R.string.{description});"
-    for title, description in calls
-)
-if s.count(original_cards) != 1:
-    raise SystemExit("NabdhGram settings category order changed")
-grid_lines = [
-    "        boolean compactGrid = context.getResources().getConfiguration().screenWidthDp >= 360",
-    "                && context.getResources().getConfiguration().fontScale <= 1.15f;",
-    "        if (compactGrid) {",
-]
-for i in range(0, len(calls), 2):
-    row = f"nabdhRow{i // 2}"
-    grid_lines.extend([
-        f"            LinearLayout {row} = new LinearLayout(context);",
-        f"            {row}.setOrientation(LinearLayout.HORIZONTAL);",
-        f"            {row}.setTag(\"nabdhGridRow\");",
-        f"            {row}.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL",
-        "                    ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);",
-        f"            content.addView({row}, new LinearLayout.LayoutParams(-1, -2));",
-    ])
-    for title, desc in calls[i:i + 2]:
-        grid_lines.append(f"            section(context, {row}, R.string.{title}, R.string.{desc});")
-grid_lines.extend(["        } else {", original_cards, "        }"])
-s = s.replace(original_cards, "\n".join(grid_lines), 1)
+first = f"        section(context, content, R.string.{calls[0][0]}, R.string.{calls[0][1]});"
+if s.count(first) != 1:
+    raise SystemExit("NabdhGram first category entry changed")
+grid_setup = """        boolean compactGrid = context.getResources().getConfiguration().screenWidthDp >= 360
+                && context.getResources().getConfiguration().fontScale <= 1.15f;
+        LinearLayout[] nabdhRows = null;
+        if (compactGrid) {
+            nabdhRows = new LinearLayout[3];
+            for (int idx = 0; idx < nabdhRows.length; idx++) {
+                LinearLayout row = new LinearLayout(context);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
+                        ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+                row.setTag("nabdhGridRow");
+                content.addView(row, new LinearLayout.LayoutParams(-1, -2));
+                nabdhRows[idx] = row;
+            }
+        }
+"""
+s = s.replace(first, grid_setup + first, 1)
+for idx, (title, description) in enumerate(calls):
+    old = f"section(context, content, R.string.{title}, R.string.{description});"
+    new = f"section(context, compactGrid ? nabdhRows[{idx // 2}] : content, R.string.{title}, R.string.{description});"
+    if s.count(old) != 1:
+        raise SystemExit(f"NabdhGram category entry changed: {title}")
+    s = s.replace(old, new, 1)
 
 main.write_text(s, encoding="utf-8")
 
