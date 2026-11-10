@@ -31,6 +31,18 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
     private android.view.ViewTreeObserver.OnGlobalLayoutListener nabdhFontLayoutListener;
     private android.view.ViewTreeObserver.OnPreDrawListener nabdhFontPreDrawListener;
 
+    // Appearance is a Telegram fragment; returning to it does not restart
+    // LaunchActivity. Allow explicit refresh within the same Activity.
+    public void nabdhRefreshAllFonts() {
+        nabdhFontDirty = true;
+        nabdhApplyVisibleFonts();
+        android.view.View decor = getWindow() == null ? null : getWindow().getDecorView();
+        if (decor != null) {
+            decor.requestLayout();
+            decor.invalidate();
+        }
+    }
+
     private void nabdhApplyVisibleFonts() {
         final android.view.View root = getWindow() == null ? null : getWindow().getDecorView();
         if (root == null || nabdhFontApplying) return;
