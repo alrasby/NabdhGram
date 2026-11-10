@@ -26,6 +26,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
             new java.util.WeakHashMap<>();
     private final java.util.WeakHashMap<android.widget.TextView, Integer> nabdhOriginalTextStyles =
             new java.util.WeakHashMap<>();
+    private final java.util.WeakHashMap<android.widget.TextView, android.graphics.Typeface> nabdhOriginalTypefaces =
+            new java.util.WeakHashMap<>();
     private boolean nabdhFontApplying;
     private boolean nabdhFontDirty = true;
     private android.view.ViewTreeObserver.OnGlobalLayoutListener nabdhFontLayoutListener;
@@ -50,7 +52,7 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
         try {
         android.content.SharedPreferences appearance =
                 getSharedPreferences("nabdhgram_appearance", MODE_PRIVATE);
-        final String family = appearance.getString("font_family", "readex-pro");
+        final String family = appearance.getString("font_family", "system-default");
         final int uiPercent = Math.max(85, Math.min(115,
                 appearance.getInt("ui_scale_percent", 100)));
         final boolean forceBold = appearance.getBoolean("font_bold", false);
@@ -80,6 +82,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                             originalStyle = current == null
                                     ? android.graphics.Typeface.NORMAL : current.getStyle();
                             nabdhOriginalTextStyles.put(label, originalStyle);
+                            nabdhOriginalTypefaces.put(label,
+                                    current == null ? android.graphics.Typeface.DEFAULT : current);
                         }
                         Float originalPx = nabdhOriginalTextSizes.get(label);
                         if (originalPx == null) {
@@ -91,13 +95,19 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                                 : "noto-sans-arabic".equals(family) ? "NotoSansArabic.ttf"
                                 : "tajawal".equals(family) ? "Tajawal.ttf"
                                 : "rubik".equals(family) ? "Rubik.ttf" : null;
-                        android.graphics.Typeface base = fontFile == null
-                                ? android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
-                                : org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + fontFile);
-                        if (base != null) {
-                            label.setTypeface(base, forceBold
-                                    ? (originalStyle | android.graphics.Typeface.BOLD)
-                                    : originalStyle);
+                        boolean deviceDefault = "system-default".equals(family);
+                        android.graphics.Typeface base = deviceDefault
+                                ? nabdhOriginalTypefaces.get(label)
+                                : fontFile == null
+                                    ? android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
+                                    : org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + fontFile);
+                        if (base != null && (!deviceDefault || applied != null || forceBold || uiPercent != 100)) {
+                            // Optional typefaces start Regular; returning to
+                            // Device font restores this native TextView style.
+                            label.setTypeface(base,
+                                    deviceDefault && !forceBold ? originalStyle
+                                    : forceBold ? android.graphics.Typeface.BOLD
+                                                : android.graphics.Typeface.NORMAL);
                             float sizePx = originalPx * uiPercent / 100f;
                             if (Math.abs(label.getTextSize() - sizePx) > 0.5f) {
                                 label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx);
