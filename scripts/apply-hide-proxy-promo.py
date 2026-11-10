@@ -43,6 +43,17 @@ helper = """    // Telegram itself manages promotional MTProxy peers and exposes
                         || now - nabdhLastProxyPromoAttemptAt >= 15000L) {
                     nabdhLastProxyPromoAttemptAt = now;
                     controller.hidePromoDialog();
+                    // Telegram's own swipe-to-dismiss flow refreshes the
+                    // adapter immediately after hidePromoDialog(). Without
+                    // this, the promo cell remains visible until a reload.
+                    android.os.Handler handler = new android.os.Handler(
+                            android.os.Looper.getMainLooper());
+                    handler.post(() -> {
+                        if (viewPages != null && viewPages[0] != null
+                                && getParentActivity() != null) {
+                            viewPages[0].updateList(true);
+                        }
+                    });
                 }
                 return;
             }
