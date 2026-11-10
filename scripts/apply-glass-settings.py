@@ -170,11 +170,34 @@ s = s.replace(anchor, anchor + """
             }
             // Re-layout visible labels immediately after a typography setting changes.
             final Runnable refreshTypography = () -> {
-                if (context instanceof android.app.Activity) {
+                // Preferences are displayed as fragments inside LaunchActivity.
+                // A fragment navigation does not invoke Activity.onResume().
+                if (org.telegram.ui.LaunchActivity.instance != null) {
+                    org.telegram.ui.LaunchActivity.instance.nabdhRefreshAllFonts();
+                } else if (context instanceof android.app.Activity) {
                     android.view.View decor = ((android.app.Activity) context).getWindow().getDecorView();
                     decor.requestLayout();
                     decor.invalidate();
                 }
+            };
+            final Runnable refreshDrawnText = () -> {
+                // Telegram has cached TextPaint/StaticLayout for chat labels.
+                // Update known paints before the same notification it uses for
+                // theme-driven cell invalidation; retain the active theme.
+                android.graphics.Typeface regular = org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf");
+                android.graphics.Typeface bold = org.telegram.messenger.AndroidUtilities.bold();
+                if (Theme.dialogs_namePaint != null) {
+                    for (android.text.TextPaint paint : Theme.dialogs_namePaint) {
+                        if (paint != null) paint.setTypeface(bold);
+                    }
+                }
+                if (Theme.dialogs_messagePaint != null) {
+                    for (android.text.TextPaint paint : Theme.dialogs_messagePaint) {
+                        if (paint != null) paint.setTypeface(regular);
+                    }
+                }
+                org.telegram.messenger.NotificationCenter.getGlobalInstance().postNotificationName(
+                        org.telegram.messenger.NotificationCenter.didSetNewTheme, false, false);
             };
             for (int i = 0; i < families.length; i++) {
                 final String family = families[i];
@@ -192,6 +215,7 @@ s = s.replace(anchor, anchor + """
                     prefs.edit().putString("font_family", family).commit();
                     org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
                     refreshTypography.run();
+                    refreshDrawnText.run();
                     fontTitle.setTypeface(selectedTypeface, android.graphics.Typeface.BOLD);
                     explanation.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                 });
@@ -255,6 +279,7 @@ s = s.replace(anchor, anchor + """
                 prefs.edit().putBoolean("font_bold", checked).commit();
                 org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
                 refreshTypography.run();
+                refreshDrawnText.run();
             });
             fontCard.addView(boldOption);
             TextView refreshInfo = new TextView(context);
