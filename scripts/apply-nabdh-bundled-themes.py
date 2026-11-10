@@ -76,9 +76,33 @@ for filename, name, background, incoming, outgoing, sha in themes:
         f"        themeInfo.previewBackgroundColor = 0x{background:08X};",
         f"        themeInfo.previewInColor = 0x{incoming:08X};",
         f"        themeInfo.previewOutColor = 0x{outgoing:08X};",
+        # Critical: ThemeInfo.isDark() otherwise constructs new File(pathToFile)
+        # when isDark is UNKNOWN. Bundled assets have assetName but no pathToFile,
+        # so that constructor receives null during palette changes and crashes.
+        # The approved four assets' windowBackgroundWhite values were inspected:
+        # only nabdh_dark.attheme uses a dark base (#101B24).
+        "        themeInfo.isDark = ThemeInfo."
+        + ("DARK;" if filename == "nabdh_dark.attheme" else "LIGHT;"),
         "        themes.add(themeInfo);",
         "        themesDict.put(themeInfo.getKey(), themeInfo);",
     ])
 source = source.replace(anchor, "\n".join(lines) + "\n\n" + anchor, 1)
+# Defensive support for asset themes: if a future bundled theme doesn't have a
+# cached isDark value, it must read its asset rather than constructing File(null).
+is_dark_old = """            if (isDark == UNKNOWN) {
+                String[] wallpaperLink = new String[1];
+                SparseIntArray colors = getThemeFileValues(new File(pathToFile), null, wallpaperLink);
+                checkIsDark(colors, this);
+            }"""
+is_dark_new = """            if (isDark == UNKNOWN) {
+                String[] wallpaperLink = new String[1];
+                SparseIntArray colors = assetName != null
+                        ? getThemeFileValues(null, assetName, wallpaperLink)
+                        : getThemeFileValues(new File(pathToFile), null, wallpaperLink);
+                checkIsDark(colors, this);
+            }"""
+if source.count(is_dark_old) != 1:
+    raise SystemExit("ThemeInfo.isDark fallback anchor changed")
+source = source.replace(is_dark_old, is_dark_new, 1)
 target.write_text(source, encoding="utf-8")
 print("Registered 4 bundled NabdhGram theme assets in native Telegram selector.")
