@@ -13,7 +13,7 @@ if len(sys.argv) != 2:
 path = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui/LoginActivity.java"
 source = path.read_text(encoding="utf-8")
 
-anchor = "    public View createView(Context context) {"
+anchor = "    @Override\n    public View createView(Context context) {"
 if source.count(anchor) != 1:
     raise SystemExit("LoginActivity createView anchor changed")
 helper = """    // NabdhGram Glass: native Telegram theme keys respect installed .attheme
@@ -35,6 +35,11 @@ helper = """    // NabdhGram Glass: native Telegram theme keys respect installed
 
 """
 source = source.replace(anchor, helper + anchor, 1)
+# A Java annotation must immediately precede the method it annotates.
+if "    @Override\\n    // NabdhGram Glass:" in source:
+    raise SystemExit("Glass helper accidentally inserted after @Override")
+if source.count("    @Override\\n    public View createView(Context context) {") != 1:
+    raise SystemExit("LoginActivity createView @Override was displaced")
 
 # OutlineTextContainerView retains its native focus outline and labels.
 # Do not change edit-text padding, listeners, layout size or auth transitions.
