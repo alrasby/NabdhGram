@@ -22,5 +22,12 @@ for original in (
     if s.count(original) != 1:
         raise SystemExit("Dialog name alignment anchor changed")
     s = s.replace(original, original.replace("Layout.Alignment.ALIGN_NORMAL", "nabdhNameAlignment"), 1)
+# A verified-bot badge occupies the trailing name column. Reserve a
+# small additional inset for wide Arabic glyphs and imported font metrics,
+# including the two RTL/LTR positioning branches.
+if s.count("nameWidth -= dp(21);") != 1 or s.count("nameLeft += dp(21);") != 2:
+    raise SystemExit("Telegram verification badge positioning changed")
+s = s.replace("nameWidth -= dp(21);", "nameWidth -= dp(27);", 1)
+s = s.replace("nameLeft += dp(21);", "nameLeft += dp(27);")
 p.write_text(s, encoding="utf-8")
 print("Dialog names align to the RTL text column.")

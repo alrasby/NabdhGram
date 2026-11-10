@@ -23,7 +23,10 @@ replacement = """        canvas.drawPath(path, p);
                 && currentType == TYPE_TEXT && !themePreview && !isSelected) {
             nabdhBubbleEdge.setStyle(Paint.Style.STROKE);
             nabdhBubbleEdge.setStrokeWidth(dp(1));
-            nabdhBubbleEdge.setColor(isOut ? 0x66FFFFFF : 0x4483B5B5);
+            // Respect the active theme's in/out shadow hue, including user
+            // imported .attheme files. Avoid fixed turquoise or white.
+            nabdhBubbleEdge.setColor(Theme.getColor(isOut
+                    ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow));
             nabdhBubbleEdge.setAlpha((int) (android.graphics.Color.alpha(nabdhBubbleEdge.getColor()) * alpha / 255f));
             canvas.drawPath(path, nabdhBubbleEdge);
         }

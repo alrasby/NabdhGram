@@ -124,6 +124,16 @@ s = s.replace(header_anchor, """        // NabdhGram Glass: category icon + head
         if (org.telegram.messenger.LocaleController.isRTL) titleParams.rightMargin = titleGap;
         else titleParams.leftMargin = titleGap;
         titleRow.addView(heading, titleParams);
+        // Consistent affordance on both Arabic and English cards; decorative
+        // only so touch handling stays on the existing parent card.
+        TextView chevron = new TextView(context);
+        chevron.setText(org.telegram.messenger.LocaleController.isRTL ? "‹" : "›");
+        chevron.setTextSize(25);
+        chevron.setAlpha(0.62f);
+        chevron.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        chevron.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        titleRow.addView(chevron,
+                new LinearLayout.LayoutParams(-2, -2));
         card.addView(titleRow);""", 1)
 
 main.write_text(s, encoding="utf-8")
@@ -250,6 +260,12 @@ s = s.replace(anchor, anchor + """
                         if (paint != null) paint.setTypeface(regular);
                     }
                 }
+                // These chat messages are canvas TextPaint, not TextViews.
+                // Keep their existing point sizes and emoji fallback behavior.
+                if (Theme.chat_msgTextPaint != null) Theme.chat_msgTextPaint.setTypeface(regular);
+                if (Theme.chat_replyTextPaint != null) Theme.chat_replyTextPaint.setTypeface(regular);
+                if (Theme.chat_quoteTextPaint != null) Theme.chat_quoteTextPaint.setTypeface(regular);
+                if (Theme.chat_explanationTextPaint != null) Theme.chat_explanationTextPaint.setTypeface(regular);
                 org.telegram.messenger.NotificationCenter.getGlobalInstance().postNotificationName(
                         org.telegram.messenger.NotificationCenter.didSetNewTheme, false, false);
             };

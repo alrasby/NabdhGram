@@ -29,6 +29,23 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "bundled theme darkness initialized safely": all(
+        phrase in (ui / "ActionBar/Theme.java").read_text(encoding="utf-8")
+        for phrase in (
+            "themeInfo.isDark = ThemeInfo.DARK;",
+            "themeInfo.isDark = ThemeInfo.LIGHT;",
+            "? getThemeFileValues(null, assetName, wallpaperLink)",
+        )
+    ),
+    "canvas-based chat text adopts selected font": all(
+        phrase in (ui / "ActionBar/Theme.java").read_text(encoding="utf-8")
+        for phrase in (
+            'chat_msgTextPaint.setTypeface(AndroidUtilities.getTypeface("fonts/rregular.ttf"));',
+            'chat_replyTextPaint.setTypeface(AndroidUtilities.getTypeface("fonts/rregular.ttf"));',
+        )
+    ),
+    "verified badges reserve Arabic name glyph inset":
+        "nameWidth -= dp(27);" in cell and "nameLeft += dp(27);" in cell,
     "Arabic resources survive upstream Gradle locale filter":
         'localeFilters += ["zz", "ar"]' in
         (root / "TMessagesProj_App/build.gradle").read_text(encoding="utf-8")
@@ -97,7 +114,10 @@ checks = {
         for layout in ("countLayout", "countOldLayout", "countAnimationStableLayout", "countAnimationInLayout")
     ),
     "unread badge metrics center": "fm.ascent + fm.descent" in cell,
-    "native bubble geometry preserved": "nabdhBubbleEdge" not in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8"),
+    "native bubble geometry preserved with theme-aware gradient outline":
+        "nabdhBubbleEdge" in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
+        and "key_chat_outBubbleShadow" in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
+        and "canvas.drawPath(path, nabdhBubbleEdge)" in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8"),
     "settings headers safe inset": "new HeaderCell(context, 32, resourcesProvider)" in universal
         and "Theme.key_windowBackgroundWhiteBlackText, 32, 15" in universal,
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
