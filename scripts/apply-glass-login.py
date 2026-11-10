@@ -77,7 +77,7 @@ phone_with_brand = """            setOrientation(VERTICAL);
                 ImageView nabdhLoginLogo = new ImageView(context);
                 nabdhLoginLogo.setImageResource(R.drawable.nabdhgram_welcome_logo);
                 nabdhLoginLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                addView(nabdhLoginLogo, LayoutHelper.createLinear(76, 76,
+                addView(nabdhLoginLogo, LayoutHelper.createLinear(152, 152,
                         Gravity.CENTER_HORIZONTAL, 0, 0, 0, 12));
             }
 
@@ -117,5 +117,14 @@ for needle, expected in zip(anchors, expected_counts):
         expected
     )
 
+# Test Backend is a developer-only diagnostic. Keep it reachable only
+# when already connected to Telegram's test servers, so debug APK users
+# signing into production accounts see a clean login screen.
+test_toggle = "if (allowTestBackend && activityMode == MODE_LOGIN) {"
+if source.count(test_toggle) != 1:
+    raise SystemExit("Telegram login test-server option anchor changed")
+source = source.replace(test_toggle,
+    "if (allowTestBackend && activityMode == MODE_LOGIN && getConnectionsManager().isTestBackend()) {",
+    1)
 path.write_text(source, encoding="utf-8")
 print("NabdhGram Glass login phone, password and verification surfaces installed.")
