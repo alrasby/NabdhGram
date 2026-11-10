@@ -56,12 +56,18 @@ anchors = (
     "addView(codeFieldContainer, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 42, Gravity.CENTER_HORIZONTAL, 0, 32, 0, 0));",
     "addView(codeFieldContainer, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 42, Gravity.CENTER_HORIZONTAL, 0, setup ? 48 : 32, 0, 0));",
 )
-for needle in anchors:
-    if source.count(needle) != 1:
-        raise SystemExit("Login code input layout anchor changed")
-    source = source.replace(needle,
-                            "codeFieldContainer.setBackground(nabdhLoginSurface(16f, 0.045f));\n                " + needle,
-                            1)
+# Upstream uses the same 42dp layout in both SMS/Telegram code and
+# a second login verification flow; the email layout occurs once.
+expected_counts = (2, 1)
+for needle, expected in zip(anchors, expected_counts):
+    count = source.count(needle)
+    if count != expected:
+        raise SystemExit(f"Login code input layout anchor changed: expected {expected}, found {count}")
+    source = source.replace(
+        needle,
+        "codeFieldContainer.setBackground(nabdhLoginSurface(16f, 0.045f));\\n                " + needle,
+        expected
+    )
 
 path.write_text(source, encoding="utf-8")
 print("NabdhGram Glass login phone, password and verification surfaces installed.")
