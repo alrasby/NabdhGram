@@ -61,7 +61,11 @@ resume_replacement = """    // Read persisted typography for both the message an
         String family = getContext().getSharedPreferences(
                 "nabdhgram_appearance", android.content.Context.MODE_PRIVATE)
                 .getString("font_family", "system-default");
-        if (family.equals(nabdhAppliedComposerFamily)) {
+        boolean bold = getContext().getSharedPreferences(
+                "nabdhgram_appearance", android.content.Context.MODE_PRIVATE)
+                .getBoolean("font_bold", false);
+        String appearanceKey = family + ":" + bold;
+        if (appearanceKey.equals(nabdhAppliedComposerFamily)) {
             return;
         }
         android.graphics.Typeface chosen;
@@ -77,8 +81,9 @@ resume_replacement = """    // Read persisted typography for both the message an
             chosen = org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + filename);
         }
         if (chosen != null) {
-            messageEditText.setTypeface(chosen);
-            nabdhAppliedComposerFamily = family;
+            messageEditText.setTypeface(chosen, bold
+                    ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            nabdhAppliedComposerFamily = appearanceKey;
         }
     }
 
