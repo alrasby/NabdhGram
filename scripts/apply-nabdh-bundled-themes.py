@@ -8,6 +8,7 @@ from pathlib import Path
 import hashlib
 import shutil
 import sys
+import zipfile
 
 if len(sys.argv) != 2:
     raise SystemExit("Usage: apply-nabdh-bundled-themes.py TELEGRAM_SOURCE")
@@ -24,20 +25,37 @@ themes = [
      "b32ed42b89ac7375e7fddbe6833a506e89fe25436651696af5ff4346a5c46f7f"),
 ]
 asset_dir = Path(__file__).resolve().parents[1] / "branding" / "themes"
+archive = asset_dir / "NabdhGram_Bundled_Themes.zip"
 available = [asset_dir / spec[0] for spec in themes]
-if not any(p.is_file() for p in available):
-    print("Bundled NabdhGram themes not uploaded yet; skipping registration.")
-    sys.exit(0)
-if not all(p.is_file() for p in available):
-    raise SystemExit("Incomplete theme bundle: all four .attheme assets are required.")
-
-for spec, original in zip(themes, available):
-    digest = hashlib.sha256(original.read_bytes()).hexdigest()
-    if digest != spec[5]:
-        raise SystemExit(f"Theme integrity mismatch: {original.name}")
-    target = root / "TMessagesProj" / "src" / "main" / "assets" / original.name
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(original, target)
+if archive.is_file():
+    # The approved ZIP keeps the four original binary files under branding/themes/.
+    # Read only expected members: never extract arbitrary paths from a ZIP.
+    with zipfile.ZipFile(archive) as bundled:
+        expected = {"branding/themes/" + spec[0] for spec in themes}
+        actual = {name for name in bundled.namelist() if name.endswith(".attheme")}
+        if actual != expected:
+            raise SystemExit("Theme archive has unexpected or missing .attheme members")
+        for filename, name, background, incoming, outgoing, checksum in themes:
+            entry = bundled.getinfo("branding/themes/" + filename)
+            if entry.file_size > 5 * 1024 * 1024:
+                raise SystemExit(f"Theme asset is unexpectedly large: {filename}")
+            data = bundled.read(entry)
+            if hashlib.sha256(data).hexdigest() != checksum:
+                raise SystemExit(f"Theme integrity mismatch: {filename}")
+            destination = root / "TMessagesProj/src/main/assets" / filename
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(data)
+elif all(p.is_file() for p in available):
+    for spec, original in zip(themes, available):
+        if hashlib.sha256(original.read_bytes()).hexdigest() != spec[5]:
+            raise SystemExit(f"Theme integrity mismatch: {original.name}")
+        destination = root / "TMessagesProj/src/main/assets" / original.name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(original, destination)
+elif any(p.is_file() for p in available):
+    raise SystemExit("Incomplete theme bundle: all four .attheme assets are required")
+else:
+    raise SystemExit("Missing NabdhGram theme ZIP or individual approved .attheme assets")
 
 target = root / "TMessagesProj/src/main/java/org/telegram/ui/ActionBar/Theme.java"
 source = target.read_text(encoding="utf-8")
