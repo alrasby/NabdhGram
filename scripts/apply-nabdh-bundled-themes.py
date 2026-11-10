@@ -104,5 +104,14 @@ is_dark_new = """            if (isDark == UNKNOWN) {
 if source.count(is_dark_old) != 1:
     raise SystemExit("ThemeInfo.isDark fallback anchor changed")
 source = source.replace(is_dark_old, is_dark_new, 1)
+# The approved Sand preset uses WLS= (remote theme wallpaper) instead of WPS
+# embedded bytes. Telegram's asset branch discarded that link by passing null;
+# retain it, exactly as it does for user-imported .attheme files.
+wallpaper_old = "currentColorsNoAccent = getThemeFileValues(null, themeInfo.assetName, null);"
+wallpaper_new = "currentColorsNoAccent = getThemeFileValues(null, themeInfo.assetName, wallpaperLink);"
+if source.count(wallpaper_old) != 1:
+    raise SystemExit("Telegram built-in asset wallpaper parser anchor changed")
+source = source.replace(wallpaper_old, wallpaper_new, 1)
+
 target.write_text(source, encoding="utf-8")
 print("Registered 4 bundled NabdhGram theme assets in native Telegram selector.")
