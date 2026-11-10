@@ -149,6 +149,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nested-feature-settings.py Telegram-upstream
 
+      - name: Register NabdhGram bundled theme presets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-bundled-themes.py Telegram-upstream
+
       - name: Bundle licensed Readex Pro font
         shell: bash
         run: |
