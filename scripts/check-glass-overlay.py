@@ -126,7 +126,13 @@ checks = {
         and "translationX == 0" in cell
         and "isFolderCell()" in cell,
     "dialog selection feedback": "isPressed() || isSelected || isSelected()" in cell,
-    "regular section without pinned chats": "if (!pinned && position == 0) return 2;" in dialogs,
+    "regular section without pinned chats": all(
+        token in dialogs for token in (
+            "boolean earlierNormal = false;",
+            "if (dialog.isFolder) return 3;",
+            "if (!dialog.pinned && (!earlierNormal || earlierPinned)) return 2;",
+        )
+    ),
     "decoration section headings": "NabdhGlassPinnedChats" in dialogs and "NabdhGlassOtherChats" in dialogs,
     "pinned group outline above opaque cards": "public void onDrawOver(Canvas canvas, RecyclerView parent, RecyclerView.State state)" in dialogs
         and "pinnedGroupPaint.setStyle(Paint.Style.STROKE)" in dialogs,
