@@ -29,6 +29,11 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "contact names honor regular font and keep verified badges distinct":
+        'nameTextView.setTypeface(AndroidUtilities.getTypeface("fonts/rregular.ttf"));' in
+        (ui / "Cells/UserCell.java").read_text(encoding="utf-8")
+        and 'nameTextView.setDrawablePadding(dp(13));' in
+        (ui / "Cells/UserCell.java").read_text(encoding="utf-8"),
     "MTProxy promotion may be re-hidden after server reconnect":
         "nabdhLastProxyPromoAttemptAt" in dialogs
         and ">= 15000L" in dialogs
@@ -153,7 +158,7 @@ checks = {
     "profile rounded touch selector": "listView.setSelectorRadius(17);" in profile,
     "contacts rounded selector": "listView.setSelectorRadius(17);" in contacts,
     "verified contact names reserve icon gap":
-        "nameTextView.setDrawablePadding(dp(10))" in
+        "nameTextView.setDrawablePadding(dp(13))" in
         (ui / "Cells/UserCell.java").read_text(encoding="utf-8"),
     "approved NabdhGram artwork on phone login":
         "R.drawable.nabdhgram_welcome_logo" in
