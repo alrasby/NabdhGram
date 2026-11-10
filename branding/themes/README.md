@@ -1,12 +1,14 @@
 # NabdhGram bundled Telegram themes
 
-The four approved original theme files belong in this directory, as binary assets:
+The user-approved theme bundle is stored as **NabdhGram_Bundled_Themes.zip** in this directory.
 
-- `nabdh_siri_refined.attheme`
-- `nabdh_soft_mint.attheme`
-- `nabdh_dark.attheme`
-- `nabdh_sand.attheme`
+The archive must contain these exact binary entries:
 
-**Preserve original bytes.** The first three include embedded WPS JPEG wallpapers. Do not open and re-save as UTF-8 text.
+- `branding/themes/nabdh_siri_refined.attheme`
+- `branding/themes/nabdh_soft_mint.attheme`
+- `branding/themes/nabdh_dark.attheme`
+- `branding/themes/nabdh_sand.attheme`
 
-The build step `scripts/apply-nabdh-bundled-themes.py` checks SHA-256 for all four files, copies them unchanged to Telegram assets, and registers named entries in the native Theme picker. Until the full bundle is present, the script does not alter the upstream theme selector. If only some files are present, the build fails rather than shipping an incomplete bundle.
+The build script `scripts/apply-nabdh-bundled-themes.py` reads these files **directly from ZIP** and verifies individual SHA-256 digests before copying bytes unchanged to Telegram assets and registering all four in the native theme picker. Three themes contain embedded wallpaper data; do not re-save the theme files as text.
+
+Individual extracted assets are accepted as a fallback only when the ZIP is absent. A missing or incomplete bundle fails the build instead of silently omitting the themes.
