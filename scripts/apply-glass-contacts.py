@@ -23,8 +23,11 @@ u = cell.read_text(encoding="utf-8")
 needle = "        nameTextView.setTypeface(AndroidUtilities.bold());"
 if u.count(needle) != 1:
     raise SystemExit("Contacts name badge spacing anchor changed")
-u = u.replace(needle, needle + """
-        // Reserve space around verified and premium badges with all font families.
-        nameTextView.setDrawablePadding(dp(10));""", 1)
+u = u.replace(needle, """
+        // Use the selected Regular typeface rather than forcing bold on all
+        // contact names. Leave the native verification/premium drawable logic.
+        nameTextView.setTypeface(AndroidUtilities.getTypeface("fonts/rregular.ttf"));
+        nameTextView.setTextSize(15);
+        nameTextView.setDrawablePadding(dp(13));""", 1)
 cell.write_text(u, encoding="utf-8")
 print("Contacts name/badge gap adjusted for RTL and variable fonts.")
