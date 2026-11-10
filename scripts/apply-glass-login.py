@@ -65,7 +65,7 @@ for needle, expected in zip(anchors, expected_counts):
         raise SystemExit(f"Login code input layout anchor changed: expected {expected}, found {count}")
     source = source.replace(
         needle,
-        "codeFieldContainer.setBackground(nabdhLoginSurface(16f, 0.045f));\\n                " + needle,
+        "codeFieldContainer.setBackground(nabdhLoginSurface(16f, 0.045f));\n                " + needle,
         expected
     )
 
