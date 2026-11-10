@@ -60,12 +60,14 @@ resume_replacement = """    // Read persisted typography for both the message an
         }
         String family = getContext().getSharedPreferences(
                 "nabdhgram_appearance", android.content.Context.MODE_PRIVATE)
-                .getString("font_family", "readex-pro");
+                .getString("font_family", "system-default");
         if (family.equals(nabdhAppliedComposerFamily)) {
             return;
         }
         android.graphics.Typeface chosen;
-        if ("sans-serif".equals(family) || "serif".equals(family)) {
+        if ("system-default".equals(family)) {
+            chosen = android.graphics.Typeface.DEFAULT;
+        } else if ("sans-serif".equals(family) || "serif".equals(family)) {
             chosen = android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL);
         } else {
             String filename = "vazirmatn".equals(family) ? "Vazirmatn.ttf"
