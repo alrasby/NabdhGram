@@ -13,7 +13,13 @@ anchor = "    protected void onDraw(Canvas canvas) {\n        if (currentDialogI
 if s.count(anchor) != 1:
     raise SystemExit("DialogCell drawing anchor changed")
 # Use a reused Paint, avoid allocations and expensive blur during scrolling.
-field_anchor = "    // Blend resolved Telegram theme colors instead of fixed light/dark palette values.
+field_anchor = "    private boolean drawPinBackground;"
+if s.count(field_anchor) != 1:
+    raise SystemExit("DialogCell pinned state anchor changed")
+s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded chat surfaces.
+    private final android.graphics.Paint nabdhCardPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+    private final android.graphics.RectF nabdhCardBounds = new android.graphics.RectF();
+""" + """    // Blend resolved Telegram theme colors instead of fixed light/dark palette values.
     // This keeps imported .attheme palettes effective for the custom dialog cards.
     private static int nabdhBlendThemeColor(int base, int tint, float ratio) {
         float inv = 1.0f - ratio;
@@ -23,12 +29,6 @@ field_anchor = "    // Blend resolved Telegram theme colors instead of fixed lig
                 Math.round(android.graphics.Color.blue(base) * inv + android.graphics.Color.blue(tint) * ratio));
     }
 
-    private boolean drawPinBackground;"
-if s.count(field_anchor) != 1:
-    raise SystemExit("DialogCell pinned state anchor changed")
-s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded chat surfaces.
-    private final android.graphics.Paint nabdhCardPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-    private final android.graphics.RectF nabdhCardBounds = new android.graphics.RectF();
 """ + field_anchor, 1)
 # Draw after Telegram's base pinned/archive background, before message content.
 # Painting at the beginning of onDraw would be hidden by the later base fill.
