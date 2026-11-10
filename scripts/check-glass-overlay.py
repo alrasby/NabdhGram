@@ -92,6 +92,25 @@ checks = {
     "native settings rounded touch selector": "listView.setSelectorRadius(17);" in native_settings,
     "profile rounded touch selector": "listView.setSelectorRadius(17);" in profile,
     "contacts rounded selector": "listView.setSelectorRadius(17);" in contacts,
+    "verified contact names reserve icon gap":
+        "nameTextView.setDrawablePadding(dp(10))" in
+        (ui / "Cells/UserCell.java").read_text(encoding="utf-8"),
+    "approved NabdhGram artwork on phone login":
+        "R.drawable.nabdhgram_welcome_logo" in
+        (ui / "LoginActivity.java").read_text(encoding="utf-8"),
+    "MTProxy promo uses native hide API (not PSA)":
+        all(token in dialogs for token in (
+            "controller.promoDialogType != MessagesController.PROMO_TYPE_PROXY",
+            "controller.hidePromoDialog();",
+            "nabdhHideProxySponsorIfPresent();",
+        )),
+    "same-fragment font refresh available":
+        "public void nabdhRefreshAllFonts()" in launch
+        and "nabdhRefreshAllFonts();" in feature,
+    "Glass settings colors follow active theme":
+        "Theme.key_windowBackgroundWhiteBlueText" in feature
+        and "Theme.key_windowBackgroundGray" in feature,
+
     "chat composer rounded theme surface": "messageEditText.setBackground(nabdhInputGlass)" in composer
         and "nabdhInputGlass.setCornerRadius(dp(19))" in composer
         and "Theme.key_chat_messagePanelBackground" in composer,
