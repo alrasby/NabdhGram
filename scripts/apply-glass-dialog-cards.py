@@ -13,7 +13,17 @@ anchor = "    protected void onDraw(Canvas canvas) {\n        if (currentDialogI
 if s.count(anchor) != 1:
     raise SystemExit("DialogCell drawing anchor changed")
 # Use a reused Paint, avoid allocations and expensive blur during scrolling.
-field_anchor = "    private boolean drawPinBackground;"
+field_anchor = "    // Blend resolved Telegram theme colors instead of fixed light/dark palette values.
+    // This keeps imported .attheme palettes effective for the custom dialog cards.
+    private static int nabdhBlendThemeColor(int base, int tint, float ratio) {
+        float inv = 1.0f - ratio;
+        return android.graphics.Color.rgb(
+                Math.round(android.graphics.Color.red(base) * inv + android.graphics.Color.red(tint) * ratio),
+                Math.round(android.graphics.Color.green(base) * inv + android.graphics.Color.green(tint) * ratio),
+                Math.round(android.graphics.Color.blue(base) * inv + android.graphics.Color.blue(tint) * ratio));
+    }
+
+    private boolean drawPinBackground;"
 if s.count(field_anchor) != 1:
     raise SystemExit("DialogCell pinned state anchor changed")
 s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded chat surfaces.
@@ -38,17 +48,16 @@ s = s.replace(anchor, """        canvas.restore();
                 && !(getParent() instanceof ProfileChannelCell)
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12)) {
             final int surface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
-            final boolean dark = android.graphics.Color.red(surface)
-                    + android.graphics.Color.green(surface)
-                    + android.graphics.Color.blue(surface) < 360;
+            final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
+            final int alternate = Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider);
             final boolean archived = isFolderCell();
             final boolean pinned = getIsPinned();
             final boolean selected = isPressed() || isSelected || isSelected();
             final int fill = selected
-                    ? (dark ? 0xFF146E75 : 0xFFB6E9E6)
-                    : archived ? (dark ? 0xFF25434A : 0xFFE6EFF0)
-                    : pinned ? (dark ? 0xFF104B52 : 0xFFE0F5F2)
-                    : (dark ? 0xFF203A42 : 0xFFEAF6F5);
+                    ? nabdhBlendThemeColor(surface, accent, 0.22f)
+                    : archived ? nabdhBlendThemeColor(surface, alternate, 0.58f)
+                    : pinned ? nabdhBlendThemeColor(surface, accent, 0.13f)
+                    : nabdhBlendThemeColor(surface, alternate, 0.22f);
             // Keep Telegram's selection feedback, but confine our Glass
             // surface to the same rounded bounds for every dialog row.
             nabdhCardPaint.setColor(fill);
@@ -56,10 +65,8 @@ s = s.replace(anchor, """        canvas.restore();
             nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
                     getMeasuredHeight() - dp(3));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
-            nabdhCardPaint.setColor(archived ? (dark ? 0xFF4E777D : 0xFFC4DBDD)
-                    : pinned
-                    ? (dark ? 0xFF1CA6A6 : 0xFF8ACFCC)
-                    : (dark ? 0xFF39727A : 0xFFBDDAD8));
+            nabdhCardPaint.setColor(nabdhBlendThemeColor(
+                    archived ? alternate : surface, accent, pinned ? 0.45f : 0.22f));
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
             nabdhCardPaint.setStrokeWidth(dp(1));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
