@@ -29,6 +29,19 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "finished NabdhGram settings use one accessible column":
+        'section(context, content, R.string.NabdhShieldTitle' in settings
+        and "compactGrid" not in settings
+        and 'card.setOnClickListener(v -> presentFragment(' in settings
+        and 'description.setMaxLines(2);' in settings,
+    "contacts card uses dedicated native rounded row backgrounds":
+        "InsetDrawable(" in (ui / "Adapters/ContactsAdapter.java").read_text(encoding="utf-8")
+        and "glass.setCornerRadius(AndroidUtilities.dp(15))" in
+            (ui / "Adapters/ContactsAdapter.java").read_text(encoding="utf-8"),
+    "profile channel media and heading get separate readable space":
+        "Math.max(122," in (ui / "Cells/ProfileChannelCell.java").read_text(encoding="utf-8")
+        and "headerLayout.setLayoutDirection(LocaleController.isRTL" in
+            (ui / "Cells/ProfileChannelCell.java").read_text(encoding="utf-8"),
     "contact names honor regular font and keep verified badges distinct":
         'nameTextView.setTypeface(AndroidUtilities.getTypeface("fonts/rregular.ttf"));' in
         (ui / "Cells/UserCell.java").read_text(encoding="utf-8")
@@ -40,8 +53,8 @@ checks = {
         and "nabdhLastProxyPromoId" not in dialogs
         and "viewPages[0].updateList(true);" in dialogs,
     "compact Glass card text and height":
-        "card.setMinimumHeight((int) (108 * context.getResources().getDisplayMetrics().density))" in settings
-        and "textLp.topMargin = d / 3;" in settings,
+        "card.setMinimumHeight((int) (78 * density + .5f))" in settings
+        and "descLp.topMargin = (int) (3 * density + .5f);" in settings,
     "device default font and regular custom typefaces": all(
         part in typefaces for part in (
             'getString("font_family", "system-default")',
@@ -79,8 +92,8 @@ checks = {
         and "<string name=\"NabdhGramSettingsTitle\">إعدادات نبض جرام</string>" in appearance_ar,
     "NabdhGram settings spacing compacted": all(
         token in settings for token in (
-            "int d = (int) (10 * context.getResources().getDisplayMetrics().density);",
-            "lp.bottomMargin = d / 2;",
+            "cardLp.bottomMargin = (int) (8 * density + .5f);",
+            "labelsLp.setMarginStart((int) (11 * density + .5f));",
             "int pad = (int) (12 * context.getResources().getDisplayMetrics().density);",
         )
     ),
@@ -199,7 +212,7 @@ checks = {
     "appearance font preference persisted": 'getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
         and 'putString("font_family", family).commit()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
     "settings card native ripple": "new android.graphics.drawable.RippleDrawable(" in settings
-        and "card.setBackground(touchSurface)" in settings,
+        and "card.setBackground(new android.graphics.drawable.RippleDrawable(" in settings,
     "pinned decoration never draws a box across mixed chat rows":
         "hasFirstPinnedRow" not in dialogs and "pinnedGroupPaint" not in dialogs,
     "profile channel preview keeps its own layout": "getParent() instanceof ProfileChannelCell" in cell,

@@ -90,7 +90,10 @@ for name in ("countryOutlineView", "phoneOutlineView", "outlineCodeField"):
     needle = f"{name} = new OutlineTextContainerView(context);"
     if source.count(needle) != 1:
         raise SystemExit(f"Unexpected native login field anchor: {name}")
-    source = source.replace(needle, needle + f"\n            {name}.setBackground(nabdhLoginSurface(18f, 0.055f));", 1)
+    # Native OutlineTextContainerView already renders the focused rounded
+    # border. A second drawable behind it causes overlapping double outlines.
+    # Keep its upstream native rendering, keyboard actions and accessibility.
+    source = source.replace(needle, needle, 1)
 
 # Covers SMS/Telegram app verification, missed call and email code inputs,
 # including variants with different native code lengths and custom keyboards.
@@ -113,7 +116,7 @@ for needle, expected in zip(anchors, expected_counts):
         raise SystemExit(f"Login code input layout anchor changed: expected {expected}, found {count}")
     source = source.replace(
         needle,
-        "codeFieldContainer.setBackground(nabdhLoginSurface(16f, 0.045f));\n                " + needle,
+        needle,
         expected
     )
 
