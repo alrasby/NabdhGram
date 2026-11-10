@@ -176,7 +176,7 @@ checks = {
     "custom bold font avoids stale mediumTypeface": 'if (!"system-default".equals(selectedFamily))' in typefaces
         and "getTypeface(TYPEFACE_ROBOTO_MEDIUM)" in typefaces,
     "composer refreshes text and hint typography": "nabdhRefreshComposerFont();" in composer
-        and "messageEditText.setTypeface(chosen)" in composer
+        and "messageEditText.setTypeface(chosen, bold" in composer
         and 'getString("font_family", "system-default")' in composer,
     "font preference consumed by Telegram typeface resolver": 'getString("font_family", "system-default")' in typefaces
         and '"ReadexPro.ttf"' in typefaces
