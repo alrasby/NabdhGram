@@ -13,6 +13,12 @@ on:
 permissions:
   contents: read
 
+# Branch pushes and PR events currently start duplicate 40+ minute Android
+# builds. Keep only the newest attempt for this branch.
+concurrency:
+  group: nabdhgram-android-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
