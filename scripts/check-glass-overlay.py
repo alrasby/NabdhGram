@@ -116,8 +116,8 @@ checks = {
     "archive folder remains outside pinned group": all(
         token in dialogs for token in (
             "if (dialog.isFolder) return 3;",
-            "section == 3 ? \"Archived chats\"",
-            "!((TLRPC.Dialog) item).isFolder",
+            "if (position == firstPinned) return 1;", 
+            "!((TLRPC.Dialog) item).isFolder", 
         )
     ),
     "archive/pinned separation retains original adapter indices":
@@ -198,20 +198,19 @@ checks = {
         and "translationX == 0" in cell
         and "isFolderCell()" in cell,
     "dialog selection feedback": "isPressed() || isSelected || isSelected()" in cell,
-    "regular section without pinned chats": all(
-        token in dialogs for token in (
-            "boolean earlierNormal = false;",
-            "if (dialog.isFolder) return 3;",
-            "if (!dialog.pinned && (!earlierNormal || earlierPinned)) return 2;",
+    "section headers drawn only at unique boundaries": all(
+        part in dialogs for part in (
+            "if (position == firstPinned) return 1;",
+            "if (position == firstOther) return 2;",
+            "if (section != 0) outRect.top = dp(25);",
         )
     ),
     "decoration section headings": "NabdhGlassPinnedChats" in dialogs and "NabdhGlassOtherChats" in dialogs,
-    "pinned group outline above opaque cards": "public void onDrawOver(Canvas canvas, RecyclerView parent, RecyclerView.State state)" in dialogs
-        and "pinnedGroupPaint.setStyle(Paint.Style.STROKE)" in dialogs,
-    "pinned group drawing present": "pinnedGroupPaint.setColor(" in dialogs
-        and "canvas.drawRoundRect(dp(4), groupTop + dp(2)" in dialogs,
-    "pinned group does not alter adapter": "groupTop = Math.min(groupTop, child.getTop())" in dialogs
-        and "groupBottom = Math.max(groupBottom, child.getBottom())" in dialogs,
+    "no oversized pinned-group overlay":
+        "pinnedGroupPaint" not in dialogs and "onDrawOver(Canvas" not in dialogs,
+    "archive row excluded without extra section":
+        "if (dialog.isFolder) continue;" in dialogs
+        and "((TLRPC.Dialog) row).isFolder) return 0;" in dialogs,
     "decoration not adapter mutation": "new RecyclerView.ItemDecoration()" in dialogs
         and "itemInternals.add(regularFirst" not in dialogs,
     "main chats only": "viewPage.dialogsType == DIALOGS_TYPE_DEFAULT && folderId == 0 && communityId == 0" in dialogs,

@@ -20,98 +20,70 @@ if s.count(anchor) != 1:
 # RecyclerView.ItemDecoration adds visual space but NEVER creates adapter rows,
 # preserving the Telegram adapter's position-to-dialog mapping.
 addition = r'''
-            // NabdhGram Glass: visual section headers without adapter items.
-            // Inserting adapter headers would break Telegram's fixPosition() mapping
-            // used by drag/reorder; decoration preserves all existing indices.
+            // NabdhGram: section labels are decorations, never adapter rows.
+            // Never wrap disjoint pinned dialogs in a single tinted rectangle.
             if (viewPage.dialogsType == DIALOGS_TYPE_DEFAULT && folderId == 0 && communityId == 0) {
                 viewPage.listView.addItemDecoration(new RecyclerView.ItemDecoration() {
                     private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                    private final Paint pinnedGroupPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    private long cachedAt;
+                    private int cachedCount = -1;
+                    private int firstPinned = -1;
+                    private int firstOther = -1;
+
                     {
-                        labelPaint.setTextSize(dp(14));
-                        labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.bold());
+                        labelPaint.setTextSize(dp(13));
+                        labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf"));
+                    }
+
+                    private void updateSections() {
+                        int count = viewPage.dialogsAdapter.getItemCount();
+                        long now = android.os.SystemClock.uptimeMillis();
+                        if (cachedCount == count && now - cachedAt < 180) return;
+                        cachedAt = now;
+                        cachedCount = count;
+                        firstPinned = -1;
+                        firstOther = -1;
+                        int lastPinned = -1;
+                        for (int i = 0; i < count; i++) {
+                            Object item = viewPage.dialogsAdapter.getItem(i);
+                            if (!(item instanceof TLRPC.Dialog)) continue;
+                            TLRPC.Dialog dialog = (TLRPC.Dialog) item;
+                            if (dialog.isFolder) continue; // archive has its own native row
+                            if (dialog.pinned) {
+                                if (firstPinned < 0) firstPinned = i;
+                                lastPinned = i;
+                            }
+                        }
+                        if (lastPinned >= 0) {
+                            for (int i = lastPinned + 1; i < count; i++) {
+                                Object item = viewPage.dialogsAdapter.getItem(i);
+                                if (item instanceof TLRPC.Dialog
+                                        && !((TLRPC.Dialog) item).isFolder
+                                        && !((TLRPC.Dialog) item).pinned) {
+                                    firstOther = i;
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     private int sectionAt(int position) {
-                        if (position == RecyclerView.NO_POSITION || position < 0) {
-                            return 0;
-                        }
-                        Object current = viewPage.dialogsAdapter.getItem(position);
-                        if (!(current instanceof TLRPC.Dialog)) {
-                            return 0;
-                        }
-                        TLRPC.Dialog dialog = (TLRPC.Dialog) current;
-                        // The archive is represented by a folder dialog. Its
-                        // pinned flag must never make it part of the pinned group.
-                        if (dialog.isFolder) return 3;
-                        boolean earlierNormal = false;
-                        boolean earlierPinned = false;
-                        for (int i = position - 1; i >= 0; --i) {
-                            Object previous = viewPage.dialogsAdapter.getItem(i);
-                            if (previous instanceof TLRPC.Dialog
-                                    && !((TLRPC.Dialog) previous).isFolder) {
-                                earlierNormal = true;
-                                earlierPinned = ((TLRPC.Dialog) previous).pinned;
-                                break;
-                            }
-                        }
-                        if (dialog.pinned && (!earlierNormal || !earlierPinned)) return 1;
-                        if (!dialog.pinned && (!earlierNormal || earlierPinned)) return 2;
+                        if (position == RecyclerView.NO_POSITION || position < 0) return 0;
+                        Object row = viewPage.dialogsAdapter.getItem(position);
+                        if (!(row instanceof TLRPC.Dialog) || ((TLRPC.Dialog) row).isFolder) return 0;
+                        updateSections();
+                        // Exactly one label for the first pinned row, and one
+                        // after the last pinned row. No per-group repetitions.
+                        if (position == firstPinned) return 1;
+                        if (position == firstOther) return 2;
                         return 0;
                     }
 
-                    // A thin outline is drawn *above* the opaque DialogCell cards.
-                    // The tinted group fill in onDraw() alone can be hidden by cells.
                     @Override
-                    public void onDrawOver(Canvas canvas, RecyclerView parent, RecyclerView.State state) {
-                        int top = Integer.MAX_VALUE;
-                        int bottom = Integer.MIN_VALUE;
-                        boolean hasFirstPinnedRow = false;
-                        boolean hasLastPinnedRow = false;
-                        for (int i = 0; i < parent.getChildCount(); i++) {
-                            View child = parent.getChildAt(i);
-                            int position = parent.getChildAdapterPosition(child);
-                            Object item = position == RecyclerView.NO_POSITION
-                                    ? null : viewPage.dialogsAdapter.getItem(position);
-                            if (item instanceof TLRPC.Dialog && !((TLRPC.Dialog) item).isFolder
-                                    && ((TLRPC.Dialog) item).pinned) {
-                                top = Math.min(top, child.getTop());
-                                bottom = Math.max(bottom, child.getBottom());
-                                Object previous = position > 0 ? viewPage.dialogsAdapter.getItem(position - 1) : null;
-                                Object next = position + 1 < viewPage.dialogsAdapter.getItemCount()
-                                        ? viewPage.dialogsAdapter.getItem(position + 1) : null;
-                                if (!(previous instanceof TLRPC.Dialog) || ((TLRPC.Dialog) previous).isFolder
-                                        || !((TLRPC.Dialog) previous).pinned) {
-                                    hasFirstPinnedRow = true;
-                                }
-                                if (!(next instanceof TLRPC.Dialog) || ((TLRPC.Dialog) next).isFolder
-                                        || !((TLRPC.Dialog) next).pinned) {
-                                    hasLastPinnedRow = true;
-                                }
-                            }
-                        }
-                        // Avoid false rounded caps when the pinned group is clipped
-                        // by scrolling. Only draw the outline when both ends are visible.
-                        if (top >= bottom || !hasFirstPinnedRow || !hasLastPinnedRow) return;
-                        int surface = Theme.getColor(Theme.key_windowBackgroundWhite);
-                        boolean dark = android.graphics.Color.red(surface)
-                                + android.graphics.Color.green(surface)
-                                + android.graphics.Color.blue(surface) < 360;
-                        pinnedGroupPaint.setColor(dark ? 0xFF348D92 : 0xFF80C8C2);
-                        pinnedGroupPaint.setStyle(Paint.Style.STROKE);
-                        pinnedGroupPaint.setStrokeWidth(dp(1));
-                        canvas.drawRoundRect(dp(5), top + dp(3),
-                                parent.getWidth() - dp(5), bottom - dp(3),
-                                dp(19), dp(19), pinnedGroupPaint);
-                        pinnedGroupPaint.setStyle(Paint.Style.FILL);
-                    }
-
-                    @Override
-                    public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
-                        int position = parent.getChildAdapterPosition(view);
-                        if (sectionAt(position) != 0) {
-                            outRect.top = dp(34);
-                        }
+                    public void getItemOffsets(Rect outRect, View child, RecyclerView parent,
+                            RecyclerView.State state) {
+                        int section = sectionAt(parent.getChildAdapterPosition(child));
+                        if (section != 0) outRect.top = dp(25);
                     }
 
                     @Override
@@ -119,44 +91,14 @@ addition = r'''
                         labelPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
                         boolean rtl = org.telegram.messenger.LocaleController.isRTL;
                         labelPaint.setTextAlign(rtl ? Paint.Align.RIGHT : Paint.Align.LEFT);
-                        float x = rtl ? parent.getWidth() - dp(20) : dp(20);
-                        // Paint behind visible pinned rows; do not change adapter indices.
-                        int groupTop = Integer.MAX_VALUE;
-                        int groupBottom = Integer.MIN_VALUE;
-                        for (int i = 0; i < parent.getChildCount(); i++) {
-                            View child = parent.getChildAt(i);
-                            int position = parent.getChildAdapterPosition(child);
-                            Object item = position == RecyclerView.NO_POSITION
-                                    ? null : viewPage.dialogsAdapter.getItem(position);
-                            if (item instanceof TLRPC.Dialog && !((TLRPC.Dialog) item).isFolder
-                                    && ((TLRPC.Dialog) item).pinned) {
-                                groupTop = Math.min(groupTop, child.getTop());
-                                groupBottom = Math.max(groupBottom, child.getBottom());
-                            }
-                        }
-                        if (groupTop < groupBottom) {
-                            int surface = Theme.getColor(Theme.key_windowBackgroundWhite);
-                            boolean dark = android.graphics.Color.red(surface)
-                                    + android.graphics.Color.green(surface)
-                                    + android.graphics.Color.blue(surface) < 360;
-                            pinnedGroupPaint.setColor(dark ? 0xFF103E46 : 0xFFE4F5F3);
-                            canvas.drawRoundRect(dp(4), groupTop + dp(2),
-                                    parent.getWidth() - dp(4), groupBottom - dp(2),
-                                    dp(20), dp(20), pinnedGroupPaint);
-                        }
+                        float x = rtl ? parent.getWidth() - dp(18) : dp(18);
                         for (int i = 0; i < parent.getChildCount(); i++) {
                             View child = parent.getChildAt(i);
                             int section = sectionAt(parent.getChildAdapterPosition(child));
-                            if (section != 0) {
-                                java.util.Locale appLocale = org.telegram.messenger.LocaleController.getInstance().getCurrentLocale();
-                                boolean arabic = appLocale != null && "ar".equals(appLocale.getLanguage());
-                                String title = arabic
-                                        ? (section == 3 ? "المحادثات المؤرشفة"
-                                            : section == 1 ? "المحادثات المثبتة" : "بقية المحادثات")
-                                        : section == 3 ? "Archived chats" : context.getString(section == 1
-                                            ? R.string.NabdhGlassPinnedChats : R.string.NabdhGlassOtherChats);
-                                canvas.drawText(title, x, child.getTop() - dp(12), labelPaint);
-                            }
+                            if (section == 0) continue;
+                            String title = context.getString(section == 1
+                                    ? R.string.NabdhGlassPinnedChats : R.string.NabdhGlassOtherChats);
+                            canvas.drawText(title, x, child.getTop() - dp(8), labelPaint);
                         }
                     }
                 });
