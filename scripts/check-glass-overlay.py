@@ -29,6 +29,20 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "device default font and regular custom typefaces": all(
+        part in typefaces for part in (
+            'getString("font_family", "system-default")',
+            'boolean bold = userBold;',
+            '"system-default".equals(family)',
+        )
+    ) and "NabdhFontSystemDefault" in appearance_ar
+      and "NabdhFontSystemDefault" in appearance_en
+      and "nabdhOriginalTypefaces" in launch,
+    "login mark doubled and diagnostic toggle hidden in production":
+        "LayoutHelper.createLinear(152, 152," in
+        (ui / "LoginActivity.java").read_text(encoding="utf-8")
+        and "&& getConnectionsManager().isTestBackend()) {" in
+        (ui / "LoginActivity.java").read_text(encoding="utf-8"),
     "bundled theme darkness initialized safely": all(
         phrase in (ui / "ActionBar/Theme.java").read_text(encoding="utf-8")
         for phrase in (
@@ -84,7 +98,7 @@ checks = {
     "all selected fonts bundled": all((font_assets / name).is_file() and (font_assets / name).stat().st_size > 10000 for name in font_files),
     "font options mapped to native renderer": all(name in launch for name in font_files),
     "font options mapped to Telegram typefaces": all(name in typefaces for name in font_files),
-    "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "readex-pro")' in launch,
+    "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "system-default")' in launch,
     "native font scan skips editors": "!(view instanceof android.widget.EditText)" in launch,
     "native font scan only when layout dirty": "nabdhFontLayoutListener = () -> nabdhFontDirty = true;" in launch,
     "font size and weight persisted with scope": all(
