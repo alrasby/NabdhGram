@@ -27,7 +27,12 @@ for p in pages:
     # Accent colors come from the approved logo; backgrounds adapt to theme.
     s = s.replace(
         "scroll.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));",
-        "scroll.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));", 1)
+        """scroll.setBackground(new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] {
+                    Theme.getColor(Theme.key_windowBackgroundGray),
+                    Theme.getColor(Theme.key_windowBackgroundWhite)
+                }));""", 1)
     p.write_text(s, encoding="utf-8")
 
 main = pages[0]
@@ -65,6 +70,32 @@ if s.count(layout_anchor) != 1:
     raise SystemExit("NabdhGram settings inner card spacing changed")
 s = s.replace(layout_anchor,
               "        int d = (int) (12 * context.getResources().getDisplayMetrics().density);", 1)
+card_init = "        LinearLayout card = new LinearLayout(context);"
+if s.count(card_init) != 1:
+    raise SystemExit("NabdhGram category card constructor changed")
+s = s.replace(card_init,
+    '        boolean gridCard = "nabdhGridRow".equals(parent.getTag());\\n' + card_init, 1)
+card_lp = "        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);"
+if s.count(card_lp) != 1:
+    raise SystemExit("NabdhGram category card layout changed")
+s = s.replace(card_lp, """        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(gridCard ? 0 : -1, -2);
+        if (gridCard) {
+            lp.weight = 1f;
+            int gap = (int) (4 * context.getResources().getDisplayMetrics().density);
+            if (parent.getChildCount() == 0) lp.setMarginEnd(gap);
+            else lp.setMarginStart(gap);
+            card.setMinimumHeight((int) (148 * context.getResources().getDisplayMetrics().density));
+        }""", 1)
+for before, after in (
+    ("        heading.setTextSize(18);",
+     "        heading.setTextSize(gridCard ? 16 : 18);\\n        heading.setMaxLines(gridCard ? 2 : 3);\\n        heading.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
+    ("        description.setTextSize(14);",
+     "        description.setTextSize(gridCard ? 12 : 14);\\n        description.setMaxLines(gridCard ? 2 : 3);\\n        description.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
+):
+    if s.count(before) != 1:
+        raise SystemExit("NabdhGram card text style anchor changed: " + before)
+    s = s.replace(before, after.replace("\\n", "\n"), 1)
+
 outer_anchor = "        int pad = (int) (20 * context.getResources().getDisplayMetrics().density);"
 if s.count(outer_anchor) != 1:
     raise SystemExit("NabdhGram settings outer padding changed")
@@ -102,7 +133,7 @@ s = s.replace(header_anchor, """        // NabdhGram Glass: category icon + head
         int iconSize = (int) (44 * context.getResources().getDisplayMetrics().density);
         int innerSize = (int) (25 * context.getResources().getDisplayMetrics().density);
         LinearLayout titleRow = new LinearLayout(context);
-        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setOrientation(gridCard ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         titleRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
         titleRow.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
                 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
@@ -119,9 +150,12 @@ s = s.replace(header_anchor, """        // NabdhGram Glass: category icon + head
         iconFrame.addView(categoryIcon,
                 new android.widget.FrameLayout.LayoutParams(innerSize, innerSize, android.view.Gravity.CENTER));
         titleRow.addView(iconFrame, new LinearLayout.LayoutParams(iconSize, iconSize));
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        LinearLayout.LayoutParams titleParams = gridCard
+                ? new LinearLayout.LayoutParams(-1, -2)
+                : new LinearLayout.LayoutParams(0, -2, 1f);
         int titleGap = (int) (12 * context.getResources().getDisplayMetrics().density);
-        if (org.telegram.messenger.LocaleController.isRTL) titleParams.rightMargin = titleGap;
+        if (gridCard) titleParams.topMargin = titleGap / 2;
+        else if (org.telegram.messenger.LocaleController.isRTL) titleParams.rightMargin = titleGap;
         else titleParams.leftMargin = titleGap;
         titleRow.addView(heading, titleParams);
         // Consistent affordance on both Arabic and English cards; decorative
@@ -132,9 +166,45 @@ s = s.replace(header_anchor, """        // NabdhGram Glass: category icon + head
         chevron.setAlpha(0.62f);
         chevron.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         chevron.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        titleRow.addView(chevron,
+        if (!gridCard) titleRow.addView(chevron,
                 new LinearLayout.LayoutParams(-2, -2));
         card.addView(titleRow);""", 1)
+
+# Responsive two-column Glass categories on normal handsets, with a
+# single-column fallback for large accessibility text or compact displays.
+calls = [
+    ("NabdhShieldTitle", "NabdhShieldExplanation"),
+    ("NabdhPrivacyTitle", "NabdhPrivacyExplanation"),
+    ("NabdhProductivityTitle", "NabdhProductivityExplanation"),
+    ("NabdhLanguageTitle", "NabdhLanguageExplanation"),
+    ("NabdhNetworkTitle", "NabdhNetworkExplanation"),
+    ("NabdhAppearanceTitle", "NabdhAppearanceExplanation"),
+]
+original_cards = "\\n".join(
+    f"        section(context, content, R.string.{title}, R.string.{description});"
+    for title, description in calls
+)
+if s.count(original_cards) != 1:
+    raise SystemExit("NabdhGram settings category order changed")
+grid_lines = [
+    "        boolean compactGrid = context.getResources().getConfiguration().screenWidthDp >= 360",
+    "                && context.getResources().getConfiguration().fontScale <= 1.15f;",
+    "        if (compactGrid) {",
+]
+for i in range(0, len(calls), 2):
+    row = f"nabdhRow{i // 2}"
+    grid_lines.extend([
+        f"            LinearLayout {row} = new LinearLayout(context);",
+        f"            {row}.setOrientation(LinearLayout.HORIZONTAL);",
+        f"            {row}.setTag(\"nabdhGridRow\");",
+        f"            {row}.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL",
+        "                    ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);",
+        f"            content.addView({row}, new LinearLayout.LayoutParams(-1, -2));",
+    ])
+    for title, desc in calls[i:i + 2]:
+        grid_lines.append(f"            section(context, {row}, R.string.{title}, R.string.{desc});")
+grid_lines.extend(["        } else {", original_cards, "        }"])
+s = s.replace(original_cards, "\\n".join(grid_lines), 1)
 
 main.write_text(s, encoding="utf-8")
 
