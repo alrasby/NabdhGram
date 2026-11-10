@@ -285,12 +285,12 @@ s = s.replace(anchor, anchor + """
             android.widget.RadioGroup choices = new android.widget.RadioGroup(context);
             choices.setOrientation(android.widget.RadioGroup.VERTICAL);
             android.content.SharedPreferences prefs = context.getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE);
-            String selectedFont = prefs.getString("font_family", "readex-pro");
-            String[] families = {"readex-pro", "vazirmatn", "noto-sans-arabic", "tajawal", "rubik", "sans-serif", "serif"};
-            int[] names = {R.string.NabdhFontReadex, R.string.NabdhFontVazirmatn,
+            String selectedFont = prefs.getString("font_family", "system-default");
+            String[] families = {"system-default", "readex-pro", "vazirmatn", "noto-sans-arabic", "tajawal", "rubik", "sans-serif", "serif"};
+            int[] names = {R.string.NabdhFontSystemDefault, R.string.NabdhFontReadex, R.string.NabdhFontVazirmatn,
                     R.string.NabdhFontNotoSansArabic, R.string.NabdhFontTajawal,
                     R.string.NabdhFontRubik, R.string.NabdhFontSans, R.string.NabdhFontSerif};
-            String[] assets = {"ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf",
+            String[] assets = {null, "ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf",
                     "Tajawal.ttf", "Rubik.ttf", null, null};
             android.graphics.Typeface[] fonts = new android.graphics.Typeface[families.length];
             for (int i = 0; i < families.length; i++) {
@@ -301,7 +301,9 @@ s = s.replace(anchor, anchor + """
                         fonts[i] = android.graphics.Typeface.DEFAULT;
                     }
                 } else {
-                    fonts[i] = android.graphics.Typeface.create(families[i], android.graphics.Typeface.NORMAL);
+                    fonts[i] = "system-default".equals(families[i])
+                            ? android.graphics.Typeface.DEFAULT
+                            : android.graphics.Typeface.create(families[i], android.graphics.Typeface.NORMAL);
                 }
             }
             // Re-layout visible labels immediately after a typography setting changes.
@@ -321,7 +323,8 @@ s = s.replace(anchor, anchor + """
                 // Update known paints before the same notification it uses for
                 // theme-driven cell invalidation; retain the active theme.
                 android.graphics.Typeface regular = org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf");
-                android.graphics.Typeface bold = org.telegram.messenger.AndroidUtilities.bold();
+                android.graphics.Typeface bold = prefs.getBoolean("font_bold", false)
+                        ? org.telegram.messenger.AndroidUtilities.bold() : regular;
                 if (Theme.dialogs_namePaint != null) {
                     for (android.text.TextPaint paint : Theme.dialogs_namePaint) {
                         if (paint != null) paint.setTypeface(bold);
@@ -349,7 +352,7 @@ s = s.replace(anchor, anchor + """
                 option.setText(context.getString(names[i]));
                 option.setTextSize(16);
                 option.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-                option.setTypeface(selectedTypeface);
+                option.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                 option.setChecked(family.equals(selectedFont));
                 option.setOnClickListener(v -> {
                     // Commit this tiny setting synchronously so immediate app exit
@@ -358,7 +361,7 @@ s = s.replace(anchor, anchor + """
                     org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
                     refreshTypography.run();
                     refreshDrawnText.run();
-                    fontTitle.setTypeface(selectedTypeface, android.graphics.Typeface.BOLD);
+                    fontTitle.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                     explanation.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                 });
                 choices.addView(option);
@@ -441,8 +444,8 @@ s = s.replace(anchor, anchor + """
 """, 1)
 
 for lang, labels in {
-    "values": ("Application font", "Readex Pro", "Sans-serif", "Serif", "The font is saved and restored when you reopen NabdhGram. Some system-controlled surfaces may retain their own typography.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"),
-    "values-ar": ("خط التطبيق", "Readex Pro", "بدون حواف", "بحواف", "يُحفظ الخط المختار ويُستعاد عند فتح نبض جرام. قد تحتفظ بعض عناصر النظام بخطها الخاص.", "وزير متن", "نوتو سانس عربي", "تجوال", "روبيك"),
+    "values": ("Application font", "Readex Pro", "Sans-serif", "Serif", "Uses the device font by default. Optional fonts start in Regular. Some specialized Telegram views keep independent typography.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"),
+    "values-ar": ("خط التطبيق", "Readex Pro", "بدون حواف", "بحواف", "خط الجهاز هو الافتراضي، وتبدأ الخطوط الاختيارية بالوزن العادي. قد تحتفظ بعض عناصر تيليجرام الخاصة بخطوطها.", "وزير متن", "نوتو سانس عربي", "تجوال", "روبيك"),
 }.items():
     res = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     xml = res.read_text(encoding="utf-8")
@@ -450,6 +453,9 @@ for lang, labels in {
         raise SystemExit("Unexpected resource structure for font labels")
     keys = ("NabdhFontTitle", "NabdhFontReadex", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope", "NabdhFontVazirmatn", "NabdhFontNotoSansArabic", "NabdhFontTajawal", "NabdhFontRubik")
     extra = "".join('    <string name="' + k + '">' + escape(v).replace("'", "\\'") + '</string>\n' for k, v in zip(keys, labels))
+    extra += ('    <string name="NabdhFontSystemDefault">'
+              + ('Device default font' if lang == "values" else 'خط الجهاز الافتراضي')
+              + '</string>\n')
     res.write_text(xml.replace("</resources>", extra + "</resources>", 1), encoding="utf-8")
 for locale, texts in {
     "values": ("Outside chats · text size", "Inside chats · text size", "Bold text", "Reopen chats after changing their text size. The selected values are kept when you restart the app."),
