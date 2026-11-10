@@ -173,12 +173,12 @@ checks = {
         and "selectorRect.bottom - 3f * density" in selector,
     "selector canvas state restored": "if (nabdhDialog) {" in selector and "canvas.restore();" in selector,
     "all pinned section labels use selected typography": "labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.bold())" in dialogs,
-    "custom bold font avoids stale mediumTypeface": 'if (!"sans-serif".equals(selectedFamily))' in typefaces
+    "custom bold font avoids stale mediumTypeface": 'if (!"system-default".equals(selectedFamily))' in typefaces
         and "getTypeface(TYPEFACE_ROBOTO_MEDIUM)" in typefaces,
     "composer refreshes text and hint typography": "nabdhRefreshComposerFont();" in composer
         and "messageEditText.setTypeface(chosen)" in composer
-        and 'getString("font_family", "readex-pro")' in composer,
-    "font preference consumed by Telegram typeface resolver": 'getString("font_family", "readex-pro")' in typefaces
+        and 'getString("font_family", "system-default")' in composer,
+    "font preference consumed by Telegram typeface resolver": 'getString("font_family", "system-default")' in typefaces
         and '"ReadexPro.ttf"' in typefaces
         and '"sans-serif".equals(family)' in typefaces
         and '"serif".equals(family)' in typefaces,
