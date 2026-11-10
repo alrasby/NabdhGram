@@ -29,6 +29,13 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "MTProxy promotion may be re-hidden after server reconnect":
+        "nabdhLastProxyPromoAttemptAt" in dialogs
+        and ">= 15000L" in dialogs
+        and "nabdhLastProxyPromoId" not in dialogs,
+    "compact Glass card text and height":
+        "card.setMinimumHeight((int) (108 * context.getResources().getDisplayMetrics().density))" in settings
+        and "textLp.topMargin = d / 3;" in settings,
     "device default font and regular custom typefaces": all(
         part in typefaces for part in (
             'getString("font_family", "system-default")',
@@ -66,7 +73,7 @@ checks = {
         and "<string name=\"NabdhGramSettingsTitle\">إعدادات نبض جرام</string>" in appearance_ar,
     "NabdhGram settings spacing compacted": all(
         token in settings for token in (
-            "int d = (int) (12 * context.getResources().getDisplayMetrics().density);",
+            "int d = (int) (10 * context.getResources().getDisplayMetrics().density);",
             "lp.bottomMargin = d / 2;",
             "int pad = (int) (12 * context.getResources().getDisplayMetrics().density);",
         )

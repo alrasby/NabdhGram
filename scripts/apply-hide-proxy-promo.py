@@ -18,7 +18,7 @@ if source.count(anchor) != 1:
 helper = """    // Telegram itself manages promotional MTProxy peers and exposes
     // hidePromoDialog(); do not remove adapter rows or suppress PSA notices.
     // Remember the last handled peer to avoid repeated RPCs on list updates.
-    private long nabdhLastProxyPromoId;
+    private long nabdhLastProxyPromoAttemptAt;
 
     private void nabdhHideProxySponsorIfPresent() {
         if (folderId != 0 || communityId != 0 || viewPages == null
@@ -35,8 +35,13 @@ helper = """    // Telegram itself manages promotional MTProxy peers and exposes
         for (int i = 0; i < Math.min(visible.size(), 5); ++i) {
             TLRPC.Dialog candidate = visible.get(i);
             if (candidate != null && controller.isPromoDialog(candidate.id, false)) {
-                if (candidate.id != nabdhLastProxyPromoId) {
-                    nabdhLastProxyPromoId = candidate.id;
+                // The server may restore the same MTProxy promotion on
+                // reconnect. A permanent ID cache prevents re-hiding it.
+                // Re-attempt on reload/resume with a 15-second guard.
+                long now = android.os.SystemClock.elapsedRealtime();
+                if (nabdhLastProxyPromoAttemptAt == 0
+                        || now - nabdhLastProxyPromoAttemptAt >= 15000L) {
+                    nabdhLastProxyPromoAttemptAt = now;
                     controller.hidePromoDialog();
                 }
                 return;

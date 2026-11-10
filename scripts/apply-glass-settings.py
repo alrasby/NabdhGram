@@ -69,7 +69,13 @@ layout_anchor = "        int d = (int) (16 * context.getResources().getDisplayMe
 if s.count(layout_anchor) != 1:
     raise SystemExit("NabdhGram settings inner card spacing changed")
 s = s.replace(layout_anchor,
-              "        int d = (int) (12 * context.getResources().getDisplayMetrics().density);", 1)
+              "        int d = (int) (10 * context.getResources().getDisplayMetrics().density);", 1)
+# Compact inner top/bottom padding and the heading-to-summary gap; maintain
+# generous tap area through the card's accessible minimum height.
+s = s.replace("        card.setPadding(d, d, d, d);",
+              "        card.setPadding(d, d / 2, d, d / 2);", 1)
+s = s.replace("        textLp.topMargin = d / 2;",
+              "        textLp.topMargin = d / 3;", 1)
 card_init = "        LinearLayout card = new LinearLayout(context);"
 if s.count(card_init) != 1:
     raise SystemExit("NabdhGram category card constructor changed")
@@ -84,13 +90,13 @@ s = s.replace(card_lp, """        LinearLayout.LayoutParams lp = new LinearLayou
             int gap = (int) (4 * context.getResources().getDisplayMetrics().density);
             if (parent.getChildCount() == 0) lp.setMarginEnd(gap);
             else lp.setMarginStart(gap);
-            card.setMinimumHeight((int) (148 * context.getResources().getDisplayMetrics().density));
+            card.setMinimumHeight((int) (108 * context.getResources().getDisplayMetrics().density));
         }""", 1)
 for before, after in (
     ("        heading.setTextSize(18);",
-     "        heading.setTextSize(gridCard ? 16 : 18);\\n        heading.setMaxLines(gridCard ? 2 : 3);\\n        heading.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
+     "        heading.setTextSize(gridCard ? 15 : 17);\\n        heading.setMaxLines(gridCard ? 2 : 3);\\n        heading.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
     ("        description.setTextSize(14);",
-     "        description.setTextSize(gridCard ? 12 : 14);\\n        description.setMaxLines(gridCard ? 2 : 3);\\n        description.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
+     "        description.setTextSize(gridCard ? 12 : 13);\\n        description.setMaxLines(gridCard ? 2 : 3);\\n        description.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
 ):
     if s.count(before) != 1:
         raise SystemExit("NabdhGram card text style anchor changed: " + before)
