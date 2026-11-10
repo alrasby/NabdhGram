@@ -29,12 +29,30 @@ helper = """    // NabdhGram Glass: native Telegram theme keys respect installed
                 new android.graphics.drawable.GradientDrawable();
         shape.setColor(Color.rgb(red, green, blue));
         shape.setCornerRadius(dp(radiusDp));
-        shape.setStroke(dp(1), Color.argb(72, Color.red(tint), Color.green(tint), Color.blue(tint)));
+        // The upstream OutlineTextContainerView and code boxes already draw
+        // their own focus borders. A second stroke causes the double-outline
+        // artifact visible in phone and verification screenshots.
         return shape;
     }
 
 """
 source = source.replace(anchor, helper + anchor, 1)
+# Give the login canvas a restrained theme-native gradient without
+# touching the native phone keyboard, measurement or auth handlers.
+root_anchor = "        fragmentView = sizeNotifierFrameLayout;"
+if source.count(root_anchor) != 1:
+    raise SystemExit("Login root canvas anchor changed")
+source = source.replace(root_anchor, root_anchor + """
+        sizeNotifierFrameLayout.setBackground(
+                new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                        new int[] {
+                            Theme.getColor(Theme.key_windowBackgroundWhite),
+                            Theme.getColor(Theme.key_windowBackgroundGray)
+                        }));
+""", 1)
+
+
 # A Java annotation must immediately precede the method it annotates.
 if "    @Override\n    // NabdhGram Glass:" in source:
     raise SystemExit("Glass helper accidentally inserted after @Override")
