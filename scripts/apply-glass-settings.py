@@ -40,10 +40,10 @@ s = s.replace(anchor, """        int surface = Theme.getColor(Theme.key_windowBa
         boolean dark = Color.red(surface) + Color.green(surface) + Color.blue(surface) < 360;
         GradientDrawable glassCard = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[] {surface, dark ? 0xFF103D44 : 0xFFE7F8F7});
+                new int[] {surface, Theme.getColor(Theme.key_windowBackgroundGray)});
         glassCard.setCornerRadius(22 * context.getResources().getDisplayMetrics().density);
         glassCard.setStroke((int) (context.getResources().getDisplayMetrics().density),
-                dark ? 0xFF187F89 : 0xFFB8E2E3);
+                Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         // Preserve the rounded surface while giving every navigable category
         // a native pressed ripple, keyboard focus and accessibility feedback.
         android.graphics.drawable.RippleDrawable touchSurface =
@@ -57,7 +57,7 @@ s = s.replace(anchor, """        int surface = Theme.getColor(Theme.key_windowBa
 anchor = "heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
 if s.count(anchor) != 1:
     raise SystemExit("Expected one feature card title anchor")
-s = s.replace(anchor, "heading.setTextColor(dark ? 0xFF67E3DE : 0xFF087C83);", 1)
+s = s.replace(anchor, "heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));", 1)
 # Extra card spacing and smaller outer padding; category pages still own their options.
 s = s.replace("lp.bottomMargin = d;", "lp.bottomMargin = d;", 1)
 # Replace long future-feature paragraphs on the overview with concise card summaries.
@@ -111,10 +111,10 @@ s = s.replace(anchor, """        int base = Theme.getColor(Theme.key_windowBackg
         boolean dark = Color.red(base) + Color.green(base) + Color.blue(base) < 360;
         GradientDrawable infoCard = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[] {base, dark ? 0xFF103D44 : 0xFFE7F8F7});
+                new int[] {base, Theme.getColor(Theme.key_windowBackgroundGray)});
         infoCard.setCornerRadius(22 * context.getResources().getDisplayMetrics().density);
         infoCard.setStroke((int) context.getResources().getDisplayMetrics().density,
-                dark ? 0xFF187F89 : 0xFFB8E2E3);
+                Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         explanation.setPadding(pad, pad, pad, pad);
         explanation.setBackground(infoCard);
         content.addView(explanation);""", 1)
@@ -133,10 +133,10 @@ s = s.replace(anchor, anchor + """
             GradientDrawable fontGlass = new GradientDrawable(
                     GradientDrawable.Orientation.TL_BR,
                     new int[] {Theme.getColor(Theme.key_windowBackgroundWhite),
-                            dark ? 0xFF103D44 : 0xFFE7F8F7});
+                            Theme.getColor(Theme.key_windowBackgroundGray)});
             fontGlass.setCornerRadius(22 * context.getResources().getDisplayMetrics().density);
             fontGlass.setStroke((int) context.getResources().getDisplayMetrics().density,
-                    dark ? 0xFF187F89 : 0xFFB8E2E3);
+                    Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
             fontCard.setBackground(fontGlass);
             TextView fontTitle = new TextView(context);
             fontTitle.setText(context.getString(R.string.NabdhFontTitle));
