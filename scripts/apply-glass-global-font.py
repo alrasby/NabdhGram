@@ -20,8 +20,8 @@ bold_replacement = """    public static Typeface bold() {
         if (ApplicationLoader.applicationContext != null) {
             String selectedFamily = ApplicationLoader.applicationContext
                     .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
-                    .getString("font_family", "readex-pro");
-            if (!"sans-serif".equals(selectedFamily)) {
+                    .getString("font_family", "system-default");
+            if (!"system-default".equals(selectedFamily)) {
                 Typeface chosenBold = getTypeface(TYPEFACE_ROBOTO_MEDIUM);
                 if (chosenBold != null) {
                     return chosenBold;
@@ -45,12 +45,12 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
             if (ApplicationLoader.applicationContext != null) {
                 String family = ApplicationLoader.applicationContext
                         .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
-                        .getString("font_family", "readex-pro");
+                        .getString("font_family", "system-default");
                 boolean userBold = ApplicationLoader.applicationContext
                         .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
                         .getBoolean("font_bold", false);
-                boolean bold = assetPath.contains("medium") || assetPath.contains("extrabold")
-                        || userBold;
+                // Custom families start Regular: bold is a user opt-in only.
+                boolean bold = userBold;
                 boolean italic = assetPath.contains("italic");
                 String cacheKey = family + ":" + bold + ":" + italic;
                 synchronized (nabdhFontCache) {
@@ -59,7 +59,11 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                         return cached;
                     }
                     Typeface selected = null;
-                    if ("sans-serif".equals(family) || "serif".equals(family)) {
+                    if ("system-default".equals(family)) {
+                        selected = Typeface.create(Typeface.DEFAULT,
+                                (bold ? Typeface.BOLD : Typeface.NORMAL)
+                                | (italic ? Typeface.ITALIC : Typeface.NORMAL));
+                    } else if ("sans-serif".equals(family) || "serif".equals(family)) {
                         selected = Typeface.create(family,
                                 (bold ? Typeface.BOLD : Typeface.NORMAL)
                                 | (italic ? Typeface.ITALIC : Typeface.NORMAL));
