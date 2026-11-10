@@ -29,6 +29,10 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "Arabic resources survive upstream Gradle locale filter":
+        'localeFilters += ["zz", "ar"]' in
+        (root / "TMessagesProj_App/build.gradle").read_text(encoding="utf-8")
+        and "<string name=\"NabdhGramSettingsTitle\">إعدادات نبض جرام</string>" in appearance_ar,
     "NabdhGram settings spacing compacted": all(
         token in settings for token in (
             "int d = (int) (12 * context.getResources().getDisplayMetrics().density);",
