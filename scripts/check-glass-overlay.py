@@ -179,7 +179,8 @@ checks = {
         and "selectorRect.left + 7f * density" in selector
         and "selectorRect.bottom - 3f * density" in selector,
     "selector canvas state restored": "if (nabdhDialog) {" in selector and "canvas.restore();" in selector,
-    "all pinned section labels use selected typography": "labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.bold())" in dialogs,
+    "all section labels honor normal-weight selected typography":
+        'labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf"))' in dialogs,
     "custom bold font avoids stale mediumTypeface": 'if (!"system-default".equals(selectedFamily))' in typefaces
         and "getTypeface(TYPEFACE_ROBOTO_MEDIUM)" in typefaces,
     "composer refreshes text and hint typography": "nabdhRefreshComposerFont();" in composer
@@ -193,9 +194,8 @@ checks = {
         and 'putString("font_family", family).commit()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
     "settings card native ripple": "new android.graphics.drawable.RippleDrawable(" in settings
         and "card.setBackground(touchSurface)" in settings,
-    "pinned outline avoids clipped groups": "hasFirstPinnedRow" in dialogs
-        and "hasLastPinnedRow" in dialogs
-        and "position + 1 < viewPage.dialogsAdapter.getItemCount()" in dialogs,
+    "pinned decoration never draws a box across mixed chat rows":
+        "hasFirstPinnedRow" not in dialogs and "pinnedGroupPaint" not in dialogs,
     "profile channel preview keeps its own layout": "getParent() instanceof ProfileChannelCell" in cell,
     "mixed-language dialog name alignment": "nabdhNameAlignment" in cell,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
