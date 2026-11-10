@@ -37,7 +37,8 @@ checks = {
     "MTProxy promotion may be re-hidden after server reconnect":
         "nabdhLastProxyPromoAttemptAt" in dialogs
         and ">= 15000L" in dialogs
-        and "nabdhLastProxyPromoId" not in dialogs,
+        and "nabdhLastProxyPromoId" not in dialogs
+        and "viewPages[0].updateList(true);" in dialogs,
     "compact Glass card text and height":
         "card.setMinimumHeight((int) (108 * context.getResources().getDisplayMetrics().density))" in settings
         and "textLp.topMargin = d / 3;" in settings,
