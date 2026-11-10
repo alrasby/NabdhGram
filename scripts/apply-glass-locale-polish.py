@@ -27,11 +27,17 @@ public final class NabdhStrings {
 
     public static String get(Context context, int resId) {
         Locale selected = LocaleController.getInstance().getCurrentLocale();
-        if (selected == null) {
-            return context.getString(resId);
+        // Android's resource locale may differ from Telegram's selected UI
+        // language. For Arabic UI, force our own values-ar resources even
+        // when the fragment's Activity still has an English configuration.
+        if (LocaleController.isRTL && (selected == null
+                || "en".equals(selected.getLanguage()))) {
+            selected = new Locale("ar");
         }
+        if (selected == null) return context.getString(resId);
         Configuration config = new Configuration(context.getResources().getConfiguration());
         config.setLocale(selected);
+        config.setLayoutDirection(selected);
         return context.createConfigurationContext(config).getString(resId);
     }
 }
@@ -45,7 +51,18 @@ for filename in ("NabdhGramSettingsActivity.java", "NabdhGramFeatureCategoryActi
     # remaining direct lookup may be its fallback. One lookup is valid.
     if count < 1:
         raise SystemExit(f"Missing NabdhGram locale fallback in {filename}")
+    # Route every NabdhGram-owned label through one explicit language
+    # resolver, including page titles and nested headings.
+    s = s.replace("nabdhText(context, ", "NabdhStrings.get(context, ")
     s = s.replace("context.getString(", "NabdhStrings.get(context, ")
+    if filename == "NabdhGramSettingsActivity.java":
+        title = "actionBar.setTitle(NabdhStrings.get(context, R.string.NabdhGramSettingsTitle));"
+    else:
+        title = "actionBar.setTitle(NabdhStrings.get(context, titleRes));"
+    if s.count(title) != 1:
+        raise SystemExit(f"Active-locale settings title missing: {filename}")
+    if "heading.setText(NabdhStrings.get(context, titleRes));" not in s and filename == "NabdhGramSettingsActivity.java":
+        raise SystemExit("NabdhGram card headings did not use the selected language")
     anchor = "        content.setOrientation(LinearLayout.VERTICAL);"
     if s.count(anchor) != 1:
         raise SystemExit(f"Missing RTL container anchor in {filename}")
