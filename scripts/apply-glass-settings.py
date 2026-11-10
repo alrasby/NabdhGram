@@ -59,7 +59,21 @@ if s.count(anchor) != 1:
     raise SystemExit("Expected one feature card title anchor")
 s = s.replace(anchor, "heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));", 1)
 # Extra card spacing and smaller outer padding; category pages still own their options.
-s = s.replace("lp.bottomMargin = d;", "lp.bottomMargin = d;", 1)
+# Compact the six navigation cards while keeping touch targets accessible.
+layout_anchor = "        int d = (int) (16 * context.getResources().getDisplayMetrics().density);"
+if s.count(layout_anchor) != 1:
+    raise SystemExit("NabdhGram settings inner card spacing changed")
+s = s.replace(layout_anchor,
+              "        int d = (int) (12 * context.getResources().getDisplayMetrics().density);", 1)
+outer_anchor = "        int pad = (int) (20 * context.getResources().getDisplayMetrics().density);"
+if s.count(outer_anchor) != 1:
+    raise SystemExit("NabdhGram settings outer padding changed")
+s = s.replace(outer_anchor,
+              "        int pad = (int) (12 * context.getResources().getDisplayMetrics().density);", 1)
+gap_anchor = "        lp.bottomMargin = d;"
+if s.count(gap_anchor) != 1:
+    raise SystemExit("NabdhGram settings card gap changed")
+s = s.replace(gap_anchor, "        lp.bottomMargin = d / 2;", 1)
 # Replace long future-feature paragraphs on the overview with concise card summaries.
 # Full descriptions remain available on category detail pages.
 summary_anchor = "description.setText(context.getString(descriptionRes));"
