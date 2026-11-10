@@ -36,9 +36,9 @@ helper = """    // NabdhGram Glass: native Telegram theme keys respect installed
 """
 source = source.replace(anchor, helper + anchor, 1)
 # A Java annotation must immediately precede the method it annotates.
-if "    @Override\\n    // NabdhGram Glass:" in source:
+if "    @Override\n    // NabdhGram Glass:" in source:
     raise SystemExit("Glass helper accidentally inserted after @Override")
-if source.count("    @Override\\n    public View createView(Context context) {") != 1:
+if source.count(anchor) != 1:
     raise SystemExit("LoginActivity createView @Override was displaced")
 
 # OutlineTextContainerView retains its native focus outline and labels.
