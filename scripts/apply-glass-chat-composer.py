@@ -17,15 +17,18 @@ if s.count(anchor) != 1:
 replacement = """        // NabdhGram Glass: light, theme-aware input surface. Keep the
         // original edit field and all of its behavior unchanged.
         final int nabdhInputSurface = getThemedColor(Theme.key_chat_messagePanelBackground);
-        final boolean nabdhDarkInput = android.graphics.Color.red(nabdhInputSurface)
-                + android.graphics.Color.green(nabdhInputSurface)
-                + android.graphics.Color.blue(nabdhInputSurface) < 360;
+        final int nabdhInputAccent = getThemedColor(Theme.key_chat_messagePanelText);
         android.graphics.drawable.GradientDrawable nabdhInputGlass =
                 new android.graphics.drawable.GradientDrawable();
         nabdhInputGlass.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-        nabdhInputGlass.setColor(nabdhDarkInput ? 0xFF203740 : 0xFFE5F3F2);
+        // Resolve the editable surface from the active Telegram palette.
+        // No hard-coded mint/dark background: imported themes remain visible.
+        nabdhInputGlass.setColor(nabdhInputSurface);
         nabdhInputGlass.setCornerRadius(dp(19));
-        nabdhInputGlass.setStroke(dp(1), nabdhDarkInput ? 0xFF39727A : 0xFFBDDAD8);
+        nabdhInputGlass.setStroke(dp(1), android.graphics.Color.argb(65,
+                android.graphics.Color.red(nabdhInputAccent),
+                android.graphics.Color.green(nabdhInputAccent),
+                android.graphics.Color.blue(nabdhInputAccent)));
         messageEditText.setBackground(nabdhInputGlass);
         // Restore Telegram's vertical insets: the EditText is measured
         // independently of the panel and must retain its 9/10dp padding.
