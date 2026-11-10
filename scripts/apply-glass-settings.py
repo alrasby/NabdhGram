@@ -168,6 +168,14 @@ s = s.replace(anchor, anchor + """
                     fonts[i] = android.graphics.Typeface.create(families[i], android.graphics.Typeface.NORMAL);
                 }
             }
+            // Re-layout visible labels immediately after a typography setting changes.
+            final Runnable refreshTypography = () -> {
+                if (context instanceof android.app.Activity) {
+                    android.view.View decor = ((android.app.Activity) context).getWindow().getDecorView();
+                    decor.requestLayout();
+                    decor.invalidate();
+                }
+            };
             for (int i = 0; i < families.length; i++) {
                 final String family = families[i];
                 final android.graphics.Typeface selectedTypeface = fonts[i];
@@ -182,6 +190,8 @@ s = s.replace(anchor, anchor + """
                     // Commit this tiny setting synchronously so immediate app exit
                     // cannot leave the font selection pending on disk.
                     prefs.edit().putString("font_family", family).commit();
+                    org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
+                    refreshTypography.run();
                     fontTitle.setTypeface(selectedTypeface, android.graphics.Typeface.BOLD);
                     explanation.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                 });
@@ -204,11 +214,15 @@ s = s.replace(anchor, anchor + """
             fontCard.addView(uiScale);
             uiScale.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
                 @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                    if (fromUser) prefs.edit().putInt("ui_scale_percent", progress + 85).apply();
+                    if (fromUser) {
+                        prefs.edit().putInt("ui_scale_percent", progress + 85).apply();
+                        refreshTypography.run();
+                    }
                 }
                 @Override public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
                 @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
                     prefs.edit().putInt("ui_scale_percent", seekBar.getProgress() + 85).commit();
+                    refreshTypography.run();
                 }
             });
             TextView chatSizeTitle = new TextView(context);
@@ -229,6 +243,7 @@ s = s.replace(anchor, anchor + """
                     org.telegram.messenger.SharedConfig.fontSizeIsDefault = false;
                     context.getSharedPreferences("userconfing", Context.MODE_PRIVATE)
                             .edit().putInt("fons_size", size).commit();
+                    refreshTypography.run();
                 }
             });
             android.widget.Switch boldOption = new android.widget.Switch(context);
@@ -239,6 +254,7 @@ s = s.replace(anchor, anchor + """
             boldOption.setOnCheckedChangeListener((button, checked) -> {
                 prefs.edit().putBoolean("font_bold", checked).commit();
                 org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
+                refreshTypography.run();
             });
             fontCard.addView(boldOption);
             TextView refreshInfo = new TextView(context);
