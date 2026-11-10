@@ -1,22 +1,22 @@
 name: NabdhGram identity debug build
 
+# A branch with an open PR produces two events for the same commit if both
+# push and pull_request are enabled. Their concurrency cancellation previously
+# killed the real Android build before it reached Gradle.
+# Build the PR head exactly once; workflow_dispatch supports manual branch runs.
 on:
   workflow_dispatch:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - design/glass-chat-cards
-      - design/glass-pinned-group-container
 
 permissions:
   contents: read
 
-# Branch pushes and PR events currently start duplicate 40+ minute Android
-# builds. Keep only the newest attempt for this branch.
+# Supersede older *PR* commits only. Never cancel a manual dispatch because
+# the very same branch also received a pull_request event.
 concurrency:
-  group: nabdhgram-android-${{ github.head_ref || github.ref_name }}
+  group: nabdhgram-android-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:

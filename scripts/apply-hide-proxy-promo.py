@@ -31,13 +31,15 @@ helper = """    // Telegram itself manages promotional MTProxy peers and exposes
         java.util.ArrayList<TLRPC.Dialog> visible =
                 getDialogsArray(currentAccount, DIALOGS_TYPE_DEFAULT, 0, false);
         if (visible == null) return;
-        // MTProxy promotion is normally placed at the top of the dialog list.
-        for (int i = 0; i < Math.min(visible.size(), 5); ++i) {
+        // MTProxy promotion can move below pinned and archived rows.
+        // Search every loaded row, never only the first five; only Telegram's
+        // own promo flag qualifies. A user-pinned chat does not.
+        for (int i = 0; i < visible.size(); ++i) {
             TLRPC.Dialog candidate = visible.get(i);
             if (candidate != null && controller.isPromoDialog(candidate.id, false)) {
-                // The server may restore the same MTProxy promotion on
-                // reconnect. A permanent ID cache prevents re-hiding it.
-                // Re-attempt on reload/resume with a 15-second guard.
+                // Telegram may reintroduce the same sponsor after reconnect.
+                // Re-attempt its native dismissal on reload and app resume,
+                // with a 15-second guard against repeated requests.
                 long now = android.os.SystemClock.elapsedRealtime();
                 if (nabdhLastProxyPromoAttemptAt == 0
                         || now - nabdhLastProxyPromoAttemptAt >= 15000L) {
@@ -76,4 +78,4 @@ source = source.replace(reload,
                         reload + "\n            nabdhHideProxySponsorIfPresent();", 1)
 
 path.write_text(source, encoding="utf-8")
-print("MTProxy promotional peers dismissed through Telegram native API only.")
+print("MTProxy promotional peers dismissed from loaded dialogs via Telegram native API.")

@@ -188,7 +188,9 @@ checks = {
     "profile rounded touch selector": "listView.setSelectorRadius(17);" in profile,
     "contacts rounded selector": "listView.setSelectorRadius(17);" in contacts,
     "verified contact names reserve icon gap":
-        "nameTextView.setDrawablePadding(dp(13))" in
+        "nameTextView.setDrawablePadding(dp(8))" in
+        (ui / "Cells/UserCell.java").read_text(encoding="utf-8")
+        and "setNabdhRtlBadgeBeforeText(LocaleController.isRTL)" in
         (ui / "Cells/UserCell.java").read_text(encoding="utf-8"),
     "approved NabdhGram artwork on phone login":
         "R.drawable.nabdhgram_welcome_logo" in
@@ -198,7 +200,9 @@ checks = {
             "controller.promoDialogType != MessagesController.PROMO_TYPE_PROXY",
             "controller.hidePromoDialog();",
             "nabdhHideProxySponsorIfPresent();",
-        )),
+        ))
+        and "i < visible.size()" in
+        (ui / "DialogsActivity.java").read_text(encoding="utf-8"),
     "same-fragment font refresh available":
         "public void nabdhRefreshAllFonts()" in launch
         and "nabdhRefreshAllFonts();" in feature,
