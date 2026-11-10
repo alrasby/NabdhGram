@@ -54,10 +54,10 @@ s = s.replace(anchor, """        canvas.restore();
             final boolean pinned = getIsPinned();
             final boolean selected = isPressed() || isSelected || isSelected();
             final int fill = selected
-                    ? nabdhBlendThemeColor(surface, accent, 0.22f)
-                    : archived ? nabdhBlendThemeColor(surface, alternate, 0.58f)
-                    : pinned ? nabdhBlendThemeColor(surface, accent, 0.13f)
-                    : nabdhBlendThemeColor(surface, alternate, 0.22f);
+                    ? nabdhBlendThemeColor(surface, accent, 0.23f)
+                    : archived ? nabdhBlendThemeColor(surface, alternate, 0.67f)
+                    : pinned ? nabdhBlendThemeColor(surface, accent, 0.19f)
+                    : nabdhBlendThemeColor(surface, alternate, 0.55f);
             // Keep Telegram's selection feedback, but confine our Glass
             // surface to the same rounded bounds for every dialog row.
             nabdhCardPaint.setColor(fill);
@@ -66,7 +66,7 @@ s = s.replace(anchor, """        canvas.restore();
                     getMeasuredHeight() - dp(3));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             nabdhCardPaint.setColor(nabdhBlendThemeColor(
-                    archived ? alternate : surface, accent, pinned ? 0.45f : 0.22f));
+                    archived ? alternate : surface, accent, pinned ? 0.55f : 0.36f));
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
             nabdhCardPaint.setStrokeWidth(dp(1));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
