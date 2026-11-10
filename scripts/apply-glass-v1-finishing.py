@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""NabdhGram v1 finishing pass: fix real RTL badges, settings and input/bubble paint.
+
+Run after the localized feature screens, without replacing Telegram's working
+navigation, auth logic, media paths, update handlers or message data.
+"""
+from pathlib import Path
+import sys
+
+if len(sys.argv) != 2:
+    raise SystemExit("Usage: apply-glass-v1-finishing.py TELEGRAM_SOURCE")
+ui = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui"
+
+def modify(relative, changes):
+    path = ui / relative
+    source = path.read_text(encoding="utf-8")
+    for original, replacement, count in changes:
+        found = source.count(original)
+        if found != count:
+            raise SystemExit(f"{relative}: anchor changed, expected {count}, found {found}: {original[:64]}")
+        source = source.replace(original, replacement, count)
+    path.write_text(source, encoding="utf-8")
+
+# Bug report: custom SimpleTextView paints leftDrawable at x=0 even when
+# name gravity is RIGHT. For Arabic names this falls *inside* the glyphs.
+# Opt-in per contact-name view, not a global change to Telegram widgets.
+modify("ActionBar/SimpleTextView.java", [
+    (
+        "    public void setDrawablePadding(int value) {",
+        """    private boolean nabdhRtlBadgeBeforeText;
+
+    public void setNabdhRtlBadgeBeforeText(boolean enabled) {
+        nabdhRtlBadgeBeforeText = enabled;
+        invalidate();
+    }
+
+    public void setDrawablePadding(int value) {""",
+        1
+    ),
+    (
+        """            if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL) {
+                x += offsetX;
+            }
+            int y;
+            if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == Gravity.CENTER_VERTICAL) {
+                y = (getMeasuredHeight() - leftDrawable.getIntrinsicHeight()) / 2 + leftDrawableTopPadding;""",
+        """            if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL) {
+                x += offsetX;
+            } else if (nabdhRtlBadgeBeforeText
+                    && (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT) {
+                // Start of the actual visible Arabic name, not the full view.
+                // The text width already reserves this drawable's width.
+                x = Math.max(0, offsetX - drawablePadding - leftDrawable.getIntrinsicWidth());
+            }
+            int y;
+            if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == Gravity.CENTER_VERTICAL) {
+                y = (getMeasuredHeight() - leftDrawable.getIntrinsicHeight()) / 2 + leftDrawableTopPadding;""",
+        1
+    ),
+])
+modify("Cells/UserCell.java", [
+    (
+        "        nameTextView.setDrawablePadding(dp(13));",
+        """        nameTextView.setDrawablePadding(dp(8));
+        nameTextView.setNabdhRtlBadgeBeforeText(LocaleController.isRTL);""",
+        1
+    ),
+])
+
+# Scope Glass styling to the native SETTINGS page. Other screens using the
+# UniversalAdapter retain their own media controls, animation and row grouping.
+modify("Components/UniversalAdapter.java", [
+    (
+        "    private boolean applyBackground = true;",
+        """    private boolean applyBackground = true;
+    private boolean nabdhGlassSettings;
+
+    public void setNabdhGlassSettings(boolean enabled) {
+        nabdhGlassSettings = enabled;
+    }""",
+        1
+    ),
+    (
+        """    private void updateColors(RecyclerView.ViewHolder holder) {
+        if (holder.itemView instanceof Theme.Colorable) {
+            ((Theme.Colorable) holder.itemView).updateColors();
+            if (shouldApplyBackground(holder.getItemViewType())) {
+                final int key_background = dialog ? Theme.key_dialogBackground : Theme.key_windowBackgroundWhite;
+                holder.itemView.setBackgroundColor(getThemedColor(key_background));
+            }
+        }
+    }""",
+        """    private void updateColors(RecyclerView.ViewHolder holder) {
+        if (holder.itemView instanceof Theme.Colorable) {
+            ((Theme.Colorable) holder.itemView).updateColors();
+            if (shouldApplyBackground(holder.getItemViewType())) {
+                final int key_background = dialog ? Theme.key_dialogBackground : Theme.key_windowBackgroundWhite;
+                holder.itemView.setBackgroundColor(getThemedColor(key_background));
+            }
+        }
+        int type = holder.getItemViewType();
+        if (nabdhGlassSettings && (type == VIEW_TYPE_TEXT_SETTINGS
+                || type == VIEW_TYPE_TEXT || type == VIEW_TYPE_TEXT_CHECK
+                || type == VIEW_TYPE_SWITCH || type == VIEW_TYPE_ICON_TEXT_CHECK)) {
+            final int base = getThemedColor(Theme.key_windowBackgroundWhite);
+            final int accent = getThemedColor(Theme.key_windowBackgroundWhiteBlueText);
+            final int soft = android.graphics.Color.rgb(
+                    (android.graphics.Color.red(base) * 92 + android.graphics.Color.red(accent) * 8) / 100,
+                    (android.graphics.Color.green(base) * 92 + android.graphics.Color.green(accent) * 8) / 100,
+                    (android.graphics.Color.blue(base) * 92 + android.graphics.Color.blue(accent) * 8) / 100);
+            android.graphics.drawable.GradientDrawable surface =
+                    new android.graphics.drawable.GradientDrawable();
+            surface.setColor(soft);
+            surface.setCornerRadius(AndroidUtilities.dp(13));
+            surface.setStroke(Math.max(1, AndroidUtilities.dp(.65f)),
+                    android.graphics.Color.argb(57, android.graphics.Color.red(accent),
+                            android.graphics.Color.green(accent), android.graphics.Color.blue(accent)));
+            android.graphics.drawable.Drawable inset =
+                    new android.graphics.drawable.InsetDrawable(surface,
+                            AndroidUtilities.dp(10), AndroidUtilities.dp(1),
+                            AndroidUtilities.dp(10), AndroidUtilities.dp(1));
+            holder.itemView.setBackground(new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(
+                            android.graphics.Color.argb(44, android.graphics.Color.red(accent),
+                                    android.graphics.Color.green(accent), android.graphics.Color.blue(accent))),
+                    inset, null));
+        }
+    }""",
+        1
+    ),
+])
+modify("SettingsActivity.java", [
+    (
+        "        listView.adapter.setApplyBackground(false);",
+        """        listView.adapter.setApplyBackground(false);
+        // Only the main Telegram Settings uses these additional
+        // theme-aware inset Glass rows.
+        listView.adapter.setNabdhGlassSettings(true);""",
+        1
+    ),
+])
+
+# Soft filled surfaces for number/country and code containers WITHOUT adding
+# a second stroke. The upstream OutlineTextContainerView still paints the
+# native focus/validation line and accessibility/keyboard behavior.
+modify("Components/OutlineTextContainerView.java", [
+    (
+        "    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);",
+        """    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private boolean nabdhSoftGlass;
+    private final Paint nabdhSoftFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    public void setNabdhSoftGlass(boolean enabled) {
+        nabdhSoftGlass = enabled;
+        invalidate();
+    }""",
+        1
+    ),
+    (
+        """    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+        float textOffset =""",
+        """    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        if (nabdhSoftGlass) {
+            int base = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
+            int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
+            nabdhSoftFillPaint.setColor(android.graphics.Color.rgb(
+                    (android.graphics.Color.red(base) * 94 + android.graphics.Color.red(accent) * 6) / 100,
+                    (android.graphics.Color.green(base) * 94 + android.graphics.Color.green(accent) * 6) / 100,
+                    (android.graphics.Color.blue(base) * 94 + android.graphics.Color.blue(accent) * 6) / 100));
+            canvas.drawRoundRect(AndroidUtilities.dp(2), AndroidUtilities.dp(3),
+                    getWidth() - AndroidUtilities.dp(2), getHeight() - AndroidUtilities.dp(3),
+                    AndroidUtilities.dp(17), AndroidUtilities.dp(17), nabdhSoftFillPaint);
+        }
+
+        float textOffset =""",
+        1
+    ),
+])
+modify("LoginActivity.java", [
+    (
+        "countryOutlineView = new OutlineTextContainerView(context);",
+        """countryOutlineView = new OutlineTextContainerView(context);
+            countryOutlineView.setNabdhSoftGlass(true);""",
+        1
+    ),
+    (
+        "phoneOutlineView = new OutlineTextContainerView(context);",
+        """phoneOutlineView = new OutlineTextContainerView(context);
+            phoneOutlineView.setNabdhSoftGlass(true);""",
+        1
+    ),
+    (
+        "outlineCodeField = new OutlineTextContainerView(context);",
+        """outlineCodeField = new OutlineTextContainerView(context);
+            outlineCodeField.setNabdhSoftGlass(true);""",
+        1
+    ),
+    (
+        "codeFieldContainer = new CodeFieldContainer(context) {",
+        """codeFieldContainer = new CodeFieldContainer(context) {""",
+        4
+    ),
+])
+
+# All ordinary TEXT bubble colors, not merely the rare gradient branch.
+# The original Telegram shape/tail stays intact, and grouped media is left
+# to native code. The subtle colored fill is applied BEFORE the text is drawn.
+modify("ActionBar/MessageDrawable.java", [
+    (
+        """                background.draw(canvas);
+                if (currentType == TYPE_TEXT && !themePreview && !isSelected) {""",
+        """                background.draw(canvas);
+                if (currentType == TYPE_TEXT && !themePreview && !isSelected) {
+                    // Semi-transparent theme accent under the message glyphs:
+                    // makes Glass visible for cached solid native bubbles too.
+                    int tint = getColor(isOut
+                            ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow);
+                    if (Color.alpha(tint) < 20) {
+                        tint = getColor(Theme.key_chat_messagePanelText);
+                    }
+                    nabdhBubbleEdge.setStyle(Paint.Style.FILL);
+                    nabdhBubbleEdge.setColor(tint);
+                    nabdhBubbleEdge.setAlpha((int) (25f * alpha / 255f));
+                    canvas.drawPath(makePath(), nabdhBubbleEdge);""",
+        1
+    ),
+    (
+        "nabdhBubbleEdge.setAlpha((int) (53f * alpha / 255f));",
+        "nabdhBubbleEdge.setAlpha((int) (92f * alpha / 255f));",
+        1
+    ),
+])
+print("NabdhGram v1: fixed RTL badge placement, native settings Glass, login input surfaces, solid chat bubbles.")

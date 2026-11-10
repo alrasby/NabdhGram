@@ -29,6 +29,22 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "RTL verified contact icon follows name instead of overlapping":
+        "setNabdhRtlBadgeBeforeText(LocaleController.isRTL)" in
+        (ui / "Cells/UserCell.java").read_text(encoding="utf-8")
+        and "x = Math.max(0, offsetX - drawablePadding" in
+        (ui / "ActionBar/SimpleTextView.java").read_text(encoding="utf-8"),
+    "actual Telegram Settings rows have theme-based rounded Glass":
+        "listView.adapter.setNabdhGlassSettings(true)" in native_settings
+        and "nabdhGlassSettings &&" in universal
+        and "InsetDrawable(surface" in universal,
+    "country and phone inputs keep native validation plus soft Glass":
+        "setNabdhSoftGlass(true)" in (ui / "LoginActivity.java").read_text(encoding="utf-8")
+        and "canvas.drawRoundRect(" in
+        (ui / "Components/OutlineTextContainerView.java").read_text(encoding="utf-8"),
+    "solid native chat bubbles draw tinted Glass overlay":
+        "canvas.drawPath(makePath(), nabdhBubbleEdge)" in
+        (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8"),
     "finished NabdhGram settings use one accessible column":
         'section(context, content, R.string.NabdhShieldTitle' in settings
         and "compactGrid" not in settings
@@ -45,7 +61,7 @@ checks = {
     "contact names honor regular font and keep verified badges distinct":
         'nameTextView.setTypeface(AndroidUtilities.getTypeface("fonts/rregular.ttf"));' in
         (ui / "Cells/UserCell.java").read_text(encoding="utf-8")
-        and 'nameTextView.setDrawablePadding(dp(13));' in
+        and 'nameTextView.setDrawablePadding(dp(8));' in
         (ui / "Cells/UserCell.java").read_text(encoding="utf-8"),
     "MTProxy promotion may be re-hidden after server reconnect":
         "nabdhLastProxyPromoAttemptAt" in dialogs
