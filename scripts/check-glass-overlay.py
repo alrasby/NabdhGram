@@ -29,6 +29,21 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "NabdhGram settings spacing compacted": all(
+        token in settings for token in (
+            "int d = (int) (12 * context.getResources().getDisplayMetrics().density);",
+            "lp.bottomMargin = d / 2;",
+            "int pad = (int) (12 * context.getResources().getDisplayMetrics().density);",
+        )
+    ),
+    "settings and nested page headings localized": all(
+        item in settings for item in (
+            "actionBar.setTitle(NabdhStrings.get(context, R.string.NabdhGramSettingsTitle));",
+            "heading.setText(NabdhStrings.get(context, titleRes));",
+            "description.setText(NabdhStrings.get(context, summaryRes));",
+        )
+    ) and "actionBar.setTitle(NabdhStrings.get(context, titleRes));" in feature
+      and "explanation.setText(NabdhStrings.get(context, descriptionRes));" in feature,
     "appearance settings describe working Glass and fonts": "Choose the application font below." in appearance_en
         and "اختر خط التطبيق أدناه." in appearance_ar
         and "Glass appearance and application fonts" in appearance_en
