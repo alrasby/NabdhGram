@@ -117,4 +117,10 @@ assert "nabdhAnimatedAppliedFonts.put(animated, renderKey)" in global_fonts, "An
 bundled_themes = (ROOT / "scripts/apply-nabdh-bundled-themes.py").read_text(encoding="utf-8")
 assert "else if (pathToFile != null)" in bundled_themes, "Theme file null guard missing"
 assert "isDark = previewBackgroundColor != 0" in bundled_themes, "Native theme fallback missing"
+assert "nabdhLanguageButtonView.setImageResource(R.drawable.nabdh_login_language)" in login_overlay, "Login language shortcut missing"
+assert "presentFragment(new LanguageSelectActivity())" in login_overlay, "Login must use native language selector"
+assert "proxyDrawable.setConnected(false, connected, animated);" in login_overlay, "Existing preauth proxy control still hidden"
+assert "loginNetwork.resumeNetworkMaybe();" in login_overlay, "Native MTProto preflight is missing"
+assert "nabdhSendCodeStartedMs" in login_overlay and "nabdhSignInStartedMs" in login_overlay, "Privacy-safe auth performance timings missing"
+assert "codeFieldContainer.codeField.length * 45L + 180L" in login_overlay, "Correct-code animation delay still long"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")

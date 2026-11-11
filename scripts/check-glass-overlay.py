@@ -30,7 +30,21 @@ appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xm
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 # The launcher label and MTProto session name are two different paths.
 connections = (root / "TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsManager.java").read_text(encoding="utf-8")
+login_source = (ui / "LoginActivity.java").read_text(encoding="utf-8")
 checks = {
+    "login exposes native language and proxy options before connecting":
+        "nabdhLanguageButtonView.setImageResource(R.drawable.nabdh_login_language)" in login_source
+        and "presentFragment(new LanguageSelectActivity())" in login_source
+        and "presentFragment(new ProxyListActivity())" in login_source
+        and "proxyButtonView.setBackground(new android.graphics.drawable.RippleDrawable(" in login_source,
+    "native MTProto resume and timing profile are installed without changing auth RPC":
+        "loginNetwork.checkConnection();" in login_source
+        and "loginNetwork.resumeNetworkMaybe();" in login_source
+        and "nabdhSendCodeStartedMs" in login_source
+        and "nabdhSignInStartedMs" in login_source
+        and "codeFieldContainer.codeField.length * 45L + 180L" in login_source,
+    "login language glyph is valid vector drawable":
+        ET.parse(root / "TMessagesProj/src/main/res/drawable/nabdh_login_language.xml") is not None,
     "blurred chat wallpaper rendered inside actual message shape":
         "nabdhDrawFrostedWallpaper(canvas, makePath())" in
             (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
