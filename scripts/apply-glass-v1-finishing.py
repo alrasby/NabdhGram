@@ -55,8 +55,7 @@ modify("ActionBar/SimpleTextView.java", [
                 // Mixed Arabic/Latin text can have a positive line-left.
                 float lineLeft = layout != null && layout.getLineCount() > 0
                         ? layout.getLineLeft(0) : 0;
-                float renderedStart = getMeasuredWidth() - getPaddingRight()
-                        - textWidth + Math.min(0, lineLeft);
+                float renderedStart = offsetX + lineLeft;
                 x = Math.max(0, (int) renderedStart
                         - drawablePadding - leftDrawable.getIntrinsicWidth());
             }
