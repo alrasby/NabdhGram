@@ -116,7 +116,9 @@ checks = {
         for phrase in (
             "themeInfo.isDark = ThemeInfo.DARK;",
             "themeInfo.isDark = ThemeInfo.LIGHT;",
-            "? getThemeFileValues(null, assetName, wallpaperLink)",
+            "checkIsDark(getThemeFileValues(null, assetName, wallpaperLink), this);",
+            "else if (pathToFile != null)",
+            "isDark = previewBackgroundColor != 0",
         )
     ),
     "canvas-based chat text adopts selected font": all(
