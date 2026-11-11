@@ -60,6 +60,10 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
                 || view instanceof org.telegram.ui.Cells.TextCheckBoxCell;
     }
 
+    public static boolean isGlassCard(View child) {
+        return child != null && child.getBackground() instanceof GlassCardLayers;
+    }
+
     // Draw exactly one inset card. Stacking the old ColorDrawable (usually
     // opaque white) underneath an inset card leaves a white rectangular strip
     // around every row, particularly obvious in RTL settings and profiles.
@@ -165,6 +169,21 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     }
 }
 """, encoding="utf-8")
+
+# Telegram cells still draw flat native divider lines ON TOP of the inset
+# rounded card. Hide only those separators when this exact Glass background is
+# installed; retain separators unchanged in all other application screens.
+for cell_name in ("TextCell", "TextSettingsCell", "TextCheckCell", "TextCheckCell2",
+                  "NotificationsCheckCell", "TextDetailCell", "TextRadioCell"):
+    cell_path = ui / "Cells" / (cell_name + ".java")
+    cell_src = cell_path.read_text(encoding="utf-8")
+    before_divider = "        if (needDivider) {"
+    if cell_src.count(before_divider) != 1:
+        raise SystemExit(f"{cell_name}: divider draw anchor changed")
+    cell_src = cell_src.replace(before_divider,
+        "        if (needDivider && !org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this)) {",
+        1)
+    cell_path.write_text(cell_src, encoding="utf-8")
 
 for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
              "DataSettingsActivity.java", "ThemeActivity.java",
