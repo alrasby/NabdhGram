@@ -306,4 +306,19 @@ for activity in ("SettingsActivity.java",):
         1)
     page.write_text(content, encoding="utf-8")
 
+# Text selection/copy menus on ProfileActivity temporarily draw a scrim
+# clone of the selected row. Telegram's getClipBackground returns the original
+# broad white section, which appears as a white strip under the bio card.
+# Give the menu the actual rounded row drawable when Glass is active.
+profile_path = ui / "ProfileActivity.java"
+profile_src = profile_path.read_text(encoding="utf-8")
+old_scrim = ".setScrimViewBackground(listView.getClipBackground(view))"
+new_scrim = """.setScrimViewBackground(
+                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                                ? view.getBackground() : listView.getClipBackground(view))"""
+if profile_src.count(old_scrim) != 3:
+    raise SystemExit("Profile selection scrim anchors changed")
+profile_src = profile_src.replace(old_scrim, new_scrim)
+profile_path.write_text(profile_src, encoding="utf-8")
+
 print("NabdhGram Glass backgrounds installed on native settings and profile rows.")
