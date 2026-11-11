@@ -451,7 +451,7 @@ s = s.replace(anchor, anchor + """
 
 for lang, labels in {
     "values": ("Application font", "Readex Pro", "Sans-serif", "Serif", "Uses the device font by default. Optional fonts start in Regular. Some specialized Telegram views keep independent typography.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"),
-    "values-ar": ("خط التطبيق", "Readex Pro", "بدون حواف", "بحواف", "خط الجهاز هو الافتراضي، وتبدأ الخطوط الاختيارية بالوزن العادي. قد تحتفظ بعض عناصر تيليجرام الخاصة بخطوطها.", "وزير متن", "نوتو سانس عربي", "تجوال", "روبيك"),
+    "values-ar": ("خط التطبيق", "Readex Pro", "Sans-serif", "Serif", "خط الجهاز هو الافتراضي، وتبدأ الخطوط الاختيارية بالوزن العادي. قد تحتفظ بعض عناصر تيليجرام الخاصة بخطوطها.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"),
 }.items():
     res = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     xml = res.read_text(encoding="utf-8")
