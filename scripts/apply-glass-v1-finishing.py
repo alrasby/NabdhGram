@@ -40,27 +40,61 @@ modify("ActionBar/SimpleTextView.java", [
         }
     }
 
+    // Custom Telegram titles paint a StaticLayout, not an Android TextView.
+    // Track their original size once so changing fonts/scales takes effect
+    // immediately and does not compound the previous size.
+    private float nabdhOriginalTextPx = -1f;
+    private int nabdhOriginalTextStyle;
+    private boolean nabdhNativeTextApplied;
+
     public void nabdhRefreshSelectedFont() {
         Typeface current = textPaint.getTypeface();
         if (current == null) return;
-        boolean regularText = current.equals(Typeface.DEFAULT)
+        boolean standard = nabdhNativeTextApplied
+                || current.equals(Typeface.DEFAULT)
                 || current.equals(Typeface.DEFAULT_BOLD)
                 || current.equals(Typeface.SANS_SERIF)
-                || current.equals(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        for (String filename : new String[]{"ReadexPro.ttf", "Vazirmatn.ttf",
-                "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf"}) {
-            Typeface candidate = AndroidUtilities.getTypeface("fonts/" + filename);
-            if (candidate != null && (current.equals(candidate)
-                    || current.equals(Typeface.create(candidate, Typeface.NORMAL))
-                    || current.equals(Typeface.create(candidate, Typeface.BOLD)))) {
-                regularText = true;
-                break;
+                || current.equals(Typeface.create("sans-serif", Typeface.BOLD))
+                || current.equals(Typeface.create("sans-serif-medium", Typeface.NORMAL))
+                || current.equals(Typeface.create("sans-serif-medium", Typeface.BOLD))
+                || current.equals(AndroidUtilities.getTypeface("fonts/rregular.ttf"))
+                || current.equals(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        if (!standard) {
+            for (String filename : new String[]{"ReadexPro.ttf", "Vazirmatn.ttf",
+                    "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf"}) {
+                Typeface candidate = AndroidUtilities.getTypeface("fonts/" + filename);
+                if (candidate != null && (current.equals(candidate)
+                        || current.equals(Typeface.create(candidate, Typeface.NORMAL))
+                        || current.equals(Typeface.create(candidate, Typeface.BOLD)))) {
+                    standard = true;
+                    break;
+                }
             }
         }
-        if (regularText) {
-            Typeface next = AndroidUtilities.getTypeface("fonts/rregular.ttf");
-            if (next != null) setTypeface(next);
+        // Never replace icon, math, code or specialty fonts.
+        if (!standard) return;
+        if (nabdhOriginalTextPx < 0f) {
+            nabdhOriginalTextPx = textPaint.getTextSize();
+            nabdhOriginalTextStyle = current.getStyle();
         }
+        android.content.SharedPreferences preferences = getContext()
+                .getSharedPreferences("nabdhgram_appearance", android.content.Context.MODE_PRIVATE);
+        int scale = Math.max(85, Math.min(115,
+                preferences.getInt("ui_scale_percent", 100)));
+        boolean useMedium = "system-default".equals(
+                preferences.getString("font_family", "system-default"))
+                && (nabdhOriginalTextStyle & Typeface.BOLD) != 0;
+        Typeface desired = AndroidUtilities.getTypeface(
+                useMedium ? "fonts/rmedium.ttf" : "fonts/rregular.ttf");
+        if (desired != null && !desired.equals(current)) {
+            setTypeface(desired);
+        }
+        final int desiredPx = Math.max(1,
+                Math.round(nabdhOriginalTextPx * scale / 100f));
+        if (Math.abs(textPaint.getTextSize() - desiredPx) > 0.5f) {
+            setTextSizePx(desiredPx);
+        }
+        nabdhNativeTextApplied = true;
     }""",
         1
     ),
