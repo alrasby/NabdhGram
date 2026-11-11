@@ -221,6 +221,32 @@ s = replace_once(s,
                 TLRPC.TL_auth_sendCode sendCode = new TLRPC.TL_auth_sendCode();""",
     "MTProto resume after login state cleanup")
 
+
+# Keep an observable difference between network delay and the native success
+# animation after a correct SMS/Telegram code. The original animations delay
+# navigation by around 0.7-0.9s. Keep the feedback, halve only its hold time.
+if s.count("codeFieldContainer.postDelayed(()-> codeFieldContainer.codeField[finalI].animateSuccessProgress(1f), i * 75L);") != 2:
+    raise SystemExit("Telegram successful code animation anchors changed")
+s = s.replace(
+    "codeFieldContainer.postDelayed(()-> codeFieldContainer.codeField[finalI].animateSuccessProgress(1f), i * 75L);",
+    "codeFieldContainer.postDelayed(()-> codeFieldContainer.codeField[finalI].animateSuccessProgress(1f), i * 45L);")
+if s.count("}, codeFieldContainer.codeField.length * 75L + 400L);") != 2:
+    raise SystemExit("Telegram post-code navigation delay anchors changed")
+s = s.replace("}, codeFieldContainer.codeField.length * 75L + 400L);",
+              "}, codeFieldContainer.codeField.length * 45L + 180L);")
+# Record only the time for Telegram to answer signIn, not the secret code.
+auth_anchor = """                    int reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                        tryHideProgress(false, true);"""
+auth_trace = """                    final long nabdhSignInStartedMs = android.os.SystemClock.elapsedRealtime();
+                    int reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                        tryHideProgress(false, true);
+                        if (BuildVars.LOGS_ENABLED) {
+                            FileLog.d("NabdhGram auth signIn elapsed_ms="
+                                    + (android.os.SystemClock.elapsedRealtime() - nabdhSignInStartedMs)
+                                    + " result=" + (error == null ? "accepted" : "error_code_" + error.code));
+                        }"""
+s = replace_once(s, auth_anchor, auth_trace, "code confirmation latency telemetry")
+
 login.write_text(s,encoding="utf-8")
 language_vector = root / "TMessagesProj/src/main/res/drawable/nabdh_login_language.xml"
 language_vector.parent.mkdir(parents=True, exist_ok=True)
