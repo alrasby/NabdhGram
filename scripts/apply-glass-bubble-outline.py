@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Add a subtle border to gradient text bubbles using Telegram's own bubble path.
+"""Use the native Telegram bubble geometry for theme-aware text and media edges.
 
-Solid-color bubbles retain the upstream cached drawable; media, previews,
-selection overlays and custom theme preview drawing are left unchanged.
+This leaves selection, theme previews, media content and message grouping intact.
 """
 from pathlib import Path
 import sys
@@ -17,10 +16,10 @@ s = s.replace(field_anchor, field_anchor + "    private final Paint nabdhBubbleE
 anchor = """        canvas.drawPath(path, p);
         if (gradientShader != null && isSelected && paintToUse == null) {"""
 replacement = """        canvas.drawPath(path, p);
-        // NabdhGram Glass: outline only gradient text bubbles using the
+        // NabdhGram Glass: outline gradient text and media bubbles using the
         // existing Telegram shape, preserving grouping and tail geometry.
         if (paintToUse == null && gradientShader != null
-                && currentType == TYPE_TEXT && !themePreview && !isSelected) {
+                && (currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
             nabdhBubbleEdge.setStyle(Paint.Style.STROKE);
             nabdhBubbleEdge.setStrokeWidth(dp(1));
             // Respect the active theme's in/out shadow hue, including user
@@ -43,7 +42,7 @@ if s.count(cached) != 1:
     raise SystemExit("Cached Telegram bubble drawing branch changed")
 cached_stroke = """                background.setBounds(bounds);
                 background.draw(canvas);
-                if (currentType == TYPE_TEXT && !themePreview && !isSelected) {
+                if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
                     int stroke = getColor(isOut
                             ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow);
                     if (Color.alpha(stroke) < 30) {
@@ -58,4 +57,4 @@ cached_stroke = """                background.setBounds(bounds);
                 return;"""
 s = s.replace(cached, cached_stroke, 1)
 p.write_text(s, encoding="utf-8")
-print("Glass gradient text bubble outline applied.")
+print("Glass text/media bubble outlines applied using native Telegram paths.")
