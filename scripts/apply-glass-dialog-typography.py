@@ -1,63 +1,25 @@
 #!/usr/bin/env python3
-"""Align mixed-script dialog names with Telegram's RTL name column."""
+"""Conservative mixed-script dialog name geometry for Telegram's native RTL layout.
+
+Do not replace Telegram's paragraph alignment or move nameLeft by unbounded
+line-right offsets: that pushed long mixed Arabic/Latin titles across avatars.
+Only reserve an extra 6dp for verification badges using upstream positioning.
+"""
 from pathlib import Path
 import sys
+
 if len(sys.argv) != 2:
     raise SystemExit("Usage: apply-glass-dialog-typography.py TELEGRAM_SOURCE")
-p = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java"
-s = p.read_text(encoding="utf-8")
-anchor = "            if (twoLinesForName) {\n                nameLayout = StaticLayoutEx.createStaticLayout("
-if s.count(anchor) != 1:
-    raise SystemExit("Dialog name layout anchor changed")
-s = s.replace(anchor, """            // Keep Latin names on the same trailing edge as Arabic names.
-            Layout.Alignment nabdhNameAlignment = LocaleController.isRTL
-                    && !android.text.TextDirectionHeuristics.FIRSTSTRONG_RTL.isRtl(
-                            nameStringFinal, 0, nameStringFinal.length())
-                    ? Layout.Alignment.ALIGN_OPPOSITE : Layout.Alignment.ALIGN_NORMAL;
-""" + anchor, 1)
-for original in (
-    "nameLayout = StaticLayoutEx.createStaticLayout(nameStringFinal, Theme.dialogs_namePaint[paintIndex], ellipsizeWidth, Layout.Alignment.ALIGN_NORMAL",
-    "nameLayout = new StaticLayout(nameStringFinal, Theme.dialogs_namePaint[paintIndex], Math.max(ellipsizeWidth, nameWidth), Layout.Alignment.ALIGN_NORMAL",
-):
-    if s.count(original) != 1:
-        raise SystemExit("Dialog name alignment anchor changed")
-    s = s.replace(original, original.replace("Layout.Alignment.ALIGN_NORMAL", "nabdhNameAlignment"), 1)
-# Upstream shifts only RTL paragraphs whose lineLeft is zero. Once
-# Latin names are aligned to the RTL column, this condition fails and those
-# names drift away from the common right edge. Align by the rendered lineRight
-# regardless of the paragraph's detected direction.
-position_anchor = """                if (left == 0) {
-                    if (widthpx < nameWidth) {
-                        nameLeft += (nameWidth - widthpx);
-                    }
-                }"""
-position_replacement = ""
-if s.count(position_anchor) != 1:
-    raise SystemExit("Dialog RTL name position anchor changed")
-s = s.replace(position_anchor, position_replacement, 1)
-# Compute the common visual right edge BEFORE Telegram lays out status icons,
-# otherwise verified/mute icons are calculated using stale coordinates.
-edge_anchor = """                if (drawBotVerified) {
-                    nameLeft += dp(21);
-                }
-                if (nameLayoutEllipsizeByGradient) {"""
-edge_replacement = """                if (drawBotVerified) {
-                    nameLeft += dp(21);
-                }
-                nameLeft += Math.max(0, Math.round(
-                        nameWidth - nameLayout.getLineRight(0)));
-                if (nameLayoutEllipsizeByGradient) {"""
-if s.count(edge_anchor) != 1:
-    raise SystemExit("Dialog RTL visual name edge anchor changed")
-s = s.replace(edge_anchor, edge_replacement, 1)
 
-
-# A verified-bot badge occupies the trailing name column. Reserve a
-# small additional inset for wide Arabic glyphs and imported font metrics,
-# including the two RTL/LTR positioning branches.
-if s.count("nameWidth -= dp(21);") != 1 or s.count("nameLeft += dp(21);") != 2:
-    raise SystemExit("Telegram verification badge positioning changed")
-s = s.replace("nameWidth -= dp(21);", "nameWidth -= dp(27);", 1)
-s = s.replace("nameLeft += dp(21);", "nameLeft += dp(27);")
-p.write_text(s, encoding="utf-8")
-print("Dialog names align to the RTL text column.")
+path = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java"
+source = path.read_text(encoding="utf-8")
+# Keep native ALIGN_NORMAL and its original conditional RTL nameLeft
+# adjustment. It knows the glyph offset, avatar and reserved metadata width.
+if source.count("nameWidth -= dp(21);") != 1:
+    raise SystemExit("Verified nameWidth reservation changed")
+if source.count("nameLeft += dp(21);") != 2:
+    raise SystemExit("Verified name positioning changed")
+source = source.replace("nameWidth -= dp(21);", "nameWidth -= dp(27);", 1)
+source = source.replace("nameLeft += dp(21);", "nameLeft += dp(27);")
+path.write_text(source, encoding="utf-8")
+print("PASS: native mixed RTL layout preserved; verification badges reserve extra 6dp")
