@@ -135,47 +135,56 @@ login.write_text(s,encoding="utf-8")
 k = keyboard.read_text(encoding="utf-8")
 k = replace_once(k,
     "private final static int SIDE_PADDING = 10, BUTTON_PADDING = 6;",
-    "private final static int SIDE_PADDING = 12, BUTTON_PADDING = 7;",
+    "private final static int SIDE_PADDING = 10, BUTTON_PADDING = 6;",
     "keypad breathing room")
 k = replace_once(k,
     """        final int defaultColor = Theme.getColor(Theme.key_listSelector);
         final int pressedColor = ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_listSelector), 30);""",
     """        // Genuine translucent keypad, not an overlay blocking key presses.
         // Selected-theme colors make light, dark and imported Glass work.
-        final int defaultColor = ColorUtils.setAlphaComponent(
-                Theme.getColor(Theme.key_listSelector), 138);
-        final int pressedColor = ColorUtils.setAlphaComponent(
-                Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 73);""",
+        // Keep Telegram's original keypad geometry with a restrained,
+        // theme-aware surface. Unlike the selector color, this base follows
+        // light/dark imported themes without opaque gray number pills.
+        final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
+        final int tint = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        final int defaultColor = android.graphics.Color.rgb(
+                (android.graphics.Color.red(base) * 94 + android.graphics.Color.red(tint) * 6) / 100,
+                (android.graphics.Color.green(base) * 94 + android.graphics.Color.green(tint) * 6) / 100,
+                (android.graphics.Color.blue(base) * 94 + android.graphics.Color.blue(tint) * 6) / 100);
+        final int pressedColor = android.graphics.Color.rgb(
+                (android.graphics.Color.red(base) * 81 + android.graphics.Color.red(tint) * 19) / 100,
+                (android.graphics.Color.green(base) * 81 + android.graphics.Color.green(tint) * 19) / 100,
+                (android.graphics.Color.blue(base) * 81 + android.graphics.Color.blue(tint) * 19) / 100);""",
     "keypad translucent key paints")
 k = replace_once(k,
     "dp(isRight && isTop ? 24 : 12),",
-    "dp(isRight && isTop ? 24 : 17),",
+    "dp(isRight && isTop ? 24 : 12),",
     "top-right key corners")
 k = replace_once(k,
     "dp(isLeft && isTop ? 24 : 12),",
-    "dp(isLeft && isTop ? 24 : 17),",
+    "dp(isLeft && isTop ? 24 : 12),",
     "top-left key corners")
 k = replace_once(k,
     "dp(isRight && isBottom ? 24 : 12),",
-    "dp(isRight && isBottom ? 24 : 17),",
+    "dp(isRight && isBottom ? 24 : 12),",
     "bottom-right key corners")
 k = replace_once(k,
     "dp(/*index == 10 || index == 6 ||*/ isLeft && isBottom ? 24 : 12),",
-    "dp(isLeft && isBottom ? 24 : 17),",
+    "dp(/*index == 10 || index == 6 ||*/ isLeft && isBottom ? 24 : 12),",
     "bottom-left key corners")
 # Constructor and updateColors both tint the same icon; handle both.
 backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
 if k.count(backspace_icon) != 2:
     raise SystemExit("Backspace icon anchors changed")
 k = k.replace(backspace_icon,
-    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
+    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));")
 k = replace_once(k,
     "numberTextPaint.setTextSize(dp(24));",
-    "numberTextPaint.setTextSize(dp(23));",
+    "numberTextPaint.setTextSize(dp(24));",
     "numeric key size")
 k = replace_once(k,
     "symbolsTextPaint.setTextSize(dp(14));",
-    "symbolsTextPaint.setTextSize(dp(12));",
+    "symbolsTextPaint.setTextSize(dp(14));",
     "key secondary letters")
 keyboard.write_text(k, encoding="utf-8")
 
