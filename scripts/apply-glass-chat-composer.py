@@ -30,6 +30,7 @@ replacement = """        // NabdhGram Glass: light, theme-aware input surface. K
                 android.graphics.Color.green(nabdhInputAccent),
                 android.graphics.Color.blue(nabdhInputAccent)));
         messageEditText.setBackground(nabdhInputGlass);
+        nabdhComposerSurface = nabdhInputGlass;
         // Restore Telegram's vertical insets: the EditText is measured
         // independently of the panel and must retain its 9/10dp padding.
         messageEditText.setPadding(0, dp(9), 0, dp(10));
@@ -53,8 +54,28 @@ if s.count(resume_anchor) != 1:
 resume_replacement = """    // Read persisted typography for both the message and its localized hint.
     // Refresh on return to an existing chat, not just on initial construction.
     private String nabdhAppliedComposerFamily;
+    private android.graphics.drawable.GradientDrawable nabdhComposerSurface;
+
+    private void nabdhRefreshComposerSurface() {
+        if (nabdhComposerSurface == null) {
+            return;
+        }
+        // Re-resolve from the current imported or bundled theme on resume.
+        // This updates an already-open chat without reconstructing its editor.
+        int base = getThemedColor(Theme.key_chat_messagePanelBackground);
+        int accent = getThemedColor(Theme.key_chat_messagePanelText);
+        nabdhComposerSurface.setColor(base);
+        nabdhComposerSurface.setStroke(dp(1), android.graphics.Color.argb(65,
+                android.graphics.Color.red(accent),
+                android.graphics.Color.green(accent),
+                android.graphics.Color.blue(accent)));
+        if (messageEditText != null) {
+            messageEditText.invalidate();
+        }
+    }
 
     private void nabdhRefreshComposerFont() {
+        nabdhRefreshComposerSurface();
         if (messageEditText == null) {
             return;
         }
