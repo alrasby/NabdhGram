@@ -39,7 +39,8 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         // Use instanceof rather than class simple names: Telegram creates
         // anonymous subclasses of TextCell/TextDetailCell in profiles, whose
         // getSimpleName() is empty. Those were previously left unstyled.
-        return view instanceof org.telegram.ui.Cells.TextCell
+        return view instanceof org.telegram.ui.SettingsActivity.SettingCell
+                || view instanceof org.telegram.ui.Cells.TextCell
                 || view instanceof org.telegram.ui.Cells.TextSettingsCell
                 || view instanceof org.telegram.ui.Cells.TextCheckCell
                 || view instanceof org.telegram.ui.Cells.TextCheckCell2
@@ -289,7 +290,8 @@ universal_source = universal_source[:end] + """
             int glassType = holder.getItemViewType();
             // Do not turn section headers, profile hero, media, or spacer
             // rows into cards; force only these Settings-specific row types.
-            if (glassType == VIEW_TYPE_TEXT_SETTINGS
+            if (holder.itemView instanceof org.telegram.ui.SettingsActivity.SettingCell
+                    || glassType == VIEW_TYPE_TEXT_SETTINGS
                     || glassType == VIEW_TYPE_TEXT || glassType == VIEW_TYPE_TEXT_CHECK
                     || glassType == VIEW_TYPE_SWITCH || glassType == VIEW_TYPE_ICON_TEXT_CHECK) {
                 NabdhGlassRowDecoration.applyCardStyle(holder.itemView, true);
