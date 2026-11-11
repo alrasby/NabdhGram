@@ -33,5 +33,5 @@ for family in ("Readex Pro", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"
     assert family in settings, f"Missing English font label: {family}"
 assert '"values-ar": ("خط التطبيق", "Readex Pro", "Sans-serif", "Serif"' in settings, "Arabic locale changes font names"
 assert "+ 'Device default font'" in settings, "Default font label changes with locale"
-assert '"\\n            settings.allow_firebase' not in login_overlay, "Escaped Java newline in auth overlay"
+assert (chr(92) * 2 + "n            settings.allow_firebase") not in login_overlay, "Double-escaped Java newline in auth overlay"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")
