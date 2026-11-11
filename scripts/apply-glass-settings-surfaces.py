@@ -86,15 +86,22 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     }
 
     private static final class GlassCardLayers extends android.graphics.drawable.RippleDrawable {
+        private int lastTint;
         GlassCardLayers() {
             super(android.content.res.ColorStateList.valueOf(
                     Theme.getColor(Theme.key_listSelector)),
                     new LiveGlassSurface(), null);
+            lastTint = Theme.getColor(Theme.key_listSelector);
         }
         void refreshThemeTint() {
-            setColor(android.content.res.ColorStateList.valueOf(
-                    Theme.getColor(Theme.key_listSelector)));
-            invalidateSelf();
+            // Called during RecyclerView decoration. Updating the RippleDrawable
+            // unconditionally here would schedule an endless draw/invalidate loop.
+            int tint = Theme.getColor(Theme.key_listSelector);
+            if (tint != lastTint) {
+                lastTint = tint;
+                setColor(android.content.res.ColorStateList.valueOf(tint));
+                invalidateSelf();
+            }
         }
     }
 
