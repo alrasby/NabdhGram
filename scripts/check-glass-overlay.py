@@ -33,7 +33,10 @@ checks = {
         all("listView.setSections();" not in (ui / page).read_text(encoding="utf-8")
             for page in ("SettingsActivity.java", "ProfileActivity.java",
                 "NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
-                "DataSettingsActivity.java", "ThemeActivity.java"))
+                "DataSettingsActivity.java", "ThemeActivity.java",
+                "LanguageSelectActivity.java", "SessionsActivity.java",
+                "PrivacyControlActivity.java", "NotificationsCustomSettingsActivity.java",
+                "CacheControlActivity.java"))
         and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
             (ui / "ProfileActivity.java").read_text(encoding="utf-8")
         and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
@@ -44,7 +47,10 @@ checks = {
         "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
         (ui / name).read_text(encoding="utf-8")
         for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
-                     "DataSettingsActivity.java", "ThemeActivity.java", "ProfileActivity.java")
+                     "DataSettingsActivity.java", "ThemeActivity.java", "ProfileActivity.java",
+                     "LanguageSelectActivity.java", "SessionsActivity.java",
+                     "PrivacyControlActivity.java", "NotificationsCustomSettingsActivity.java",
+                     "CacheControlActivity.java")
     ) and all(
         phrase in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         for phrase in ("class LiveGlassSurface", "class GlassCardLayers",
@@ -57,7 +63,9 @@ checks = {
         (ui / name).read_text(encoding="utf-8")
         for name in ("NotificationsSettingsActivity.java",
                      "PrivacySettingsActivity.java", "DataSettingsActivity.java",
-                     "ThemeActivity.java", "ProfileActivity.java")
+                     "ThemeActivity.java", "ProfileActivity.java", "LanguageSelectActivity.java",
+                     "SessionsActivity.java", "PrivacyControlActivity.java",
+                     "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java")
     ) and all(token in
         (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         for token in ("onDrawOver", "Theme.key_windowBackgroundWhiteBlueText",
