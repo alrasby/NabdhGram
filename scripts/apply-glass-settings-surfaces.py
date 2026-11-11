@@ -234,4 +234,20 @@ universal_source = universal_source[:end] + """
 """ + universal_source[end:]
 universal_path.write_text(universal_source, encoding="utf-8")
 
+# These native RecyclerView section decorators paint one huge white rounded
+# surface behind several rows. The new individual Glass row cards should be
+# the only visible backgrounds, so disable GROUP decoration only on the main
+# Settings and Profile pages. Keep section metadata/rows/adapter unchanged.
+for activity in ("SettingsActivity.java", "ProfileActivity.java"):
+    page = ui / activity
+    content = page.read_text(encoding="utf-8")
+    group_anchor = "        listView.setSections();"
+    if content.count(group_anchor) != 1:
+        raise SystemExit(f"{activity}: native grouped background anchor changed")
+    content = content.replace(
+        group_anchor,
+        "        // NabdhGram: no large grouped background behind individual Glass cards.",
+        1)
+    page.write_text(content, encoding="utf-8")
+
 print("NabdhGram Glass backgrounds installed on native settings and profile rows.")
