@@ -15,7 +15,20 @@ if s.count(field_anchor) != 1:
 s = s.replace(field_anchor, field_anchor + "    private final Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);" + chr(10), 1)
 anchor = """        canvas.drawPath(path, p);
         if (gradientShader != null && isSelected && paintToUse == null) {"""
-replacement = """        canvas.drawPath(path, p);
+replacement = """        // Draw the native bubble path with a bounded translucent fill for
+        // unselected text. Preserve the original theme hue, wallpaper, native
+        // geometry, selected states and media bubbles.
+        final boolean nabdhFrostedText = paintToUse == null
+                && currentType == TYPE_TEXT && !themePreview && !isSelected
+                && crossfadeFromDrawable == null;
+        final int nabdhOriginalPaintAlpha = p.getAlpha();
+        if (nabdhFrostedText) {
+            p.setAlpha(nabdhOriginalPaintAlpha * 214 / 255);
+        }
+        canvas.drawPath(path, p);
+        if (nabdhFrostedText) {
+            p.setAlpha(nabdhOriginalPaintAlpha);
+        }
         // NabdhGram Glass: outline gradient text and media bubbles using the
         // existing Telegram shape, preserving grouping and tail geometry.
         if (paintToUse == null && gradientShader != null
@@ -45,7 +58,20 @@ cached = """                background.setBounds(bounds);
 if s.count(cached) != 1:
     raise SystemExit("Cached Telegram bubble drawing branch changed")
 cached_stroke = """                background.setBounds(bounds);
+                // The normal solid-text path uses a cached NinePatch rather
+                // than canvas.drawPath. Apply the same bounded translucency
+                // here, then restore the shared drawable alpha immediately.
+                // Do not alter selected, preview or media backgrounds.
+                final boolean nabdhFrostedText = currentType == TYPE_TEXT
+                        && !themePreview && !isSelected && crossfadeFromDrawable == null;
+                final int nabdhOriginalAlpha = background.getAlpha();
+                if (nabdhFrostedText) {
+                    background.setAlpha(nabdhOriginalAlpha * 214 / 255);
+                }
                 background.draw(canvas);
+                if (nabdhFrostedText) {
+                    background.setAlpha(nabdhOriginalAlpha);
+                }
                 if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
                     int stroke = getColor(isOut
                             ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow);
