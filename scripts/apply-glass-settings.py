@@ -341,6 +341,26 @@ s = s.replace(anchor, anchor + """
                         if (paint != null) paint.setTypeface(regular);
                     }
                 }
+                // Theme keeps distinct Canvas paints for encrypted names,
+                // typing previews, reply/forward headers and media documents.
+                if (Theme.dialogs_nameEncryptedPaint != null) {
+                    for (android.text.TextPaint paint : Theme.dialogs_nameEncryptedPaint) {
+                        if (paint != null) paint.setTypeface(bold);
+                    }
+                }
+                if (Theme.dialogs_messagePrintingPaint != null) {
+                    for (android.text.TextPaint paint : Theme.dialogs_messagePrintingPaint) {
+                        if (paint != null) paint.setTypeface(regular);
+                    }
+                }
+                if (Theme.dialogs_messageNamePaint != null) Theme.dialogs_messageNamePaint.setTypeface(bold);
+                if (Theme.chat_namePaint != null) Theme.chat_namePaint.setTypeface(bold);
+                if (Theme.chat_forwardNamePaint != null) Theme.chat_forwardNamePaint.setTypeface(regular);
+                if (Theme.chat_replyNamePaint != null) Theme.chat_replyNamePaint.setTypeface(bold);
+                if (Theme.chat_docNamePaint != null) Theme.chat_docNamePaint.setTypeface(regular);
+                if (Theme.chat_audioTitlePaint != null) Theme.chat_audioTitlePaint.setTypeface(regular);
+                if (Theme.chat_contactNamePaint != null) Theme.chat_contactNamePaint.setTypeface(regular);
+
                 // These chat messages are canvas TextPaint, not TextViews.
                 // Keep their existing point sizes and emoji fallback behavior.
                 if (Theme.chat_msgTextPaint != null) Theme.chat_msgTextPaint.setTypeface(regular);
@@ -365,8 +385,8 @@ s = s.replace(anchor, anchor + """
                     // cannot leave the font selection pending on disk.
                     prefs.edit().putString("font_family", family).commit();
                     org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
-                    refreshTypography.run();
                     refreshDrawnText.run();
+                    refreshTypography.run();
                     fontTitle.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                     explanation.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                 });
@@ -418,6 +438,7 @@ s = s.replace(anchor, anchor + """
                     org.telegram.messenger.SharedConfig.fontSizeIsDefault = false;
                     context.getSharedPreferences("userconfing", Context.MODE_PRIVATE)
                             .edit().putInt("fons_size", size).commit();
+                    refreshDrawnText.run();
                     refreshTypography.run();
                 }
             });
@@ -429,8 +450,8 @@ s = s.replace(anchor, anchor + """
             boldOption.setOnCheckedChangeListener((button, checked) -> {
                 prefs.edit().putBoolean("font_bold", checked).commit();
                 org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
-                refreshTypography.run();
                 refreshDrawnText.run();
+                refreshTypography.run();
             });
             fontCard.addView(boldOption);
             TextView refreshInfo = new TextView(context);
