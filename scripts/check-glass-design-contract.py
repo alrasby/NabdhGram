@@ -26,6 +26,7 @@ ordered = [
 positions = [workflow.find("python3 nabdhgram/scripts/" + name) for name in ordered]
 assert all(pos >= 0 for pos in positions), "Missing Glass integration step"
 assert positions == sorted(positions), "Glass overlays applied out of order"
+assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Install Android SDK and NDK") < workflow.index("      - name: Build branded debug APK"), "Expensive SDK/NDK setup must run only after source overlays pass"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
 assert "!themePreview && !isSelected" in bubble, "Selection or preview protection was removed"
 assert finishing.count("if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected)") == 2, "Final overlay no longer matches text/media anchor"
