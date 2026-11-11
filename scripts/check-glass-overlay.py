@@ -53,7 +53,12 @@ checks = {
                 "DataSettingsActivity.java", "ThemeActivity.java",
                 "LanguageSelectActivity.java", "SessionsActivity.java",
                 "PrivacyControlActivity.java", "NotificationsCustomSettingsActivity.java",
-                "CacheControlActivity.java"))
+                "CacheControlActivity.java", "ArchiveSettingsActivity.java",
+                "DataAutoDownloadActivity.java", "PasscodeActivity.java",
+                "PrivacyUsersActivity.java", "ProxyListActivity.java",
+                "QuickRepliesSettingsActivity.java",
+                "RestrictedLanguagesSelectActivity.java",
+                "ProfileNotificationsActivity.java"))
         and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
             (ui / "ProfileActivity.java").read_text(encoding="utf-8")
         and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView, true)" in
@@ -61,6 +66,12 @@ checks = {
         and "if (!settingsRow && !isSettingRow(child)) return;" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         and "extends android.graphics.drawable.RippleDrawable" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
+    "native mixed Arabic/Latin alignment uses first strong direction":
+        "titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings
+        and "subtitleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings,
+    "native Glass rows include specular highlight":
+        "canvas.drawLine(rect.left + round" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
     "account info uses same Glass for actual SettingCell factory rows":
         "listView.adapter.setNabdhGlassSettings(true)" in

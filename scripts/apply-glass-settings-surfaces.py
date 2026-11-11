@@ -123,6 +123,7 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     private static final class LiveGlassSurface extends android.graphics.drawable.Drawable {
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF rect = new RectF();
         private int opacity = 255;
 
@@ -150,6 +151,15 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
             edge.setColor(Color.argb(73 * opacity / 255,
                     Color.red(accent), Color.green(accent), Color.blue(accent)));
             canvas.drawRoundRect(rect, round, round, edge);
+            // Specular highlight along the card's top edge differentiates
+            // real glass material from an ordinary flat pastel row.
+            final boolean dark = Theme.isCurrentThemeDark();
+            sheen.setColor(Color.argb((dark ? 49 : 130) * opacity / 255,
+                    dark ? 198 : 255, dark ? 225 : 255, dark ? 232 : 255));
+            sheen.setStyle(Paint.Style.STROKE);
+            sheen.setStrokeWidth(AndroidUtilities.dpf2(.85f));
+            canvas.drawLine(rect.left + round, rect.top + AndroidUtilities.dpf2(.7f),
+                    rect.right - round, rect.top + AndroidUtilities.dpf2(.7f), sheen);
         }
 
         @Override public void setAlpha(int alpha) {
@@ -209,11 +219,20 @@ for cell_name in ("TextCell", "TextSettingsCell", "TextCheckCell", "TextCheckCel
         1)
     cell_path.write_text(cell_src, encoding="utf-8")
 
-for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
-             "DataSettingsActivity.java", "ThemeActivity.java",
-             "ProfileActivity.java", "LanguageSelectActivity.java",
-             "SessionsActivity.java", "PrivacyControlActivity.java",
-             "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java"):
+# Covers real nested Settings pages using the same upstream list model;
+# complex charts/editors are intentionally excluded from decorative hooks.
+GLASS_SETTINGS_SCREENS = (
+    "NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
+    "DataSettingsActivity.java", "ThemeActivity.java",
+    "ProfileActivity.java", "LanguageSelectActivity.java",
+    "SessionsActivity.java", "PrivacyControlActivity.java",
+    "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java",
+    "ArchiveSettingsActivity.java", "DataAutoDownloadActivity.java",
+    "PasscodeActivity.java", "PrivacyUsersActivity.java",
+    "ProxyListActivity.java", "QuickRepliesSettingsActivity.java",
+    "RestrictedLanguagesSelectActivity.java", "ProfileNotificationsActivity.java",
+)
+for name in GLASS_SETTINGS_SCREENS:
     path = ui / name
     source = path.read_text(encoding="utf-8")
     anchor = "        listView.setSections();"
@@ -291,6 +310,11 @@ rtl_to = """        public void updateColors() {
             titleView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
             subtitleView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
             valueView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+            // The paragraph begins at the locale's start edge but its
+            // internal Arabic/Latin runs keep their own strong direction.
+            titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            subtitleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            valueView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
             titleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));"""
 # SettingsActivity also contains SuggestionCell.updateColors with the
 # identical titleView color anchor. Restrict this edit to SettingCell only.

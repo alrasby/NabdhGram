@@ -68,6 +68,14 @@ assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
 assert "class LiveGlassSurface" in native_surfaces and "class GlassCardLayers" in native_surfaces, "Missing real theme-aware filled cards"
 assert "user_info = ui / \"UserInfoActivity.java\"" in native_surfaces and "listView.adapter.setNabdhGlassSettings(true);" in native_surfaces, "Actual Account info rows missing Glass styling"
+assert 'GLASS_SETTINGS_SCREENS = (' in native_surfaces and all(
+    ('"' + name + '.java"') in native_surfaces
+    for name in ("ArchiveSettingsActivity", "DataAutoDownloadActivity",
+                 "PasscodeActivity", "PrivacyUsersActivity", "ProxyListActivity",
+                 "QuickRepliesSettingsActivity", "RestrictedLanguagesSelectActivity",
+                 "ProfileNotificationsActivity")), "Nested settings screens still missing"
+assert "titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_surfaces, "Mixed Arabic/Latin text direction lost"
+assert "canvas.drawLine(rect.left + round" in native_surfaces, "Card specular layer missing"
 assert "SettingsActivity.SettingCell.updateColors changed" in native_surfaces and "titleView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START)" in native_surfaces, "Actual SettingsActivity RTL title alignment missing"
 assert "Theme.createChatResources(context, true)" in settings, "Changing chat font size leaves native text paints stale"
 assert "applyCardStyle(View child, boolean settingsRow)" in native_surfaces, "UniversalAdapter Settings cells must bypass legacy class-only filter"
