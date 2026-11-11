@@ -245,7 +245,16 @@ auth_trace = """                    final long nabdhSignInStartedMs = android.os
                                     + (android.os.SystemClock.elapsedRealtime() - nabdhSignInStartedMs)
                                     + " result=" + (error == null ? "accepted" : "error_code_" + error.code));
                         }"""
-s = replace_once(s, auth_anchor, auth_trace, "code confirmation latency telemetry")
+# The same callback shape appears in another authorization route.
+# Instrument only the SMS/Telegram-code TL_auth_signIn branch, not other flows.
+sign_in_anchor = "                    TLRPC.TL_auth_signIn req = new TLRPC.TL_auth_signIn();"
+if s.count(sign_in_anchor) != 1:
+    raise SystemExit("Telegram SMS auth sign-in branch changed")
+sign_in_before, sign_in_after = s.split(sign_in_anchor, 1)
+if auth_anchor not in sign_in_after:
+    raise SystemExit("Telegram SMS sign-in callback changed")
+sign_in_after = sign_in_after.replace(auth_anchor, auth_trace, 1)
+s = sign_in_before + sign_in_anchor + sign_in_after
 
 login.write_text(s,encoding="utf-8")
 language_vector = root / "TMessagesProj/src/main/res/drawable/nabdh_login_language.xml"
