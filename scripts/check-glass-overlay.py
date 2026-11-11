@@ -32,11 +32,16 @@ checks = {
     "third-party login cannot advertise official-only Firebase SMS":
         'settings.allow_firebase = false; // Third-party app' in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
-    "login keypad is actually translucent and theme-aware":
-        "ColorUtils.setAlphaComponent(" in
-        (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
-        and "Theme.key_windowBackgroundWhiteBlueText), 73)" in
-        (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8"),
+    "login keypad uses subtle translucent theme-derived key surfaces":
+        all(part in (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
+            for part in (
+                "final int base = Theme.getColor(Theme.key_windowBackgroundWhite);",
+                "final int tint = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);",
+                "ColorUtils.setAlphaComponent(android.graphics.Color.rgb(",
+                "/ 100), 220);",
+                "/ 100), 235);",
+                "R.drawable.nabdh_keypad_delete",
+            )),
     "verification boxes are rounded without touching validation":
         "nabdhLoginGlass" in (ui / "CodeFieldContainer.java").read_text(encoding="utf-8")
         and "setNabdhLoginGlass(true);" in (ui / "LoginActivity.java").read_text(encoding="utf-8"),
