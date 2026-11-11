@@ -220,7 +220,8 @@ checks = {
     "settings headers safe inset": "new HeaderCell(context, 32, resourcesProvider)" in universal
         and "Theme.key_windowBackgroundWhiteBlackText, 32, 15" in universal,
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
-        and "if (nabdhFontDirty)" in launch,
+        and "if (nabdhFontDirty && android.os.SystemClock.uptimeMillis()" in launch
+        and "nabdhLastFontScanMs >= 48L" in launch,
     "composer retains native padding and RTL": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
         and "TEXT_DIRECTION_FIRST_STRONG" in composer
         and "LocaleController.isRTL" in composer
