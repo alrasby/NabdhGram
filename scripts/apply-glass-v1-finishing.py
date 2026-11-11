@@ -121,21 +121,37 @@ modify("ActionBar/SimpleTextView.java", [
                 x += offsetX;
             } else if (nabdhRtlBadgeBeforeText
                     && (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT) {
-                // The original line-left/offsetX combination can jump for
-                // Arabic+Latin bidi names and place the verified icon OVER
-                // glyphs. Anchor to the row's visual RIGHT edge and the
-                // measured glyph width, then reserve icon width and spacing.
-                float glyphWidth = layout != null && layout.getLineCount() > 0
-                        ? layout.getLineWidth(0) : textWidth;
-                float nameVisualLeft = getMeasuredWidth() - getPaddingRight()
-                        - Math.min(getMeasuredWidth(), glyphWidth);
-                x = Math.max(0, Math.round(nameVisualLeft
-                        - drawablePadding - leftDrawable.getIntrinsicWidth()
-                        - dp(4)));
+                // The layout reserves icon width but onDraw did not advance
+                // textOffsetX for RIGHT gravity, so a full-width Arabic name
+                // overlapped this icon. With textOffsetX fixed below, anchor
+                // the badge to the actual translated glyph start for mixed
+                // Arabic, Latin and emoji names.
+                float lineLeft = layout != null && layout.getLineCount() > 0
+                        ? layout.getLineLeft(0) : 0f;
+                float visibleTextStart = offsetX
+                        + leftDrawable.getIntrinsicWidth() + drawablePadding + lineLeft;
+                x = Math.max(0, Math.round(visibleTextStart
+                        - drawablePadding - leftDrawable.getIntrinsicWidth() - dp(4)));
             }
             int y;
             if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == Gravity.CENTER_VERTICAL) {
                 y = (getMeasuredHeight() - leftDrawable.getIntrinsicHeight()) / 2 + leftDrawableTopPadding;""",
+        1
+    ),
+    (
+        """            if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.LEFT || (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL) {
+                textOffsetX += drawablePadding + leftDrawable.getIntrinsicWidth();
+            }
+            totalWidth += drawablePadding + leftDrawable.getIntrinsicWidth();""",
+        """            if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.LEFT
+                    || (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL
+                    || (nabdhRtlBadgeBeforeText
+                        && (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT)) {
+                // RIGHT-gravity verified names also need this reserved space
+                // in the actual draw translation, not only in createLayout().
+                textOffsetX += drawablePadding + leftDrawable.getIntrinsicWidth();
+            }
+            totalWidth += drawablePadding + leftDrawable.getIntrinsicWidth();""",
         1
     ),
 ])
