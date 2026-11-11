@@ -235,9 +235,12 @@ GLASS_SETTINGS_SCREENS = (
 for name in GLASS_SETTINGS_SCREENS:
     path = ui / name
     source = path.read_text(encoding="utf-8")
-    anchor = "        listView.setSections();"
+    # Telegram's QuickReplies settings use tabs for indentation, unlike the
+    # other settings fragments. Match their exact pinned source layout.
+    anchor = "\t\tlistView.setSections();" if name == "QuickRepliesSettingsActivity.java" \
+            else "        listView.setSections();"
     if source.count(anchor) != 1:
-        raise SystemExit(f"{name}: settings list anchor changed")
+        raise SystemExit(f"{name}: settings list anchor changed ({source.count(anchor)} occurrences)")
     radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\n"
     source = source.replace(anchor, """
         // NabdhGram: remove the large white parent section. Draw each native
