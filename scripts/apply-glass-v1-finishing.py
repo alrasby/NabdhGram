@@ -87,16 +87,17 @@ modify("ActionBar/SimpleTextView.java", [
                 x += offsetX;
             } else if (nabdhRtlBadgeBeforeText
                     && (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT) {
-                // Start of the actual visible Arabic name, not the full view.
-                // The text width already reserves this drawable's width.
-                // Measure the left edge of the *rendered* RTL text rather
-                // than assuming its layout offset is the glyph boundary.
-                // Mixed Arabic/Latin text can have a positive line-left.
-                float lineLeft = layout != null && layout.getLineCount() > 0
-                        ? layout.getLineLeft(0) : 0;
-                float renderedStart = offsetX + lineLeft;
-                x = Math.max(0, (int) renderedStart
-                        - drawablePadding - leftDrawable.getIntrinsicWidth());
+                // The original line-left/offsetX combination can jump for
+                // Arabic+Latin bidi names and place the verified icon OVER
+                // glyphs. Anchor to the row's visual RIGHT edge and the
+                // measured glyph width, then reserve icon width and spacing.
+                float glyphWidth = layout != null && layout.getLineCount() > 0
+                        ? layout.getLineWidth(0) : textWidth;
+                float nameVisualLeft = getMeasuredWidth() - getPaddingRight()
+                        - Math.min(getMeasuredWidth(), glyphWidth);
+                x = Math.max(0, Math.round(nameVisualLeft
+                        - drawablePadding - leftDrawable.getIntrinsicWidth()
+                        - dp(4)));
             }
             int y;
             if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == Gravity.CENTER_VERTICAL) {
