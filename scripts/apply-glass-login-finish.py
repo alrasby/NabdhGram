@@ -32,8 +32,8 @@ s = replace_once(s,
     "Gravity.CENTER_HORIZONTAL, 0, 0, 0, 4));",
     "logo to heading spacing")
 s = replace_once(s,
-    "titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);",
-    "titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 19);",
+    "            titleView = new TextView(context);\n            titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);",
+    "            titleView = new TextView(context);\n            titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 19);",
     "phone title size")
 s = replace_once(s,
     "addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 32, 8, 32, 0));",
@@ -104,7 +104,16 @@ request_trace = """            int reqId = ConnectionsManager.getInstance(curren
                     FileLog.d("NabdhGram auth sendCode: " + (error == null
                             ? "accepted" : "server_or_network_error_code_" + error.code));
                 }"""
-s = replace_once(s,request_anchor,request_trace,"auth sendCode diagnostic")
+# The same callback syntax exists in other auth stages; target only the
+# phone entry request after TL_auth_sendCode, never the other requests.
+phone_send_anchor = "TLRPC.TL_auth_sendCode sendCode = new TLRPC.TL_auth_sendCode();"
+if s.count(phone_send_anchor) != 1:
+    raise SystemExit("Phone auth_sendCode constructor changed")
+before_send, after_send = s.split(phone_send_anchor, 1)
+if request_anchor not in after_send:
+    raise SystemExit("Phone sendCode callback changed")
+after_send = after_send.replace(request_anchor, request_trace, 1)
+s = before_send + phone_send_anchor + after_send
 login.write_text(s,encoding="utf-8")
 
 k = keyboard.read_text(encoding="utf-8")
