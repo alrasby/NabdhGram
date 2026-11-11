@@ -340,6 +340,15 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/apply-glass-login-finish.py nabdhgram/scripts/apply-glass-v1-finishing.py nabdhgram/scripts/apply-glass-final-screens.py nabdhgram/scripts/apply-glass-chat-typefaces.py nabdhgram/scripts/apply-nabdh-arabic-resources.py nabdhgram/scripts/apply-hide-proxy-promo.py nabdhgram/scripts/apply-glass-diagnostic-icons.py nabdhgram/scripts/apply-glass-login.py nabdhgram/scripts/apply-glass-dialog-typography.py nabdhgram/scripts/apply-glass-document-layout.py nabdhgram/scripts/apply-glass-locale-polish.py nabdhgram/scripts/apply-glass-badge-centering.py nabdhgram/scripts/apply-glass-header-insets.py nabdhgram/scripts/install-open-fonts.py nabdhgram/scripts/apply-glass-global-textviews.py nabdhgram/scripts/apply-glass-bubble-outline.py nabdhgram/scripts/apply-glass-bubble-radius.py nabdhgram/scripts/apply-glass-native-settings-profile.py nabdhgram/scripts/apply-glass-contacts.py nabdhgram/scripts/apply-glass-chat-composer.py nabdhgram/scripts/apply-glass-selector.py nabdhgram/scripts/apply-glass-global-font.py nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-dialog-sections.py nabdhgram/scripts/check-glass-overlay.py nabdhgram/scripts/apply-contacts-permission-policy.py
           python3 nabdhgram/scripts/check-glass-design-contract.py
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          # Validate generated Java, not only the Python overlay source.
+          python3 - <<'PY'
+          from pathlib import Path
+          login = Path("Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/LoginActivity.java").read_text(encoding="utf-8")
+          expected = "settings.allow_firebase = false; // Third-party app: no privileged Firebase SMS"
+          assert login.count(expected) == 1, "Firebase SMS capability generated incorrectly"
+          assert r"\n            settings.allow_firebase" not in login, "Literal escaped newline found in LoginActivity.java"
+          print("PASS: Auth Java overlay contains a real newline")
+          PY
 
       - name: Apply privacy-minimal network diagnostics
         shell: bash
