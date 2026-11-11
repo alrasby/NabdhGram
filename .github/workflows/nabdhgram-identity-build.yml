@@ -38,31 +38,6 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Install Android SDK and NDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          test -x "$SDKMANAGER"
-          "$SDKMANAGER" --licenses < <(yes) >/dev/null
-          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
-          NDK_DIR="$ANDROID_HOME/ndk/27.2.12479018"
-          for attempt in 1 2 3; do
-            echo "Installing NDK 27.2.12479018 (attempt $attempt of 3)"
-            if "$SDKMANAGER" --install "ndk;27.2.12479018" && \
-               test -x "$NDK_DIR/ndk-build" && \
-               grep -q '^Pkg.Revision = 27.2.12479018$' "$NDK_DIR/source.properties"; then
-              echo "NDK installation verified: $NDK_DIR"
-              break
-            fi
-            echo "::warning::NDK install attempt $attempt failed or incomplete"
-            if [ "$attempt" -eq 3 ]; then
-              echo "::error::NDK installation failed after 3 attempts; check SDK download/archive integrity"
-              exit 1
-            fi
-            rm -rf "$NDK_DIR"
-            sleep $((attempt * 15))
-          done
       - name: Checkout pinned Telegram source
         shell: bash
         run: |
@@ -384,6 +359,31 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream
 
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --licenses < <(yes) >/dev/null
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+          NDK_DIR="$ANDROID_HOME/ndk/27.2.12479018"
+          for attempt in 1 2 3; do
+            echo "Installing NDK 27.2.12479018 (attempt $attempt of 3)"
+            if "$SDKMANAGER" --install "ndk;27.2.12479018" && \
+               test -x "$NDK_DIR/ndk-build" && \
+               grep -q '^Pkg.Revision = 27.2.12479018$' "$NDK_DIR/source.properties"; then
+              echo "NDK installation verified: $NDK_DIR"
+              break
+            fi
+            echo "::warning::NDK install attempt $attempt failed or incomplete"
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::NDK installation failed after 3 attempts; check SDK download/archive integrity"
+              exit 1
+            fi
+            rm -rf "$NDK_DIR"
+            sleep $((attempt * 15))
+          done
       - name: Build branded debug APK
         id: compile
         continue-on-error: true
