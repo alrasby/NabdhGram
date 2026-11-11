@@ -92,6 +92,21 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 appearance.getInt("ui_scale_percent", 100)));
         final boolean forceBold = appearance.getBoolean("font_bold", false);
         final String renderKey = family + ":" + uiPercent + ":" + forceBold;
+        // Resolve packaged faces once per layout pass, never per row/glyph.
+        final java.util.HashSet<android.graphics.Typeface> packagedTextFaces =
+                new java.util.HashSet<>();
+        for (String filename : new String[]{"ReadexPro.ttf", "Vazirmatn.ttf",
+                "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf"}) {
+            android.graphics.Typeface face =
+                    org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + filename);
+            if (face != null) {
+                packagedTextFaces.add(face);
+                packagedTextFaces.add(android.graphics.Typeface.create(face,
+                        android.graphics.Typeface.NORMAL));
+                packagedTextFaces.add(android.graphics.Typeface.create(face,
+                        android.graphics.Typeface.BOLD));
+            }
+        }
         final java.util.ArrayDeque<android.view.View> pending = new java.util.ArrayDeque<>();
         pending.add(root);
         while (!pending.isEmpty()) {
@@ -112,22 +127,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 // Include any previously selected packaged family too.
                 // Otherwise switching Readex -> Vazirmatn leaves stale custom
                 // label typefaces until the Activity is recreated.
-                boolean previouslyChosen = false;
-                if (current != null) {
-                    for (String filename : new String[]{"ReadexPro.ttf", "Vazirmatn.ttf",
-                            "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf"}) {
-                        android.graphics.Typeface candidate =
-                                org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + filename);
-                        if (candidate != null && (current.equals(candidate)
-                                || current.equals(android.graphics.Typeface.create(
-                                        candidate, android.graphics.Typeface.NORMAL))
-                                || current.equals(android.graphics.Typeface.create(
-                                        candidate, android.graphics.Typeface.BOLD)))) {
-                            previouslyChosen = true;
-                            break;
-                        }
-                    }
-                }
+                final boolean previouslyChosen = current != null
+                        && packagedTextFaces.contains(current);
                 final boolean telegramTextFace = previouslyChosen || current != null && (
                         current.equals(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf"))
                         || current.equals(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rmedium.ttf")));
