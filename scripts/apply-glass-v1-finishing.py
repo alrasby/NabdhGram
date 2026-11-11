@@ -289,13 +289,13 @@ modify("ActionBar/MessageDrawable.java", [
                     }
                     nabdhBubbleEdge.setStyle(Paint.Style.FILL);
                     nabdhBubbleEdge.setColor(tint);
-                    nabdhBubbleEdge.setAlpha((int) (25f * alpha / 255f));
+                    nabdhBubbleEdge.setAlpha((int) (42f * alpha / 255f));
                     canvas.drawPath(makePath(), nabdhBubbleEdge);""",
         1
     ),
     (
         "nabdhBubbleEdge.setAlpha((int) (53f * alpha / 255f));",
-        "nabdhBubbleEdge.setAlpha((int) (92f * alpha / 255f));",
+        "nabdhBubbleEdge.setAlpha((int) (118f * alpha / 255f));",
         1
     ),
 ])
