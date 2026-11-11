@@ -118,7 +118,11 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                             "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf"}) {
                         android.graphics.Typeface candidate =
                                 org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + filename);
-                        if (current.equals(candidate)) {
+                        if (candidate != null && (current.equals(candidate)
+                                || current.equals(android.graphics.Typeface.create(
+                                        candidate, android.graphics.Typeface.NORMAL))
+                                || current.equals(android.graphics.Typeface.create(
+                                        candidate, android.graphics.Typeface.BOLD)))) {
                             previouslyChosen = true;
                             break;
                         }
