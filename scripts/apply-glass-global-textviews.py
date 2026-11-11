@@ -42,8 +42,36 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
         nabdhApplyVisibleFonts();
         android.view.View decor = getWindow() == null ? null : getWindow().getDecorView();
         if (decor != null) {
-            decor.requestLayout();
-            decor.invalidate();
+            // A number of Telegram labels (DialogCell, ChatMessageCell and
+            // SimpleTextView) use cached StaticLayouts rather than TextViews.
+            // Rebind their visible RecyclerView rows once on an explicit font
+            // choice, retaining existing adapters and scroll position.
+            decor.post(() -> {
+                java.util.ArrayDeque<android.view.View> pending = new java.util.ArrayDeque<>();
+                pending.add(decor);
+                while (!pending.isEmpty()) {
+                    android.view.View view = pending.removeFirst();
+                    if (view instanceof androidx.recyclerview.widget.RecyclerView) {
+                        androidx.recyclerview.widget.RecyclerView list =
+                                (androidx.recyclerview.widget.RecyclerView) view;
+                        androidx.recyclerview.widget.RecyclerView.Adapter adapter =
+                                list.getAdapter();
+                        if (adapter != null && !list.isComputingLayout()) {
+                            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+                        }
+                    }
+                    if (view instanceof android.view.ViewGroup) {
+                        android.view.ViewGroup group = (android.view.ViewGroup) view;
+                        for (int i = 0; i < group.getChildCount(); i++) {
+                            pending.addLast(group.getChildAt(i));
+                        }
+                    }
+                }
+                nabdhFontDirty = true;
+                nabdhApplyVisibleFonts();
+                decor.requestLayout();
+                decor.invalidate();
+            });
         }
     }
 
@@ -74,7 +102,22 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 // Telegram already assigns the selected bundled typeface to
                 // many views before this scanner sees them. Treat those native
                 // text faces as eligible so UI scaling and future changes work.
-                final boolean telegramTextFace = current != null && (
+                // Include any previously selected packaged family too.
+                // Otherwise switching Readex -> Vazirmatn leaves stale custom
+                // label typefaces until the Activity is recreated.
+                boolean previouslyChosen = false;
+                if (current != null) {
+                    for (String filename : new String[]{"ReadexPro.ttf", "Vazirmatn.ttf",
+                            "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf"}) {
+                        android.graphics.Typeface candidate =
+                                org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + filename);
+                        if (current.equals(candidate)) {
+                            previouslyChosen = true;
+                            break;
+                        }
+                    }
+                }
+                final boolean telegramTextFace = previouslyChosen || current != null && (
                         current.equals(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf"))
                         || current.equals(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rmedium.ttf")));
                 final boolean normalFont = telegramTextFace || current == null
