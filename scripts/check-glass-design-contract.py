@@ -8,6 +8,7 @@ bubble = (ROOT / "scripts/apply-glass-bubble-outline.py").read_text(encoding="ut
 profile = (ROOT / "scripts/apply-glass-native-settings-profile.py").read_text(encoding="utf-8")
 finishing = (ROOT / "scripts/apply-glass-v1-finishing.py").read_text(encoding="utf-8")
 settings = (ROOT / "scripts/apply-glass-settings.py").read_text(encoding="utf-8")
+login_overlay = (ROOT / "scripts/apply-glass-login-finish.py").read_text(encoding="utf-8")
 
 ordered = [
     "apply-glass-global-font.py",
@@ -32,4 +33,5 @@ for family in ("Readex Pro", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"
     assert family in settings, f"Missing English font label: {family}"
 assert '"values-ar": ("خط التطبيق", "Readex Pro", "Sans-serif", "Serif"' in settings, "Arabic locale changes font names"
 assert "+ 'Device default font'" in settings, "Default font label changes with locale"
+assert '"\\n            settings.allow_firebase' not in login_overlay, "Escaped Java newline in auth overlay"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")
