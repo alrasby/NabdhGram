@@ -114,11 +114,15 @@ route_trace = """        if (BuildVars.LOGS_ENABLED) {
 s = replace_once(s, route_anchor, route_trace + route_anchor, "auth route diagnostic")
 request_anchor = """            int reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
                 nextPressed = false;"""
-request_trace = """            int reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+request_trace = """            final long nabdhSendCodeStartedMs = android.os.SystemClock.elapsedRealtime();
+            int reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
                 nextPressed = false;
                 if (BuildVars.LOGS_ENABLED) {
+                    // Privacy-safe timing only: never log phone, code or auth tokens.
                     FileLog.d("NabdhGram auth sendCode: " + (error == null
-                            ? "accepted" : "server_or_network_error_code_" + error.code));
+                            ? "accepted" : "server_or_network_error_code_" + error.code)
+                            + " elapsed_ms=" + (android.os.SystemClock.elapsedRealtime() - nabdhSendCodeStartedMs)
+                            + " connection_state=" + getConnectionsManager().getConnectionState());
                 }"""
 # The same callback syntax exists in other auth stages; target only the
 # phone entry request after TL_auth_sendCode, never the other requests.
