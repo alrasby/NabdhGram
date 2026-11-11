@@ -21,6 +21,7 @@ ordered = [
     "apply-glass-final-screens.py",
     "apply-glass-v1-finishing.py",
     "apply-glass-settings-surfaces.py",
+    "apply-nabdh-empty-state.py",
     "check-glass-overlay.py",
 ]
 positions = [workflow.find("python3 nabdhgram/scripts/" + name) for name in ordered]
@@ -43,6 +44,11 @@ assert "textOffsetX += drawablePadding + leftDrawable.getIntrinsicWidth();" in f
 assert "(nabdhRtlBadgeBeforeText" in finishing_ui, "RTL badge position is not restricted to verified names"
 assert "R.drawable.nabdh_keypad_delete" in login_overlay and "nabdh_keypad_delete.xml" in login_overlay, "Native delete vector not bundled"
 assert "SIDE_PADDING = 10, BUTTON_PADDING = 6" in login_overlay, "Original keypad geometry not restored"
+assert "class NabdhCircleKey" in login_overlay and "canvas.drawCircle(" in login_overlay, "Circular keypad renderer is missing"
+assert "state_pressed" in login_overlay and "46) / 100" in login_overlay, "Pressed keys are not visibly tinted"
+assert 'backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));' in login_overlay, "Delete glyph is not theme accent"
+empty_script = (ROOT / "scripts/apply-nabdh-empty-state.py").read_text(encoding="utf-8")
+assert "branding/approved/nabdhgram-welcome-transparent.png" in empty_script and "R.drawable.nabdh_empty_logo" in empty_script, "Approved empty-chat branding is missing"
 assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
 native_surfaces = (ROOT / "scripts/apply-glass-settings-surfaces.py").read_text(encoding="utf-8")
 assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.java",
