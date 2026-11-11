@@ -322,7 +322,12 @@ checks = {
     "pinned decoration never draws a box across mixed chat rows":
         "hasFirstPinnedRow" not in dialogs and "pinnedGroupPaint" not in dialogs,
     "profile channel preview keeps its own layout": "getParent() instanceof ProfileChannelCell" in cell,
-    "mixed-language dialog name alignment": "nabdhNameAlignment" in cell,
+    "mixed-language dialog name alignment preserves native avatar bounds":
+        "nabdhNameAlignment" not in cell
+        and "nameLayout = new StaticLayout(nameStringFinal" in cell
+        and "Layout.Alignment.ALIGN_NORMAL" in cell
+        and "if (left == 0)" in cell
+        and "nameWidth -= dp(27);" in cell,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
     "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
     "dialog card excludes swipe/archive without hiding all rows": "!drawArchive" not in cell
