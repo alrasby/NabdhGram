@@ -43,6 +43,70 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
                 || name.equals("RadioButtonCell") || name.equals("DialogRadioCell");
     }
 
+    // Apply a complete filled card behind a native row's content.
+    // Keep its original drawable (including pressed/disabled states) as layer 0.
+    public static void applyCardStyle(View child) {
+        if (!isSettingRow(child)) return;
+        android.graphics.drawable.Drawable previous = child.getBackground();
+        if (previous instanceof GlassCardLayers) return;
+        child.setBackground(new GlassCardLayers(previous));
+    }
+
+    private static final class GlassCardLayers extends android.graphics.drawable.LayerDrawable {
+        GlassCardLayers(android.graphics.drawable.Drawable previous) {
+            super(new android.graphics.drawable.Drawable[]{
+                previous == null ? new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT) : previous,
+                new LiveGlassSurface()
+            });
+        }
+    }
+
+    // Resolve palette in draw(), not at construction: imported and system
+    // themes immediately update without a hard-coded turquoise background.
+    private static final class LiveGlassSurface extends android.graphics.drawable.Drawable {
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF rect = new RectF();
+        private int opacity = 255;
+
+        @Override public void draw(@NonNull Canvas canvas) {
+            android.graphics.Rect bounds = getBounds();
+            if (bounds.width() <= 0 || bounds.height() <= AndroidUtilities.dp(28)) return;
+            final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
+            final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+            final int red = (Color.red(base) * 90 + Color.red(accent) * 10) / 100;
+            final int green = (Color.green(base) * 90 + Color.green(accent) * 10) / 100;
+            final int blue = (Color.blue(base) * 90 + Color.blue(accent) * 10) / 100;
+            float inset = AndroidUtilities.dp(10);
+            float vertical = AndroidUtilities.dp(2);
+            float round = AndroidUtilities.dp(16);
+            rect.set(bounds.left + inset, bounds.top + vertical,
+                    bounds.right - inset, bounds.bottom - vertical);
+            if (rect.width() <= 0 || rect.height() <= 0) return;
+            fill.setStyle(Paint.Style.FILL);
+            fill.setColor(Color.argb(opacity, red, green, blue));
+            canvas.drawRoundRect(rect, round, round, fill);
+            edge.setStyle(Paint.Style.STROKE);
+            edge.setStrokeWidth(AndroidUtilities.dpf2(.8f));
+            edge.setColor(Color.argb(73 * opacity / 255,
+                    Color.red(accent), Color.green(accent), Color.blue(accent)));
+            canvas.drawRoundRect(rect, round, round, edge);
+        }
+
+        @Override public void setAlpha(int alpha) {
+            opacity = Math.max(0, Math.min(255, alpha));
+            invalidateSelf();
+        }
+
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) {
+            invalidateSelf();
+        }
+
+        @Override public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
+    }
+
     @Override
     public void onDrawOver(@NonNull Canvas canvas, @NonNull RecyclerView parent,
             @NonNull RecyclerView.State state) {
@@ -55,7 +119,8 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         final float radius = AndroidUtilities.dp(17);
         for (int index = 0; index < parent.getChildCount(); index++) {
             final View child = parent.getChildAt(index);
-            if (!isSettingRow(child) || child.getVisibility() != View.VISIBLE) {
+            if (!isSettingRow(child) || child.getVisibility() != View.VISIBLE
+                    || child.getBackground() instanceof GlassCardLayers) {
                 continue;
             }
             bounds.set(child.getLeft() + inset, child.getTop() + topInset,
@@ -83,5 +148,54 @@ for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java
         // Draw-only decoration preserves original scrolling and row actions.
 """ + radius + """        listView.addItemDecoration(
                 new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
+    # Add the themed filled card AFTER each native row has been bound.
+    # No adapters, row data, click handlers or selection logic are changed.
+    adapter = source.find("class ListAdapter extends")
+    if adapter < 0:
+        raise SystemExit(f"{name}: native ListAdapter class not found")
+    method = source.find("public void onBindViewHolder(", adapter)
+    if method < 0:
+        raise SystemExit(f"{name}: native ListAdapter bind method not found")
+    opened = source.find("{", method)
+    if opened < 0:
+        raise SystemExit(f"{name}: ListAdapter method body not found")
+    depth = 0
+    index = opened
+    # Skip Java comments/string literals when measuring nested braces.
+    while index < len(source):
+        if source.startswith("//", index):
+            newline = source.find("\n", index)
+            index = len(source) if newline == -1 else newline
+            continue
+        if source.startswith("/*", index):
+            stop = source.find("*/", index + 2)
+            if stop < 0:
+                raise SystemExit(f"{name}: unclosed Java comment")
+            index = stop + 2
+            continue
+        if source[index] in ('"', "'"):
+            delim = source[index]
+            index += 1
+            while index < len(source):
+                if source[index] == "\\":
+                    index += 2
+                elif source[index] == delim:
+                    index += 1
+                    break
+                else:
+                    index += 1
+            continue
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        index += 1
+    if depth != 0 or index >= len(source):
+        raise SystemExit(f"{name}: could not locate ListAdapter bind end")
+    source = source[:index] + """
+            org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(holder.itemView);
+""" + source[index:]
     path.write_text(source, encoding="utf-8")
-print("NabdhGram unified native Settings decoration installed on native settings and profile screens.")
+print("NabdhGram Glass backgrounds installed on native settings and profile rows.")
