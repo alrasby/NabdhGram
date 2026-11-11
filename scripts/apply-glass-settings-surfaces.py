@@ -53,28 +53,37 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
                 || view instanceof org.telegram.ui.Cells.ProfileChannelCell;
     }
 
-    // Apply a complete filled card behind a native row's content.
-    // Keep its original drawable (including pressed/disabled states) as layer 0.
+    // Draw exactly one inset card. Stacking the old ColorDrawable (usually
+    // opaque white) underneath an inset card leaves a white rectangular strip
+    // around every row, particularly obvious in RTL settings and profiles.
+    // A native RippleDrawable preserves pressed feedback and touch behavior.
     public static void applyCardStyle(View child) {
         if (!isSettingRow(child)) return;
-        android.graphics.drawable.Drawable previous = child.getBackground();
-        if (previous instanceof GlassCardLayers) return;
-        // Preserve the native cell's measured text/icon geometry and RTL
-        // padding: changing a Drawable must not move its content.
+        android.graphics.drawable.Drawable existing = child.getBackground();
+        if (existing instanceof GlassCardLayers) {
+            ((GlassCardLayers) existing).refreshThemeTint();
+            return;
+        }
+        // setBackground can reset padding on Android. Keep Telegram's text
+        // geometry, including its RTL insets, unmodified.
         int left = child.getPaddingLeft();
         int top = child.getPaddingTop();
         int right = child.getPaddingRight();
         int bottom = child.getPaddingBottom();
-        child.setBackground(new GlassCardLayers(previous));
+        child.setBackground(new GlassCardLayers());
         child.setPadding(left, top, right, bottom);
     }
 
-    private static final class GlassCardLayers extends android.graphics.drawable.LayerDrawable {
-        GlassCardLayers(android.graphics.drawable.Drawable previous) {
-            super(new android.graphics.drawable.Drawable[]{
-                previous == null ? new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT) : previous,
-                new LiveGlassSurface()
-            });
+    private static final class GlassCardLayers extends android.graphics.drawable.RippleDrawable {
+        GlassCardLayers() {
+            super(android.content.res.ColorStateList.valueOf(
+                    Theme.getColor(Theme.key_listSelector)),
+                    new LiveGlassSurface(), null);
+        }
+        void refreshThemeTint() {
+            setColor(android.content.res.ColorStateList.valueOf(
+                    Theme.getColor(Theme.key_listSelector)));
+            invalidateSelf();
         }
     }
 
@@ -159,10 +168,9 @@ for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java
     if source.count(anchor) != 1:
         raise SystemExit(f"{name}: settings list anchor changed")
     radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\n"
-    source = source.replace(anchor,
-        anchor + """
-        // NabdhGram unified design: theme-aware border around settings rows.
-        // Draw-only decoration preserves original scrolling and row actions.
+    source = source.replace(anchor, """
+        // NabdhGram: remove the large white parent section. Draw each native
+        // cell as its own theme-aware Glass card, without touching its data.
 """ + radius + """        listView.addItemDecoration(
                 new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
     # Add the themed filled card AFTER each native row has been bound.
@@ -234,11 +242,10 @@ universal_source = universal_source[:end] + """
 """ + universal_source[end:]
 universal_path.write_text(universal_source, encoding="utf-8")
 
-# These native RecyclerView section decorators paint one huge white rounded
-# surface behind several rows. The new individual Glass row cards should be
-# the only visible backgrounds, so disable GROUP decoration only on the main
-# Settings and Profile pages. Keep section metadata/rows/adapter unchanged.
-for activity in ("SettingsActivity.java", "ProfileActivity.java"):
+# The main SettingsActivity uses UniversalRecyclerView; profile and other
+# native screens are covered by the loop above. Remove its parent section
+# once, leaving child cards, row order and adapters untouched.
+for activity in ("SettingsActivity.java",):
     page = ui / activity
     content = page.read_text(encoding="utf-8")
     group_anchor = "        listView.setSections();"
