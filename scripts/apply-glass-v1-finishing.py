@@ -49,7 +49,10 @@ modify("ActionBar/SimpleTextView.java", [
                 || current.equals(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         for (String filename : new String[]{"ReadexPro.ttf", "Vazirmatn.ttf",
                 "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf"}) {
-            if (current.equals(AndroidUtilities.getTypeface("fonts/" + filename))) {
+            Typeface candidate = AndroidUtilities.getTypeface("fonts/" + filename);
+            if (candidate != null && (current.equals(candidate)
+                    || current.equals(Typeface.create(candidate, Typeface.NORMAL))
+                    || current.equals(Typeface.create(candidate, Typeface.BOLD)))) {
                 regularText = true;
                 break;
             }
