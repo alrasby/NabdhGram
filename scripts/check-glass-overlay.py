@@ -29,6 +29,22 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "login keypad is actually translucent and theme-aware":
+        "ColorUtils.setAlphaComponent(" in
+        (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
+        and "Theme.key_windowBackgroundWhiteBlueText), 73)" in
+        (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8"),
+    "verification boxes are rounded without touching validation":
+        "nabdhLoginGlass" in (ui / "CodeFieldContainer.java").read_text(encoding="utf-8")
+        and "setNabdhLoginGlass(true);" in (ui / "LoginActivity.java").read_text(encoding="utf-8"),
+    "auth verification route diagnostics contain no personal identifiers":
+        'FileLog.d("NabdhGram auth delivery type="' in
+        (ui / "LoginActivity.java").read_text(encoding="utf-8")
+        and 'FileLog.d("NabdhGram auth sendCode: "' in
+        (ui / "LoginActivity.java").read_text(encoding="utf-8"),
+    "login logo lifted while preserving native input geometry":
+        "nabdhLoginLogo.setTranslationY(-dp(14));" in
+        (ui / "LoginActivity.java").read_text(encoding="utf-8"),
     "RTL verified contact icon follows name instead of overlapping":
         "setNabdhRtlBadgeBeforeText(LocaleController.isRTL)" in
         (ui / "Cells/UserCell.java").read_text(encoding="utf-8")
