@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 workflow = (ROOT / ".github/workflows/nabdhgram-identity-build.yml").read_text(encoding="utf-8")
 bubble = (ROOT / "scripts/apply-glass-bubble-outline.py").read_text(encoding="utf-8")
 profile = (ROOT / "scripts/apply-glass-native-settings-profile.py").read_text(encoding="utf-8")
+finishing = (ROOT / "scripts/apply-glass-v1-finishing.py").read_text(encoding="utf-8")
 settings = (ROOT / "scripts/apply-glass-settings.py").read_text(encoding="utf-8")
 
 ordered = [
@@ -24,6 +25,7 @@ assert all(pos >= 0 for pos in positions), "Missing Glass integration step"
 assert positions == sorted(positions), "Glass overlays applied out of order"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
 assert "!themePreview && !isSelected" in bubble, "Selection or preview protection was removed"
+assert finishing.count("if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected)") == 2, "Final overlay no longer matches text/media anchor"
 assert "0x330098A3" not in profile, "Hard-coded profile press color returned"
 assert "Theme.key_windowBackgroundWhiteBlueText" in profile, "Theme-aware profile tint missing"
 for family in ("Readex Pro", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik", "Sans-serif", "Serif"):
