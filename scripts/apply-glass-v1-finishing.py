@@ -81,9 +81,9 @@ modify("ActionBar/SimpleTextView.java", [
                 .getSharedPreferences("nabdhgram_appearance", android.content.Context.MODE_PRIVATE);
         int scale = Math.max(85, Math.min(115,
                 preferences.getInt("ui_scale_percent", 100)));
-        boolean useMedium = "system-default".equals(
-                preferences.getString("font_family", "system-default"))
-                && (nabdhOriginalTextStyle & Typeface.BOLD) != 0;
+        // Match the source title weight with the chosen custom font. Do not
+        // flatten bold channel/contact headings when changing families.
+        boolean useMedium = (nabdhOriginalTextStyle & Typeface.BOLD) != 0;
         Typeface desired = AndroidUtilities.getTypeface(
                 useMedium ? "fonts/rmedium.ttf" : "fonts/rregular.ttf");
         if (desired != null && !desired.equals(current)) {

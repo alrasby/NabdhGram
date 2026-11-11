@@ -67,7 +67,26 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                         androidx.recyclerview.widget.RecyclerView.Adapter adapter =
                                 list.getAdapter();
                         if (adapter != null && !list.isComputingLayout()) {
-                            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+                            int first = 0;
+                            int count = adapter.getItemCount();
+                            androidx.recyclerview.widget.RecyclerView.LayoutManager manager =
+                                    list.getLayoutManager();
+                            if (manager instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                                androidx.recyclerview.widget.LinearLayoutManager linear =
+                                        (androidx.recyclerview.widget.LinearLayoutManager) manager;
+                                int last = linear.findLastVisibleItemPosition();
+                                first = Math.max(0, linear.findFirstVisibleItemPosition());
+                                if (last >= first && first < count) {
+                                    count = Math.min(count - first, last - first + 1);
+                                } else {
+                                    count = 0;
+                                }
+                            }
+                            if (count > 0) {
+                                // Only visible rows need an immediate typography
+                                // rebuild; recycled rows rebind naturally later.
+                                adapter.notifyItemRangeChanged(first, count);
+                            }
                         }
                     }
                     if (view instanceof android.view.ViewGroup) {
@@ -157,7 +176,9 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                                     ? android.graphics.Typeface.BOLD
                                     : android.graphics.Typeface.NORMAL)
                             : org.telegram.messenger.AndroidUtilities.getTypeface(
-                                    "fonts/rregular.ttf");
+                                    (forceBold || originalStyle != null
+                                    && (originalStyle & android.graphics.Typeface.BOLD) != 0)
+                                    ? "fonts/rmedium.ttf" : "fonts/rregular.ttf");
                     if (desired != null) animated.setTypeface(desired);
                     animated.setTextSize(original * uiPercent / 100f);
                     animated.setText(animated.getText(), false);
@@ -225,9 +246,7 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                             // Optional typefaces start Regular; returning to
                             // Device font restores this native TextView style.
                             label.setTypeface(base,
-                                    deviceDefault && !forceBold ? originalStyle
-                                    : forceBold ? android.graphics.Typeface.BOLD
-                                                : android.graphics.Typeface.NORMAL);
+                                    forceBold ? android.graphics.Typeface.BOLD : originalStyle);
                             float sizePx = originalPx * uiPercent / 100f;
                             if (Math.abs(label.getTextSize() - sizePx) > 0.5f) {
                                 label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx);

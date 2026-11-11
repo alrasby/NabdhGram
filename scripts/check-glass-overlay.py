@@ -31,6 +31,11 @@ appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings
 # The launcher label and MTProto session name are two different paths.
 connections = (root / "TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsManager.java").read_text(encoding="utf-8")
 checks = {
+    "blurred chat wallpaper rendered inside actual message shape":
+        "nabdhDrawFrostedWallpaper(canvas, makePath())" in
+            (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
+        and "nabdhDrawFrostedWallpaper(canvas, path)" in
+            (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8"),
     "Devices sessions report the NabdhGram application name":
         'appVersion = "NabdhGram " + nabdhVersionName' in connections
         and 'appVersion += " pbeta";' in connections,

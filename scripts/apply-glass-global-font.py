@@ -49,10 +49,18 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                 boolean userBold = ApplicationLoader.applicationContext
                         .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
                         .getBoolean("font_bold", false);
-                // Custom families start Regular: bold is a user opt-in only.
-                boolean bold = userBold;
+                // Preserve the semantic medium/extrabold weight for headings;
+                // the explicit Bold preference may additionally embolden body.
+                boolean nativeHeading = assetPath.equals("fonts/rmedium.ttf")
+                        || assetPath.equals("fonts/rextrabold.ttf")
+                        || assetPath.equals("fonts/rmediumitalic.ttf");
+                boolean bold = userBold || nativeHeading;
                 boolean italic = assetPath.contains("italic");
-                String cacheKey = family + ":" + bold + ":" + italic;
+                String cacheKey = assetPath + ":" + family + ":" + bold + ":" + italic;
+                // A reset to Device default must use Telegram's ORIGINAL
+                // bundled font loader, not replace all bold headings with
+                // Typeface.DEFAULT or a stale cached custom family.
+                if (!"system-default".equals(family) || userBold) {
                 synchronized (nabdhFontCache) {
                     Typeface cached = nabdhFontCache.get(cacheKey);
                     if (cached != null) {
@@ -85,6 +93,7 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                         nabdhFontCache.put(cacheKey, selected);
                         return selected;
                     }
+                }
                 }
             }
         }

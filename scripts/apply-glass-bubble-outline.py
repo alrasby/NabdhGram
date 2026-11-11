@@ -12,7 +12,86 @@ s = p.read_text(encoding="utf-8")
 field_anchor = "    private int currentBackgroundHeight;\n"
 if s.count(field_anchor) != 1:
     raise SystemExit("MessageDrawable field anchor changed")
-s = s.replace(field_anchor, field_anchor + "    private final Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);" + chr(10), 1)
+s = s.replace(field_anchor, field_anchor + """    private final Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint nabdhFrostPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Matrix nabdhFrostMatrix = new Matrix();
+    private final float[] nabdhFrostValues = new float[9];
+    private final RectF nabdhFrostDestination = new RectF();
+    private static java.lang.ref.WeakReference<Drawable> nabdhLastWallpaper;
+    private static Bitmap nabdhBlurredWallpaper;
+    private static int nabdhBackdropWidth, nabdhBackdropHeight;
+""" , 1)
+# Use a low-resolution cached blur. The backing drawable may belong to the
+# active chat (chat-specific theme), not to the global theme.
+helper_anchor = "    protected int getColor(int key) {"
+helper = """    private static synchronized Bitmap nabdhGetBlurredWallpaper(Drawable wallpaper) {
+        if (wallpaper == null || wallpaper instanceof MotionBackgroundDrawable
+                || wallpaper instanceof android.graphics.drawable.ColorDrawable) {
+            // Animated backgrounds need live capture; a stale bitmap is wrong.
+            return null;
+        }
+        final int screenW = Math.max(1, AndroidUtilities.displaySize.x);
+        final int screenH = Math.max(1, AndroidUtilities.displaySize.y);
+        final int width = 96;
+        final int height = Math.max(1, Math.round(width * (float) screenH / screenW));
+        if (nabdhLastWallpaper != null && nabdhLastWallpaper.get() == wallpaper
+                && nabdhBlurredWallpaper != null && !nabdhBlurredWallpaper.isRecycled()
+                && nabdhBackdropWidth == width && nabdhBackdropHeight == height) {
+            return nabdhBlurredWallpaper;
+        }
+        // Cache a genuinely blurred bitmap; NEVER blur each visible message.
+        try {
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            android.graphics.Rect original = new android.graphics.Rect(wallpaper.getBounds());
+            try {
+                wallpaper.setBounds(0, 0, width, height);
+                wallpaper.draw(new Canvas(bitmap));
+            } finally {
+                wallpaper.setBounds(original);
+            }
+            org.telegram.messenger.Utilities.stackBlurBitmap(bitmap, 7);
+            nabdhBlurredWallpaper = bitmap;
+            nabdhLastWallpaper = new java.lang.ref.WeakReference<>(wallpaper);
+            nabdhBackdropWidth = width;
+            nabdhBackdropHeight = height;
+            return bitmap;
+        } catch (RuntimeException | OutOfMemoryError ignored) {
+            // Preserve native bubbles if the wallpaper cannot be sampled.
+            return null;
+        }
+    }
+
+    private void nabdhDrawFrostedWallpaper(Canvas canvas, Path bubblePath) {
+        Drawable wallpaper = resourcesProvider instanceof org.telegram.ui.ChatActivity.ThemeDelegate
+                ? ((org.telegram.ui.ChatActivity.ThemeDelegate) resourcesProvider).getWallpaperDrawable()
+                : Theme.getCachedWallpaperNonBlocking();
+        if (wallpaper == null) {
+            wallpaper = Theme.getCachedWallpaperNonBlocking();
+        }
+        Bitmap blurred = nabdhGetBlurredWallpaper(wallpaper);
+        if (blurred == null) return;
+        // Respect the current bubble canvas translation/scale so the same
+        // wallpaper bitmap is sampled consistently across recycled cells.
+        canvas.getMatrix(nabdhFrostMatrix);
+        nabdhFrostMatrix.getValues(nabdhFrostValues);
+        float scaleX = nabdhFrostValues[Matrix.MSCALE_X];
+        float scaleY = nabdhFrostValues[Matrix.MSCALE_Y];
+        if (Math.abs(scaleX) < 0.01f || Math.abs(scaleY) < 0.01f) return;
+        float left = -nabdhFrostValues[Matrix.MTRANS_X] / scaleX;
+        float top = -nabdhFrostValues[Matrix.MTRANS_Y] / scaleY;
+        nabdhFrostDestination.set(left, top,
+                left + AndroidUtilities.displaySize.x / Math.abs(scaleX),
+                top + AndroidUtilities.displaySize.y / Math.abs(scaleY));
+        canvas.save();
+        canvas.clipPath(bubblePath);
+        canvas.drawBitmap(blurred, null, nabdhFrostDestination, nabdhFrostPaint);
+        canvas.restore();
+    }
+
+"""
+if s.count(helper_anchor) != 1:
+    raise SystemExit("Native MessageDrawable color helper anchor changed")
+s = s.replace(helper_anchor, helper + helper_anchor, 1)
 anchor = """        canvas.drawPath(path, p);
         if (gradientShader != null && isSelected && paintToUse == null) {"""
 replacement = """        // Draw the native bubble path with a bounded translucent fill for
@@ -23,7 +102,8 @@ replacement = """        // Draw the native bubble path with a bounded transluce
                 && crossfadeFromDrawable == null;
         final int nabdhOriginalPaintAlpha = p.getAlpha();
         if (nabdhFrostedText) {
-            p.setAlpha(nabdhOriginalPaintAlpha * 202 / 255);
+            nabdhDrawFrostedWallpaper(canvas, path);
+            p.setAlpha(nabdhOriginalPaintAlpha * 184 / 255);
         }
         canvas.drawPath(path, p);
         if (nabdhFrostedText) {
@@ -66,7 +146,8 @@ cached_stroke = """                background.setBounds(bounds);
                         && !themePreview && !isSelected && crossfadeFromDrawable == null;
                 final int nabdhOriginalAlpha = background.getAlpha();
                 if (nabdhFrostedText) {
-                    background.setAlpha(nabdhOriginalAlpha * 202 / 255);
+                    nabdhDrawFrostedWallpaper(canvas, makePath());
+                    background.setAlpha(nabdhOriginalAlpha * 184 / 255);
                 }
                 background.draw(canvas);
                 if (nabdhFrostedText) {
