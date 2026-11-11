@@ -30,6 +30,7 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
             new java.util.WeakHashMap<>();
     private boolean nabdhFontApplying;
     private boolean nabdhFontDirty = true;
+    private boolean nabdhRowRefreshPending;
     // Avoid a full view-tree scan on every animated RecyclerView layout frame.
     private long nabdhLastFontScanMs;
     private android.view.ViewTreeObserver.OnGlobalLayoutListener nabdhFontLayoutListener;
@@ -46,7 +47,10 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
             // SimpleTextView) use cached StaticLayouts rather than TextViews.
             // Rebind their visible RecyclerView rows once on an explicit font
             // choice, retaining existing adapters and scroll position.
+            if (nabdhRowRefreshPending) return;
+            nabdhRowRefreshPending = true;
             decor.post(() -> {
+                nabdhRowRefreshPending = false;
                 java.util.ArrayDeque<android.view.View> pending = new java.util.ArrayDeque<>();
                 pending.add(decor);
                 while (!pending.isEmpty()) {
