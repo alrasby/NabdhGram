@@ -34,16 +34,23 @@ old = "        canvas.clipRect(action.rect);\n\n        updateBounds(action);"
 if source.count(old) != 1:
     raise SystemExit("ProfileActionsView action drawing anchor changed")
 source = source.replace(old, """        canvas.clipRect(action.rect);
-        if (hit == action) {
-            // Use the selected Telegram palette; never bake a brand color into
-            // pressed profile actions (it breaks imported and dark themes).
-            int nabdhAccent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-            nabdhPressPaint.setColor(android.graphics.Color.argb(51,
-                    android.graphics.Color.red(nabdhAccent),
-                    android.graphics.Color.green(nabdhAccent),
-                    android.graphics.Color.blue(nabdhAccent)));
-            canvas.drawRoundRect(action.rect, getRoundRadius(), getRoundRadius(), nabdhPressPaint);
-        }
+        // Consistent Glass tiles behind all profile action icons, with a
+        // stronger native press state. These never intercept touch handling.
+        int nabdhAccent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        nabdhPressPaint.setStyle(Paint.Style.FILL);
+        nabdhPressPaint.setColor(android.graphics.Color.argb(hit == action ? 52 : 19,
+                android.graphics.Color.red(nabdhAccent),
+                android.graphics.Color.green(nabdhAccent),
+                android.graphics.Color.blue(nabdhAccent)));
+        canvas.drawRoundRect(action.rect, getRoundRadius(), getRoundRadius(), nabdhPressPaint);
+        nabdhPressPaint.setStyle(Paint.Style.STROKE);
+        nabdhPressPaint.setStrokeWidth(AndroidUtilities.dpf2(.75f));
+        nabdhPressPaint.setColor(android.graphics.Color.argb(hit == action ? 95 : 53,
+                android.graphics.Color.red(nabdhAccent),
+                android.graphics.Color.green(nabdhAccent),
+                android.graphics.Color.blue(nabdhAccent)));
+        canvas.drawRoundRect(action.rect, getRoundRadius(), getRoundRadius(), nabdhPressPaint);
+        nabdhPressPaint.setStyle(Paint.Style.FILL);
 
         updateBounds(action);""", 1)
 old = "                    hit.bounce.setPressed(true);"
