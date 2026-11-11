@@ -130,7 +130,105 @@ if request_anchor not in after_send:
     raise SystemExit("Phone sendCode callback changed")
 after_send = after_send.replace(request_anchor, request_trace, 1)
 s = before_send + phone_send_anchor + after_send
+
+# Pre-auth controls: keep native proxy management and language selection
+# available even while MTProto is disconnected.
+s = replace_once(s,
+    "    private ImageView proxyButtonView;",
+    """    private ImageView proxyButtonView;
+    private ImageView nabdhLanguageButtonView;""",
+    "login language view field")
+s = replace_once(s,
+    """                marginLayoutParams = (MarginLayoutParams) proxyButtonView.getLayoutParams();
+                marginLayoutParams.topMargin = AndroidUtilities.dp(16) + statusBarHeight;""",
+    """                marginLayoutParams = (MarginLayoutParams) proxyButtonView.getLayoutParams();
+                marginLayoutParams.topMargin = AndroidUtilities.dp(16) + statusBarHeight;
+                if (nabdhLanguageButtonView != null) {
+                    marginLayoutParams = (MarginLayoutParams) nabdhLanguageButtonView.getLayoutParams();
+                    marginLayoutParams.topMargin = AndroidUtilities.dp(16) + statusBarHeight;
+                }""",
+    "login language safe-area geometry")
+s = replace_once(s,
+    """        sizeNotifierFrameLayout.addView(proxyButtonView, LayoutHelper.createFrame(32, 32, Gravity.RIGHT | Gravity.TOP, 16, 16, 16, 16));
+        updateProxyButton(false, true);""",
+    """        proxyButtonView.setContentDescription(getString(R.string.ProxySettings));
+        proxyButtonView.setPadding(dp(7), dp(7), dp(7), dp(7));
+        sizeNotifierFrameLayout.addView(proxyButtonView,
+                LayoutHelper.createFrame(40, 40, Gravity.RIGHT | Gravity.TOP, 16, 16, 72, 16));
+        nabdhLanguageButtonView = new ImageView(context);
+        nabdhLanguageButtonView.setImageResource(R.drawable.nabdh_login_language);
+        nabdhLanguageButtonView.setContentDescription(getString(R.string.Language));
+        nabdhLanguageButtonView.setPadding(dp(8), dp(8), dp(8), dp(8));
+        nabdhLanguageButtonView.setOnClickListener(v -> presentFragment(new LanguageSelectActivity()));
+        sizeNotifierFrameLayout.addView(nabdhLanguageButtonView,
+                LayoutHelper.createFrame(40, 40, Gravity.RIGHT | Gravity.TOP, 16, 16, 120, 16));
+        updateProxyButton(false, true);""",
+    "native pre-auth language and proxy controls")
+s = replace_once(s,
+    """        } else if (getMessagesController().blockedCountry && !SharedConfig.proxyList.isEmpty() || connecting) {""",
+    """        } else if (activityMode == MODE_LOGIN) {
+            proxyDrawable.setConnected(false, connected, animated);
+            showProxyButton(true, animated);
+        } else if (getMessagesController().blockedCountry && !SharedConfig.proxyList.isEmpty() || connecting) {""",
+    "preauth proxy always accessible")
+s = replace_once(s,
+    """        proxyButtonView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector)));""",
+    """        proxyButtonView.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(Theme.getColor(Theme.key_listSelector)),
+                nabdhLoginSurface(14, .10f), null));
+        if (nabdhLanguageButtonView != null) {
+            nabdhLanguageButtonView.setBackground(new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(Theme.getColor(Theme.key_listSelector)),
+                    nabdhLoginSurface(14, .10f), null));
+            nabdhLanguageButtonView.setColorFilter(
+                    Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        }""",
+    "theme-updated native quick controls")
+s = replace_once(s,
+    """    @Override
+    public void onResume() {
+        super.onResume();
+        if (newAccount) {""",
+    """    @Override
+    public void onResume() {
+        super.onResume();
+        if (activityMode == MODE_LOGIN && ApplicationLoader.isNetworkOnline()) {
+            // Single preflight on foreground return, no polling/retry loop.
+            final ConnectionsManager loginNetwork = getConnectionsManager();
+            final int state = loginNetwork.getConnectionState();
+            if (state != ConnectionsManager.ConnectionStateConnected
+                    && state != ConnectionsManager.ConnectionStateUpdating) {
+                loginNetwork.checkConnection();
+                loginNetwork.resumeNetworkMaybe();
+            }
+        }
+        if (newAccount) {""",
+    "native network preflight")
+s = replace_once(s,
+    """                ConnectionsManager.getInstance(currentAccount).cleanup(false);
+
+                TLRPC.TL_auth_sendCode sendCode = new TLRPC.TL_auth_sendCode();""",
+    """                ConnectionsManager.getInstance(currentAccount).cleanup(false);
+                // Wake the original native MTProto transport after reset.
+                if (ApplicationLoader.isNetworkOnline()) {
+                    ConnectionsManager.getInstance(currentAccount).resumeNetworkMaybe();
+                }
+
+                TLRPC.TL_auth_sendCode sendCode = new TLRPC.TL_auth_sendCode();""",
+    "MTProto resume after login state cleanup")
+
 login.write_text(s,encoding="utf-8")
+language_vector = root / "TMessagesProj/src/main/res/drawable/nabdh_login_language.xml"
+language_vector.parent.mkdir(parents=True, exist_ok=True)
+language_vector.write_text("""<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#00000000"
+        android:strokeColor="#FF101010" android:strokeWidth="1.8"
+        android:pathData="M12,2A10,10 0,1 1,12 22A10,10 0,1 1,12 2zM2,12L22,12M12,2C8,6 8,18 12,22M12,2C16,6 16,18 12,22"/>
+</vector>
+""", encoding="utf-8")
 
 k = keyboard.read_text(encoding="utf-8")
 k = replace_once(k,
