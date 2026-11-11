@@ -137,6 +137,29 @@ modify("Components/UniversalAdapter.java", [
         1
     ),
 ])
+# onBindViewHolder may reset a native row's background after updateColors.
+# Re-apply the scoped Settings surface after the row has finished binding;
+# otherwise the screenshot remains Telegram's original flat white list.
+modify("Components/UniversalAdapter.java", [
+    (
+        """        if (item.bind != null) {
+            item.bind.run(holder.itemView);
+        }
+    }
+
+    private View findViewByItemObject(Object object) {""",
+        """        if (item.bind != null) {
+            item.bind.run(holder.itemView);
+        }
+        if (nabdhGlassSettings) {
+            updateColors(holder);
+        }
+    }
+
+    private View findViewByItemObject(Object object) {""",
+        1
+    ),
+])
 modify("SettingsActivity.java", [
     (
         "        listView.adapter.setApplyBackground(false);",
