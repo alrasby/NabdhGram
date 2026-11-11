@@ -275,6 +275,27 @@ for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java
             org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(holder.itemView);
 """ + source[index:]
     path.write_text(source, encoding="utf-8")
+# The real main Settings menu uses SettingCell.Factory, whose text has its
+# own layout separate from all native TextCell adjustments.
+settings_rtl = ui / "SettingsActivity.java"
+settings_rtl_src = settings_rtl.read_text(encoding="utf-8")
+rtl_from = """        public void updateColors() {
+            titleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));"""
+rtl_to = """        public void updateColors() {
+            int nabdhDirection = LocaleController.isRTL
+                    ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR;
+            setLayoutDirection(nabdhDirection);
+            textLayout.setLayoutDirection(nabdhDirection);
+            // Align the view start with Telegram's selected locale but retain
+            // native bidi ordering for mixed Arabic and Latin names.
+            titleView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+            subtitleView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+            valueView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+            titleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));"""
+if settings_rtl_src.count(rtl_from) != 1:
+    raise SystemExit("SettingsActivity.SettingCell.updateColors changed")
+settings_rtl.write_text(settings_rtl_src.replace(rtl_from, rtl_to, 1), encoding="utf-8")
+
 # Main Telegram Settings uses UniversalAdapter rather than the legacy
 # ListAdapter screens above. Re-apply the shared card after updateColors()
 # runs (including onViewAttachedToWindow), so custom rows aren't flat.

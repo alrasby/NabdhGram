@@ -28,7 +28,12 @@ localized = (ui / "NabdhStrings.java").read_text(encoding="utf-8")
 feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
+# The launcher label and MTProto session name are two different paths.
+connections = (root / "TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsManager.java").read_text(encoding="utf-8")
 checks = {
+    "Devices sessions report the NabdhGram application name":
+        'appVersion = "NabdhGram " + nabdhVersionName' in connections
+        and 'appVersion += " pbeta";' in connections,
     "Glass cards suppress native separator strokes without touching other pages":
         all("if (needDivider && !org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this))" in
             (ui / "Cells" / (name + ".java")).read_text(encoding="utf-8")
@@ -121,8 +126,9 @@ checks = {
         (ui / "ActionBar/SimpleTextView.java").read_text(encoding="utf-8"),
     "actual Telegram Settings rows have theme-based rounded Glass":
         "listView.adapter.setNabdhGlassSettings(true)" in native_settings
-        and "nabdhGlassSettings &&" in universal
-        and "InsetDrawable(surface" in universal,
+        and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView, true)" in universal
+        and "view instanceof org.telegram.ui.SettingsActivity.SettingCell" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
     "country and phone inputs keep native validation plus soft Glass":
         "setNabdhSoftGlass(true)" in (ui / "LoginActivity.java").read_text(encoding="utf-8")
         and "canvas.drawRoundRect(" in

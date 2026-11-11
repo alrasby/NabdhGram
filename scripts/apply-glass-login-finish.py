@@ -262,13 +262,17 @@ key_text_after = """            // Both text lines share the exact center of the
             symbolsTextPaint.setTextAlign(Paint.Align.CENTER);
             final boolean hasSymbols = mSymbols != null && !mSymbols.isEmpty();
             final Paint.FontMetrics numberFont = numberTextPaint.getFontMetrics();
-            final float numberCenter = centerY - (hasSymbols ? dp(6) : 0);
+            // Use the same radius as the center-aligned circular key drawable,
+            // adapting to compact devices and display scales.
+            final float keyRadius = Math.max(1f,
+                    Math.min(getWidth(), getHeight()) * .5f - dp(4));
+            final float numberCenter = centerY - (hasSymbols ? keyRadius * .22f : 0);
             final float numberBaseline = numberCenter
                     - (numberFont.ascent + numberFont.descent) / 2f;
             canvas.drawText(mNumber, centerX, numberBaseline, numberTextPaint);
             if (hasSymbols) {
                 final Paint.FontMetrics symbolsFont = symbolsTextPaint.getFontMetrics();
-                final float symbolsBaseline = centerY + dp(11)
+                final float symbolsBaseline = centerY + keyRadius * .45f
                         - (symbolsFont.ascent + symbolsFont.descent) / 2f;
                 canvas.drawText(mSymbols, centerX, symbolsBaseline, symbolsTextPaint);
             }"""

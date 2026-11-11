@@ -69,7 +69,22 @@ def main():
         raise SystemExit("Expected upstream debug application label was not found")
     debug_xml = debug_xml.replace('tools:replace="android:supportsRtl"', 'tools:replace="android:supportsRtl,android:label"')
     debug_manifest.write_text(debug_xml, encoding="utf-8")
-    print(f"Identity overlay applied: {APP_ID} / {LABEL}")
+    # Telegram Devices reads this MTProto app_version, not the launcher label.
+    connection = root / "TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsManager.java"
+    connection_src = connection.read_text(encoding="utf-8")
+    source_version = '            appVersion = pInfo.versionName + " (" + pInfo.versionCode + ")";'
+    tagged_version = """            // Brand newly registered Telegram Devices sessions correctly.
+            // Keep Android's actual version and the upstream beta suffix.
+            String nabdhVersionName = pInfo.versionName == null ? "unknown" : pInfo.versionName;
+            if (nabdhVersionName.startsWith("NandhGram ")
+                    || nabdhVersionName.startsWith("NabdhGram ")) {
+                nabdhVersionName = nabdhVersionName.substring(nabdhVersionName.indexOf(' ') + 1);
+            }
+            appVersion = "NabdhGram " + nabdhVersionName + " (" + pInfo.versionCode + ")";"""
+    if connection_src.count(source_version) != 1:
+        raise SystemExit("ConnectionsManager app_version anchor changed")
+    connection.write_text(connection_src.replace(source_version, tagged_version, 1), encoding="utf-8")
+    print(f"Identity overlay applied: {APP_ID} / {LABEL}; MTProto new-session brand applied")
     print("NOTE: This does not yet apply approved icon assets or configure private Telegram API credentials.")
 
 if __name__ == "__main__":

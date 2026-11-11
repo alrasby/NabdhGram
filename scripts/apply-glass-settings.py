@@ -416,8 +416,12 @@ s = s.replace(anchor, anchor + """
                     int size = seekBar.getProgress() + 14;
                     org.telegram.messenger.SharedConfig.fontSize = size;
                     org.telegram.messenger.SharedConfig.fontSizeIsDefault = false;
+                    // Chat messages are painted using cached static Paints.
+                    // Regenerate native geometry before refreshing rows.
+                    Theme.createChatResources(context, true);
                     context.getSharedPreferences("userconfing", Context.MODE_PRIVATE)
                             .edit().putInt("fons_size", size).commit();
+                    refreshDrawnText.run();
                     refreshTypography.run();
                 }
             });

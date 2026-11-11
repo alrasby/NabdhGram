@@ -23,7 +23,7 @@ replacement = """        // Draw the native bubble path with a bounded transluce
                 && crossfadeFromDrawable == null;
         final int nabdhOriginalPaintAlpha = p.getAlpha();
         if (nabdhFrostedText) {
-            p.setAlpha(nabdhOriginalPaintAlpha * 214 / 255);
+            p.setAlpha(nabdhOriginalPaintAlpha * 202 / 255);
         }
         canvas.drawPath(path, p);
         if (nabdhFrostedText) {
@@ -43,7 +43,7 @@ replacement = """        // Draw the native bubble path with a bounded transluce
                 stroke = getColor(Theme.key_chat_messagePanelText);
             }
             nabdhBubbleEdge.setColor(stroke);
-            nabdhBubbleEdge.setAlpha((int) (110f * alpha / 255f));
+            nabdhBubbleEdge.setAlpha((int) (122f * alpha / 255f));
             canvas.drawPath(path, nabdhBubbleEdge);
         }
         if (gradientShader != null && isSelected && paintToUse == null) {"""
@@ -66,7 +66,7 @@ cached_stroke = """                background.setBounds(bounds);
                         && !themePreview && !isSelected && crossfadeFromDrawable == null;
                 final int nabdhOriginalAlpha = background.getAlpha();
                 if (nabdhFrostedText) {
-                    background.setAlpha(nabdhOriginalAlpha * 214 / 255);
+                    background.setAlpha(nabdhOriginalAlpha * 202 / 255);
                 }
                 background.draw(canvas);
                 if (nabdhFrostedText) {
