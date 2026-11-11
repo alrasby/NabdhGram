@@ -64,6 +64,11 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         return child != null && child.getBackground() instanceof GlassCardLayers;
     }
 
+    public static android.graphics.drawable.Drawable newProfileScrim() {
+        // The copy menu must not share a Drawable callback with the row.
+        return new GlassCardLayers();
+    }
+
     // Draw exactly one inset card. Stacking the old ColorDrawable (usually
     // opaque white) underneath an inset card leaves a white rectangular strip
     // around every row, particularly obvious in RTL settings and profiles.
@@ -315,7 +320,8 @@ profile_src = profile_path.read_text(encoding="utf-8")
 old_scrim = ".setScrimViewBackground(listView.getClipBackground(view))"
 new_scrim = """.setScrimViewBackground(
                         org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
-                                ? view.getBackground() : listView.getClipBackground(view))"""
+                                ? org.telegram.ui.Components.NabdhGlassRowDecoration.newProfileScrim()
+                                : listView.getClipBackground(view))"""
 if profile_src.count(old_scrim) != 3:
     raise SystemExit("Profile selection scrim anchors changed")
 profile_src = profile_src.replace(old_scrim, new_scrim)
