@@ -57,6 +57,11 @@ checks = {
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         and "extends android.graphics.drawable.RippleDrawable" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
+    "account info uses same Glass for actual SettingCell factory rows":
+        "listView.adapter.setNabdhGlassSettings(true)" in
+            (ui / "UserInfoActivity.java").read_text(encoding="utf-8")
+        and "new org.telegram.ui.Components.NabdhGlassRowDecoration()" in
+            (ui / "UserInfoActivity.java").read_text(encoding="utf-8"),
     "native settings and profile use filled theme-aware backgrounds": all(
         "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
         (ui / name).read_text(encoding="utf-8")

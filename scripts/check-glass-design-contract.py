@@ -67,6 +67,7 @@ assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.j
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
 assert "class LiveGlassSurface" in native_surfaces and "class GlassCardLayers" in native_surfaces, "Missing real theme-aware filled cards"
+assert "user_info = ui / \"UserInfoActivity.java\"" in native_surfaces and "listView.adapter.setNabdhGlassSettings(true);" in native_surfaces, "Actual Account info rows missing Glass styling"
 assert "SettingsActivity.SettingCell.updateColors changed" in native_surfaces and "titleView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START)" in native_surfaces, "Actual SettingsActivity RTL title alignment missing"
 assert "Theme.createChatResources(context, true)" in settings, "Changing chat font size leaves native text paints stale"
 assert "applyCardStyle(View child, boolean settingsRow)" in native_surfaces, "UniversalAdapter Settings cells must bypass legacy class-only filter"

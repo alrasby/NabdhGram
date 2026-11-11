@@ -306,6 +306,22 @@ settings_rtl_src = (settings_rtl_src[:cell_start]
         + settings_rtl_src[cell_end:])
 settings_rtl.write_text(settings_rtl_src, encoding="utf-8")
 
+# The Account details screen is UserInfoActivity, not ProfileActivity. The
+# latter is a different Telegram profile viewer. Its actual phone, handle,
+# birthday and channel items use SettingsActivity.SettingCell.Factory and
+# require an explicit opt-in to the same shared native Glass decoration.
+user_info = ui / "UserInfoActivity.java"
+user_info_src = user_info.read_text(encoding="utf-8")
+account_anchor = "        listView.setSections();\\n        listView.setClipToPadding(false);"
+account_card = """        // NabdhGram Glass: style real account Settings factory rows while
+        // keeping name/bio editors and privacy actions native and functional.
+        listView.adapter.setNabdhGlassSettings(true);
+        listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration());
+        listView.setClipToPadding(false);"""
+if user_info_src.count(account_anchor) != 1:
+    raise SystemExit("UserInfoActivity Account rows anchor changed")
+user_info.write_text(user_info_src.replace(account_anchor, account_card, 1), encoding="utf-8")
+
 # Main Telegram Settings uses UniversalAdapter rather than the legacy
 # ListAdapter screens above. Re-apply the shared card after updateColors()
 # runs (including onViewAttachedToWindow), so custom rows aren't flat.
