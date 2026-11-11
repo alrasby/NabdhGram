@@ -29,6 +29,21 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "unified theme-aware legacy settings pages": all(
+        "new org.telegram.ui.Components.NabdhGlassRowDecoration()" in
+        (ui / name).read_text(encoding="utf-8")
+        for name in ("NotificationsSettingsActivity.java",
+                     "PrivacySettingsActivity.java", "DataSettingsActivity.java",
+                     "ThemeActivity.java")
+    ) and all(token in
+        (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+        for token in ("onDrawOver", "Theme.key_windowBackgroundWhiteBlueText",
+                      "isSettingRow", "Paint.Style.STROKE")),
+    "native Telegram text labels eligible for font remeasure": all(
+        token in launch for token in
+        ("final boolean telegramTextFace", "telegramTextFace ? android.graphics.Typeface.DEFAULT",
+         "originalPx * uiPercent / 100f")
+    ),
     "third-party login cannot advertise official-only Firebase SMS":
         'settings.allow_firebase = false; // Third-party app' in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
