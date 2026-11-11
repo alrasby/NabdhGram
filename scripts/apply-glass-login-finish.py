@@ -227,11 +227,11 @@ k = k.replace(backspace_icon,
     "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
 k = replace_once(k,
     "numberTextPaint.setTextSize(dp(24));",
-    "numberTextPaint.setTextSize(dp(24));",
+    "numberTextPaint.setTextSize(dp(22));",
     "numeric key size")
 k = replace_once(k,
     "symbolsTextPaint.setTextSize(dp(14));",
-    "symbolsTextPaint.setTextSize(dp(14));",
+    "symbolsTextPaint.setTextSize(dp(10));",
     "key secondary letters")
 # Use a clean filled backspace glyph instead of Telegram's outlined
 # cyan asset. Keep the existing ImageView, tap handler and key repeat intact.
@@ -262,13 +262,13 @@ key_text_after = """            // Both text lines share the exact center of the
             symbolsTextPaint.setTextAlign(Paint.Align.CENTER);
             final boolean hasSymbols = mSymbols != null && !mSymbols.isEmpty();
             final Paint.FontMetrics numberFont = numberTextPaint.getFontMetrics();
-            final float numberCenter = centerY - (hasSymbols ? dp(10) : 0);
+            final float numberCenter = centerY - (hasSymbols ? dp(6) : 0);
             final float numberBaseline = numberCenter
                     - (numberFont.ascent + numberFont.descent) / 2f;
             canvas.drawText(mNumber, centerX, numberBaseline, numberTextPaint);
             if (hasSymbols) {
                 final Paint.FontMetrics symbolsFont = symbolsTextPaint.getFontMetrics();
-                final float symbolsBaseline = centerY + dp(19)
+                final float symbolsBaseline = centerY + dp(11)
                         - (symbolsFont.ascent + symbolsFont.descent) / 2f;
                 canvas.drawText(mSymbols, centerX, symbolsBaseline, symbolsTextPaint);
             }"""
