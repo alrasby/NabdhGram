@@ -28,6 +28,12 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
             new java.util.WeakHashMap<>();
     private final java.util.WeakHashMap<android.widget.TextView, android.graphics.Typeface> nabdhOriginalTypefaces =
             new java.util.WeakHashMap<>();
+    private final java.util.WeakHashMap<org.telegram.ui.Components.AnimatedTextView, String> nabdhAnimatedAppliedFonts =
+            new java.util.WeakHashMap<>();
+    private final java.util.WeakHashMap<org.telegram.ui.Components.AnimatedTextView, Float> nabdhAnimatedOriginalPx =
+            new java.util.WeakHashMap<>();
+    private final java.util.WeakHashMap<org.telegram.ui.Components.AnimatedTextView, Integer> nabdhAnimatedOriginalStyles =
+            new java.util.WeakHashMap<>();
     private boolean nabdhFontApplying;
     private boolean nabdhFontDirty = true;
     private boolean nabdhRowRefreshPending;
@@ -113,6 +119,52 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
             android.view.View view = pending.removeFirst();
             if (view instanceof org.telegram.ui.ActionBar.SimpleTextView) {
                 ((org.telegram.ui.ActionBar.SimpleTextView) view).nabdhRefreshSelectedFont();
+            }
+            // Telegram's animated settings/headers use a custom drawable and
+            // are invisible to a normal TextView scan. Rebuild their cached
+            // text layouts when the selected font/size actually changes.
+            if (view instanceof org.telegram.ui.Components.AnimatedTextView) {
+                org.telegram.ui.Components.AnimatedTextView animated =
+                        (org.telegram.ui.Components.AnimatedTextView) view;
+                android.graphics.Typeface current = animated.getPaint().getTypeface();
+                String applied = nabdhAnimatedAppliedFonts.get(animated);
+                boolean eligible = applied != null || current == null
+                        || current.equals(android.graphics.Typeface.DEFAULT)
+                        || current.equals(android.graphics.Typeface.DEFAULT_BOLD)
+                        || current.equals(android.graphics.Typeface.SANS_SERIF)
+                        || current.equals(android.graphics.Typeface.create(
+                                "sans-serif-medium", android.graphics.Typeface.NORMAL))
+                        || current.equals(org.telegram.messenger.AndroidUtilities.getTypeface(
+                                "fonts/rregular.ttf"))
+                        || current.equals(org.telegram.messenger.AndroidUtilities.getTypeface(
+                                "fonts/rmedium.ttf"))
+                        || packagedTextFaces.contains(current);
+                if (eligible && !renderKey.equals(applied)) {
+                    Float original = nabdhAnimatedOriginalPx.get(animated);
+                    if (original == null) {
+                        original = animated.getPaint().getTextSize();
+                        nabdhAnimatedOriginalPx.put(animated, original);
+                        nabdhAnimatedOriginalStyles.put(animated,
+                                current == null ? android.graphics.Typeface.NORMAL : current.getStyle());
+                    }
+                    boolean device = "system-default".equals(family);
+                    Integer originalStyle = nabdhAnimatedOriginalStyles.get(animated);
+                    android.graphics.Typeface desired = device
+                            ? android.graphics.Typeface.create(
+                                    android.graphics.Typeface.DEFAULT,
+                                    forceBold || originalStyle != null
+                                    && originalStyle == android.graphics.Typeface.BOLD
+                                    ? android.graphics.Typeface.BOLD
+                                    : android.graphics.Typeface.NORMAL)
+                            : org.telegram.messenger.AndroidUtilities.getTypeface(
+                                    "fonts/rregular.ttf");
+                    if (desired != null) animated.setTypeface(desired);
+                    animated.setTextSize(original * uiPercent / 100f);
+                    animated.setText(animated.getText(), false);
+                    animated.requestLayout();
+                    animated.invalidate();
+                    nabdhAnimatedAppliedFonts.put(animated, renderKey);
+                }
             }
             if (view instanceof android.widget.TextView && !(view instanceof android.widget.EditText)) {
                 android.widget.TextView label = (android.widget.TextView) view;
