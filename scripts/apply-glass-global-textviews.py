@@ -30,6 +30,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
             new java.util.WeakHashMap<>();
     private boolean nabdhFontApplying;
     private boolean nabdhFontDirty = true;
+    // Avoid a full view-tree scan on every animated RecyclerView layout frame.
+    private long nabdhLastFontScanMs;
     private android.view.ViewTreeObserver.OnGlobalLayoutListener nabdhFontLayoutListener;
     private android.view.ViewTreeObserver.OnPreDrawListener nabdhFontPreDrawListener;
 
@@ -49,6 +51,7 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
         final android.view.View root = getWindow() == null ? null : getWindow().getDecorView();
         if (root == null || nabdhFontApplying) return;
         nabdhFontApplying = true;
+        nabdhLastFontScanMs = android.os.SystemClock.uptimeMillis();
         try {
         android.content.SharedPreferences appearance =
                 getSharedPreferences("nabdhgram_appearance", MODE_PRIVATE);
@@ -68,7 +71,13 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 // Telegram labels may use different weights of the system
                 // sans family. Match their actual family rather than relying
                 // on Typeface object identity, which is not guaranteed.
-                final boolean normalFont = current == null
+                // Telegram already assigns the selected bundled typeface to
+                // many views before this scanner sees them. Treat those native
+                // text faces as eligible so UI scaling and future changes work.
+                final boolean telegramTextFace = current != null && (
+                        current.equals(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf"))
+                        || current.equals(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rmedium.ttf")));
+                final boolean normalFont = telegramTextFace || current == null
                         || current.equals(android.graphics.Typeface.DEFAULT)
                         || current.equals(android.graphics.Typeface.DEFAULT_BOLD)
                         || current.equals(android.graphics.Typeface.SANS_SERIF)
@@ -82,8 +91,12 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                             originalStyle = current == null
                                     ? android.graphics.Typeface.NORMAL : current.getStyle();
                             nabdhOriginalTextStyles.put(label, originalStyle);
+                            // A Telegram Roboto alias may already resolve to
+                            // the user-selected font. Never save that custom
+                            // face as the device default: it would survive a reset.
                             nabdhOriginalTypefaces.put(label,
-                                    current == null ? android.graphics.Typeface.DEFAULT : current);
+                                    telegramTextFace ? android.graphics.Typeface.DEFAULT
+                                    : current == null ? android.graphics.Typeface.DEFAULT : current);
                         }
                         Float originalPx = nabdhOriginalTextSizes.get(label);
                         if (originalPx == null) {
@@ -142,7 +155,8 @@ replacement = """    @Override
         // Already processed labels are skipped by the weak cache.
         if (nabdhFontPreDrawListener == null) {
             nabdhFontPreDrawListener = () -> {
-                if (nabdhFontDirty) {
+                if (nabdhFontDirty && android.os.SystemClock.uptimeMillis()
+                        - nabdhLastFontScanMs >= 48L) {
                     nabdhFontDirty = false;
                     nabdhApplyVisibleFonts();
                 }

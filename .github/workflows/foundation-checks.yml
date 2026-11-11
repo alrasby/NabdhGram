@@ -40,4 +40,4 @@ jobs:
         run: |
           test -f docs/BUILD_SETUP.md
           test -f docs/UPSTREAM.md
-          echo "Foundation checks passed; Android compilation not configured yet."
+          echo "Foundation source checks passed; Android compilation and device validation run separately."

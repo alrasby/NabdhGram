@@ -20,11 +20,13 @@ ordered = [
     "apply-glass-bubble-outline.py",
     "apply-glass-final-screens.py",
     "apply-glass-v1-finishing.py",
+    "apply-glass-settings-surfaces.py",
     "check-glass-overlay.py",
 ]
 positions = [workflow.find("python3 nabdhgram/scripts/" + name) for name in ordered]
 assert all(pos >= 0 for pos in positions), "Missing Glass integration step"
 assert positions == sorted(positions), "Glass overlays applied out of order"
+assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Install Android SDK and NDK") < workflow.index("      - name: Build branded debug APK"), "Expensive SDK/NDK setup must run only after source overlays pass"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
 assert "!themePreview && !isSelected" in bubble, "Selection or preview protection was removed"
 assert finishing.count("if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected)") == 2, "Final overlay no longer matches text/media anchor"
@@ -40,4 +42,17 @@ assert "float renderedStart = offsetX + lineLeft;" in finishing_ui, "RTL badge n
 assert "R.drawable.nabdh_keypad_delete" in login_overlay and "nabdh_keypad_delete.xml" in login_overlay, "Native delete vector not bundled"
 assert "SIDE_PADDING = 10, BUTTON_PADDING = 6" in login_overlay, "Original keypad geometry not restored"
 assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
+native_surfaces = (ROOT / "scripts/apply-glass-settings-surfaces.py").read_text(encoding="utf-8")
+assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.java",
+    "PrivacySettingsActivity.java", "DataSettingsActivity.java",
+    "ThemeActivity.java", "ProfileActivity.java")), "Missing native settings target"
+assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
+assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
+global_fonts = (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8")
+assert "final boolean telegramTextFace" in global_fonts, "Telegram-native typefaces excluded from UI scale"
+assert "telegramTextFace ? android.graphics.Typeface.DEFAULT" in global_fonts, "Reset may restore saved custom font"
+assert "nabdhLastFontScanMs >= 48L" in global_fonts, "Font scan throttle missing"
+bundled_themes = (ROOT / "scripts/apply-nabdh-bundled-themes.py").read_text(encoding="utf-8")
+assert "else if (pathToFile != null)" in bundled_themes, "Theme file null guard missing"
+assert "isDark = previewBackgroundColor != 0" in bundled_themes, "Native theme fallback missing"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")

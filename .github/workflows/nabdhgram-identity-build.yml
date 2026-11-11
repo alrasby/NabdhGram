@@ -38,31 +38,6 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Install Android SDK and NDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          test -x "$SDKMANAGER"
-          "$SDKMANAGER" --licenses < <(yes) >/dev/null
-          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
-          NDK_DIR="$ANDROID_HOME/ndk/27.2.12479018"
-          for attempt in 1 2 3; do
-            echo "Installing NDK 27.2.12479018 (attempt $attempt of 3)"
-            if "$SDKMANAGER" --install "ndk;27.2.12479018" && \
-               test -x "$NDK_DIR/ndk-build" && \
-               grep -q '^Pkg.Revision = 27.2.12479018$' "$NDK_DIR/source.properties"; then
-              echo "NDK installation verified: $NDK_DIR"
-              break
-            fi
-            echo "::warning::NDK install attempt $attempt failed or incomplete"
-            if [ "$attempt" -eq 3 ]; then
-              echo "::error::NDK installation failed after 3 attempts; check SDK download/archive integrity"
-              exit 1
-            fi
-            rm -rf "$NDK_DIR"
-            sleep $((attempt * 15))
-          done
       - name: Checkout pinned Telegram source
         shell: bash
         run: |
@@ -333,6 +308,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-arabic-resources.py Telegram-upstream
 
+      - name: Apply unified Glass to native privacy, notifications, data and theme settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-settings-surfaces.py Telegram-upstream
+
       - name: Verify NabdhGram Glass overlays before Gradle
         shell: bash
         run: |
@@ -340,6 +321,7 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/apply-glass-login-finish.py nabdhgram/scripts/apply-glass-v1-finishing.py nabdhgram/scripts/apply-glass-final-screens.py nabdhgram/scripts/apply-glass-chat-typefaces.py nabdhgram/scripts/apply-nabdh-arabic-resources.py nabdhgram/scripts/apply-hide-proxy-promo.py nabdhgram/scripts/apply-glass-diagnostic-icons.py nabdhgram/scripts/apply-glass-login.py nabdhgram/scripts/apply-glass-dialog-typography.py nabdhgram/scripts/apply-glass-document-layout.py nabdhgram/scripts/apply-glass-locale-polish.py nabdhgram/scripts/apply-glass-badge-centering.py nabdhgram/scripts/apply-glass-header-insets.py nabdhgram/scripts/install-open-fonts.py nabdhgram/scripts/apply-glass-global-textviews.py nabdhgram/scripts/apply-glass-bubble-outline.py nabdhgram/scripts/apply-glass-bubble-radius.py nabdhgram/scripts/apply-glass-native-settings-profile.py nabdhgram/scripts/apply-glass-contacts.py nabdhgram/scripts/apply-glass-chat-composer.py nabdhgram/scripts/apply-glass-selector.py nabdhgram/scripts/apply-glass-global-font.py nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-dialog-sections.py nabdhgram/scripts/check-glass-overlay.py nabdhgram/scripts/apply-contacts-permission-policy.py
           python3 nabdhgram/scripts/check-glass-design-contract.py
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhGlassRowDecoration.java
           # Validate generated Java, not only the Python overlay source.
           python3 - <<'PY'
           from pathlib import Path
@@ -377,6 +359,31 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream
 
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --licenses < <(yes) >/dev/null
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+          NDK_DIR="$ANDROID_HOME/ndk/27.2.12479018"
+          for attempt in 1 2 3; do
+            echo "Installing NDK 27.2.12479018 (attempt $attempt of 3)"
+            if "$SDKMANAGER" --install "ndk;27.2.12479018" && \
+               test -x "$NDK_DIR/ndk-build" && \
+               grep -q '^Pkg.Revision = 27.2.12479018$' "$NDK_DIR/source.properties"; then
+              echo "NDK installation verified: $NDK_DIR"
+              break
+            fi
+            echo "::warning::NDK install attempt $attempt failed or incomplete"
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::NDK installation failed after 3 attempts; check SDK download/archive integrity"
+              exit 1
+            fi
+            rm -rf "$NDK_DIR"
+            sleep $((attempt * 15))
+          done
       - name: Build branded debug APK
         id: compile
         continue-on-error: true
