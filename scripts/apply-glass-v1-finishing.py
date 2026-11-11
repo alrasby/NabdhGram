@@ -330,9 +330,13 @@ modify("LoginActivity.java", [
 # to native code. The subtle colored fill is applied BEFORE the text is drawn.
 modify("ActionBar/MessageDrawable.java", [
     (
-        """                background.draw(canvas);
+        """                if (nabdhFrostedText) {
+                    background.setAlpha(nabdhOriginalAlpha);
+                }
                 if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {""",
-        """                background.draw(canvas);
+        """                if (nabdhFrostedText) {
+                    background.setAlpha(nabdhOriginalAlpha);
+                }
                 if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
                     // Semi-transparent theme accent under the message glyphs:
                     // makes Glass visible for cached solid native bubbles too.
