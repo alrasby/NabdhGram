@@ -69,18 +69,19 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
 """, encoding="utf-8")
 
 for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
-             "DataSettingsActivity.java", "ThemeActivity.java"):
+             "DataSettingsActivity.java", "ThemeActivity.java",
+             "ProfileActivity.java"):
     path = ui / name
     source = path.read_text(encoding="utf-8")
     anchor = "        listView.setSections();"
     if source.count(anchor) != 1:
         raise SystemExit(f"{name}: settings list anchor changed")
+    radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\\n"
     source = source.replace(anchor,
         anchor + """
         // NabdhGram unified design: theme-aware border around settings rows.
         // Draw-only decoration preserves original scrolling and row actions.
-        listView.setSelectorRadius(17);
-        listView.addItemDecoration(
+""" + radius + """        listView.addItemDecoration(
                 new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
     path.write_text(source, encoding="utf-8")
 print("NabdhGram unified native Settings decoration installed on four legacy screens.")
