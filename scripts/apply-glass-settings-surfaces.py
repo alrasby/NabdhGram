@@ -111,9 +111,9 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
             if (bounds.width() <= 0 || bounds.height() <= AndroidUtilities.dp(28)) return;
             final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
             final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-            final int red = (Color.red(base) * 90 + Color.red(accent) * 10) / 100;
-            final int green = (Color.green(base) * 90 + Color.green(accent) * 10) / 100;
-            final int blue = (Color.blue(base) * 90 + Color.blue(accent) * 10) / 100;
+            final int red = (Color.red(base) * 82 + Color.red(accent) * 18) / 100;
+            final int green = (Color.green(base) * 82 + Color.green(accent) * 18) / 100;
+            final int blue = (Color.blue(base) * 82 + Color.blue(accent) * 18) / 100;
             float inset = AndroidUtilities.dp(10);
             float vertical = AndroidUtilities.dp(2);
             float round = AndroidUtilities.dp(16);
@@ -156,14 +156,16 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         final float radius = AndroidUtilities.dp(17);
         for (int index = 0; index < parent.getChildCount(); index++) {
             final View child = parent.getChildAt(index);
-            if (!isSettingRow(child) || child.getVisibility() != View.VISIBLE
-                    || child.getBackground() instanceof GlassCardLayers) {
+            if (!isSettingRow(child) || child.getVisibility() != View.VISIBLE) {
                 continue;
             }
-            bounds.set(child.getLeft() + inset, child.getTop() + topInset,
-                    child.getRight() - inset, child.getBottom() - topInset);
-            if (bounds.width() > 0 && bounds.height() > AndroidUtilities.dp(28)) {
-                canvas.drawRoundRect(bounds, radius, radius, stroke);
+            // A number of Telegram adapters replace the row background
+            // after binding (and on theme changes). Restore an actual filled
+            // Glass drawable, not merely a border, on the next draw frame.
+            if (!(child.getBackground() instanceof GlassCardLayers)) {
+                applyCardStyle(child);
+            } else {
+                ((GlassCardLayers) child.getBackground()).refreshThemeTint();
             }
         }
     }
@@ -273,6 +275,18 @@ universal_path.write_text(universal_source, encoding="utf-8")
 # The main SettingsActivity uses UniversalRecyclerView; profile and other
 # native screens are covered by the loop above. Remove its parent section
 # once, leaving child cards, row order and adapters untouched.
+# Main Settings uses a UniversalRecyclerView adapter, which can recreate
+# native row backgrounds after updateColors(). Install the same fallback
+# decorator there, just as on the ten legacy settings screens.
+settings_main = ui / "SettingsActivity.java"
+settings_source = settings_main.read_text(encoding="utf-8")
+enable_anchor = "        listView.adapter.setNabdhGlassSettings(true);"
+if settings_source.count(enable_anchor) != 1:
+    raise SystemExit("Main Settings unified card opt-in anchor changed")
+settings_source = settings_source.replace(enable_anchor, enable_anchor + """
+        listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
+settings_main.write_text(settings_source, encoding="utf-8")
+
 for activity in ("SettingsActivity.java",):
     page = ui / activity
     content = page.read_text(encoding="utf-8")
