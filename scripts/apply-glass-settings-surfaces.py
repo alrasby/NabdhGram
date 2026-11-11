@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Install a theme-aware, non-interactive visual layer for native settings pages.
 
-Draws only thin inset boundaries ABOVE existing cells: no adapter mutations,
+Draws subtle translucent cards and thin inset boundaries ABOVE existing cells: no adapter mutations,
 layout changes, touch interceptors, altered click targets or static brand colors.
 """
 from pathlib import Path
@@ -33,6 +33,7 @@ import org.telegram.ui.ActionBar.Theme;
  */
 public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF bounds = new RectF();
 
     private static boolean isSettingRow(View view) {
@@ -47,9 +48,18 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     public void onDrawOver(@NonNull Canvas canvas, @NonNull RecyclerView parent,
             @NonNull RecyclerView.State state) {
         final int color = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-        stroke.setColor(Color.argb(50, Color.red(color), Color.green(color), Color.blue(color)));
+        final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
+        // Soft Glass uses the selected palette, including imported .attheme.
+        // Small overlay alpha keeps text legible, with no permanent backgrounds
+        // that could remain stale when switching back to Telegram defaults.
+        fill.setColor(Color.argb(20,
+                (Color.red(base) * 72 + Color.red(color) * 28) / 100,
+                (Color.green(base) * 72 + Color.green(color) * 28) / 100,
+                (Color.blue(base) * 72 + Color.blue(color) * 28) / 100));
+        fill.setStyle(Paint.Style.FILL);
+        stroke.setColor(Color.argb(76, Color.red(color), Color.green(color), Color.blue(color)));
         stroke.setStyle(Paint.Style.STROKE);
-        stroke.setStrokeWidth(AndroidUtilities.dpf2(.8f));
+        stroke.setStrokeWidth(AndroidUtilities.dpf2(.9f));
         final float inset = AndroidUtilities.dp(11);
         final float topInset = AndroidUtilities.dp(2);
         final float radius = AndroidUtilities.dp(15);
@@ -61,6 +71,7 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
             bounds.set(child.getLeft() + inset, child.getTop() + topInset,
                     child.getRight() - inset, child.getBottom() - topInset);
             if (bounds.width() > 0 && bounds.height() > AndroidUtilities.dp(28)) {
+                canvas.drawRoundRect(bounds, radius, radius, fill);
                 canvas.drawRoundRect(bounds, radius, radius, stroke);
             }
         }
@@ -69,8 +80,11 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
 """, encoding="utf-8")
 
 for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
-             "DataSettingsActivity.java", "ThemeActivity.java",
-             "ProfileActivity.java"):
+             "DataSettingsActivity.java", "ThemeActivity.java", "ProfileActivity.java",
+             "PrivacyControlActivity.java", "NotificationsCustomSettingsActivity.java",
+             "DataAutoDownloadActivity.java", "PasscodeActivity.java",
+             "CacheControlActivity.java", "ProxyListActivity.java",
+             "LanguageSelectActivity.java", "SessionsActivity.java"):
     path = ui / name
     source = path.read_text(encoding="utf-8")
     anchor = "        listView.setSections();"
