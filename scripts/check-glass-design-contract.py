@@ -47,7 +47,9 @@ assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must 
 native_surfaces = (ROOT / "scripts/apply-glass-settings-surfaces.py").read_text(encoding="utf-8")
 assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.java",
     "PrivacySettingsActivity.java", "DataSettingsActivity.java",
-    "ThemeActivity.java", "ProfileActivity.java")), "Missing native settings target"
+    "ThemeActivity.java", "ProfileActivity.java", "LanguageSelectActivity.java",
+    "SessionsActivity.java", "PrivacyControlActivity.java",
+    "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java")), "Missing native settings target"
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
 assert "class LiveGlassSurface" in native_surfaces and "class GlassCardLayers" in native_surfaces, "Missing real theme-aware filled cards"
@@ -56,6 +58,8 @@ assert 'for activity in ("SettingsActivity.java",):' in native_surfaces, "Main s
 assert 'source = source.replace(anchor, """' in native_surfaces, "Nested settings still install outer section drawing"
 assert 'extends android.graphics.drawable.RippleDrawable' in native_surfaces, "Native per-row pressed state/ripple missing"
 assert 'new GlassCardLayers(previous)' not in native_surfaces, "Opaque parent row background still retained"
+assert "view instanceof org.telegram.ui.Cells.LanguageCell" in native_surfaces, "Language selection row is unstyled"
+assert "view instanceof org.telegram.ui.Cells.SessionCell" in native_surfaces, "Session details row is unstyled"
 assert 'content = content.replace(' in native_surfaces and "group_anchor" in native_surfaces, "Grouped parent backgrounds still drawn"
 assert "view instanceof org.telegram.ui.Cells.TextDetailCell" in native_surfaces, "Profile details aren't styled"
 assert "view instanceof org.telegram.ui.Cells.AboutLinkCell" in native_surfaces, "Profile about rows aren't styled"
