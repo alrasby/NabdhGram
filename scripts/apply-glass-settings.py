@@ -460,7 +460,7 @@ for lang, labels in {
     keys = ("NabdhFontTitle", "NabdhFontReadex", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope", "NabdhFontVazirmatn", "NabdhFontNotoSansArabic", "NabdhFontTajawal", "NabdhFontRubik")
     extra = "".join('    <string name="' + k + '">' + escape(v).replace("'", "\\'") + '</string>\n' for k, v in zip(keys, labels))
     extra += ('    <string name="NabdhFontSystemDefault">'
-              + ('Device default font' if lang == "values" else 'خط الجهاز الافتراضي')
+              + 'Device default font'
               + '</string>\n')
     res.write_text(xml.replace("</resources>", extra + "</resources>", 1), encoding="utf-8")
 for locale, texts in {
