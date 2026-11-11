@@ -137,47 +137,94 @@ k = replace_once(k,
     "private final static int SIDE_PADDING = 10, BUTTON_PADDING = 6;",
     "private final static int SIDE_PADDING = 10, BUTTON_PADDING = 6;",
     "keypad breathing room")
+# The keypad lives in wide grid cells. A corner radius only produces
+# horizontal pills; draw an actual circle fitted to the smaller dimension.
+# Keep the original NumberButtonView, EditText and backspace listeners.
 k = replace_once(k,
-    """        final int defaultColor = Theme.getColor(Theme.key_listSelector);
-        final int pressedColor = ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_listSelector), 30);""",
-    """        // Genuine translucent keypad, not an overlay blocking key presses.
-        // Selected-theme colors make light, dark and imported Glass work.
-        // Keep Telegram's original keypad geometry with a restrained,
-        // theme-aware surface. Unlike the selector color, this base follows
-        // light/dark imported themes without opaque gray number pills.
+    "    private static Drawable getButtonDrawable(int index) {",
+    """    // A stateful circle fills its actual centered diameter regardless of
+    // the Android key cell's width, avoiding stretched oval/pill keys.
+    private static final class NabdhCircleKey extends android.graphics.drawable.Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int resting, active;
+        private boolean pressed;
+        private int alpha = 255;
+
+        NabdhCircleKey(int resting, int active) {
+            this.resting = resting;
+            this.active = active;
+        }
+
+        @Override public boolean isStateful() { return true; }
+        @Override protected boolean onStateChange(int[] stateSet) {
+            boolean down = false;
+            for (int state : stateSet) {
+                if (state == android.R.attr.state_pressed || state == android.R.attr.state_focused) {
+                    down = true;
+                    break;
+                }
+            }
+            if (pressed != down) {
+                pressed = down;
+                invalidateSelf();
+                return true;
+            }
+            return false;
+        }
+        @Override public void draw(Canvas canvas) {
+            android.graphics.Rect box = getBounds();
+            float radius = Math.max(1f, Math.min(box.width(), box.height()) * .5f - dp(4));
+            paint.setColor(pressed ? active : resting);
+            paint.setAlpha(alpha);
+            canvas.drawCircle(box.exactCenterX(), box.exactCenterY(), radius, paint);
+        }
+        @Override public void setAlpha(int value) { alpha = value; invalidateSelf(); }
+        @Override public void setColorFilter(android.graphics.ColorFilter colorFilter) {
+            paint.setColorFilter(colorFilter);
+            invalidateSelf();
+        }
+        @Override public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
+    }
+
+    private static Drawable getButtonDrawable(int index) {""",
+    "keyboard circular drawable declaration")
+key_start = k.index("    private static Drawable getButtonDrawable(int index) {")
+key_end = k.index("\n    public void updateColors() {", key_start)
+if key_end < key_start:
+    raise SystemExit("Custom keyboard color update boundary changed")
+# Replace complete shape logic rather than tweaking any of its 4 corner radii.
+k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) {
         final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
-        final int tint = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-        final int defaultColor = ColorUtils.setAlphaComponent(android.graphics.Color.rgb(
-                (android.graphics.Color.red(base) * 94 + android.graphics.Color.red(tint) * 6) / 100,
-                (android.graphics.Color.green(base) * 94 + android.graphics.Color.green(tint) * 6) / 100,
-                (android.graphics.Color.blue(base) * 94 + android.graphics.Color.blue(tint) * 6) / 100), 220);
-        final int pressedColor = ColorUtils.setAlphaComponent(android.graphics.Color.rgb(
-                (android.graphics.Color.red(base) * 81 + android.graphics.Color.red(tint) * 19) / 100,
-                (android.graphics.Color.green(base) * 81 + android.graphics.Color.green(tint) * 19) / 100,
-                (android.graphics.Color.blue(base) * 81 + android.graphics.Color.blue(tint) * 19) / 100), 235);""",
-    "keypad translucent key paints")
-k = replace_once(k,
-    "dp(isRight && isTop ? 24 : 12),",
-    "dp(isRight && isTop ? 24 : 12),",
-    "top-right key corners")
-k = replace_once(k,
-    "dp(isLeft && isTop ? 24 : 12),",
-    "dp(isLeft && isTop ? 24 : 12),",
-    "top-left key corners")
-k = replace_once(k,
-    "dp(isRight && isBottom ? 24 : 12),",
-    "dp(isRight && isBottom ? 24 : 12),",
-    "bottom-right key corners")
-k = replace_once(k,
-    "dp(/*index == 10 || index == 6 ||*/ isLeft && isBottom ? 24 : 12),",
-    "dp(/*index == 10 || index == 6 ||*/ isLeft && isBottom ? 24 : 12),",
-    "bottom-left key corners")
+        final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        // A subtly tinted blue key at rest, a clearly stronger cyan press.
+        // Resolve colors on updateColors() for light/dark/imported themes.
+        int rest = android.graphics.Color.rgb(
+                (android.graphics.Color.red(base) * 83 + android.graphics.Color.red(accent) * 17) / 100,
+                (android.graphics.Color.green(base) * 83 + android.graphics.Color.green(accent) * 17) / 100,
+                (android.graphics.Color.blue(base) * 83 + android.graphics.Color.blue(accent) * 17) / 100);
+        int active = android.graphics.Color.rgb(
+                (android.graphics.Color.red(base) * 54 + android.graphics.Color.red(accent) * 46) / 100,
+                (android.graphics.Color.green(base) * 54 + android.graphics.Color.green(accent) * 46) / 100,
+                (android.graphics.Color.blue(base) * 54 + android.graphics.Color.blue(accent) * 46) / 100);
+        int ink = android.graphics.Color.argb(165,
+                android.graphics.Color.red(accent),
+                android.graphics.Color.green(accent),
+                android.graphics.Color.blue(accent));
+        return new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(ink),
+                new NabdhCircleKey(rest, active),
+                new NabdhCircleKey(android.graphics.Color.WHITE,
+                        android.graphics.Color.WHITE));
+    }
+""" + k[key_end:]
 # Constructor and updateColors both tint the same icon; handle both.
 backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
 if k.count(backspace_icon) != 2:
     raise SystemExit("Backspace icon anchors changed")
 k = k.replace(backspace_icon,
-    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));")
+    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
 k = replace_once(k,
     "numberTextPaint.setTextSize(dp(24));",
     "numberTextPaint.setTextSize(dp(24));",
