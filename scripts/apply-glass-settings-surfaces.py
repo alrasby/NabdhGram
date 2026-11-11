@@ -141,7 +141,9 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
                     bounds.right - inset, bounds.bottom - vertical);
             if (rect.width() <= 0 || rect.height() <= 0) return;
             fill.setStyle(Paint.Style.FILL);
-            fill.setColor(Color.argb(opacity, red, green, blue));
+            // A partially translucent surface lets the active theme canvas
+            // show through instead of painting another opaque pale-blue row.
+            fill.setColor(Color.argb(218 * opacity / 255, red, green, blue));
             canvas.drawRoundRect(rect, round, round, fill);
             edge.setStyle(Paint.Style.STROKE);
             edge.setStrokeWidth(AndroidUtilities.dpf2(.8f));
