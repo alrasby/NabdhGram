@@ -147,14 +147,14 @@ k = replace_once(k,
         // light/dark imported themes without opaque gray number pills.
         final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
         final int tint = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-        final int defaultColor = android.graphics.Color.rgb(
+        final int defaultColor = ColorUtils.setAlphaComponent(android.graphics.Color.rgb(
                 (android.graphics.Color.red(base) * 94 + android.graphics.Color.red(tint) * 6) / 100,
                 (android.graphics.Color.green(base) * 94 + android.graphics.Color.green(tint) * 6) / 100,
-                (android.graphics.Color.blue(base) * 94 + android.graphics.Color.blue(tint) * 6) / 100);
-        final int pressedColor = android.graphics.Color.rgb(
+                (android.graphics.Color.blue(base) * 94 + android.graphics.Color.blue(tint) * 6) / 100), 220);
+        final int pressedColor = ColorUtils.setAlphaComponent(android.graphics.Color.rgb(
                 (android.graphics.Color.red(base) * 81 + android.graphics.Color.red(tint) * 19) / 100,
                 (android.graphics.Color.green(base) * 81 + android.graphics.Color.green(tint) * 19) / 100,
-                (android.graphics.Color.blue(base) * 81 + android.graphics.Color.blue(tint) * 19) / 100);""",
+                (android.graphics.Color.blue(base) * 81 + android.graphics.Color.blue(tint) * 19) / 100), 235);""",
     "keypad translucent key paints")
 k = replace_once(k,
     "dp(isRight && isTop ? 24 : 12),",
