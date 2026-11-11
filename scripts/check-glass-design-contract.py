@@ -45,6 +45,11 @@ assert "(nabdhRtlBadgeBeforeText" in finishing_ui, "RTL badge position is not re
 assert "R.drawable.nabdh_keypad_delete" in login_overlay and "nabdh_keypad_delete.xml" in login_overlay, "Native delete vector not bundled"
 assert "SIDE_PADDING = 10, BUTTON_PADDING = 6" in login_overlay, "Original keypad geometry not restored"
 assert "class NabdhCircleKey" in login_overlay and "canvas.drawCircle(" in login_overlay, "Circular keypad renderer is missing"
+assert "key_text_before" in login_overlay and "key_text_after" in login_overlay, "Circular keys must center native keypad labels"
+assert "numberTextPaint.setTextAlign(Paint.Align.CENTER)" in login_overlay, "Number labels are not centered"
+assert "symbolsTextPaint.setTextAlign(Paint.Align.CENTER)" in login_overlay, "Letter labels are not centered"
+assert "getWidth() * 0.25f - numberWidth / 2f" in login_overlay, "Original upstream text-layout anchor changed; update keypad patch"
+
 assert "state_pressed" in login_overlay and "46) / 100" in login_overlay, "Pressed keys are not visibly tinted"
 assert 'backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));' in login_overlay, "Delete glyph is not theme accent"
 empty_script = (ROOT / "scripts/apply-nabdh-empty-state.py").read_text(encoding="utf-8")
