@@ -495,7 +495,7 @@ jobs:
           {
             echo "## NabdhGram identity build"
             echo "Gradle result: **${{ steps.compile.outcome }}**"
-            echo "Expected debug ID: `net.nabdhserv.nabdhgram`"
+            echo "Expected debug ID: net.nabdhserv.nabdhgram"
             echo "Firebase/Google Services integration is disabled for this experimental debug build; push notifications may not work."
             echo "Launcher icon status: **${{ steps.brand.outputs.icon_status }}**" 
             echo "Developer-owned Telegram API configuration required via GitHub Actions secrets."
