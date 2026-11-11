@@ -59,6 +59,11 @@ assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.j
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
 assert "class LiveGlassSurface" in native_surfaces and "class GlassCardLayers" in native_surfaces, "Missing real theme-aware filled cards"
+assert "applyCardStyle(View child, boolean settingsRow)" in native_surfaces, "UniversalAdapter Settings cells must bypass legacy class-only filter"
+assert "NabdhGlassRowDecoration.applyCardStyle(holder.itemView, true)" in native_surfaces, "Main Settings cells must receive actual Glass cards after binding"
+assert "glassType == VIEW_TYPE_TEXT_SETTINGS" in native_surfaces and "glassType == VIEW_TYPE_ICON_TEXT_CHECK" in native_surfaces, "Main Settings card eligibility missing"
+assert "if (!settingsRow && !isSettingRow(child)) return;" in native_surfaces, "Legacy non-settings views must remain protected"
+
 assert "applyCardStyle(holder.itemView)" in native_surfaces, "Legacy adapters still draw original flat rows"
 assert 'for activity in ("SettingsActivity.java",):' in native_surfaces, "Main settings grouped wrapper removal missing"
 assert 'source = source.replace(anchor, """' in native_surfaces, "Nested settings still install outer section drawing"
