@@ -67,6 +67,9 @@ global_fonts = (ROOT / "scripts/apply-glass-global-textviews.py").read_text(enco
 assert "final boolean telegramTextFace" in global_fonts, "Telegram-native typefaces excluded from UI scale"
 assert "telegramTextFace ? android.graphics.Typeface.DEFAULT" in global_fonts, "Reset may restore saved custom font"
 assert "nabdhLastFontScanMs >= 48L" in global_fonts, "Font scan throttle missing"
+assert "view instanceof org.telegram.ui.Components.AnimatedTextView" in global_fonts, "Animated native labels excluded from app-wide typography"
+assert "animated.setText(animated.getText(), false)" in global_fonts, "AnimatedTextView cached layout not refreshed"
+assert "nabdhAnimatedAppliedFonts.put(animated, renderKey)" in global_fonts, "Animated labels may reflow every frame"
 bundled_themes = (ROOT / "scripts/apply-nabdh-bundled-themes.py").read_text(encoding="utf-8")
 assert "else if (pathToFile != null)" in bundled_themes, "Theme file null guard missing"
 assert "isDark = previewBackgroundColor != 0" in bundled_themes, "Native theme fallback missing"
