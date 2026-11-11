@@ -46,8 +46,10 @@ checks = {
                 "CacheControlActivity.java"))
         and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
             (ui / "ProfileActivity.java").read_text(encoding="utf-8")
-        and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
+        and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView, true)" in
             (ui / "Components/UniversalAdapter.java").read_text(encoding="utf-8")
+        and "if (!settingsRow && !isSettingRow(child)) return;" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         and "extends android.graphics.drawable.RippleDrawable" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
     "native settings and profile use filled theme-aware backgrounds": all(
