@@ -59,7 +59,14 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         if (!isSettingRow(child)) return;
         android.graphics.drawable.Drawable previous = child.getBackground();
         if (previous instanceof GlassCardLayers) return;
+        // Preserve the native cell's measured text/icon geometry and RTL
+        // padding: changing a Drawable must not move its content.
+        int left = child.getPaddingLeft();
+        int top = child.getPaddingTop();
+        int right = child.getPaddingRight();
+        int bottom = child.getPaddingBottom();
         child.setBackground(new GlassCardLayers(previous));
+        child.setPadding(left, top, right, bottom);
     }
 
     private static final class GlassCardLayers extends android.graphics.drawable.LayerDrawable {
@@ -208,4 +215,23 @@ for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java
             org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(holder.itemView);
 """ + source[index:]
     path.write_text(source, encoding="utf-8")
+# Main Telegram Settings uses UniversalAdapter rather than the legacy
+# ListAdapter screens above. Re-apply the shared card after updateColors()
+# runs (including onViewAttachedToWindow), so custom rows aren't flat.
+universal_path = ui / "Components/UniversalAdapter.java"
+universal_source = universal_path.read_text(encoding="utf-8")
+method_anchor = "    private void updateColors(RecyclerView.ViewHolder holder) {"
+if universal_source.count(method_anchor) != 1:
+    raise SystemExit("UniversalAdapter.updateColors anchor changed")
+begin = universal_source.index(method_anchor)
+end = universal_source.find("\n    }", begin)
+if end < 0 or "nabdhGlassSettings" not in universal_source[begin:end]:
+    raise SystemExit("UniversalAdapter native settings styling was not applied")
+universal_source = universal_source[:end] + """
+        if (nabdhGlassSettings) {
+            NabdhGlassRowDecoration.applyCardStyle(holder.itemView);
+        }
+""" + universal_source[end:]
+universal_path.write_text(universal_source, encoding="utf-8")
+
 print("NabdhGram Glass backgrounds installed on native settings and profile rows.")
