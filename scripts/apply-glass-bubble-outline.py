@@ -24,9 +24,13 @@ replacement = """        canvas.drawPath(path, p);
             nabdhBubbleEdge.setStrokeWidth(dp(1));
             // Respect the active theme's in/out shadow hue, including user
             // imported .attheme files. Avoid fixed turquoise or white.
-            nabdhBubbleEdge.setColor(getColor(isOut
-                    ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow));
-            nabdhBubbleEdge.setAlpha((int) (android.graphics.Color.alpha(nabdhBubbleEdge.getColor()) * alpha / 255f));
+            int stroke = getColor(isOut
+                    ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow);
+            if (Color.alpha(stroke) < 30) {
+                stroke = getColor(Theme.key_chat_messagePanelText);
+            }
+            nabdhBubbleEdge.setColor(stroke);
+            nabdhBubbleEdge.setAlpha((int) (110f * alpha / 255f));
             canvas.drawPath(path, nabdhBubbleEdge);
         }
         if (gradientShader != null && isSelected && paintToUse == null) {"""
