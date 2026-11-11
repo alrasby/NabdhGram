@@ -50,7 +50,14 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
                 || view instanceof org.telegram.ui.Cells.TextDetailCell
                 || view instanceof org.telegram.ui.Cells.AboutLinkCell
                 || view instanceof org.telegram.ui.Cells.UserCell
-                || view instanceof org.telegram.ui.Cells.ProfileChannelCell;
+                || view instanceof org.telegram.ui.Cells.ProfileChannelCell
+                || view instanceof org.telegram.ui.Cells.LanguageCell
+                || view instanceof org.telegram.ui.Cells.TextRadioCell
+                || view instanceof org.telegram.ui.Cells.SessionCell
+                || view instanceof org.telegram.ui.Cells.RadioCell
+                || view instanceof org.telegram.ui.Cells.TextColorCell
+                || view instanceof org.telegram.ui.Cells.CheckBoxCell
+                || view instanceof org.telegram.ui.Cells.TextCheckBoxCell;
     }
 
     // Draw exactly one inset card. Stacking the old ColorDrawable (usually
@@ -161,7 +168,9 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
 
 for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
              "DataSettingsActivity.java", "ThemeActivity.java",
-             "ProfileActivity.java"):
+             "ProfileActivity.java", "LanguageSelectActivity.java",
+             "SessionsActivity.java", "PrivacyControlActivity.java",
+             "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java"):
     path = ui / name
     source = path.read_text(encoding="utf-8")
     anchor = "        listView.setSections();"
