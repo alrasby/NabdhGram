@@ -34,6 +34,8 @@ jobs:
               ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
           print(f"Validated {len(files)} Python scripts")
           PY
+      - name: Verify integrated Glass design contract
+        run: python3 scripts/check-glass-design-contract.py
       - name: Ensure no Android APK is misrepresented
         run: |
           test -f docs/BUILD_SETUP.md
