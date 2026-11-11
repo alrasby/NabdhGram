@@ -46,4 +46,10 @@ assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.j
     "PrivacySettingsActivity.java", "DataSettingsActivity.java", "ThemeActivity.java")), "Missing native settings target"
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
+global_fonts = (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8")
+assert "final boolean telegramTextFace" in global_fonts, "Telegram-native typefaces excluded from UI scale"
+assert "telegramTextFace ? android.graphics.Typeface.DEFAULT" in global_fonts, "Reset may restore saved custom font"
+bundled_themes = (ROOT / "scripts/apply-nabdh-bundled-themes.py").read_text(encoding="utf-8")
+assert "else if (pathToFile != null)" in bundled_themes, "Theme file null guard missing"
+assert "isDark = previewBackgroundColor != 0" in bundled_themes, "Native theme fallback missing"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")
