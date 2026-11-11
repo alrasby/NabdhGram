@@ -36,11 +36,21 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     private final RectF bounds = new RectF();
 
     private static boolean isSettingRow(View view) {
-        final String name = view.getClass().getSimpleName();
-        return name.equals("TextCell") || name.equals("TextSettingsCell")
-                || name.equals("TextCheckCell") || name.equals("TextCheckCell2")
-                || name.equals("TextRightIconCell") || name.equals("NotificationsCheckCell")
-                || name.equals("RadioButtonCell") || name.equals("DialogRadioCell");
+        // Use instanceof rather than class simple names: Telegram creates
+        // anonymous subclasses of TextCell/TextDetailCell in profiles, whose
+        // getSimpleName() is empty. Those were previously left unstyled.
+        return view instanceof org.telegram.ui.Cells.TextCell
+                || view instanceof org.telegram.ui.Cells.TextSettingsCell
+                || view instanceof org.telegram.ui.Cells.TextCheckCell
+                || view instanceof org.telegram.ui.Cells.TextCheckCell2
+                || view instanceof org.telegram.ui.Cells.TextRightIconCell
+                || view instanceof org.telegram.ui.Cells.NotificationsCheckCell
+                || view instanceof org.telegram.ui.Cells.RadioButtonCell
+                || view instanceof org.telegram.ui.Cells.DialogRadioCell
+                || view instanceof org.telegram.ui.Cells.TextDetailCell
+                || view instanceof org.telegram.ui.Cells.AboutLinkCell
+                || view instanceof org.telegram.ui.Cells.UserCell
+                || view instanceof org.telegram.ui.Cells.ProfileChannelCell;
     }
 
     // Apply a complete filled card behind a native row's content.
