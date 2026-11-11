@@ -74,7 +74,14 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     // around every row, particularly obvious in RTL settings and profiles.
     // A native RippleDrawable preserves pressed feedback and touch behavior.
     public static void applyCardStyle(View child) {
-        if (!isSettingRow(child)) return;
+        applyCardStyle(child, false);
+    }
+
+    // UniversalAdapter uses several proprietary row subclasses which do not
+    // appear in the legacy class whitelist. Only its explicitly opted-in
+    // SettingsActivity and approved row types may use this override.
+    public static void applyCardStyle(View child, boolean settingsRow) {
+        if (!settingsRow && !isSettingRow(child)) return;
         android.graphics.drawable.Drawable existing = child.getBackground();
         if (existing instanceof GlassCardLayers) {
             ((GlassCardLayers) existing).refreshThemeTint();
@@ -279,7 +286,14 @@ if end < 0 or "nabdhGlassSettings" not in universal_source[begin:end]:
     raise SystemExit("UniversalAdapter native settings styling was not applied")
 universal_source = universal_source[:end] + """
         if (nabdhGlassSettings) {
-            NabdhGlassRowDecoration.applyCardStyle(holder.itemView);
+            int glassType = holder.getItemViewType();
+            // Do not turn section headers, profile hero, media, or spacer
+            // rows into cards; force only these Settings-specific row types.
+            if (glassType == VIEW_TYPE_TEXT_SETTINGS
+                    || glassType == VIEW_TYPE_TEXT || glassType == VIEW_TYPE_TEXT_CHECK
+                    || glassType == VIEW_TYPE_SWITCH || glassType == VIEW_TYPE_ICON_TEXT_CHECK) {
+                NabdhGlassRowDecoration.applyCardStyle(holder.itemView, true);
+            }
         }
 """ + universal_source[end:]
 universal_path.write_text(universal_source, encoding="utf-8")
