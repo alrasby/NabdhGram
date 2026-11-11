@@ -29,6 +29,18 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "native settings and profile use filled theme-aware backgrounds": all(
+        "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
+        (ui / name).read_text(encoding="utf-8")
+        for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
+                     "DataSettingsActivity.java", "ThemeActivity.java", "ProfileActivity.java")
+    ) and all(
+        phrase in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+        for phrase in ("class LiveGlassSurface", "class GlassCardLayers",
+                       "Theme.getColor(Theme.key_windowBackgroundWhite)",
+                       "Theme.getColor(Theme.key_windowBackgroundWhiteBlueText)",
+                       "TextDetailCell", "AboutLinkCell")
+    ),
     "unified theme-aware legacy settings pages": all(
         "new org.telegram.ui.Components.NabdhGlassRowDecoration()" in
         (ui / name).read_text(encoding="utf-8")
