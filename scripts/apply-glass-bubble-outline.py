@@ -24,7 +24,7 @@ replacement = """        canvas.drawPath(path, p);
             nabdhBubbleEdge.setStrokeWidth(dp(1));
             // Respect the active theme's in/out shadow hue, including user
             // imported .attheme files. Avoid fixed turquoise or white.
-            nabdhBubbleEdge.setColor(Theme.getColor(isOut
+            nabdhBubbleEdge.setColor(getColor(isOut
                     ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow));
             nabdhBubbleEdge.setAlpha((int) (android.graphics.Color.alpha(nabdhBubbleEdge.getColor()) * alpha / 255f));
             canvas.drawPath(path, nabdhBubbleEdge);
