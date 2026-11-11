@@ -76,7 +76,7 @@ for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java
     anchor = "        listView.setSections();"
     if source.count(anchor) != 1:
         raise SystemExit(f"{name}: settings list anchor changed")
-    radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\\n"
+    radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\n"
     source = source.replace(anchor,
         anchor + """
         // NabdhGram unified design: theme-aware border around settings rows.
@@ -84,4 +84,4 @@ for name in ("NotificationsSettingsActivity.java", "PrivacySettingsActivity.java
 """ + radius + """        listView.addItemDecoration(
                 new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
     path.write_text(source, encoding="utf-8")
-print("NabdhGram unified native Settings decoration installed on four legacy screens.")
+print("NabdhGram unified native Settings decoration installed on native settings and profile screens.")
