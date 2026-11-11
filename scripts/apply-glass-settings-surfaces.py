@@ -312,7 +312,7 @@ settings_rtl.write_text(settings_rtl_src, encoding="utf-8")
 # require an explicit opt-in to the same shared native Glass decoration.
 user_info = ui / "UserInfoActivity.java"
 user_info_src = user_info.read_text(encoding="utf-8")
-account_anchor = "        listView.setSections();\\n        listView.setClipToPadding(false);"
+account_anchor = "        listView.setSections();\n        listView.setClipToPadding(false);"
 account_card = """        // NabdhGram Glass: style real account Settings factory rows while
         // keeping name/bio editors and privacy actions native and functional.
         listView.adapter.setNabdhGlassSettings(true);
