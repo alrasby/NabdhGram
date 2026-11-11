@@ -43,7 +43,8 @@ assert "SIDE_PADDING = 10, BUTTON_PADDING = 6" in login_overlay, "Original keypa
 assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
 native_surfaces = (ROOT / "scripts/apply-glass-settings-surfaces.py").read_text(encoding="utf-8")
 assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.java",
-    "PrivacySettingsActivity.java", "DataSettingsActivity.java", "ThemeActivity.java")), "Missing native settings target"
+    "PrivacySettingsActivity.java", "DataSettingsActivity.java",
+    "ThemeActivity.java", "ProfileActivity.java")), "Missing native settings target"
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
 global_fonts = (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8")
