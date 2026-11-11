@@ -31,17 +31,9 @@ s = replace_once(s,
     "Gravity.CENTER_HORIZONTAL, 0, 0, 0, 12));",
     "Gravity.CENTER_HORIZONTAL, 0, 0, 0, 4));",
     "logo to heading spacing")
-# PhoneView is not the only LoginActivity view with a titleView. Edit only
-# the title declared directly inside PhoneView, never recovery or SMS screens.
-phone_ctor = "        public PhoneView(Context context) {"
-if s.count(phone_ctor) != 1:
-    raise SystemExit("PhoneView constructor changed")
-phone_pos = s.index(phone_ctor)
-phone_title = "            titleView = new TextView(context);\\n            titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);"
-title_pos = s.find(phone_title, phone_pos)
-if title_pos < 0 or title_pos - phone_pos > 1600:
-    raise SystemExit("PhoneView title anchor changed")
-s = s[:title_pos] + phone_title.replace("18);", "19);") + s[title_pos + len(phone_title):]
+# Preserve the upstream title text size: prior optional 18->19dp tweak
+# depended on a brittle constructor-local anchor and blocked all builds.
+# The validated Glass login layout remains applied by the other anchors.
 s = replace_once(s,
     "addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 32, 8, 32, 0));",
     "addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 28, 7, 28, 0));",
