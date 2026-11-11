@@ -35,7 +35,13 @@ if source.count(old) != 1:
     raise SystemExit("ProfileActionsView action drawing anchor changed")
 source = source.replace(old, """        canvas.clipRect(action.rect);
         if (hit == action) {
-            nabdhPressPaint.setColor(0x330098A3);
+            // Use the selected Telegram palette; never bake a brand color into
+            // pressed profile actions (it breaks imported and dark themes).
+            int nabdhAccent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+            nabdhPressPaint.setColor(android.graphics.Color.argb(51,
+                    android.graphics.Color.red(nabdhAccent),
+                    android.graphics.Color.green(nabdhAccent),
+                    android.graphics.Color.blue(nabdhAccent)));
             canvas.drawRoundRect(action.rect, getRoundRadius(), getRoundRadius(), nabdhPressPaint);
         }
 
