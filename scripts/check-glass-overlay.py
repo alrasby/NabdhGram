@@ -29,6 +29,9 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "third-party login cannot advertise official-only Firebase SMS":
+        'settings.allow_firebase = false; // Third-party app' in
+        (ui / "LoginActivity.java").read_text(encoding="utf-8"),
     "login keypad is actually translucent and theme-aware":
         "ColorUtils.setAlphaComponent(" in
         (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
