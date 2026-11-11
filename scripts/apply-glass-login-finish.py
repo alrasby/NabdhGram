@@ -138,15 +138,12 @@ k = replace_once(k,
     "dp(/*index == 10 || index == 6 ||*/ isLeft && isBottom ? 24 : 12),",
     "dp(isLeft && isBottom ? 24 : 17),",
     "bottom-left key corners")
-k = replace_once(k,
-    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));",
-    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));",
-    "backspace icon accent")
-# updateColors also resets the back button; match new accent in both places.
-k = replace_once(k,
-    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));",
-    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));",
-    "dynamic backspace icon") if False else k
+# Constructor and updateColors both tint the same icon; handle both.
+backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
+if k.count(backspace_icon) != 2:
+    raise SystemExit("Backspace icon anchors changed")
+k = k.replace(backspace_icon,
+    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
 k = replace_once(k,
     "numberTextPaint.setTextSize(dp(24));",
     "numberTextPaint.setTextSize(dp(23));",
