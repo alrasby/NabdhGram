@@ -26,6 +26,42 @@ def modify(relative, changes):
 # Opt-in per contact-name view, not a global change to Telegram widgets.
 modify("ActionBar/SimpleTextView.java", [
     (
+        """    public void setTypeface(Typeface typeface) {
+        textPaint.setTypeface(typeface);
+    }""",
+        """    public void setTypeface(Typeface typeface) {
+        if (textPaint.getTypeface() == typeface) return;
+        textPaint.setTypeface(typeface);
+        // This view paints a cached StaticLayout. A new typeface changes
+        // glyph widths and baselines; just invalidating leaves stale names.
+        if (!recreateLayoutMaybe()) {
+            requestLayout();
+            invalidate();
+        }
+    }
+
+    public void nabdhRefreshSelectedFont() {
+        Typeface current = textPaint.getTypeface();
+        if (current == null) return;
+        boolean regularText = current.equals(Typeface.DEFAULT)
+                || current.equals(Typeface.DEFAULT_BOLD)
+                || current.equals(Typeface.SANS_SERIF)
+                || current.equals(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        for (String filename : new String[]{"ReadexPro.ttf", "Vazirmatn.ttf",
+                "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf"}) {
+            if (current.equals(AndroidUtilities.getTypeface("fonts/" + filename))) {
+                regularText = true;
+                break;
+            }
+        }
+        if (regularText) {
+            Typeface next = AndroidUtilities.getTypeface("fonts/rregular.ttf");
+            if (next != null) setTypeface(next);
+        }
+    }""",
+        1
+    ),
+    (
         "    public void setDrawablePadding(int value) {",
         """    private boolean nabdhRtlBadgeBeforeText;
 
