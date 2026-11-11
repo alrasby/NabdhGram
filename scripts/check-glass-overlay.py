@@ -34,7 +34,7 @@ checks = {
         (ui / name).read_text(encoding="utf-8")
         for name in ("NotificationsSettingsActivity.java",
                      "PrivacySettingsActivity.java", "DataSettingsActivity.java",
-                     "ThemeActivity.java")
+                     "ThemeActivity.java", "ProfileActivity.java")
     ) and all(token in
         (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         for token in ("onDrawOver", "Theme.key_windowBackgroundWhiteBlueText",
