@@ -211,9 +211,9 @@ modify("LoginActivity.java", [
 modify("ActionBar/MessageDrawable.java", [
     (
         """                background.draw(canvas);
-                if (currentType == TYPE_TEXT && !themePreview && !isSelected) {""",
+                if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {""",
         """                background.draw(canvas);
-                if (currentType == TYPE_TEXT && !themePreview && !isSelected) {
+                if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
                     // Semi-transparent theme accent under the message glyphs:
                     // makes Glass visible for cached solid native bubbles too.
                     int tint = getColor(isOut
