@@ -30,6 +30,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
             new java.util.WeakHashMap<>();
     private boolean nabdhFontApplying;
     private boolean nabdhFontDirty = true;
+    // Avoid a full view-tree scan on every animated RecyclerView layout frame.
+    private long nabdhLastFontScanMs;
     private android.view.ViewTreeObserver.OnGlobalLayoutListener nabdhFontLayoutListener;
     private android.view.ViewTreeObserver.OnPreDrawListener nabdhFontPreDrawListener;
 
@@ -49,6 +51,7 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
         final android.view.View root = getWindow() == null ? null : getWindow().getDecorView();
         if (root == null || nabdhFontApplying) return;
         nabdhFontApplying = true;
+        nabdhLastFontScanMs = android.os.SystemClock.uptimeMillis();
         try {
         android.content.SharedPreferences appearance =
                 getSharedPreferences("nabdhgram_appearance", MODE_PRIVATE);
@@ -152,7 +155,8 @@ replacement = """    @Override
         // Already processed labels are skipped by the weak cache.
         if (nabdhFontPreDrawListener == null) {
             nabdhFontPreDrawListener = () -> {
-                if (nabdhFontDirty) {
+                if (nabdhFontDirty && android.os.SystemClock.uptimeMillis()
+                        - nabdhLastFontScanMs >= 48L) {
                     nabdhFontDirty = false;
                     nabdhApplyVisibleFonts();
                 }
