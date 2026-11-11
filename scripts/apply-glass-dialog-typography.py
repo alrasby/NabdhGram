@@ -22,6 +22,23 @@ for original in (
     if s.count(original) != 1:
         raise SystemExit("Dialog name alignment anchor changed")
     s = s.replace(original, original.replace("Layout.Alignment.ALIGN_NORMAL", "nabdhNameAlignment"), 1)
+# Upstream shifts only RTL paragraphs whose lineLeft is zero. Once
+# Latin names are aligned to the RTL column, this condition fails and those
+# names drift away from the common right edge. Align by the rendered lineRight
+# regardless of the paragraph's detected direction.
+position_anchor = """                if (left == 0) {
+                    if (widthpx < nameWidth) {
+                        nameLeft += (nameWidth - widthpx);
+                    }
+                }"""
+position_replacement = """                // Use the rendered line boundary for both Arabic and Latin.
+                // Preserve Telegram's space reserved for verification icons.
+                nameLeft += Math.max(0, Math.round(
+                        nameWidth - nameLayout.getLineRight(0)));"""
+if s.count(position_anchor) != 1:
+    raise SystemExit("Dialog RTL name position anchor changed")
+s = s.replace(position_anchor, position_replacement, 1)
+
 # A verified-bot badge occupies the trailing name column. Reserve a
 # small additional inset for wide Arabic glyphs and imported font metrics,
 # including the two RTL/LTR positioning branches.
