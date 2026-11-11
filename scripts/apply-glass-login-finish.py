@@ -91,6 +91,23 @@ if s.count(email_add) != 1:
 s = s.replace(email_add,
         "codeFieldContainer.setNabdhLoginGlass(true);\n            " + email_add, 1)
 
+# Telegram's public auth API documents Firebase SMS as an official-client
+# channel. NabdhGram is a separate API app/package and cannot complete that
+# privileged integrity flow. Disable advertising this unsupported capability;
+# leave all server-selected ordinary app/SMS/email/voice fallbacks intact.
+firebase_original = (
+    "settings.allow_app_hash = settings.allow_firebase = "
+    "PushListenerController.GooglePushListenerServiceProvider.INSTANCE.hasServices();"
+)
+firebase_compatible = (
+    "settings.allow_app_hash = "
+    "PushListenerController.GooglePushListenerServiceProvider.INSTANCE.hasServices();"
+    "\\n            settings.allow_firebase = false; // Third-party app: no privileged Firebase SMS"
+)
+if s.count(firebase_original) != 1:
+    raise SystemExit("Telegram codeSettings Firebase capability anchor changed")
+s = s.replace(firebase_original, firebase_compatible, 1)
+
 # Non-sensitive route diagnostic: records only Telegram TL code type, available
 # fallback type and numeric RPC status. Does NOT log phone, code, hash, api hash,
 # SMS contents, account ID, passwords or authorization tokens.
