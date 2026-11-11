@@ -96,6 +96,9 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
         pending.add(root);
         while (!pending.isEmpty()) {
             android.view.View view = pending.removeFirst();
+            if (view instanceof org.telegram.ui.ActionBar.SimpleTextView) {
+                ((org.telegram.ui.ActionBar.SimpleTextView) view).nabdhRefreshSelectedFont();
+            }
             if (view instanceof android.widget.TextView && !(view instanceof android.widget.EditText)) {
                 android.widget.TextView label = (android.widget.TextView) view;
                 android.graphics.Typeface current = label.getTypeface();
