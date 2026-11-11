@@ -183,11 +183,11 @@ checks = {
     "compact Glass card text and height":
         "card.setMinimumHeight((int) (78 * density + .5f))" in settings
         and "descLp.topMargin = (int) (3 * density + .5f);" in settings,
-    "device default font and regular custom typefaces": all(
+    "device default font preserves native weights, custom fonts keep headings": all(
         part in typefaces for part in (
             'getString("font_family", "system-default")',
-            'boolean bold = userBold;',
-            '"system-default".equals(family)',
+            'boolean bold = userBold || nativeHeading;',
+            'if (!"system-default".equals(family) || userBold)',
         )
     ) and "NabdhFontSystemDefault" in appearance_ar
       and "NabdhFontSystemDefault" in appearance_en
