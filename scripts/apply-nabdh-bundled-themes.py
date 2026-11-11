@@ -96,10 +96,17 @@ is_dark_old = """            if (isDark == UNKNOWN) {
             }"""
 is_dark_new = """            if (isDark == UNKNOWN) {
                 String[] wallpaperLink = new String[1];
-                SparseIntArray colors = assetName != null
-                        ? getThemeFileValues(null, assetName, wallpaperLink)
-                        : getThemeFileValues(new File(pathToFile), null, wallpaperLink);
-                checkIsDark(colors, this);
+                if (assetName != null) {
+                    checkIsDark(getThemeFileValues(null, assetName, wallpaperLink), this);
+                } else if (pathToFile != null) {
+                    checkIsDark(getThemeFileValues(new File(pathToFile), null, wallpaperLink), this);
+                } else {
+                    // Native/default theme: no backing file to open.
+                    // Unknown palettes should never crash on File(null).
+                    isDark = previewBackgroundColor != 0
+                            && ColorUtils.calculateLuminance(previewBackgroundColor) < .5f
+                            ? DARK : LIGHT;
+                }
             }"""
 if source.count(is_dark_old) != 1:
     raise SystemExit("ThemeInfo.isDark fallback anchor changed")
