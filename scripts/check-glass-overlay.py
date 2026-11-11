@@ -85,10 +85,19 @@ checks = {
     "third-party login cannot advertise official-only Firebase SMS":
         'settings.allow_firebase = false; // Third-party app' in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
-    "login keypad uses subtle translucent theme-derived key surfaces":
+    "login keypad circular keys, visible press and tinted delete icon":
         all(part in (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
-            for part in (
-                "final int base = Theme.getColor(Theme.key_windowBackgroundWhite);",
+            for part in ("class NabdhCircleKey", "canvas.drawCircle(",
+                         "Math.min(box.width(), box.height())", "state_pressed",
+                         "54 + android.graphics.Color.red(accent) * 46",
+                         "R.drawable.nabdh_keypad_delete",
+                         "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")),
+    "Telegram empty-chat egg replaced by approved NabdhGram logo":
+        (root / "TMessagesProj/src/main/res/drawable-nodpi/nabdh_empty_logo.png").is_file()
+        and all(t in (ui / "Cells/DialogsEmptyCell.java").read_text(encoding="utf-8")
+            for t in ("R.drawable.nabdh_empty_logo", "ImageView.ScaleType.FIT_CENTER",
+                      "currentType == TYPE_WELCOME_WITH_CONTACTS")),
+    "final int base = Theme.getColor(Theme.key_windowBackgroundWhite);",
                 "final int tint = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);",
                 "ColorUtils.setAlphaComponent(android.graphics.Color.rgb(",
                 "/ 100), 220);",
