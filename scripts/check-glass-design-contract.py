@@ -20,6 +20,7 @@ ordered = [
     "apply-glass-bubble-outline.py",
     "apply-glass-final-screens.py",
     "apply-glass-v1-finishing.py",
+    "apply-glass-settings-surfaces.py",
     "check-glass-overlay.py",
 ]
 positions = [workflow.find("python3 nabdhgram/scripts/" + name) for name in ordered]
@@ -40,4 +41,9 @@ assert "float renderedStart = offsetX + lineLeft;" in finishing_ui, "RTL badge n
 assert "R.drawable.nabdh_keypad_delete" in login_overlay and "nabdh_keypad_delete.xml" in login_overlay, "Native delete vector not bundled"
 assert "SIDE_PADDING = 10, BUTTON_PADDING = 6" in login_overlay, "Original keypad geometry not restored"
 assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
+native_surfaces = (ROOT / "scripts/apply-glass-settings-surfaces.py").read_text(encoding="utf-8")
+assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.java",
+    "PrivacySettingsActivity.java", "DataSettingsActivity.java", "ThemeActivity.java")), "Missing native settings target"
+assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
+assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")
