@@ -15,6 +15,7 @@ ordered = [
     "apply-glass-global-font.py",
     "apply-glass-chat-typefaces.py",
     "apply-glass-global-textviews.py",
+    "apply-glass-live-typography.py",
     "apply-glass-settings.py",
     "apply-glass-bubble-radius.py",
     "apply-glass-bubble-outline.py",
@@ -55,4 +56,9 @@ assert "nabdhLastFontScanMs >= 48L" in global_fonts, "Font scan throttle missing
 bundled_themes = (ROOT / "scripts/apply-nabdh-bundled-themes.py").read_text(encoding="utf-8")
 assert "else if (pathToFile != null)" in bundled_themes, "Theme file null guard missing"
 assert "isDark = previewBackgroundColor != 0" in bundled_themes, "Native theme fallback missing"
+live_typography = (ROOT / "scripts/apply-glass-live-typography.py").read_text(encoding="utf-8")
+assert "nabdhRemeasureTypography()" in live_typography and "SimpleTextView" in live_typography, "Custom labels do not update live"
+assert "recreateLayoutMaybe();" in live_typography, "Typeface changes do not rebuild native text"
+assert "android.graphics.Typeface.DEFAULT" in live_typography, "Device default restoration missing"
+assert "refreshDrawnText.run();" in settings and "refreshTypography.run();" in settings, "Font change redraw/reflow missing"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")
