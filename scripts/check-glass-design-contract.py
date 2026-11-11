@@ -48,6 +48,10 @@ assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.j
     "ThemeActivity.java", "ProfileActivity.java")), "Missing native settings target"
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
+assert "class LiveGlassSurface" in native_surfaces and "class GlassCardLayers" in native_surfaces, "Missing real theme-aware filled cards"
+assert "applyCardStyle(holder.itemView)" in native_surfaces, "Legacy adapters still draw original flat rows"
+assert "view instanceof org.telegram.ui.Cells.TextDetailCell" in native_surfaces, "Profile details aren't styled"
+assert "view instanceof org.telegram.ui.Cells.AboutLinkCell" in native_surfaces, "Profile about rows aren't styled"
 global_fonts = (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8")
 assert "final boolean telegramTextFace" in global_fonts, "Telegram-native typefaces excluded from UI scale"
 assert "telegramTextFace ? android.graphics.Typeface.DEFAULT" in global_fonts, "Reset may restore saved custom font"
