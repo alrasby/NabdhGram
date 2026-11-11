@@ -29,13 +29,17 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
-    "oversized parent settings/profile backgrounds removed, native row cards retained":
-        "listView.setSections();" not in (ui / "SettingsActivity.java").read_text(encoding="utf-8")
-        and "listView.setSections();" not in (ui / "ProfileActivity.java").read_text(encoding="utf-8")
+    "all settings parent group backgrounds absent, child cards retained":
+        all("listView.setSections();" not in (ui / page).read_text(encoding="utf-8")
+            for page in ("SettingsActivity.java", "ProfileActivity.java",
+                "NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
+                "DataSettingsActivity.java", "ThemeActivity.java"))
         and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
             (ui / "ProfileActivity.java").read_text(encoding="utf-8")
         and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
-            (ui / "Components/UniversalAdapter.java").read_text(encoding="utf-8"),
+            (ui / "Components/UniversalAdapter.java").read_text(encoding="utf-8")
+        and "extends android.graphics.drawable.RippleDrawable" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
     "native settings and profile use filled theme-aware backgrounds": all(
         "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
         (ui / name).read_text(encoding="utf-8")
