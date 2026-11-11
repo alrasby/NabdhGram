@@ -50,7 +50,15 @@ modify("ActionBar/SimpleTextView.java", [
                     && (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT) {
                 // Start of the actual visible Arabic name, not the full view.
                 // The text width already reserves this drawable's width.
-                x = Math.max(0, offsetX - drawablePadding - leftDrawable.getIntrinsicWidth());
+                // Measure the left edge of the *rendered* RTL text rather
+                // than assuming its layout offset is the glyph boundary.
+                // Mixed Arabic/Latin text can have a positive line-left.
+                float lineLeft = layout != null && layout.getLineCount() > 0
+                        ? layout.getLineLeft(0) : 0;
+                float renderedStart = getMeasuredWidth() - getPaddingRight()
+                        - textWidth + Math.min(0, lineLeft);
+                x = Math.max(0, (int) renderedStart
+                        - drawablePadding - leftDrawable.getIntrinsicWidth());
             }
             int y;
             if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == Gravity.CENTER_VERTICAL) {
