@@ -31,13 +31,26 @@ position_anchor = """                if (left == 0) {
                         nameLeft += (nameWidth - widthpx);
                     }
                 }"""
-position_replacement = """                // Use the rendered line boundary for both Arabic and Latin.
-                // Preserve Telegram's space reserved for verification icons.
-                nameLeft += Math.max(0, Math.round(
-                        nameWidth - nameLayout.getLineRight(0)));"""
+position_replacement = ""
 if s.count(position_anchor) != 1:
     raise SystemExit("Dialog RTL name position anchor changed")
 s = s.replace(position_anchor, position_replacement, 1)
+# Compute the common visual right edge BEFORE Telegram lays out status icons,
+# otherwise verified/mute icons are calculated using stale coordinates.
+edge_anchor = """                if (drawBotVerified) {
+                    nameLeft += dp(21);
+                }
+                if (nameLayoutEllipsizeByGradient) {"""
+edge_replacement = """                if (drawBotVerified) {
+                    nameLeft += dp(21);
+                }
+                nameLeft += Math.max(0, Math.round(
+                        nameWidth - nameLayout.getLineRight(0)));
+                if (nameLayoutEllipsizeByGradient) {"""
+if s.count(edge_anchor) != 1:
+    raise SystemExit("Dialog RTL visual name edge anchor changed")
+s = s.replace(edge_anchor, edge_replacement, 1)
+
 
 # A verified-bot badge occupies the trailing name column. Reserve a
 # small additional inset for wide Arabic glyphs and imported font metrics,
