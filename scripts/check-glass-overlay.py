@@ -29,6 +29,13 @@ feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
 appearance_ar = (root / "TMessagesProj/src/main/res/values-ar/nabdhgram_settings.xml").read_text(encoding="utf-8")
 checks = {
+    "Glass cards suppress native separator strokes without touching other pages":
+        all("if (needDivider && !org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this))" in
+            (ui / "Cells" / (name + ".java")).read_text(encoding="utf-8")
+            for name in ("TextCell", "TextSettingsCell", "TextCheckCell", "TextCheckCell2",
+                         "NotificationsCheckCell", "TextDetailCell", "TextRadioCell"))
+        and "public static boolean isGlassCard(View child)" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
     "all settings parent group backgrounds absent, child cards retained":
         all("listView.setSections();" not in (ui / page).read_text(encoding="utf-8")
             for page in ("SettingsActivity.java", "ProfileActivity.java",
