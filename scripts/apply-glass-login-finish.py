@@ -239,6 +239,41 @@ k = replace_once(k,
     "backButton.setImageResource(R.drawable.msg_clear_input);",
     "backButton.setImageResource(R.drawable.nabdh_keypad_delete);",
     "keypad delete glyph")
+# Telegram's stock keypad positions the digit at 25% of the full key cell
+# and its letters at 70%. Once the background becomes a centered circle,
+# those two labels sit OUTSIDE it. Center both inside the same drawable circle.
+# Keep the original NumberButtonView, number/symbol strings and touch handlers.
+key_text_before = """            float symbolsWidth = symbolsTextPaint.measureText(mSymbols);
+            float numberWidth = numberTextPaint.measureText(mNumber);
+
+            numberTextPaint.getTextBounds(mNumber, 0, mNumber.length(), rect);
+            float textOffsetNumber = rect.height() / 2f;
+            symbolsTextPaint.getTextBounds(mSymbols, 0, mSymbols.length(), rect);
+            float textOffsetSymbols = rect.height() / 2f;
+
+            canvas.drawText(mNumber, getWidth() * 0.25f - numberWidth / 2f, getHeight() / 2f + textOffsetNumber, numberTextPaint);
+            canvas.drawText(mSymbols, getWidth() * 0.7f - symbolsWidth / 2f, getHeight() / 2f + textOffsetSymbols, symbolsTextPaint);"""
+key_text_after = """            // Both text lines share the exact center of the circular key.
+            // Use font metrics rather than character bounds for stable
+            // baseline alignment of 1, 0, Arabic locale and Latin labels.
+            final float centerX = getWidth() / 2f;
+            final float centerY = getHeight() / 2f;
+            numberTextPaint.setTextAlign(Paint.Align.CENTER);
+            symbolsTextPaint.setTextAlign(Paint.Align.CENTER);
+            final boolean hasSymbols = mSymbols != null && !mSymbols.isEmpty();
+            final Paint.FontMetrics numberFont = numberTextPaint.getFontMetrics();
+            final float numberCenter = centerY - (hasSymbols ? dp(10) : 0);
+            final float numberBaseline = numberCenter
+                    - (numberFont.ascent + numberFont.descent) / 2f;
+            canvas.drawText(mNumber, centerX, numberBaseline, numberTextPaint);
+            if (hasSymbols) {
+                final Paint.FontMetrics symbolsFont = symbolsTextPaint.getFontMetrics();
+                final float symbolsBaseline = centerY + dp(19)
+                        - (symbolsFont.ascent + symbolsFont.descent) / 2f;
+                canvas.drawText(mSymbols, centerX, symbolsBaseline, symbolsTextPaint);
+            }"""
+k = replace_once(k, key_text_before, key_text_after,
+    "center keypad number and letters in the circular surface")
 keyboard.write_text(k, encoding="utf-8")
 delete_icon = root / "TMessagesProj/src/main/res/drawable/nabdh_keypad_delete.xml"
 delete_icon.parent.mkdir(parents=True, exist_ok=True)
