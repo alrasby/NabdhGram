@@ -47,12 +47,12 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     public void onDrawOver(@NonNull Canvas canvas, @NonNull RecyclerView parent,
             @NonNull RecyclerView.State state) {
         final int color = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-        stroke.setColor(Color.argb(50, Color.red(color), Color.green(color), Color.blue(color)));
+        stroke.setColor(Color.argb(82, Color.red(color), Color.green(color), Color.blue(color)));
         stroke.setStyle(Paint.Style.STROKE);
-        stroke.setStrokeWidth(AndroidUtilities.dpf2(.8f));
+        stroke.setStrokeWidth(AndroidUtilities.dpf2(1f));
         final float inset = AndroidUtilities.dp(11);
         final float topInset = AndroidUtilities.dp(2);
-        final float radius = AndroidUtilities.dp(15);
+        final float radius = AndroidUtilities.dp(17);
         for (int index = 0; index < parent.getChildCount(); index++) {
             final View child = parent.getChildAt(index);
             if (!isSettingRow(child) || child.getVisibility() != View.VISIBLE) {
