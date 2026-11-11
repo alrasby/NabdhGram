@@ -186,7 +186,23 @@ k = replace_once(k,
     "symbolsTextPaint.setTextSize(dp(14));",
     "symbolsTextPaint.setTextSize(dp(14));",
     "key secondary letters")
+# Use a clean filled backspace glyph instead of Telegram's outlined
+# cyan asset. Keep the existing ImageView, tap handler and key repeat intact.
+k = replace_once(k,
+    "backButton.setImageResource(R.drawable.msg_clear_input);",
+    "backButton.setImageResource(R.drawable.nabdh_keypad_delete);",
+    "keypad delete glyph")
 keyboard.write_text(k, encoding="utf-8")
+delete_icon = root / "TMessagesProj/src/main/res/drawable/nabdh_keypad_delete.xml"
+delete_icon.parent.mkdir(parents=True, exist_ok=True)
+delete_icon.write_text("""<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M22,3H7c-0.69,0 -1.23,0.35 -1.59,0.88L0,12l5.41,8.11C5.77,20.65 6.31,21 7,21h15c1.1,0 2,-0.9 2,-2V5c0,-1.1 -0.9,-2 -2,-2zM19,16.59L17.59,18 14,14.41 10.41,18 9,16.59 12.59,13 9,9.41 10.41,8 14,11.59 17.59,8 19,9.41 15.41,13z"/>
+</vector>
+""", encoding="utf-8")
 
 f = code_fields.read_text(encoding="utf-8")
 f = replace_once(f,
