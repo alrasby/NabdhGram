@@ -21,12 +21,18 @@ replacement = """        canvas.drawPath(path, p);
         if (paintToUse == null && gradientShader != null
                 && (currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
             nabdhBubbleEdge.setStyle(Paint.Style.STROKE);
-            nabdhBubbleEdge.setStrokeWidth(dp(1));
-            // Respect the active theme's in/out shadow hue, including user
-            // imported .attheme files. Avoid fixed turquoise or white.
-            nabdhBubbleEdge.setColor(getColor(isOut
-                    ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow));
-            nabdhBubbleEdge.setAlpha((int) (android.graphics.Color.alpha(nabdhBubbleEdge.getColor()) * alpha / 255f));
+            nabdhBubbleEdge.setStrokeWidth(dp(1.1f));
+            // The native shadow can be transparent in .attheme presets.
+            // Fall back to the message-panel text hue without hardcoding
+            // mint, black or white; otherwise Glass is effectively invisible.
+            int nabdhEdgeColor = getColor(isOut
+                    ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow);
+            if (Color.alpha(nabdhEdgeColor) < 35) {
+                nabdhEdgeColor = getColor(Theme.key_chat_messagePanelText);
+            }
+            nabdhBubbleEdge.setColor(Color.rgb(Color.red(nabdhEdgeColor),
+                    Color.green(nabdhEdgeColor), Color.blue(nabdhEdgeColor)));
+            nabdhBubbleEdge.setAlpha((int) (90f * alpha / 255f));
             canvas.drawPath(path, nabdhBubbleEdge);
         }
         if (gradientShader != null && isSelected && paintToUse == null) {"""
@@ -50,7 +56,8 @@ cached_stroke = """                background.setBounds(bounds);
                     }
                     nabdhBubbleEdge.setStyle(Paint.Style.STROKE);
                     nabdhBubbleEdge.setStrokeWidth(dp(0.8f));
-                    nabdhBubbleEdge.setColor(stroke);
+                    nabdhBubbleEdge.setColor(Color.rgb(Color.red(stroke),
+                            Color.green(stroke), Color.blue(stroke)));
                     nabdhBubbleEdge.setAlpha((int) (53f * alpha / 255f));
                     canvas.drawPath(makePath(), nabdhBubbleEdge);
                 }
