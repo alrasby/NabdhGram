@@ -94,7 +94,7 @@ firebase_original = (
 firebase_compatible = (
     "settings.allow_app_hash = "
     "PushListenerController.GooglePushListenerServiceProvider.INSTANCE.hasServices();"
-    "\\n            settings.allow_firebase = false; // Third-party app: no privileged Firebase SMS"
+    "\n            settings.allow_firebase = false; // Third-party app: no privileged Firebase SMS"
 )
 if s.count(firebase_original) != 1:
     raise SystemExit("Telegram codeSettings Firebase capability anchor changed")
