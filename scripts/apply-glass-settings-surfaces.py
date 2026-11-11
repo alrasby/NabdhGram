@@ -292,9 +292,19 @@ rtl_to = """        public void updateColors() {
             subtitleView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
             valueView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
             titleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));"""
-if settings_rtl_src.count(rtl_from) != 1:
+# SettingsActivity also contains SuggestionCell.updateColors with the
+# identical titleView color anchor. Restrict this edit to SettingCell only.
+cell_start = settings_rtl_src.find("    public static class SettingCell extends")
+cell_end = settings_rtl_src.find("    public static class SuggestionCell extends", cell_start)
+if cell_start < 0 or cell_end < 0:
+    raise SystemExit("SettingsActivity.SettingCell class boundaries changed")
+cell_source = settings_rtl_src[cell_start:cell_end]
+if cell_source.count(rtl_from) != 1:
     raise SystemExit("SettingsActivity.SettingCell.updateColors changed")
-settings_rtl.write_text(settings_rtl_src.replace(rtl_from, rtl_to, 1), encoding="utf-8")
+settings_rtl_src = (settings_rtl_src[:cell_start]
+        + cell_source.replace(rtl_from, rtl_to, 1)
+        + settings_rtl_src[cell_end:])
+settings_rtl.write_text(settings_rtl_src, encoding="utf-8")
 
 # Main Telegram Settings uses UniversalAdapter rather than the legacy
 # ListAdapter screens above. Re-apply the shared card after updateColors()
