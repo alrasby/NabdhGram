@@ -94,11 +94,11 @@ checks = {
     "RTL verified contact icon follows name instead of overlapping":
         "setNabdhRtlBadgeBeforeText(LocaleController.isRTL)" in
         (ui / "Cells/UserCell.java").read_text(encoding="utf-8")
-        and "float nameVisualLeft = getMeasuredWidth() - getPaddingRight()" in
+        and "float visibleTextStart = offsetX" in
         (ui / "ActionBar/SimpleTextView.java").read_text(encoding="utf-8")
-        and "Math.min(getMeasuredWidth(), glyphWidth)" in
+        and "textOffsetX += drawablePadding + leftDrawable.getIntrinsicWidth();" in
         (ui / "ActionBar/SimpleTextView.java").read_text(encoding="utf-8")
-        and "- drawablePadding - leftDrawable.getIntrinsicWidth()" in
+        and "(nabdhRtlBadgeBeforeText" in
         (ui / "ActionBar/SimpleTextView.java").read_text(encoding="utf-8"),
     "actual Telegram Settings rows have theme-based rounded Glass":
         "listView.adapter.setNabdhGlassSettings(true)" in native_settings
