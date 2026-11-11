@@ -51,6 +51,7 @@ assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "S
 global_fonts = (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8")
 assert "final boolean telegramTextFace" in global_fonts, "Telegram-native typefaces excluded from UI scale"
 assert "telegramTextFace ? android.graphics.Typeface.DEFAULT" in global_fonts, "Reset may restore saved custom font"
+assert "nabdhLastFontScanMs >= 48L" in global_fonts, "Font scan throttle missing"
 bundled_themes = (ROOT / "scripts/apply-nabdh-bundled-themes.py").read_text(encoding="utf-8")
 assert "else if (pathToFile != null)" in bundled_themes, "Theme file null guard missing"
 assert "isDark = previewBackgroundColor != 0" in bundled_themes, "Native theme fallback missing"
