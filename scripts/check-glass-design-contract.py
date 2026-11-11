@@ -9,6 +9,7 @@ profile = (ROOT / "scripts/apply-glass-native-settings-profile.py").read_text(en
 finishing = (ROOT / "scripts/apply-glass-v1-finishing.py").read_text(encoding="utf-8")
 settings = (ROOT / "scripts/apply-glass-settings.py").read_text(encoding="utf-8")
 login_overlay = (ROOT / "scripts/apply-glass-login-finish.py").read_text(encoding="utf-8")
+finishing_ui = finishing
 
 ordered = [
     "apply-glass-global-font.py",
@@ -34,4 +35,9 @@ for family in ("Readex Pro", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"
 assert '"values-ar": ("خط التطبيق", "Readex Pro", "Sans-serif", "Serif"' in settings, "Arabic locale changes font names"
 assert "+ 'Device default font'" in settings, "Default font label changes with locale"
 assert (chr(92) * 2 + "n            settings.allow_firebase") not in login_overlay, "Double-escaped Java newline in auth overlay"
+assert "if (nabdhGlassSettings) {" in finishing_ui and "updateColors(holder);" in finishing_ui, "Settings rows must refresh Glass after native bind"
+assert "float renderedStart = offsetX + lineLeft;" in finishing_ui, "RTL badge not anchored to rendered glyphs"
+assert "R.drawable.nabdh_keypad_delete" in login_overlay and "nabdh_keypad_delete.xml" in login_overlay, "Native delete vector not bundled"
+assert "SIDE_PADDING = 10, BUTTON_PADDING = 6" in login_overlay, "Original keypad geometry not restored"
+assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")
