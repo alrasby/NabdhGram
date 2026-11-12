@@ -45,6 +45,17 @@ checks = {
         and "codeFieldContainer.codeField.length * 45L + 180L" in login_source,
     "login language glyph is valid vector drawable":
         ET.parse(root / "TMessagesProj/src/main/res/drawable/nabdh_login_language.xml") is not None,
+    "phone login draws the same live Glass card while keeping native auth":
+        "if (activityMode == MODE_LOGIN)" in login_source
+        and "setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in login_source
+        and "countryOutlineView.setNabdhSoftGlass(true)" in login_source
+        and "phoneOutlineView.setNabdhSoftGlass(true)" in login_source,
+    "chat bubbles use pooled crystal brushes on original Telegram paths":
+        all(phrase in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
+            for phrase in ("private void nabdhDrawCrystalSurface(Canvas canvas, Path bubblePath)",
+                           "nabdhDrawCrystalSurface(canvas, path);",
+                           "nabdhDrawCrystalSurface(canvas, makePath());",
+                           "nabdhCrystalRim.setStyle(Paint.Style.STROKE);")),
     "blurred chat wallpaper rendered inside actual message shape":
         "nabdhDrawFrostedWallpaper(canvas, makePath())" in
             (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
