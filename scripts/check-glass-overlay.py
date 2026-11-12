@@ -193,9 +193,8 @@ checks = {
         and "compactGrid" not in settings
         and 'card.setOnClickListener(v -> presentFragment(' in settings
         and 'description.setMaxLines(2);' in settings,
-    "contacts card uses dedicated native rounded row backgrounds":
-        "InsetDrawable(" in (ui / "Adapters/ContactsAdapter.java").read_text(encoding="utf-8")
-        and "glass.setCornerRadius(AndroidUtilities.dp(15))" in
+    "contacts card uses shared rounded Glass background":
+        "cell.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in
             (ui / "Adapters/ContactsAdapter.java").read_text(encoding="utf-8"),
     "profile channel media and heading get separate readable space":
         "Math.max(122," in (ui / "Cells/ProfileChannelCell.java").read_text(encoding="utf-8")
@@ -280,7 +279,7 @@ checks = {
     "appearance RTL layout": "content.setLayoutDirection(" in feature
         and "LocaleController.isRTL" in feature,
     "composer native RTL hint renderer enabled": "messageEditText.setSupportRtlHint(true)" in composer,
-    "appearance font options in Glass surface": "fontCard.setBackground(fontGlass)" in feature
+    "appearance font options in Glass surface": "fontCard.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in feature
         and "fontCard.addView(choices);" in feature,
     "all selected fonts bundled": all((font_assets / name).is_file() and (font_assets / name).stat().st_size > 10000 for name in font_files),
     "font options mapped to native renderer": all(name in launch for name in font_files),
@@ -363,7 +362,7 @@ checks = {
         and "canvas.clipPath(nabdhDialogSelectorPath)" in selector
         and "selectorRect.left + 7f * density" in selector
         and "selectorRect.bottom - 3f * density" in selector,
-    "selector canvas state restored": "if (nabdhDialog) {" in selector and "canvas.restore();" in selector,
+    "selector canvas state restored": "if (nabdhCard) {" in selector and "canvas.restore();" in selector,
     "all section labels honor normal-weight selected typography":
         'labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf"))' in dialogs,
     "custom bold font avoids stale mediumTypeface": 'if (!"system-default".equals(selectedFamily))' in typefaces

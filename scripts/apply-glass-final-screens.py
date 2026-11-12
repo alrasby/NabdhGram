@@ -64,10 +64,9 @@ method = """    private void section(Context context, LinearLayout parent, int t
         glass.setCornerRadius(20 * density);
         glass.setStroke(Math.max(1, (int) density),
                 Color.argb(110, Color.red(accent), Color.green(accent), Color.blue(accent)));
-        card.setBackground(new android.graphics.drawable.RippleDrawable(
-                android.content.res.ColorStateList.valueOf(
-                        Color.argb(36, Color.red(accent), Color.green(accent), Color.blue(accent))),
-                glass, null));
+        // One card renderer shared with Telegram Settings, including a
+        // clipped Ripple and immediate imported-theme responsiveness.
+        card.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
 
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
         cardLp.bottomMargin = (int) (8 * density + .5f);
@@ -167,9 +166,8 @@ styling = """                cell.setCallCellStyle(58);
                                 android.graphics.Color.red(accent),
                                 android.graphics.Color.green(accent),
                                 android.graphics.Color.blue(accent)));
-                cell.setBackground(new android.graphics.drawable.InsetDrawable(
-                        glass, AndroidUtilities.dp(9), AndroidUtilities.dp(2),
-                        AndroidUtilities.dp(9), AndroidUtilities.dp(2)));
+                // Same native Glass card/ripple as Settings and dialogs.
+                cell.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
                 view = cell;"""
 s = replace_once(s, anchor, styling, "Contacts adapter USER_CELL")
 p.write_text(s, encoding="utf-8")
