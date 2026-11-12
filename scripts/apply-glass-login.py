@@ -73,6 +73,12 @@ phone_with_brand = """            setOrientation(VERTICAL);
             // keypad instead of vertically centering a tall invisible logo
             // box inside the remaining viewport.
             setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            // One live, theme-aware Glass panel for the real native phone form.
+            // No replacement auth screen, no overlay intercepting phone entry.
+            // The surface shares the same fill/stroke as settings cards.
+            if (activityMode == MODE_LOGIN) {
+                setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+            }
             setPadding(0, dp(16), 0, 0);
 
             // NabdhGram identity: shared approved artwork from the Welcome page.
