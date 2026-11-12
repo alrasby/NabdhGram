@@ -326,6 +326,12 @@ s = s.replace(anchor, anchor + """
                 org.telegram.messenger.NotificationCenter.getGlobalInstance().postNotificationName(
                         org.telegram.messenger.NotificationCenter.didSetNewTheme, false, false);
             };
+            // Keep every option in the same live family after selection.
+            // Each RadioButton originally received a different explicit
+            // Typeface, so the global font walker correctly treated it as
+            // intentional custom typography and left it unchanged.
+            final java.util.ArrayList<android.widget.RadioButton> fontOptions =
+                    new java.util.ArrayList<>();
             for (int i = 0; i < families.length; i++) {
                 final String family = families[i];
                 final android.graphics.Typeface selectedTypeface = fonts[i];
@@ -340,12 +346,20 @@ s = s.replace(anchor, anchor + """
                     // Commit this tiny setting synchronously so immediate app exit
                     // cannot leave the font selection pending on disk.
                     prefs.edit().putString("font_family", family).commit();
+                    // Update option labels and selection immediately, without
+                    // waiting for a fragment recreation or another layout.
+                    for (int optionIndex = 0; optionIndex < fontOptions.size(); optionIndex++) {
+                        android.widget.RadioButton item = fontOptions.get(optionIndex);
+                        item.setChecked(optionIndex == java.util.Arrays.asList(families).indexOf(family));
+                        item.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
+                    }
                     org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
                     refreshDrawnText.run();
                     refreshTypography.run();
                     fontTitle.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                     explanation.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                 });
+                fontOptions.add(option);
                 choices.addView(option);
             }
             fontCard.addView(choices);
