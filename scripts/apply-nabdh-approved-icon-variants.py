@@ -135,6 +135,41 @@ addition = ',\n'.join(
     for slug, alias, string_name, _, _ in VARIANTS
 )
 java = java.replace(anchor, anchor + '\n' + addition + ',', 1)
+# Some Android launchers immediately terminate an app when its currently
+# enabled launcher alias is disabled, even with DONT_KILL_APP. First enable
+# the target component, then disable old aliases; leave the selected one
+# enabled throughout. Validate the component exists before mutating any.
+old_switch = """        for (LauncherIcon i : LauncherIcon.values()) {
+            pm.setComponentEnabledSetting(i.getComponentName(ctx), i == icon ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED :
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
+        }"""
+new_switch = """        if (icon == null) return;
+        final ComponentName target = icon.getComponentName(ctx);
+        try {
+            ctx.getPackageManager().getActivityInfo(target, 0);
+        } catch (PackageManager.NameNotFoundException missing) {
+            org.telegram.messenger.FileLog.e(missing);
+            return;
+        }
+        try {
+            // Enabling the new alias before disabling the old one avoids a
+            // transient state with no launcher component on some OEM devices.
+            pm.setComponentEnabledSetting(target,
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
+            for (LauncherIcon i : LauncherIcon.values()) {
+                if (i != icon && isEnabled(i)) {
+                    pm.setComponentEnabledSetting(i.getComponentName(ctx),
+                            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                            PackageManager.DONT_KILL_APP);
+                }
+            }
+        } catch (RuntimeException failure) {
+            org.telegram.messenger.FileLog.e(failure);
+            // Keep at least the new launcher component enabled on failure.
+        }"""
+if java.count(old_switch) != 1:
+    raise SystemExit("Pinned launcher component switching changed")
+java = java.replace(old_switch, new_switch, 1)
 controller.write_text(java, encoding="utf-8")
 
 xml = manifest.read_text(encoding="utf-8")
