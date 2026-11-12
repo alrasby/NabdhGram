@@ -107,6 +107,10 @@ checks = {
                      "FilterChatlistActivity.java", "LiteModeSettingsActivity.java")),
     "main Settings hero uses the shared Glass surface":
         "topView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in native_settings,
+    "NabdhGram settings categories have no competing pre-renderer":
+        not any(token in settings + feature for token in
+            ("GradientDrawable glassCard =", "GradientDrawable infoCard =",
+             "GradientDrawable fontGlass =", "RippleDrawable touchSurface =")),
     "NabdhGram settings categories use theme-aware shared drawable": all(
         "NabdhGlassRowDecoration.newCardBackground()" in (ui / page).read_text(encoding="utf-8")
         for page in ("NabdhGramSettingsActivity.java", "NabdhGramFeatureCategoryActivity.java")),

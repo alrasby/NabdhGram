@@ -25,14 +25,11 @@ for p in pages:
         "import android.graphics.drawable.GradientDrawable;\n", 1)
     # Page canvas stays tied to Telegram theme, so light, dark and RTL work.
     # Accent colors come from the approved logo; backgrounds adapt to theme.
-    s = s.replace(
-        "scroll.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));",
-        """scroll.setBackground(new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[] {
-                    Theme.getColor(Theme.key_windowBackgroundGray),
-                    Theme.getColor(Theme.key_windowBackgroundWhite)
-                }));""", 1)
+    # Retain Telegram's live, theme-owned canvas. A locally allocated
+    # GradientDrawable snapshots colors at screen creation and stays stale
+    # when users import .attheme or change day/night while the page is open.
+    if "scroll.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));" not in s:
+        raise SystemExit(f"Theme-owned settings background anchor changed: {p}")
     p.write_text(s, encoding="utf-8")
 
 main = pages[0]
@@ -40,23 +37,10 @@ s = main.read_text(encoding="utf-8")
 anchor = """        card.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));"""
 if s.count(anchor) != 1:
     raise SystemExit("Expected one category card background anchor")
-s = s.replace(anchor, """        int surface = Theme.getColor(Theme.key_windowBackgroundWhite);
-        int textSurface = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);
-        boolean dark = Color.red(surface) + Color.green(surface) + Color.blue(surface) < 360;
-        GradientDrawable glassCard = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[] {surface, Theme.getColor(Theme.key_windowBackgroundGray)});
-        glassCard.setCornerRadius(22 * context.getResources().getDisplayMetrics().density);
-        glassCard.setStroke((int) (context.getResources().getDisplayMetrics().density),
-                Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-        // Preserve the rounded surface while giving every navigable category
-        // a native pressed ripple, keyboard focus and accessibility feedback.
-        android.graphics.drawable.RippleDrawable touchSurface =
-                new android.graphics.drawable.RippleDrawable(
-                        android.content.res.ColorStateList.valueOf(
-                                dark ? 0x3346D9D2 : 0x2200878D),
-                        glassCard, null);
-        card.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+# Remove competing per-card color/GradientDrawable/Ripple allocations.
+# The shared renderer is the sole owner of card palette, stroke and press.
+s = s.replace(anchor, """        card.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         card.setClipToOutline(true);""", 1)
 # Replace simple heading color with brand turquoise while retaining readability.
 anchor = "heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
@@ -249,16 +233,10 @@ s = child.read_text(encoding="utf-8")
 anchor = "        content.addView(explanation);"
 if s.count(anchor) != 1:
     raise SystemExit("Expected one feature description anchor")
-s = s.replace(anchor, """        int base = Theme.getColor(Theme.key_windowBackgroundWhite);
-        boolean dark = Color.red(base) + Color.green(base) + Color.blue(base) < 360;
-        GradientDrawable infoCard = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[] {base, Theme.getColor(Theme.key_windowBackgroundGray)});
-        infoCard.setCornerRadius(22 * context.getResources().getDisplayMetrics().density);
-        infoCard.setStroke((int) context.getResources().getDisplayMetrics().density,
-                Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-        explanation.setPadding(pad, pad, pad, pad);
-        explanation.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+# Explanation uses the same live-theme Glass renderer as main Settings.
+s = s.replace(anchor, """        explanation.setPadding(pad, pad, pad, pad);
+        explanation.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         content.addView(explanation);""", 1)
 # Add a working, locally persisted typography preference to the Appearance page.
 # This changes only NabdhGram-owned settings views, not Telegram chat text.
@@ -272,14 +250,8 @@ s = s.replace(anchor, anchor + """
             fontCard.setOrientation(LinearLayout.VERTICAL);
             int fontPad = (int) (18 * context.getResources().getDisplayMetrics().density);
             fontCard.setPadding(fontPad, fontPad, fontPad, fontPad);
-            GradientDrawable fontGlass = new GradientDrawable(
-                    GradientDrawable.Orientation.TL_BR,
-                    new int[] {Theme.getColor(Theme.key_windowBackgroundWhite),
-                            Theme.getColor(Theme.key_windowBackgroundGray)});
-            fontGlass.setCornerRadius(22 * context.getResources().getDisplayMetrics().density);
-            fontGlass.setStroke((int) context.getResources().getDisplayMetrics().density,
-                    Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-            fontCard.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+            fontCard.setBackground(
+                    org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
             TextView fontTitle = new TextView(context);
             fontTitle.setText(context.getString(R.string.NabdhFontTitle));
             fontTitle.setTextSize(18);

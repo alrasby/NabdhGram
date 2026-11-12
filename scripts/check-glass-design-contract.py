@@ -74,6 +74,9 @@ assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.j
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
 assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native_surfaces, "Theme-aware card background and clipped ripple must be shared"
+for obsolete in ("GradientDrawable glassCard =", "GradientDrawable infoCard =", "GradientDrawable fontGlass =", "RippleDrawable touchSurface ="):
+    assert obsolete not in settings, f"Second per-card surface allocation survived: {obsolete}"
+assert "scroll.setBackground(new GradientDrawable(" not in settings, "NabdhGram scroll snapshots old theme colors"
 assert "topView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in native_surfaces, "Settings hero must use the same Glass surface"
 remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
 for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java", "ThemeActivity.java"):
