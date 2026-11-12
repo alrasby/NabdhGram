@@ -50,6 +50,18 @@ checks = {
         and "setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in login_source
         and "countryOutlineView.setNabdhSoftGlass(true)" in login_source
         and "phoneOutlineView.setNabdhSoftGlass(true)" in login_source,
+    "name color selector is a true theme-aware Glass card":
+        "TYPE_CHOOSE_COLOR" in (ui / "ThemeActivity.java").read_text(encoding="utf-8")
+        and "applyCardStyle(holder.itemView, true)" in (ui / "ThemeActivity.java").read_text(encoding="utf-8")
+        and "PeerColorActivity.ChangeNameColorCell.class}, null, null, null, Theme.key_windowBackgroundWhite" not in
+            (ui / "ThemeActivity.java").read_text(encoding="utf-8"),
+    "launcher switching enables selected component before disabling old alias":
+        "getActivityInfo(target, 0)" in (ui / "LauncherIconController.java").read_text(encoding="utf-8")
+        and (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
+            "pm.setComponentEnabledSetting(target,") <
+            (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
+            "for (LauncherIcon i : LauncherIcon.values()) {", (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
+            "pm.setComponentEnabledSetting(target,")),
     "chat bubbles use pooled crystal brushes on original Telegram paths":
         all(phrase in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
             for phrase in ("private void nabdhDrawCrystalSurface(Canvas canvas, Path bubblePath)",
