@@ -284,6 +284,9 @@ s = s.replace(anchor, anchor + """
                             : android.graphics.Typeface.create(families[i], android.graphics.Typeface.NORMAL);
                 }
             }
+            final int initialFontIndex = java.util.Arrays.asList(families).indexOf(selectedFont);
+            final android.graphics.Typeface activeFont = initialFontIndex >= 0
+                    ? fonts[initialFontIndex] : android.graphics.Typeface.DEFAULT;
             // Re-layout visible labels immediately after a typography setting changes.
             final Runnable refreshTypography = () -> {
                 // Preferences are displayed as fragments inside LaunchActivity.
@@ -340,7 +343,11 @@ s = s.replace(anchor, anchor + """
                 option.setText(context.getString(names[i]));
                 option.setTextSize(16);
                 option.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-                option.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
+                // Each option is a control label, not an independent preview.
+                // Give ALL options the active family on the first render.
+                // Previously each option used its own Typeface, bypassing
+                // the app-wide eligibility scanner until fragment recreation.
+                option.setTypeface(activeFont, android.graphics.Typeface.NORMAL);
                 option.setChecked(family.equals(selectedFont));
                 option.setOnClickListener(v -> {
                     // Commit this tiny setting synchronously so immediate app exit
