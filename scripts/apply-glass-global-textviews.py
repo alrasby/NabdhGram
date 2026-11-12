@@ -202,7 +202,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                                 "fonts/rregular.ttf"))
                         || current.equals(org.telegram.messenger.AndroidUtilities.getTypeface(
                                 "fonts/rmedium.ttf"))
-                        || packagedTextFaces.contains(current);
+                        || packagedTextFaces.contains(current)
+                        || nabdhExpectedAnimatedFaces.containsKey(animated);
                 android.graphics.Typeface expected = nabdhExpectedAnimatedFaces.get(animated);
                 if (eligible && (!renderKey.equals(applied)
                         || expected != null && !expected.equals(current))) {
@@ -268,7 +269,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 // headers and legacy settings) must not be excluded merely
                 // because the previous font is a custom Typeface instance.
                 boolean arabicLabel = nabdhContainsArabic(label.getText());
-                if (applied != null || normalFont || arabicLabel) {
+                if (applied != null || normalFont || arabicLabel
+                        || nabdhExpectedTextFaces.containsKey(label)) {
                     android.graphics.Typeface expected = nabdhExpectedTextFaces.get(label);
                     if (!renderKey.equals(applied)
                             || expected != null && !expected.equals(current)) {
@@ -281,7 +283,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                             // the user-selected font. Never save that custom
                             // face as the device default: it would survive a reset.
                             nabdhOriginalTypefaces.put(label,
-                                    telegramTextFace ? android.graphics.Typeface.DEFAULT
+                                    (telegramTextFace || arabicLabel)
+                                            ? android.graphics.Typeface.DEFAULT
                                     : current == null ? android.graphics.Typeface.DEFAULT : current);
                         }
                         Float originalPx = nabdhOriginalTextSizes.get(label);
