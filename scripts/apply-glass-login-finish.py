@@ -256,6 +256,25 @@ if auth_anchor not in sign_in_after:
 sign_in_after = sign_in_after.replace(auth_anchor, auth_trace, 1)
 s = sign_in_before + sign_in_anchor + sign_in_after
 
+# Measure post-auth local initialization separately from the server RPC.
+# Only duration and connection state are logged, never identity or tokens.
+post_auth = """    private void onAuthSuccess(TLRPC.TL_auth_authorization res, boolean afterSignup) {
+        MessagesController.getInstance(currentAccount).cleanup();"""
+post_auth_instrumented = """    private void onAuthSuccess(TLRPC.TL_auth_authorization res, boolean afterSignup) {
+        final long nabdhLocalAuthStarted = android.os.SystemClock.elapsedRealtime();
+        MessagesController.getInstance(currentAccount).cleanup();"""
+s = replace_once(s, post_auth, post_auth_instrumented, "post-auth initialization start")
+finish_anchor = """        needFinishActivity(afterSignup, res.setup_password_required, res.otherwise_relogin_days);
+    }"""
+finish_instrumented = """        if (BuildVars.LOGS_ENABLED) {
+            FileLog.d("NabdhGram auth local_init elapsed_ms="
+                    + (android.os.SystemClock.elapsedRealtime() - nabdhLocalAuthStarted)
+                    + " connection_state=" + getConnectionsManager().getConnectionState());
+        }
+        needFinishActivity(afterSignup, res.setup_password_required, res.otherwise_relogin_days);
+    }"""
+s = replace_once(s, finish_anchor, finish_instrumented, "post-auth initialization end")
+
 login.write_text(s,encoding="utf-8")
 language_vector = root / "TMessagesProj/src/main/res/drawable/nabdh_login_language.xml"
 language_vector.parent.mkdir(parents=True, exist_ok=True)
