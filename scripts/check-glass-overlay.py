@@ -126,7 +126,7 @@ checks = {
         and "glassPreviewParams.rightMargin" in (ui / "ThemeActivity.java").read_text(encoding="utf-8"),
     "login phone form uses compact real artwork bounds":
         "Gravity.TOP | Gravity.CENTER_HORIZONTAL" in login_source
-        and "LayoutHelper.createLinear(170, 112," in login_source,
+        and "LayoutHelper.createLinear(136, 84," in login_source,
     "main Settings hero uses the shared Glass surface":
         "topView.setBackground(new android.graphics.drawable.InsetDrawable(" in native_settings,
     "NabdhGram settings categories have no competing pre-renderer":
@@ -260,7 +260,7 @@ checks = {
       and "NabdhFontSystemDefault" in appearance_en
       and "nabdhOriginalTypefaces" in launch,
     "login mark compact and diagnostic toggle hidden in production":
-        "LayoutHelper.createLinear(170, 112," in
+        "LayoutHelper.createLinear(136, 84," in
         (ui / "LoginActivity.java").read_text(encoding="utf-8")
         and "&& getConnectionsManager().isTestBackend()) {" in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
