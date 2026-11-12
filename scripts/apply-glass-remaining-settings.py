@@ -70,7 +70,7 @@ def insert_at_method_end(s, after, condition, label):
 
 pages = [
     ("FiltersSetupActivity.java", "class ListAdapter extends",
-     "holder.getItemViewType() == VIEW_TYPE_FILTER || holder.getItemViewType() == VIEW_TYPE_BUTTON || holder.getItemViewType() == VIEW_TYPE_CHECK",
+     "holder.getItemViewType() == VIEW_TYPE_FILTER || holder.getItemViewType() == VIEW_TYPE_BUTTON || holder.getItemViewType() == VIEW_TYPE_CHECK || holder.getItemViewType() == VIEW_TYPE_FILTER_SUGGESTION",
      "        listView.setSections();", "folders list"),
     ("FilterCreateActivity.java", "class ListAdapter extends",
      "holder.getItemViewType() == VIEW_TYPE_CHAT || holder.getItemViewType() == VIEW_TYPE_BUTTON || holder.getItemViewType() == VIEW_TYPE_LINK || holder.getItemViewType() == VIEW_TYPE_CREATE_LINK",
@@ -100,3 +100,22 @@ for name, marker, condition, list_anchor, label in pages:
     s = insert_at_method_end(s, adapter_start, condition, label)
     path.write_text(s, encoding="utf-8")
     print("Glass-covered:", name, "rows:", condition)
+
+# Telegram's Chat Settings page contains custom preview widgets, sliders and
+# row selectors that the generic Text*Cell whitelist never reaches. Decorate
+# the actual bind results while leaving horizontal theme previews intact.
+theme = ui / "ThemeActivity.java"
+theme_src = theme.read_text(encoding="utf-8")
+theme_marker = "private class ListAdapter extends RecyclerListView.SelectionAdapter"
+if theme_src.count(theme_marker) != 1:
+    raise SystemExit("ThemeActivity list adapter anchor changed")
+theme_cond = ("holder.getItemViewType() == TYPE_TEXT_SIZE"
+              " || holder.getItemViewType() == TYPE_CHAT_LIST"
+              " || holder.getItemViewType() == TYPE_BUBBLE_RADIUS"
+              " || holder.getItemViewType() == TYPE_SWIPE_GESTURE"
+              " || holder.getItemViewType() == TYPE_THEME_TYPE"
+              " || holder.getItemViewType() == TYPE_NIGHT_THEME")
+theme_src = insert_at_method_end(theme_src, theme_src.index(theme_marker),
+                                  theme_cond, "chat appearance special controls")
+theme.write_text(theme_src, encoding="utf-8")
+print("Glass-covered: ThemeActivity custom chat settings controls")

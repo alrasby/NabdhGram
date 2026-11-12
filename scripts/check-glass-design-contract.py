@@ -49,6 +49,7 @@ assert "R.drawable.nabdh_keypad_delete" in login_overlay and "nabdh_keypad_delet
 assert "SIDE_PADDING = 10, BUTTON_PADDING = 6" in login_overlay, "Original keypad geometry not restored"
 assert "class NabdhCircleKey" in login_overlay and "canvas.drawCircle(" in login_overlay, "Circular keypad renderer is missing"
 assert "key_text_before" in login_overlay and "key_text_after" in login_overlay, "Circular keys must center native keypad labels"
+assert "SIDE_PADDING = 4, BUTTON_PADDING = 3" in login_overlay, "Keypad touch-cell geometry has not been enlarged"
 assert "keyRadius * .18f" in login_overlay and "keyRadius * .48f" in login_overlay, "Key labels must track actual circle size"
 assert "numberTextPaint.setTextAlign(Paint.Align.CENTER)" in login_overlay, "Number labels are not centered"
 assert "symbolsTextPaint.setTextAlign(Paint.Align.CENTER)" in login_overlay, "Letter labels are not centered"
@@ -72,8 +73,9 @@ assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "S
 assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native_surfaces, "Theme-aware card background and clipped ripple must be shared"
 assert "topView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in native_surfaces, "Settings hero must use the same Glass surface"
 remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
-for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java"):
+for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java", "ThemeActivity.java"):
     assert screen in remaining, f"Missing dedicated folder / lite mode coverage for {screen}"
+assert "VIEW_TYPE_FILTER_SUGGESTION" in remaining and "TYPE_BUBBLE_RADIUS" in remaining, "Suggested folders and chat custom widgets remain flat"
 assert "insert_at_method_end" in remaining and "holder.itemView, true" in remaining, "Folder and Lite adapters must be decorated AFTER bind"
 assert "apply-glass-remaining-settings.py" in workflow, "Final native screens not included in Android build"
 assert "class LiveGlassSurface" in native_surfaces and "class GlassCardLayers" in native_surfaces, "Missing real theme-aware filled cards"
@@ -86,6 +88,8 @@ assert 'GLASS_SETTINGS_SCREENS = (' in native_surfaces and all(
                  "ProfileNotificationsActivity")), "Nested settings screens still missing"
 assert "titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_surfaces, "Mixed Arabic/Latin text direction lost"
 assert "canvas.drawLine(rect.left + round" in native_surfaces, "Card specular layer missing"
+assert "firstNameEdit.setDivider(false);" in native_surfaces and "applyCardStyle(bioEdit, true)" in native_surfaces, "Account name/bio editors remain outside Glass"
+assert "applyCardStyle(view, true)" in native_surfaces, "Account add/logout action rows remain flat"
 assert "SettingsActivity.SettingCell.updateColors changed" in native_surfaces and "titleView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START)" in native_surfaces, "Actual SettingsActivity RTL title alignment missing"
 assert "Theme.createChatResources(context, true)" in settings, "Changing chat font size leaves native text paints stale"
 assert "applyCardStyle(View child, boolean settingsRow)" in native_surfaces, "UniversalAdapter Settings cells must bypass legacy class-only filter"
@@ -109,6 +113,8 @@ assert "nabdhDrawFrostedWallpaper(canvas, path)" in bubble and "nabdhDrawFrosted
 assert "Utilities.stackBlurBitmap(bitmap, 7)" in bubble and "nabdhLastWallpaper" in bubble, "Bubble blur must cache source wallpaper and avoid per-message reblur"
 assert 'if (!"system-default".equals(family) || userBold)' in (ROOT / "scripts/apply-glass-global-font.py").read_text(encoding="utf-8"), "Device font resets must preserve native Telegram typography"
 assert "boolean nativeHeading = assetPath.equals" in (ROOT / "scripts/apply-glass-global-font.py").read_text(encoding="utf-8"), "Native heading emphasis lost in selected fonts"
+assert "!view.hasFocus()" in (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8"), "Unfocused account EditText fields not updated on font changes"
+assert "listView.disableSections();" in (ROOT / "scripts/apply-glass-contacts.py").read_text(encoding="utf-8"), "Contacts white group wrappers still present"
 assert "linear.findLastVisibleItemPosition()" in (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8"), "Font changes must only rebind visible rows"
 assert "currentType == TYPE_TEXT" in bubble, "Bubble translucency must be limited to text"
 assert "getWidth() * 0.25f" in login_overlay and "final float symbolsBaseline = centerY + keyRadius * .48f" in login_overlay, "Keypad text layout patch or compact glyph placement missing"

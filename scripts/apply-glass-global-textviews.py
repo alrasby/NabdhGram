@@ -189,7 +189,11 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                     nabdhAnimatedAppliedFonts.put(animated, renderKey);
                 }
             }
-            if (view instanceof android.widget.TextView && !(view instanceof android.widget.EditText)) {
+            // Unfocused native input fields (including profile name/bio)
+            // should immediately show the selected family. Preserve any
+            // actively edited input, its cursor, composing text and IME.
+            if (view instanceof android.widget.TextView &&
+                    (!(view instanceof android.widget.EditText) || !view.hasFocus())) {
                 android.widget.TextView label = (android.widget.TextView) view;
                 android.graphics.Typeface current = label.getTypeface();
                 final String applied = nabdhAppliedFonts.get(label);

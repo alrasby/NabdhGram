@@ -356,6 +356,14 @@ k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) 
                         android.graphics.Color.WHITE));
     }
 """ + k[key_end:]
+# Expand actual *key cell height*, not only the drawable radius. The stock
+# 230dp keyboard uses 10dp outer + 6dp inter-key gaps, capping circles to
+# about 47dp. Smaller gutters yield 52dp keys (+11%) at the SAME 230dp height
+# without overlapping adjacent touch views or covering the number field.
+k = replace_once(k,
+    "private final static int SIDE_PADDING = 10, BUTTON_PADDING = 6;",
+    "private final static int SIDE_PADDING = 4, BUTTON_PADDING = 3;",
+    "expand keypad circles by enlarging available cell height")
 # Constructor and updateColors both tint the same icon; handle both.
 backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
 if k.count(backspace_icon) != 2:

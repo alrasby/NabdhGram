@@ -366,6 +366,28 @@ settings_hero.write_text(hero_source.replace(hero_old, hero_new, 1), encoding="u
 # require an explicit opt-in to the same shared native Glass decoration.
 user_info = ui / "UserInfoActivity.java"
 user_info_src = user_info.read_text(encoding="utf-8")
+# Account name/bio edit views are UItem.asCustom(EditTextCell), not
+# SettingsActivity.SettingCell. Paint their existing containers, never the
+# inner EditText: selection, focus, validation and keyboard remain native.
+for old, new in (
+    ("        firstNameEdit.setDivider(true);",
+     """        firstNameEdit.setDivider(false);
+        org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(firstNameEdit, true);"""),
+    ("        lastNameEdit.hideKeyboardOnEnter();",
+     """        lastNameEdit.hideKeyboardOnEnter();
+        org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(lastNameEdit, true);"""),
+    ("        bioEdit.setShowLimitWhenEmpty(true);",
+     """        bioEdit.setShowLimitWhenEmpty(true);
+        org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(bioEdit, true);"""),
+    ("                ((InfoCell) view).set(item.iconResId, item.text, item.subtext, item.accent, item.red, item.intValue);",
+     """                ((InfoCell) view).set(item.iconResId, item.text, item.subtext, item.accent, item.red, item.intValue);
+                // Account actions (add-account/logout) have a distinct
+                // factory. They must also match the same settings surfaces.
+                org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(view, true);"""),
+):
+    if user_info_src.count(old) != 1:
+        raise SystemExit("UserInfoActivity custom editor/account action anchor changed")
+    user_info_src = user_info_src.replace(old, new, 1)
 account_anchor = "        listView.setSections();\n        listView.setClipToPadding(false);"
 account_card = """        // NabdhGram Glass: style real account Settings factory rows while
         // keeping name/bio editors and privacy actions native and functional.
