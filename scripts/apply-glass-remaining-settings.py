@@ -154,8 +154,44 @@ theme_src = theme_src.replace(preview_anchor, preview_style, 1)
 # RippleDrawable with a flat ColorDrawable when the user switches themes.
 # Leave that legacy theme-color callback only on non-Glass/preview cells.
 theme_background_before = """themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{TextSettingsCell.class, TextCheckCell.class, HeaderCell.class, BrightnessControlCell.class, ThemeTypeCell.class, TextSizeCell.class, BubbleRadiusCell.class, ChatListCell.class, NotificationsCheckCell.class, ThemesHorizontalListCell.class, TintRecyclerListView.class, TextCell.class, PeerColorActivity.ChangeNameColorCell.class, SwipeGestureSettingsView.class, DefaultThemesPreviewCell.class, AppIconsSelectorCell.class}, null, null, null, Theme.key_windowBackgroundWhite));"""
-theme_background_after = """themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{HeaderCell.class, BrightnessControlCell.class, ThemesHorizontalListCell.class, TintRecyclerListView.class, PeerColorActivity.ChangeNameColorCell.class, DefaultThemesPreviewCell.class}, null, null, null, Theme.key_windowBackgroundWhite));"""
+theme_background_after = """themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{HeaderCell.class, BrightnessControlCell.class, ThemesHorizontalListCell.class, TintRecyclerListView.class, PeerColorActivity.ChangeNameColorCell.class, }, null, null, null, Theme.key_windowBackgroundWhite));"""
 theme_src = require_replace(theme_src, theme_background_before, theme_background_after,
                             "ThemeActivity must retain live Glass on theme change")
+# The Chat Settings message-size sample is the NESTED TextSizeCell.
+# The earlier TYPE_THEME_PREVIEW edit only affected the themes browser, so
+# it did not constrain this live wallpaper preview at all.
+sample_before = """            addView(messagesCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 0, 53, 0, 0));"""
+sample_after = """            messagesCell.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, android.graphics.Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), AndroidUtilities.dp(20));
+                }
+            });
+            messagesCell.setClipToOutline(true);
+            // Match the native row's 10dp Glass inset on BOTH sides.
+            addView(messagesCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT,
+                    LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 10, 53, 10, 8));"""
+theme_src = require_replace(theme_src, sample_before, sample_after,
+                            "TextSizeCell actual chat wallpaper sample")
 theme.write_text(theme_src, encoding="utf-8")
-print("Glass-covered: ThemeActivity custom chat settings controls")
+
+# The night-mode and Browse Themes buttons live INSIDE a single
+# DefaultThemesPreviewCell, not inside ThemeActivity's TYPE_TEXT_PREFERENCE
+# items. Their updateColors() explicitly restored flat white selectors,
+# defeating the shared Glass card even after a successful adapter bind.
+preview_page = ui / "DefaultThemesPreviewCell.java"
+preview_src = preview_page.read_text(encoding="utf-8")
+preview_src = require_replace(preview_src,
+    "dayNightCell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));",
+    "dayNightCell.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());",
+    "DefaultThemesPreviewCell initial night-mode card")
+preview_src = require_replace(preview_src,
+    "Theme.setSelectorDrawableColor(dayNightCell.getBackground(), Theme.getColor(Theme.key_listSelector), true);",
+    "org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(dayNightCell, true);",
+    "DefaultThemesPreviewCell themed night-mode card")
+preview_src = require_replace(preview_src,
+    "browseThemesCell.setBackground(Theme.createSelectorWithBackgroundDrawable(Theme.getColor(Theme.key_windowBackgroundWhite), Theme.getColor(Theme.key_listSelector)));",
+    "org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(browseThemesCell, true);",
+    "DefaultThemesPreviewCell themed Browse Themes card")
+preview_page.write_text(preview_src, encoding="utf-8")
+print("PASS: nested Chat Settings wallpaper clipped; night/theme actions use real live Glass")
