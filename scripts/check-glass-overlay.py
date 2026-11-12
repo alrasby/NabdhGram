@@ -366,7 +366,9 @@ checks = {
         and "nabdhRefreshAllFonts();" in feature,
     "Glass settings colors follow active theme":
         "Theme.key_windowBackgroundWhiteBlueText" in feature
-        and "Theme.key_windowBackgroundGray" in feature,
+        and "NabdhGlassRowDecoration.newCardBackground()" in feature
+        and "GradientDrawable fontGlass =" not in feature
+        and "GradientDrawable infoCard =" not in feature,
 
     "chat composer rounded theme surface": "messageEditText.setBackground(nabdhInputGlass)" in composer
         and "nabdhInputGlass.setCornerRadius(dp(19))" in composer
