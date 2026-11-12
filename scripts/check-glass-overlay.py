@@ -188,8 +188,10 @@ checks = {
         (ui / "LoginActivity.java").read_text(encoding="utf-8")
         and 'FileLog.d("NabdhGram auth sendCode: "' in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
-    "login logo lifted while preserving native input geometry":
-        "nabdhLoginLogo.setTranslationY(-dp(14));" in
+    "login logo compact without ghost-offset or displaced auth fields":
+        "nabdhLoginLogo.setScaleType(ImageView.ScaleType.CENTER_CROP);" in
+        (ui / "LoginActivity.java").read_text(encoding="utf-8")
+        and "nabdhLoginLogo.setTranslationY(" not in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
     "RTL verified contact icon follows name instead of overlapping":
         "setNabdhRtlBadgeBeforeText(LocaleController.isRTL)" in
@@ -246,8 +248,8 @@ checks = {
     ) and "NabdhFontSystemDefault" in appearance_ar
       and "NabdhFontSystemDefault" in appearance_en
       and "nabdhOriginalTypefaces" in launch,
-    "login mark doubled and diagnostic toggle hidden in production":
-        "LayoutHelper.createLinear(170, 170," in
+    "login mark compact and diagnostic toggle hidden in production":
+        "LayoutHelper.createLinear(170, 112," in
         (ui / "LoginActivity.java").read_text(encoding="utf-8")
         and "&& getConnectionsManager().isTestBackend()) {" in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
