@@ -9,6 +9,7 @@ profile = (ROOT / "scripts/apply-glass-native-settings-profile.py").read_text(en
 finishing = (ROOT / "scripts/apply-glass-v1-finishing.py").read_text(encoding="utf-8")
 settings = (ROOT / "scripts/apply-glass-settings.py").read_text(encoding="utf-8")
 login_overlay = (ROOT / "scripts/apply-glass-login-finish.py").read_text(encoding="utf-8")
+login_layout = (ROOT / "scripts/apply-glass-login.py").read_text(encoding="utf-8")
 finishing_ui = finishing
 
 ordered = [
@@ -56,8 +57,8 @@ assert "key_text_before" in login_overlay and "key_text_after" in login_overlay,
 assert "SIDE_PADDING = 4, BUTTON_PADDING = 3" in login_overlay, "Keypad touch-cell geometry has not been enlarged"
 assert "Gravity.TOP | Gravity.CENTER_HORIZONTAL" in (ROOT / "scripts/apply-glass-login.py").read_text(encoding="utf-8"), "Login still vertically centers ghost logo height"
 assert "LayoutHelper.createLinear(136, 84," in (ROOT / "scripts/apply-glass-login.py").read_text(encoding="utf-8"), "Login logo still reserves a tall blank box"
-assert "int bottomMargin = activityMode == MODE_LOGIN ? 12 : 72;" in login_overlay, "Login form still reserves oversized fixed blank area"
-assert "getGravity() != desired" in login_overlay and "getChildCount()" in login_overlay, "Login form must center measured content adaptively"
+assert "int bottomMargin = activityMode == MODE_LOGIN ? 12 : 72;" in login_layout, "Login form still reserves oversized fixed blank area"
+assert "getGravity() != desired" in login_layout and "getChildCount()" in login_layout, "Login form must center measured content adaptively"
 assert "MeasureSpec.getSize(widthMeasureSpec)" in login_overlay and "MeasureSpec.getSize(heightMeasureSpec)" in login_overlay, "Keypad still measures its keys from stale view bounds"
 assert "keyRadius * .18f" in login_overlay and "keyRadius * .48f" in login_overlay, "Key labels must track actual circle size"
 assert "numberTextPaint.setTextAlign(Paint.Align.CENTER)" in login_overlay, "Number labels are not centered"
