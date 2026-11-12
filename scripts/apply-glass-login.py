@@ -49,6 +49,77 @@ if source.count(overshoot_layout) != 1 or source.count(overshoot_measure) != 1:
 source = source.replace(overshoot_layout, "int childBottom = getHeight();", 1)
 source = source.replace(overshoot_measure, "int childHeight = height - params.topMargin;", 1)
 
+# Keep scrolling only when genuinely required on compact screens. The
+# stock login ScrollView exposes an overscroll/scrollbar even when our Glass
+# form fits. Do not disable accessibility or scrolling for tall content.
+scroll_settings = "        scrollView.setFillViewport(true);"
+if source.count(scroll_settings) != 1:
+    raise SystemExit("Login ScrollView setup changed")
+source = source.replace(scroll_settings, scroll_settings + """
+        scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        scrollView.setVerticalScrollBarEnabled(false);""", 1)
+
+# Screen transitions reused the SAME ScrollView, preserving a nonzero scroll
+# offset from the prior auth page. Reset only on actual page changes.
+page_anchor = "    public void setPage(@ViewNumber int page, boolean animated, Bundle params, boolean back) {"
+if source.count(page_anchor) != 1:
+    raise SystemExit("Login page transition anchor changed")
+source = source.replace(page_anchor, page_anchor + """
+        if (page != currentViewNum && keyboardLinearLayout != null
+                && keyboardLinearLayout.getParent() instanceof ScrollView) {
+            ((ScrollView) keyboardLinearLayout.getParent()).scrollTo(0, 0);
+        }""", 1)
+
+# Correct the *real* blank-space source: upstream inserts 72dp of empty
+# vertical content below the phone form even when our separate 52dp QR
+# action already reserves a safe tap target. Retain a small 12dp gap.
+bottom_gap = "            int bottomMargin = 72;"
+if source.count(bottom_gap) != 1:
+    raise SystemExit("Native phone bottom spacer anchor changed")
+source = source.replace(bottom_gap,
+    "            int bottomMargin = activityMode == MODE_LOGIN ? 12 : 72;", 1)
+
+# Native sync/test checkboxes incorrectly specify MATCH_PARENT height in a
+# VERTICAL LinearLayout. If visible, each fills the whole form and creates an
+# enormous scrolling region. They are optional and must wrap their text.
+for checkbox in ("syncContactsBox", "testBackendCheckBox"):
+    old = ("addView(" + checkbox +
+           ", LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT,")
+    if source.count(old) != 1:
+        raise SystemExit("Login optional checkbox height changed: " + checkbox)
+    source = source.replace(old,
+        "addView(" + checkbox +
+        ", LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT,", 1)
+
+# Responsive alignment: center the entire phone form in the portion ABOVE
+# the native keypad only when all its measured children fit. Fall back to
+# top alignment/real ScrollView for small phones, rotation and large font scale.
+phone_ctor = "        public PhoneView(Context context) {"
+phone_measure = """        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            int required = getPaddingTop() + getPaddingBottom();
+            for (int i = 0; i < getChildCount(); i++) {
+                View child = getChildAt(i);
+                if (child.getVisibility() == View.GONE) continue;
+                required += child.getMeasuredHeight();
+                if (child.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams margins =
+                            (ViewGroup.MarginLayoutParams) child.getLayoutParams();
+                    required += margins.topMargin + margins.bottomMargin;
+                }
+            }
+            int vertical = required + dp(12) <= getMeasuredHeight()
+                    ? Gravity.CENTER_VERTICAL : Gravity.TOP;
+            int desired = vertical | Gravity.CENTER_HORIZONTAL;
+            if (getGravity() != desired) setGravity(desired);
+        }
+
+"""
+if source.count(phone_ctor) != 1:
+    raise SystemExit("PhoneView constructor anchor changed")
+source = source.replace(phone_ctor, phone_measure + phone_ctor, 1)
+
 # Give the login canvas a restrained theme-native gradient without
 # touching the native phone keyboard, measurement or auth handlers.
 root_anchor = "        fragmentView = sizeNotifierFrameLayout;"
