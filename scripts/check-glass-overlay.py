@@ -138,7 +138,10 @@ checks = {
         and "glassPreviewParams.rightMargin" in (ui / "ThemeActivity.java").read_text(encoding="utf-8"),
     "login phone form uses compact real artwork bounds":
         "Gravity.TOP | Gravity.CENTER_HORIZONTAL" in login_source
-        and "LayoutHelper.createLinear(136, 84," in login_source,
+        and "LayoutHelper.createLinear(136, 84," in login_source
+        and "int bottomMargin = activityMode == MODE_LOGIN ? 12 : 72;" in login_source
+        and "if (getGravity() != desired) setGravity(desired);" in login_source
+        and "scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);" in login_source,
     "main Settings hero uses the shared Glass surface":
         "topView.setBackground(new android.graphics.drawable.InsetDrawable(" in native_settings,
     "NabdhGram settings categories have no competing pre-renderer":
@@ -183,9 +186,13 @@ checks = {
         (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         for token in ("onDrawOver", "Theme.key_windowBackgroundWhiteBlueText",
                       "isSettingRow", "Paint.Style.STROKE")),
+    "Arabic and animated settings follow chosen typeface after native rebind":
+        "nabdhContainsArabic(label.getText())" in launch
+        and "nabdhExpectedTextFaces" in launch
+        and "nabdhExpectedAnimatedFaces" in launch,
     "native Telegram text labels eligible for font remeasure": all(
         token in launch for token in
-        ("final boolean telegramTextFace", "telegramTextFace ? android.graphics.Typeface.DEFAULT",
+        ("final boolean telegramTextFace", "(telegramTextFace || arabicLabel)",
          "originalPx * uiPercent / 100f")
     ),
     "third-party login cannot advertise official-only Firebase SMS":
