@@ -13,6 +13,10 @@ field_anchor = "    private int currentBackgroundHeight;\n"
 if s.count(field_anchor) != 1:
     raise SystemExit("MessageDrawable field anchor changed")
 s = s.replace(field_anchor, field_anchor + """    private final Paint nabdhBubbleEdge = new Paint(Paint.ANTI_ALIAS_FLAG);
+    // Cached brushes: no allocation of gradients or bitmaps per message draw.
+    private final Paint nabdhCrystalTint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint nabdhCrystalRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF nabdhCrystalBounds = new RectF();
     private final Paint nabdhFrostPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Matrix nabdhFrostMatrix = new Matrix();
     private final float[] nabdhFrostValues = new float[9];
@@ -25,7 +29,40 @@ s = s.replace(field_anchor, field_anchor + """    private final Paint nabdhBubbl
 # Use a low-resolution cached blur. The backing drawable may belong to the
 # active chat (chat-specific theme), not to the global theme.
 helper_anchor = "    protected int getColor(int key) {"
-helper = """    private static synchronized Bitmap nabdhGetBlurredWallpaper(Drawable wallpaper) {
+helper = """    // A quiet polished edge and translucent wash, clipped to Telegram's
+    // exact native bubble path. Keep the original shape, tail and hit target.
+    // Only regular text bubbles: media, selection and theme editor are native.
+    private void nabdhDrawCrystalSurface(Canvas canvas, Path bubblePath) {
+        if (currentType != TYPE_TEXT || themePreview || isSelected
+                || crossfadeFromDrawable != null) return;
+        final int accent = getColor(Theme.key_windowBackgroundWhiteBlueText);
+        final int base = getColor(isOut
+                ? Theme.key_chat_outBubble : Theme.key_chat_inBubble);
+        final int tintedR = (Color.red(base) * 60 + Color.red(accent) * 40) / 100;
+        final int tintedG = (Color.green(base) * 60 + Color.green(accent) * 40) / 100;
+        final int tintedB = (Color.blue(base) * 60 + Color.blue(accent) * 40) / 100;
+        nabdhCrystalTint.setStyle(Paint.Style.FILL);
+        nabdhCrystalTint.setColor(Color.argb((isOut ? 22 : 16) * alpha / 255,
+                tintedR, tintedG, tintedB));
+        canvas.drawPath(bubblePath, nabdhCrystalTint);
+        nabdhCrystalRim.setStyle(Paint.Style.STROKE);
+        nabdhCrystalRim.setStrokeWidth(AndroidUtilities.dpf2(0.85f));
+        nabdhCrystalRim.setColor(Color.argb(94 * alpha / 255,
+                Math.max(tintedR, 90), Math.max(tintedG, 120), Math.max(tintedB, 120)));
+        canvas.drawPath(bubblePath, nabdhCrystalRim);
+        // Concentrate the specular highlight on the actual upper rim.
+        // No offscreen layers or fresh Path/Bitmap objects in onDraw().
+        bubblePath.computeBounds(nabdhCrystalBounds, true);
+        canvas.save();
+        canvas.clipRect(nabdhCrystalBounds.left, nabdhCrystalBounds.top,
+                nabdhCrystalBounds.right,
+                nabdhCrystalBounds.top + AndroidUtilities.dp(14));
+        nabdhCrystalRim.setColor(Color.argb(64 * alpha / 255, 245, 255, 255));
+        canvas.drawPath(bubblePath, nabdhCrystalRim);
+        canvas.restore();
+    }
+
+    private static synchronized Bitmap nabdhGetBlurredWallpaper(Drawable wallpaper) {
         if (wallpaper == null || wallpaper instanceof MotionBackgroundDrawable
                 || wallpaper instanceof android.graphics.drawable.ColorDrawable) {
             // Animated backgrounds need live capture; a stale bitmap is wrong.
@@ -133,6 +170,9 @@ replacement = """        // Draw the native bubble path with a bounded transluce
             nabdhBubbleEdge.setAlpha((int) (122f * alpha / 255f));
             canvas.drawPath(path, nabdhBubbleEdge);
         }
+        if (nabdhFrostedText) {
+            nabdhDrawCrystalSurface(canvas, path);
+        }
         if (gradientShader != null && isSelected && paintToUse == null) {"""
 if s.count(anchor) != 1:
     raise SystemExit("MessageDrawable gradient draw anchor changed")
@@ -171,6 +211,9 @@ cached_stroke = """                background.setBounds(bounds);
                     nabdhBubbleEdge.setColor(stroke);
                     nabdhBubbleEdge.setAlpha((int) (53f * alpha / 255f));
                     canvas.drawPath(makePath(), nabdhBubbleEdge);
+                }
+                if (nabdhFrostedText) {
+                    nabdhDrawCrystalSurface(canvas, makePath());
                 }
                 return;"""
 s = s.replace(cached, cached_stroke, 1)
