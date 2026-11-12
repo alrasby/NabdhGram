@@ -91,6 +91,12 @@ assert "TYPE_APP_ICON" in remaining, "Launcher icon strip missing Glass backing"
 assert "ThemeActivity must retain live Glass on theme change" in remaining and "FLAG_CELLBACKGROUNDCOLOR" in remaining, "Theme callbacks still erase native Glass cards"
 assert "TYPE_TEXT_PREFERENCE" in remaining and "TYPE_TEXT_SETTING" in remaining, "Chat Settings missing native text-row Glass"
 assert "apply-glass-remaining-settings.py" in workflow, "Final native screens not included in Android build"
+icon_variants = (ROOT / "scripts/apply-nabdh-approved-icon-variants.py").read_text(encoding="utf-8")
+icon_source = ROOT / "branding/approved/NabdhGram_approved_launcher_variants.webp"
+assert icon_source.exists() and icon_source.read_bytes()[:4] == b"RIFF", "Approved six-icon artwork missing"
+assert '"NabdhHexIcon"' in icon_variants and '"NabdhOriginalIcon"' in icon_variants, "Six launcher aliases missing"
+assert 'apply-nabdh-approved-icon-variants.py Telegram-upstream' in workflow, "Variant artwork not applied to APK"
+assert 'check-nabdh-approved-icons.py Telegram-upstream' in workflow, "No APK resource validation for selectable icons"
 assert "class LiveGlassSurface" in native_surfaces and "class GlassCardLayers" in native_surfaces, "Missing real theme-aware filled cards"
 assert "user_info = ui / \"UserInfoActivity.java\"" in native_surfaces and "listView.adapter.setNabdhGlassSettings(true);" in native_surfaces, "Actual Account info rows missing Glass styling"
 assert 'GLASS_SETTINGS_SCREENS = (' in native_surfaces and all(
