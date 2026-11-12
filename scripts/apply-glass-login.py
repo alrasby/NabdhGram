@@ -76,10 +76,12 @@ phone_with_brand = """            setOrientation(VERTICAL);
             // One live, theme-aware Glass panel for the real native phone form.
             // No replacement auth screen, no overlay intercepting phone entry.
             // The surface shares the same fill/stroke as settings cards.
-            if (activityMode == MODE_LOGIN) {
-                setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
-            }
-            setPadding(0, dp(16), 0, 0);
+            // Do NOT attach a rounded card to the entire scrolling PhoneView:
+            // that view is taller than the visible viewport, so the lower
+            // corners are clipped and the keyboard appears outside the card.
+            // Keep the viewport transparent; individual input controls below
+            // receive bounded Glass surfaces with their own measured height.
+            setPadding(0, dp(8), 0, dp(8));
 
             // NabdhGram identity: shared approved artwork from the Welcome page.
             // Hide on short/landscape screens to keep the native keyboard visible.
@@ -91,12 +93,20 @@ phone_with_brand = """            setOrientation(VERTICAL);
                 // Same approved artwork, but trim its unused vertical box.
                 // CENTER_CROP removes transparent logo padding; it does not
                 // change the asset used by the welcome screen.
-                addView(nabdhLoginLogo, LayoutHelper.createLinear(170, 112,
+                addView(nabdhLoginLogo, LayoutHelper.createLinear(136, 84,
                         Gravity.CENTER_HORIZONTAL, 0, 0, 0, 12));
             }
 
             titleView = new TextView(context);"""
 source = source.replace(phone_anchor, phone_with_brand, 1)
+
+# Give the actual fixed-height phone input a bounded glass background;
+# never use the full-height scroll container as a card.
+phoneInput = "            addView(phoneOutlineView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 58, 16, 8, 16, 8));"
+if source.count(phoneInput) != 1:
+    raise SystemExit("Phone input glass anchor changed")
+source = source.replace(phoneInput,
+    "            phoneOutlineView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());\n" + phoneInput, 1)
 
 # OutlineTextContainerView retains its native focus outline and labels.
 # Do not change edit-text padding, listeners, layout size or auth transitions.
