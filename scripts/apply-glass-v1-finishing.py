@@ -396,8 +396,8 @@ modify("ActionBar/MessageDrawable.java", [
         1
     ),
     (
-        "nabdhBubbleEdge.setAlpha((int) (53f * alpha / 255f));",
-        "nabdhBubbleEdge.setAlpha((int) (118f * alpha / 255f));",
+        "nabdhBubbleEdge.setAlpha((int) (142f * alpha / 255f));",
+        "nabdhBubbleEdge.setAlpha((int) (160f * alpha / 255f));",
         1
     ),
 ])
