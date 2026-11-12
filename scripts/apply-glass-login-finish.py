@@ -364,6 +364,36 @@ k = replace_once(k,
     "private final static int SIDE_PADDING = 10, BUTTON_PADDING = 6;",
     "private final static int SIDE_PADDING = 4, BUTTON_PADDING = 3;",
     "expand keypad circles by enlarging available cell height")
+# Telegram's original CustomPhoneKeyboardView.onMeasure reads getWidth()
+# and getHeight(), i.e. previous layout dimensions, instead of the incoming
+# MeasureSpec. During the first frame these can be zero, so the enlarged
+# circles are still laid out against stale/small key bounds. Measure actual
+# available width/height and then use these values for 3x4 key sizing.
+measure = """        int btnWidth = (getWidth() - dp(SIDE_PADDING * 2 + BUTTON_PADDING * 2)) / 3;
+        int btnHeight = (getHeight() - dp(SIDE_PADDING * 3 + BUTTON_PADDING * 2)) / 4;"""
+# The first occurrence is onLayout (correct), the second is onMeasure.
+if k.count(measure) != 2:
+    raise SystemExit("CustomPhoneKeyboardView onLayout/onMeasure sizing has changed")
+k = k.replace(measure,
+    """        final int availableWidth = MeasureSpec.getSize(widthMeasureSpec);
+        final int availableHeight = MeasureSpec.getSize(heightMeasureSpec);
+        int btnWidth = Math.max(1,
+                (availableWidth - dp(SIDE_PADDING * 2 + BUTTON_PADDING * 2)) / 3);
+        int btnHeight = Math.max(1,
+                (availableHeight - dp(SIDE_PADDING * 3 + BUTTON_PADDING * 2)) / 4);""", 1 if False else 0)
+# replace just the second occurrence explicitly, retaining onLayout.
+original = """        int btnWidth = (getWidth() - dp(SIDE_PADDING * 2 + BUTTON_PADDING * 2)) / 3;
+        int btnHeight = (getHeight() - dp(SIDE_PADDING * 3 + BUTTON_PADDING * 2)) / 4;"""
+pos = k.index(original)
+pos2 = k.index(original, pos + len(original))
+k = k[:pos2] + """        // Measure child hit targets from the *new* parent constraints.
+        // getHeight() is stale/zero on the first layout pass.
+        final int availableWidth = MeasureSpec.getSize(widthMeasureSpec);
+        final int availableHeight = MeasureSpec.getSize(heightMeasureSpec);
+        int btnWidth = Math.max(1,
+                (availableWidth - dp(SIDE_PADDING * 2 + BUTTON_PADDING * 2)) / 3);
+        int btnHeight = Math.max(1,
+                (availableHeight - dp(SIDE_PADDING * 3 + BUTTON_PADDING * 2)) / 4);""" + k[pos2 + len(original):]
 # Constructor and updateColors both tint the same icon; handle both.
 backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
 if k.count(backspace_icon) != 2:

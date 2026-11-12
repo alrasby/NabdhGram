@@ -13,16 +13,15 @@ s = s.replace(anchor, anchor + """        // NabdhGram Glass: use the existing T
         // corners. No changes to contacts adapters, permissions or actions.
         listView.setSelectorRadius(17);
 """, 1)
-# The stock section decorator paints a single opaque WHITE wrapper behind
-# every group, even though ContactsAdapter now draws independent Glass rows.
-# Only disable the ornamental group background; leave the contacts adapter,
-# indices, search and scroll handlers unchanged.
-group = "        listView.setSections(true);"
-if s.count(group) != 1:
-    raise SystemExit("Contacts list section drawing changed")
-s = s.replace(group, "        listView.disableSections();", 1)
+# IMPORTANT: preserve Telegram's native Contacts section decoration.
+# ContactsActivity and ContactsAdapter use its section grouping, item offsets,
+# and touch/clip behavior. Replacing setSections(true) by disableSections()
+# in the earlier overlay was a regression associated with the app restarting
+# when opening Contacts. Paint individual cells without modifying sections.
+if s.count("        listView.setSections(true);") != 1:
+    raise SystemExit("Telegram Contacts section initialization changed")
 p.write_text(s, encoding="utf-8")
-print("Contacts standalone Glass rows without white section wrappers.")
+print("Contacts native sections preserved; individual row styling retained.")
 
 # The RTL contacts badge is a SimpleTextView compound drawable.
 # Give it enough intrinsic gap even with Readex Pro / Vazirmatn ascenders.
