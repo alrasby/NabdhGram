@@ -268,4 +268,32 @@ replace_selector(
             iconView.setImageResource(icon.background);""",
     "Native picker transparent drawing")
 selector.write_text(selector_src, encoding="utf-8")
+# The icon-change toast is rendered by AppIconBulletinLayout, not by
+# AppIconsSelectorCell. LocaleController's legacy resource map does not
+# recognize newly generated string IDs and prints LOC_ERR:null. Resolve
+# Nabdh-only titles from the Android resources with selected Telegram locale.
+bulletin = root / "TMessagesProj/src/main/java/org/telegram/ui/Components/AppIconBulletinLayout.java"
+bulletin_src = bulletin.read_text(encoding="utf-8")
+bulletin_old = "LocaleController.getString(icon.title)"
+if bulletin_src.count(bulletin_old) != 1:
+    raise SystemExit("App icon bulletin title anchor changed")
+bulletin_src = bulletin_src.replace(bulletin_old,
+    """(icon.key.startsWith("Nabdh") ? nabdhIconTitle(context, icon) : LocaleController.getString(icon.title))""", 1)
+bulletin_method = "    public AppIconBulletinLayout(@NonNull Context context,"
+if bulletin_src.count(bulletin_method) != 1:
+    raise SystemExit("App icon bulletin constructor anchor changed")
+bulletin_src = bulletin_src.replace(bulletin_method,
+    """    private static String nabdhIconTitle(Context context, LauncherIconController.LauncherIcon icon) {
+        java.util.Locale selected = LocaleController.getInstance().getCurrentLocale();
+        if (selected == null) return context.getString(icon.title);
+        android.content.res.Configuration configuration =
+                new android.content.res.Configuration(context.getResources().getConfiguration());
+        configuration.setLocale(selected);
+        return context.createConfigurationContext(configuration).getString(icon.title);
+    }
+
+""" + bulletin_method, 1)
+bulletin.write_text(bulletin_src, encoding="utf-8")
+
+
 print("PASS: six DISTINCT logo treatments with true transparent options and translated picker labels")
