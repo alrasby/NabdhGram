@@ -103,14 +103,23 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                         }
                     }
                 }
-                // RecyclerView binds can restore native typefaces. Don't
-                // assume previously processed labels are still up to date.
-                nabdhAppliedFonts.clear();
-                nabdhAnimatedAppliedFonts.clear();
-                nabdhFontDirty = true;
-                nabdhApplyVisibleFonts();
-                // Invalidate the native canvas-backed labels for this visible
-                // frame; never call notifyDataSetChanged on the entire chat.
+                // notifyItemRangeChanged() schedules the next layout; an
+                // immediate scan here runs BEFORE onBindViewHolder, so native
+                // settings restore their old typeface after our refresh. Use
+                // a one-shot pre-draw hook AFTER the rebind, bypassing the
+                // normal 48ms throttle only for an explicit user font change.
+                decor.getViewTreeObserver().addOnPreDrawListener(
+                        new android.view.ViewTreeObserver.OnPreDrawListener() {
+                    @Override public boolean onPreDraw() {
+                        android.view.ViewTreeObserver observer = decor.getViewTreeObserver();
+                        if (observer.isAlive()) observer.removeOnPreDrawListener(this);
+                        nabdhAppliedFonts.clear();
+                        nabdhAnimatedAppliedFonts.clear();
+                        nabdhFontDirty = false;
+                        nabdhApplyVisibleFonts();
+                        return true;
+                    }
+                });
                 decor.requestLayout();
                 decor.invalidate();
             });

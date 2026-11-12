@@ -155,6 +155,29 @@ modify("ActionBar/SimpleTextView.java", [
         1
     ),
 ])
+# Anchor the first-line glyphs to the RTL content edge, including names
+# whose first visual run is Latin. Telegram's generic branch falls back to
+# -8dp when StaticLayout.lineLeft is nonzero; the badge then lands *inside*
+# Arabic/Latin mixed names even when its width was reserved correctly.
+# Adjust only opted-in verified UserCell labels.
+modify("ActionBar/SimpleTextView.java", [
+    (
+        """            offsetX += getPaddingLeft();
+            int rightDrawableWidth = 0;""",
+        """            if (nabdhRtlBadgeBeforeText
+                    && (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT
+                    && leftDrawable != null && layout != null && layout.getLineCount() > 0) {
+                // width here excludes the drawable reservation. The draw
+                // translation adds it back, leaving the visible name right
+                // aligned and the verified star to its left.
+                offsetX = Math.round(width - layout.getLineRight(0));
+            }
+            offsetX += getPaddingLeft();
+            int rightDrawableWidth = 0;""",
+        1
+    ),
+])
+
 modify("Cells/UserCell.java", [
     (
         "        nameTextView.setDrawablePadding(dp(13));",
