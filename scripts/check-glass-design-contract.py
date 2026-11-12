@@ -126,8 +126,8 @@ assert "view instanceof org.telegram.ui.Cells.LanguageCell" in native_surfaces, 
 # Main settings uses a custom UItem factory, not any legacy TextCell.
 assert "view instanceof org.telegram.ui.SettingsActivity.SettingCell" in native_surfaces, "Actual SettingsActivity factory rows are excluded from Glass styling"
 assert "holder.itemView instanceof org.telegram.ui.SettingsActivity.SettingCell" in native_surfaces, "UniversalAdapter factory rows are excluded from Glass after binding"
-assert "nabdhOriginalAlpha * 184 / 255" in bubble, "Cached normal bubbles remain opaque"
-assert "nabdhOriginalPaintAlpha * 184 / 255" in bubble, "Canvas-drawn normal bubbles remain opaque"
+assert "nabdhOriginalAlpha * 136 / 255" in bubble, "Cached normal bubbles remain opaque"
+assert "nabdhOriginalPaintAlpha * 136 / 255" in bubble, "Canvas-drawn normal bubbles remain opaque"
 assert "crossfadeFromDrawable == null" in bubble, "Bubble translucency must preserve transition rendering"
 assert "nabdhDrawFrostedWallpaper(canvas, path)" in bubble and "nabdhDrawFrostedWallpaper(canvas, makePath())" in bubble, "Both cached and path text bubbles need blurred wallpaper"
 assert "Utilities.stackBlurBitmap(bitmap, 7)" in bubble and "nabdhLastWallpaper" in bubble, "Bubble blur must cache source wallpaper and avoid per-message reblur"
