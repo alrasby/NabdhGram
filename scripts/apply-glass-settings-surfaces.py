@@ -191,28 +191,30 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         }
     }
 
+    // Draw a fallback behind cells whose native adapters reassign their
+    // background after bind. Never mutate child View hierarchy during a
+    // RecyclerView drawing/layout pass (setBackground may requestLayout).
+    private final LiveGlassSurface fallback = new LiveGlassSurface();
+
+    @Override
+    public void onDraw(@NonNull Canvas canvas, @NonNull RecyclerView parent,
+            @NonNull RecyclerView.State state) {
+        for (int index = 0; index < parent.getChildCount(); index++) {
+            final View child = parent.getChildAt(index);
+            if (!isSettingRow(child) || isGlassCard(child)
+                    || child.getVisibility() != View.VISIBLE) continue;
+            fallback.setBounds(child.getLeft(), child.getTop(),
+                    child.getRight(), child.getBottom());
+            fallback.draw(canvas);
+        }
+    }
+
     @Override
     public void onDrawOver(@NonNull Canvas canvas, @NonNull RecyclerView parent,
             @NonNull RecyclerView.State state) {
-        final int color = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-        stroke.setColor(Color.argb(82, Color.red(color), Color.green(color), Color.blue(color)));
-        stroke.setStyle(Paint.Style.STROKE);
-        stroke.setStrokeWidth(AndroidUtilities.dpf2(1f));
-        final float inset = AndroidUtilities.dp(11);
-        final float topInset = AndroidUtilities.dp(2);
-        final float radius = AndroidUtilities.dp(20);
         for (int index = 0; index < parent.getChildCount(); index++) {
             final View child = parent.getChildAt(index);
-            if ((!isSettingRow(child) && !isGlassCard(child))
-                    || child.getVisibility() != View.VISIBLE) {
-                continue;
-            }
-            // A number of Telegram adapters replace the row background
-            // after binding (and on theme changes). Restore an actual filled
-            // Glass drawable, not merely a border, on the next draw frame.
-            if (!(child.getBackground() instanceof GlassCardLayers)) {
-                applyCardStyle(child);
-            } else {
+            if (child.getVisibility() == View.VISIBLE && isGlassCard(child)) {
                 ((GlassCardLayers) child.getBackground()).refreshThemeTint();
             }
         }
