@@ -37,6 +37,18 @@ helper = """    // NabdhGram Glass: native Telegram theme keys respect installed
 
 """
 source = source.replace(anchor, helper + anchor, 1)
+# Upstream forcibly extends each slide 16dp beyond its measured container
+# in BOTH onMeasure and onLayout. With the fixed 230dp keypad this makes
+# the login surface overflow and jump when keyboard visibility changes.
+# Remove only that synthetic overshoot; preserve Telegram's native scroll
+# and the actual software-keyboard compensation.
+overshoot_layout = "int childBottom = getHeight() + AndroidUtilities.dp(16);"
+overshoot_measure = "int childHeight = height - params.topMargin + AndroidUtilities.dp(16);"
+if source.count(overshoot_layout) != 1 or source.count(overshoot_measure) != 1:
+    raise SystemExit("Login slide overflow geometry changed")
+source = source.replace(overshoot_layout, "int childBottom = getHeight();", 1)
+source = source.replace(overshoot_measure, "int childHeight = height - params.topMargin;", 1)
+
 # Give the login canvas a restrained theme-native gradient without
 # touching the native phone keyboard, measurement or auth handlers.
 root_anchor = "        fragmentView = sizeNotifierFrameLayout;"
