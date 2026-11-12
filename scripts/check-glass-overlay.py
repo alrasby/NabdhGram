@@ -51,7 +51,8 @@ checks = {
         and "nabdhDrawFrostedWallpaper(canvas, path)" in
             (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8"),
     "Devices sessions report the NabdhGram application name":
-        'appVersion = "NabdhGram " + nabdhVersionName' in connections
+        'while (nabdhVersionName.startsWith("NandhGram ")' in connections
+        and 'appVersion = "NabdhGram " + nabdhVersionName' in connections
         and 'appVersion += " pbeta";' in connections,
     "Glass cards suppress native separator strokes without touching other pages":
         all("if (needDivider && !org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this))" in
@@ -84,6 +85,22 @@ checks = {
     "native mixed Arabic/Latin alignment uses first strong direction":
         "titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings
         and "subtitleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings,
+    "shared clipped Glass ripple covers card only":
+        "newCardBackground()" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+        and "makeRippleMask()" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+        and "nabdhCard" in selector,
+    "folder and power saver views are decorated after native binding": all(
+        "NabdhGlassRowDecoration.applyCardStyle(holder.itemView, true)" in
+            (ui / page).read_text(encoding="utf-8")
+        for page in ("FiltersSetupActivity.java", "FilterCreateActivity.java",
+                     "FilterChatlistActivity.java", "LiteModeSettingsActivity.java")),
+    "main Settings hero uses the shared Glass surface":
+        "topView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in native_settings,
+    "NabdhGram settings categories use theme-aware shared drawable": all(
+        "NabdhGlassRowDecoration.newCardBackground()" in (ui / page).read_text(encoding="utf-8")
+        for page in ("NabdhGramSettingsActivity.java", "NabdhGramFeatureCategoryActivity.java")),
     "native Glass rows include specular highlight":
         "canvas.drawLine(rect.left + round" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
@@ -207,7 +224,7 @@ checks = {
       and "NabdhFontSystemDefault" in appearance_en
       and "nabdhOriginalTypefaces" in launch,
     "login mark doubled and diagnostic toggle hidden in production":
-        "LayoutHelper.createLinear(152, 152," in
+        "LayoutHelper.createLinear(170, 170," in
         (ui / "LoginActivity.java").read_text(encoding="utf-8")
         and "&& getConnectionsManager().isTestBackend()) {" in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),

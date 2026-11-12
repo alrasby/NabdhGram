@@ -28,7 +28,8 @@ positions = [workflow.find("python3 nabdhgram/scripts/" + name) for name in orde
 assert all(pos >= 0 for pos in positions), "Missing Glass integration step"
 assert positions == sorted(positions), "Glass overlays applied out of order"
 identity_overlay = (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8")
-assert 'appVersion = "NabdhGram " + nabdhVersionName' in identity_overlay, "Telegram Devices session name still missing"
+assert 'appVersion = "NabdhGram " + nabdhVersionName' in identity_overlay
+assert "while (nabdhVersionName.startsWith(" in identity_overlay, "Repeated NandhGram / NabdhGram prefixes must be stripped", "Telegram Devices session name still missing"
 assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Install Android SDK and NDK") < workflow.index("      - name: Build branded debug APK"), "Expensive SDK/NDK setup must run only after source overlays pass"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
 assert "!themePreview && !isSelected" in bubble, "Selection or preview protection was removed"
@@ -48,11 +49,13 @@ assert "R.drawable.nabdh_keypad_delete" in login_overlay and "nabdh_keypad_delet
 assert "SIDE_PADDING = 10, BUTTON_PADDING = 6" in login_overlay, "Original keypad geometry not restored"
 assert "class NabdhCircleKey" in login_overlay and "canvas.drawCircle(" in login_overlay, "Circular keypad renderer is missing"
 assert "key_text_before" in login_overlay and "key_text_after" in login_overlay, "Circular keys must center native keypad labels"
-assert "keyRadius * .22f" in login_overlay and "keyRadius * .45f" in login_overlay, "Key labels must track actual circle size"
+assert "keyRadius * .18f" in login_overlay and "keyRadius * .48f" in login_overlay, "Key labels must track actual circle size"
 assert "numberTextPaint.setTextAlign(Paint.Align.CENTER)" in login_overlay, "Number labels are not centered"
 assert "symbolsTextPaint.setTextAlign(Paint.Align.CENTER)" in login_overlay, "Letter labels are not centered"
 assert "getWidth() * 0.25f - numberWidth / 2f" in login_overlay, "Original upstream text-layout anchor changed; update keypad patch"
 
+assert "Math.min(box.width(), box.height()) * .5f - dp(1)" in login_overlay, "Key circles were not enlarged"
+assert "Gravity.LEFT | Gravity.TOP, 16, 16, 0, 16" in login_overlay and "Gravity.LEFT | Gravity.TOP, 68, 16, 0, 16" in login_overlay, "Language/proxy actions are not left-aligned"
 assert "state_pressed" in login_overlay and "46) / 100" in login_overlay, "Pressed keys are not visibly tinted"
 assert 'backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));' in login_overlay, "Delete glyph is not theme accent"
 empty_script = (ROOT / "scripts/apply-nabdh-empty-state.py").read_text(encoding="utf-8")
@@ -66,6 +69,13 @@ assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.j
     "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java")), "Missing native settings target"
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
+assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native_surfaces, "Theme-aware card background and clipped ripple must be shared"
+assert "topView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in native_surfaces, "Settings hero must use the same Glass surface"
+remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
+for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java"):
+    assert screen in remaining, f"Missing dedicated folder / lite mode coverage for {screen}"
+assert "insert_at_method_end" in remaining and "holder.itemView, true" in remaining, "Folder and Lite adapters must be decorated AFTER bind"
+assert "apply-glass-remaining-settings.py" in workflow, "Final native screens not included in Android build"
 assert "class LiveGlassSurface" in native_surfaces and "class GlassCardLayers" in native_surfaces, "Missing real theme-aware filled cards"
 assert "user_info = ui / \"UserInfoActivity.java\"" in native_surfaces and "listView.adapter.setNabdhGlassSettings(true);" in native_surfaces, "Actual Account info rows missing Glass styling"
 assert 'GLASS_SETTINGS_SCREENS = (' in native_surfaces and all(
@@ -101,7 +111,7 @@ assert 'if (!"system-default".equals(family) || userBold)' in (ROOT / "scripts/a
 assert "boolean nativeHeading = assetPath.equals" in (ROOT / "scripts/apply-glass-global-font.py").read_text(encoding="utf-8"), "Native heading emphasis lost in selected fonts"
 assert "linear.findLastVisibleItemPosition()" in (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8"), "Font changes must only rebind visible rows"
 assert "currentType == TYPE_TEXT" in bubble, "Bubble translucency must be limited to text"
-assert "getWidth() * 0.25f" in login_overlay and "final float symbolsBaseline = centerY + keyRadius * .45f" in login_overlay, "Keypad text layout patch or compact glyph placement missing"
+assert "getWidth() * 0.25f" in login_overlay and "final float symbolsBaseline = centerY + keyRadius * .48f" in login_overlay, "Keypad text layout patch or compact glyph placement missing"
 assert '"numberTextPaint.setTextSize(dp(22));"' in login_overlay and '"symbolsTextPaint.setTextSize(dp(10));"' in login_overlay, "Phone glyphs no longer fit the circular key"
 assert "view instanceof org.telegram.ui.Cells.SessionCell" in native_surfaces, "Session details row is unstyled"
 assert 'content = content.replace(' in native_surfaces and "group_anchor" in native_surfaces, "Grouped parent backgrounds still drawn"
