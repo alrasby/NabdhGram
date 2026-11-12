@@ -155,18 +155,8 @@ p, s = read("Adapters/ContactsAdapter.java")
 anchor = """                cell.setCallCellStyle(58);
                 view = cell;"""
 styling = """                cell.setCallCellStyle(58);
-                int base = Theme.getColor(Theme.key_windowBackgroundWhite);
-                int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-                android.graphics.drawable.GradientDrawable glass =
-                        new android.graphics.drawable.GradientDrawable();
-                glass.setColor(base);
-                glass.setCornerRadius(AndroidUtilities.dp(15));
-                glass.setStroke(AndroidUtilities.dp(1),
-                        android.graphics.Color.argb(55,
-                                android.graphics.Color.red(accent),
-                                android.graphics.Color.green(accent),
-                                android.graphics.Color.blue(accent)));
                 // Same native Glass card/ripple as Settings and dialogs.
+                // No per-row unused GradientDrawable allocation.
                 cell.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
                 view = cell;"""
 s = replace_once(s, anchor, styling, "Contacts adapter USER_CELL")
