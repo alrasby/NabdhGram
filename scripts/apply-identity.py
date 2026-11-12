@@ -114,11 +114,16 @@ def main():
     for relative in ("Cells/SessionCell.java", "SessionBottomSheet.java"):
         target = root / "TMessagesProj/src/main/java/org/telegram/ui" / relative
         src = target.read_text(encoding="utf-8")
-        old = """            stringBuilder.append(session.app_name);
-            stringBuilder.append(" ").append(session.app_version);"""
+        # The details bottom sheet has 8-space indentation, whereas the
+        # SessionCell rendering branch has 12. Preserve each native scope.
+        import textwrap
+        indent = "            " if relative == "Cells/SessionCell.java" else "        "
+        old = (indent + "stringBuilder.append(session.app_name);\\n"
+               + indent + 'stringBuilder.append(" ").append(session.app_version);')
+        new = textwrap.indent(textwrap.dedent(session_label), indent).rstrip()
         if src.count(old) != 1:
             raise SystemExit(f"{relative}: native app_name+app_version display anchor changed")
-        target.write_text(src.replace(old, session_label, 1), encoding="utf-8")
+        target.write_text(src.replace(old, new, 1), encoding="utf-8")
     print(f"Identity overlay applied: {APP_ID} / {LABEL}; Devices app_name/app_version normalized")
     print("NOTE: This does not yet apply approved icon assets or configure private Telegram API credentials.")
 
