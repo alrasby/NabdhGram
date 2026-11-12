@@ -199,28 +199,11 @@ modify("Components/UniversalAdapter.java", [
         if (nabdhGlassSettings && (type == VIEW_TYPE_TEXT_SETTINGS
                 || type == VIEW_TYPE_TEXT || type == VIEW_TYPE_TEXT_CHECK
                 || type == VIEW_TYPE_SWITCH || type == VIEW_TYPE_ICON_TEXT_CHECK)) {
-            final int base = getThemedColor(Theme.key_windowBackgroundWhite);
-            final int accent = getThemedColor(Theme.key_windowBackgroundWhiteBlueText);
-            final int soft = android.graphics.Color.rgb(
-                    (android.graphics.Color.red(base) * 88 + android.graphics.Color.red(accent) * 12) / 100,
-                    (android.graphics.Color.green(base) * 88 + android.graphics.Color.green(accent) * 12) / 100,
-                    (android.graphics.Color.blue(base) * 88 + android.graphics.Color.blue(accent) * 12) / 100);
-            android.graphics.drawable.GradientDrawable surface =
-                    new android.graphics.drawable.GradientDrawable();
-            surface.setColor(soft);
-            surface.setCornerRadius(AndroidUtilities.dp(16));
-            surface.setStroke(Math.max(1, AndroidUtilities.dp(.65f)),
-                    android.graphics.Color.argb(80, android.graphics.Color.red(accent),
-                            android.graphics.Color.green(accent), android.graphics.Color.blue(accent)));
-            android.graphics.drawable.Drawable inset =
-                    new android.graphics.drawable.InsetDrawable(surface,
-                            AndroidUtilities.dp(10), AndroidUtilities.dp(2),
-                            AndroidUtilities.dp(10), AndroidUtilities.dp(2));
-            holder.itemView.setBackground(new android.graphics.drawable.RippleDrawable(
-                    android.content.res.ColorStateList.valueOf(
-                            android.graphics.Color.argb(44, android.graphics.Color.red(accent),
-                                    android.graphics.Color.green(accent), android.graphics.Color.blue(accent))),
-                    inset, null));
+            // Shared Glass renderer owns tint, stroke, hover and radius.
+            // Avoid allocating a second locally tinted GradientDrawable
+            // that the final settings overlay overwrites on every bind.
+            org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(
+                    holder.itemView, true);
         }
     }""",
         1
