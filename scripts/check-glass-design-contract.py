@@ -55,7 +55,7 @@ assert "class NabdhCircleKey" in login_overlay and "canvas.drawCircle(" in login
 assert "key_text_before" in login_overlay and "key_text_after" in login_overlay, "Circular keys must center native keypad labels"
 assert "SIDE_PADDING = 4, BUTTON_PADDING = 3" in login_overlay, "Keypad touch-cell geometry has not been enlarged"
 assert "Gravity.TOP | Gravity.CENTER_HORIZONTAL" in (ROOT / "scripts/apply-glass-login.py").read_text(encoding="utf-8"), "Login still vertically centers ghost logo height"
-assert "LayoutHelper.createLinear(170, 112," in (ROOT / "scripts/apply-glass-login.py").read_text(encoding="utf-8"), "Login logo still reserves a tall blank box"
+assert "LayoutHelper.createLinear(136, 84," in (ROOT / "scripts/apply-glass-login.py").read_text(encoding="utf-8"), "Login logo still reserves a tall blank box"
 assert "MeasureSpec.getSize(widthMeasureSpec)" in login_overlay and "MeasureSpec.getSize(heightMeasureSpec)" in login_overlay, "Keypad still measures its keys from stale view bounds"
 assert "keyRadius * .18f" in login_overlay and "keyRadius * .48f" in login_overlay, "Key labels must track actual circle size"
 assert "numberTextPaint.setTextAlign(Paint.Align.CENTER)" in login_overlay, "Number labels are not centered"
