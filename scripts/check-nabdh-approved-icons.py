@@ -32,4 +32,6 @@ for slug, alias, label in names:
         text = (res / locale / "nabdhgram_icon_variants.xml").read_text(encoding="utf-8")
         assert ('name="' + label + '"') in text, "Missing label " + locale + " " + slug
 assert "NABDH_HEX" in java and "NOX" in java, "Native icon choices accidentally replaced"
+assert java.index('NABDH_ORIGINAL("NabdhOriginalIcon"') > java.index('DEFAULT("DefaultIcon"'), "Original choice should follow default"
+assert java.index('NABDH_HEXAGONAL("NabdhHexIcon"') < java.index('VINTAGE("VintageIcon"'), "Approved art must be visible before optional Telegram icons"
 print("PASS: six selectable launcher aliases, resource labels and every Android density")

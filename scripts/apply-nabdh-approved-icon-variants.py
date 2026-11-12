@@ -55,7 +55,10 @@ with Image.open(source) as source_image:
 # Use the original Telegram launcher mechanism; six additional, FREE choices
 # are added without replacing DefaultIcon or the pre-existing variants.
 java = controller.read_text(encoding="utf-8")
-anchor = '        NOX("NoxIcon", R.mipmap.icon_2_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconNox, true);'
+# Keep the approved default first, then immediately show all six NabdhGram
+# designs in the horizontal picker instead of burying them after Telegram's
+# optional premium icons where users would need to scroll to discover them.
+anchor = '        DEFAULT("DefaultIcon", R.drawable.icon_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconDefault),'
 if java.count(anchor) != 1:
     raise SystemExit("Pinned LauncherIconController enum anchor changed")
 addition = ',\n'.join(
@@ -63,7 +66,7 @@ addition = ',\n'.join(
     'R.mipmap.nabdh_icon_' + slug + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
-java = java.replace(anchor, anchor[:-1] + ',\n' + addition + ';', 1)
+java = java.replace(anchor, anchor + '\n' + addition + ',', 1)
 controller.write_text(java, encoding="utf-8")
 
 xml = manifest.read_text(encoding="utf-8")
