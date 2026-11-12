@@ -118,7 +118,7 @@ def main():
         # SessionCell rendering branch has 12. Preserve each native scope.
         import textwrap
         indent = "            " if relative == "Cells/SessionCell.java" else "        "
-        old = (indent + "stringBuilder.append(session.app_name);\\n"
+        old = (indent + "stringBuilder.append(session.app_name);\n"
                + indent + 'stringBuilder.append(" ").append(session.app_version);')
         new = textwrap.indent(textwrap.dedent(session_label), indent).rstrip()
         if src.count(old) != 1:
