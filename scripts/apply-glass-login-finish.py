@@ -275,6 +275,15 @@ finish_instrumented = """        if (BuildVars.LOGS_ENABLED) {
     }"""
 s = replace_once(s, finish_anchor, finish_instrumented, "post-auth initialization end")
 
+# The stock SMS view uses a weighted bottomContainer with the resend action
+# pinned to its bottom edge, leaving a disproportionately empty middle.
+# Center that action inside the flexible region without moving the keypad or
+# changing its click handler; this remains responsive on different heights.
+s = replace_once(s,
+    "bottomContainer.addView(errorViewSwitcher, LayoutHelper.createFrame(currentType == VIEW_CODE_FRAGMENT_SMS ? LayoutHelper.MATCH_PARENT : LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM, 0, 0, 0, 32));",
+    "bottomContainer.addView(errorViewSwitcher, LayoutHelper.createFrame(currentType == VIEW_CODE_FRAGMENT_SMS ? LayoutHelper.MATCH_PARENT : LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.CENTER_VERTICAL, 0, 0, 0, 0));",
+    "SMS resend control vertical alignment")
+
 login.write_text(s,encoding="utf-8")
 language_vector = root / "TMessagesProj/src/main/res/drawable/nabdh_login_language.xml"
 language_vector.parent.mkdir(parents=True, exist_ok=True)
