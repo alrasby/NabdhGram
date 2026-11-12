@@ -42,12 +42,12 @@ helper = """    // A quiet polished edge and translucent wash, clipped to Telegr
         final int tintedG = (Color.green(base) * 60 + Color.green(accent) * 40) / 100;
         final int tintedB = (Color.blue(base) * 60 + Color.blue(accent) * 40) / 100;
         nabdhCrystalTint.setStyle(Paint.Style.FILL);
-        nabdhCrystalTint.setColor(Color.argb((isOut ? 22 : 16) * alpha / 255,
+        nabdhCrystalTint.setColor(Color.argb((isOut ? 60 : 46) * alpha / 255,
                 tintedR, tintedG, tintedB));
         canvas.drawPath(bubblePath, nabdhCrystalTint);
         nabdhCrystalRim.setStyle(Paint.Style.STROKE);
         nabdhCrystalRim.setStrokeWidth(AndroidUtilities.dpf2(0.85f));
-        nabdhCrystalRim.setColor(Color.argb(94 * alpha / 255,
+        nabdhCrystalRim.setColor(Color.argb(165 * alpha / 255,
                 Math.max(tintedR, 90), Math.max(tintedG, 120), Math.max(tintedB, 120)));
         canvas.drawPath(bubblePath, nabdhCrystalRim);
         // Concentrate the specular highlight on the actual upper rim.
@@ -57,7 +57,7 @@ helper = """    // A quiet polished edge and translucent wash, clipped to Telegr
         canvas.clipRect(nabdhCrystalBounds.left, nabdhCrystalBounds.top,
                 nabdhCrystalBounds.right,
                 nabdhCrystalBounds.top + AndroidUtilities.dp(14));
-        nabdhCrystalRim.setColor(Color.argb(64 * alpha / 255, 245, 255, 255));
+        nabdhCrystalRim.setColor(Color.argb(115 * alpha / 255, 245, 255, 255));
         canvas.drawPath(bubblePath, nabdhCrystalRim);
         canvas.restore();
     }
@@ -147,7 +147,7 @@ replacement = """        // Draw the native bubble path with a bounded transluce
         final int nabdhOriginalPaintAlpha = p.getAlpha();
         if (nabdhFrostedText) {
             nabdhDrawFrostedWallpaper(canvas, path);
-            p.setAlpha(nabdhOriginalPaintAlpha * 184 / 255);
+            p.setAlpha(nabdhOriginalPaintAlpha * 136 / 255);
         }
         canvas.drawPath(path, p);
         if (nabdhFrostedText) {
@@ -194,7 +194,7 @@ cached_stroke = """                background.setBounds(bounds);
                 final int nabdhOriginalAlpha = background.getAlpha();
                 if (nabdhFrostedText) {
                     nabdhDrawFrostedWallpaper(canvas, makePath());
-                    background.setAlpha(nabdhOriginalAlpha * 184 / 255);
+                    background.setAlpha(nabdhOriginalAlpha * 136 / 255);
                 }
                 background.draw(canvas);
                 if (nabdhFrostedText) {
@@ -209,7 +209,7 @@ cached_stroke = """                background.setBounds(bounds);
                     nabdhBubbleEdge.setStyle(Paint.Style.STROKE);
                     nabdhBubbleEdge.setStrokeWidth(dp(0.8f));
                     nabdhBubbleEdge.setColor(stroke);
-                    nabdhBubbleEdge.setAlpha((int) (53f * alpha / 255f));
+                    nabdhBubbleEdge.setAlpha((int) (142f * alpha / 255f));
                     canvas.drawPath(makePath(), nabdhBubbleEdge);
                 }
                 if (nabdhFrostedText) {
