@@ -68,7 +68,12 @@ phone_anchor = """            setOrientation(VERTICAL);
 if source.count(phone_anchor) != 1:
     raise SystemExit("Phone login title layout anchor changed")
 phone_with_brand = """            setOrientation(VERTICAL);
-            setGravity(Gravity.CENTER);
+            // Native ScrollView must remain for accessibility and auth flows.
+            // Position the phone form predictably above its separate 230dp
+            // keypad instead of vertically centering a tall invisible logo
+            // box inside the remaining viewport.
+            setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            setPadding(0, dp(16), 0, 0);
 
             // NabdhGram identity: shared approved artwork from the Welcome page.
             // Hide on short/landscape screens to keep the native keyboard visible.
@@ -76,8 +81,11 @@ phone_with_brand = """            setOrientation(VERTICAL);
                     && AndroidUtilities.displaySize.y >= AndroidUtilities.displaySize.x) {
                 ImageView nabdhLoginLogo = new ImageView(context);
                 nabdhLoginLogo.setImageResource(R.drawable.nabdhgram_welcome_logo);
-                nabdhLoginLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                addView(nabdhLoginLogo, LayoutHelper.createLinear(170, 170,
+                nabdhLoginLogo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                // Same approved artwork, but trim its unused vertical box.
+                // CENTER_CROP removes transparent logo padding; it does not
+                // change the asset used by the welcome screen.
+                addView(nabdhLoginLogo, LayoutHelper.createLinear(170, 112,
                         Gravity.CENTER_HORIZONTAL, 0, 0, 0, 12));
             }
 

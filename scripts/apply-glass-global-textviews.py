@@ -45,6 +45,13 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
     // Appearance is a Telegram fragment; returning to it does not restart
     // LaunchActivity. Allow explicit refresh within the same Activity.
     public void nabdhRefreshAllFonts() {
+        // Source of the delayed settings font update: an adapter rebind may
+        // restore Telegram's native paint after an earlier scan. Its weak
+        // cache still records the SAME renderKey, so the restored label gets
+        // skipped until a later fragment restart. Preserve original metrics
+        // caches, but force one refresh before and AFTER rebinding.
+        nabdhAppliedFonts.clear();
+        nabdhAnimatedAppliedFonts.clear();
         nabdhFontDirty = true;
         nabdhApplyVisibleFonts();
         android.view.View decor = getWindow() == null ? null : getWindow().getDecorView();
@@ -96,6 +103,10 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                         }
                     }
                 }
+                // RecyclerView binds can restore native typefaces. Don't
+                // assume previously processed labels are still up to date.
+                nabdhAppliedFonts.clear();
+                nabdhAnimatedAppliedFonts.clear();
                 nabdhFontDirty = true;
                 nabdhApplyVisibleFonts();
                 // Invalidate the native canvas-backed labels for this visible

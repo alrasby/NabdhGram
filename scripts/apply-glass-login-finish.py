@@ -22,10 +22,10 @@ def replace_once(source, original, replacement, label):
 
 s = login.read_text(encoding="utf-8")
 s = replace_once(s,
-    "                nabdhLoginLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);",
-    """                nabdhLoginLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                // Lift the actual approved logo slightly, not the form controls.
-                nabdhLoginLogo.setTranslationY(-dp(14));""",
+    "                nabdhLoginLogo.setScaleType(ImageView.ScaleType.CENTER_CROP);",
+    """                nabdhLoginLogo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                // Layout owns the logo position; no translation leaving a
+                // ghost-sized hit box or invisible margin under the mark.""",
     "approved artwork position")
 s = replace_once(s,
     "Gravity.CENTER_HORIZONTAL, 0, 0, 0, 12));",

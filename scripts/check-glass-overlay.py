@@ -105,8 +105,19 @@ checks = {
             (ui / page).read_text(encoding="utf-8")
         for page in ("FiltersSetupActivity.java", "FilterCreateActivity.java",
                      "FilterChatlistActivity.java", "LiteModeSettingsActivity.java")),
+    "main Settings/account header edges match cards and theme canvas":
+        "AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0" in native_settings
+        and "glassType == VIEW_TYPE_HEADER" in universal
+        and "getThemedColor(Theme.key_windowBackgroundGray)" in universal,
+    "chat settings preview uses native rounded inset and styles text options":
+        "messagesCell.setClipToOutline(true)" in (ui / "ThemeActivity.java").read_text(encoding="utf-8")
+        and "glassPreviewParams.leftMargin" in (ui / "ThemeActivity.java").read_text(encoding="utf-8")
+        and "glassPreviewParams.rightMargin" in (ui / "ThemeActivity.java").read_text(encoding="utf-8"),
+    "login phone form uses compact real artwork bounds":
+        "Gravity.TOP | Gravity.CENTER_HORIZONTAL" in login_source
+        and "LayoutHelper.createLinear(170, 112," in login_source,
     "main Settings hero uses the shared Glass surface":
-        "topView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in native_settings,
+        "topView.setBackground(new android.graphics.drawable.InsetDrawable(" in native_settings,
     "NabdhGram settings categories have no competing pre-renderer":
         not any(token in settings + feature for token in
             ("GradientDrawable glassCard =", "GradientDrawable infoCard =",

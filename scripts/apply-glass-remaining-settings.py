@@ -114,8 +114,39 @@ theme_cond = ("holder.getItemViewType() == TYPE_TEXT_SIZE"
               " || holder.getItemViewType() == TYPE_BUBBLE_RADIUS"
               " || holder.getItemViewType() == TYPE_SWIPE_GESTURE"
               " || holder.getItemViewType() == TYPE_THEME_TYPE"
-              " || holder.getItemViewType() == TYPE_NIGHT_THEME")
+              " || holder.getItemViewType() == TYPE_NIGHT_THEME"
+              " || holder.getItemViewType() == TYPE_TEXT_PREFERENCE"
+              " || holder.getItemViewType() == TYPE_TEXT_SETTING"
+              " || holder.getItemViewType() == TYPE_TEXT_CHECK")
 theme_src = insert_at_method_end(theme_src, theme_src.index(theme_marker),
                                   theme_cond, "chat appearance special controls")
+# The Telegram-native chat preview is an independent wallpaper drawing
+# (ThemePreviewMessagesCell.onDraw). It is NOT a normal Glass list row.
+# Inset its layout to the other card edges and clip its actual canvas and
+# descendants to 20dp corners without disturbing message touch gestures.
+preview_anchor = """                    view = messagesCell;
+                    break;"""
+preview_style = """                    android.view.ViewGroup.LayoutParams existingPreviewParams =
+                            messagesCell.getLayoutParams();
+                    RecyclerView.LayoutParams glassPreviewParams =
+                            new RecyclerView.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT);
+                    glassPreviewParams.leftMargin = AndroidUtilities.dp(10);
+                    glassPreviewParams.rightMargin = AndroidUtilities.dp(10);
+                    messagesCell.setLayoutParams(glassPreviewParams);
+                    messagesCell.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                        @Override
+                        public void getOutline(View view, android.graphics.Outline outline) {
+                            outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
+                                    AndroidUtilities.dp(20));
+                        }
+                    });
+                    messagesCell.setClipToOutline(true);
+                    view = messagesCell;
+                    break;"""
+if theme_src.count(preview_anchor) != 1:
+    raise SystemExit("Telegram ThemeActivity preview view constructor changed")
+theme_src = theme_src.replace(preview_anchor, preview_style, 1)
 theme.write_text(theme_src, encoding="utf-8")
 print("Glass-covered: ThemeActivity custom chat settings controls")

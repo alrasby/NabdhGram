@@ -375,7 +375,11 @@ settings_hero = ui / "SettingsActivity.java"
 hero_source = settings_hero.read_text(encoding="utf-8")
 hero_old = "        topView = new FrameLayout(context);"
 hero_new = """        topView = new FrameLayout(context);
-        topView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());"""
+        // Match the horizontal edges of Settings' own 10dp-inset cards.
+        // Do not change avatar/camera/name click regions or topView height.
+        topView.setBackground(new android.graphics.drawable.InsetDrawable(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground(),
+                AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0));"""
 if hero_source.count(hero_old) != 1:
     raise SystemExit("SettingsActivity account hero constructor changed")
 settings_hero.write_text(hero_source.replace(hero_old, hero_new, 1), encoding="utf-8")
@@ -436,7 +440,16 @@ universal_source = universal_source[:end] + """
             int glassType = holder.getItemViewType();
             // Do not turn section headers, profile hero, media, or spacer
             // rows into cards; force only these Settings-specific row types.
-            if (holder.itemView instanceof org.telegram.ui.SettingsActivity.SettingCell
+            if (holder.itemView instanceof org.telegram.ui.Cells.HeaderCell
+                    && (glassType == VIEW_TYPE_HEADER
+                            || glassType == VIEW_TYPE_BLACK_HEADER
+                            || glassType == VIEW_TYPE_LARGE_HEADER
+                            || glassType == VIEW_TYPE_ANIMATED_HEADER)) {
+                // Account section headers must blend into the settings canvas,
+                // not produce white square panels above rounded input cards.
+                holder.itemView.setBackgroundColor(
+                        getThemedColor(Theme.key_windowBackgroundGray));
+            } else if (holder.itemView instanceof org.telegram.ui.SettingsActivity.SettingCell
                     || glassType == VIEW_TYPE_TEXT_SETTINGS
                     || glassType == VIEW_TYPE_TEXT || glassType == VIEW_TYPE_TEXT_CHECK
                     || glassType == VIEW_TYPE_SWITCH || glassType == VIEW_TYPE_ICON_TEXT_CHECK) {
