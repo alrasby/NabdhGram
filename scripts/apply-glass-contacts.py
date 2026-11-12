@@ -20,7 +20,7 @@ s = s.replace(anchor, anchor + """        // NabdhGram Glass: use the existing T
 group = "        listView.setSections(true);"
 if s.count(group) != 1:
     raise SystemExit("Telegram Contacts section initialization changed")
-s = s.replace(group, group + "\\n        listView.nabdhHideSectionBackgroundOnly();", 1)
+s = s.replace(group, group + "\n        listView.nabdhHideSectionBackgroundOnly();", 1)
 p.write_text(s, encoding="utf-8")
 
 # Keep the ListSectionsDecoration registered and the section hit geometry
