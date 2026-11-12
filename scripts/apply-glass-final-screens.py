@@ -164,7 +164,7 @@ s = replace_once(s, anchor, styling, "Contacts adapter USER_CELL")
 # rather than USER_CELL. Style them at construction; keep click and section
 # semantics, headers and fast scroll untouched.
 s = replace_once(s,
-    "                view = new TextCell(mContext);\\n                break;",
+    "                view = new TextCell(mContext);\n                break;",
     """                view = new TextCell(mContext);
                 org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(view);
                 break;""",
