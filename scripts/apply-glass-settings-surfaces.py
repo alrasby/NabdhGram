@@ -65,6 +65,12 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         return child != null && child.getBackground() instanceof GlassCardLayers;
     }
 
+    // Shared by Telegram lists and by NabdhGram-owned cards/sections.
+    // Do not allocate a separate, static GradientDrawable with stale colors.
+    public static android.graphics.drawable.Drawable newCardBackground() {
+        return new GlassCardLayers();
+    }
+
     public static android.graphics.drawable.Drawable newProfileScrim() {
         // The copy menu must not share a Drawable callback with the row.
         return new GlassCardLayers();
@@ -103,8 +109,17 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         GlassCardLayers() {
             super(android.content.res.ColorStateList.valueOf(
                     Theme.getColor(Theme.key_listSelector)),
-                    new LiveGlassSurface(), null);
+                    new LiveGlassSurface(), makeRippleMask());
             lastTint = Theme.getColor(Theme.key_listSelector);
+        }
+        private static android.graphics.drawable.Drawable makeRippleMask() {
+            android.graphics.drawable.GradientDrawable mask =
+                    new android.graphics.drawable.GradientDrawable();
+            mask.setColor(Color.WHITE);
+            mask.setCornerRadius(AndroidUtilities.dp(20));
+            return new android.graphics.drawable.InsetDrawable(mask,
+                    AndroidUtilities.dp(10), AndroidUtilities.dp(2),
+                    AndroidUtilities.dp(10), AndroidUtilities.dp(2));
         }
         void refreshThemeTint() {
             // Called during RecyclerView decoration. Updating the RippleDrawable
@@ -137,7 +152,7 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
             final int blue = (Color.blue(base) * 82 + Color.blue(accent) * 18) / 100;
             float inset = AndroidUtilities.dp(10);
             float vertical = AndroidUtilities.dp(2);
-            float round = AndroidUtilities.dp(16);
+            float round = AndroidUtilities.dp(20);
             rect.set(bounds.left + inset, bounds.top + vertical,
                     bounds.right - inset, bounds.bottom - vertical);
             if (rect.width() <= 0 || rect.height() <= 0) return;
@@ -185,10 +200,11 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         stroke.setStrokeWidth(AndroidUtilities.dpf2(1f));
         final float inset = AndroidUtilities.dp(11);
         final float topInset = AndroidUtilities.dp(2);
-        final float radius = AndroidUtilities.dp(17);
+        final float radius = AndroidUtilities.dp(20);
         for (int index = 0; index < parent.getChildCount(); index++) {
             final View child = parent.getChildAt(index);
-            if (!isSettingRow(child) || child.getVisibility() != View.VISIBLE) {
+            if ((!isSettingRow(child) && !isGlassCard(child))
+                    || child.getVisibility() != View.VISIBLE) {
                 continue;
             }
             // A number of Telegram adapters replace the row background

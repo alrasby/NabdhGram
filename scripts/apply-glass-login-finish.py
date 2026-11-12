@@ -158,14 +158,14 @@ s = replace_once(s,
     """        proxyButtonView.setContentDescription(getString(R.string.ProxySettings));
         proxyButtonView.setPadding(dp(7), dp(7), dp(7), dp(7));
         sizeNotifierFrameLayout.addView(proxyButtonView,
-                LayoutHelper.createFrame(40, 40, Gravity.RIGHT | Gravity.TOP, 16, 16, 72, 16));
+                LayoutHelper.createFrame(40, 40, Gravity.LEFT | Gravity.TOP, 16, 16, 0, 16));
         nabdhLanguageButtonView = new ImageView(context);
         nabdhLanguageButtonView.setImageResource(R.drawable.nabdh_login_language);
         nabdhLanguageButtonView.setContentDescription(getString(R.string.Language));
         nabdhLanguageButtonView.setPadding(dp(8), dp(8), dp(8), dp(8));
         nabdhLanguageButtonView.setOnClickListener(v -> presentFragment(new LanguageSelectActivity()));
         sizeNotifierFrameLayout.addView(nabdhLanguageButtonView,
-                LayoutHelper.createFrame(40, 40, Gravity.RIGHT | Gravity.TOP, 16, 16, 120, 16));
+                LayoutHelper.createFrame(40, 40, Gravity.LEFT | Gravity.TOP, 68, 16, 0, 16));
         updateProxyButton(false, true);""",
     "native pre-auth language and proxy controls")
 s = replace_once(s,
@@ -310,7 +310,7 @@ k = replace_once(k,
         }
         @Override public void draw(Canvas canvas) {
             android.graphics.Rect box = getBounds();
-            float radius = Math.max(1f, Math.min(box.width(), box.height()) * .5f - dp(4));
+            float radius = Math.max(1f, Math.min(box.width(), box.height()) * .5f - dp(1));
             paint.setColor(pressed ? active : resting);
             paint.setAlpha(alpha);
             canvas.drawCircle(box.exactCenterX(), box.exactCenterY(), radius, paint);
@@ -402,14 +402,14 @@ key_text_after = """            // Both text lines share the exact center of the
             // Use the same radius as the center-aligned circular key drawable,
             // adapting to compact devices and display scales.
             final float keyRadius = Math.max(1f,
-                    Math.min(getWidth(), getHeight()) * .5f - dp(4));
-            final float numberCenter = centerY - (hasSymbols ? keyRadius * .22f : 0);
+                    Math.min(getWidth(), getHeight()) * .5f - dp(1));
+            final float numberCenter = centerY - (hasSymbols ? keyRadius * .18f : 0);
             final float numberBaseline = numberCenter
                     - (numberFont.ascent + numberFont.descent) / 2f;
             canvas.drawText(mNumber, centerX, numberBaseline, numberTextPaint);
             if (hasSymbols) {
                 final Paint.FontMetrics symbolsFont = symbolsTextPaint.getFontMetrics();
-                final float symbolsBaseline = centerY + keyRadius * .45f
+                final float symbolsBaseline = centerY + keyRadius * .48f
                         - (symbolsFont.ascent + symbolsFont.descent) / 2f;
                 canvas.drawText(mSymbols, centerX, symbolsBaseline, symbolsTextPaint);
             }"""

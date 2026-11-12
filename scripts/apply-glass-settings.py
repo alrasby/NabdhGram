@@ -56,7 +56,7 @@ s = s.replace(anchor, """        int surface = Theme.getColor(Theme.key_windowBa
                         android.content.res.ColorStateList.valueOf(
                                 dark ? 0x3346D9D2 : 0x2200878D),
                         glassCard, null);
-        card.setBackground(touchSurface);
+        card.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         card.setClipToOutline(true);""", 1)
 # Replace simple heading color with brand turquoise while retaining readability.
 anchor = "heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
@@ -258,7 +258,7 @@ s = s.replace(anchor, """        int base = Theme.getColor(Theme.key_windowBackg
         infoCard.setStroke((int) context.getResources().getDisplayMetrics().density,
                 Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         explanation.setPadding(pad, pad, pad, pad);
-        explanation.setBackground(infoCard);
+        explanation.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         content.addView(explanation);""", 1)
 # Add a working, locally persisted typography preference to the Appearance page.
 # This changes only NabdhGram-owned settings views, not Telegram chat text.
@@ -279,7 +279,7 @@ s = s.replace(anchor, anchor + """
             fontGlass.setCornerRadius(22 * context.getResources().getDisplayMetrics().density);
             fontGlass.setStroke((int) context.getResources().getDisplayMetrics().density,
                     Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-            fontCard.setBackground(fontGlass);
+            fontCard.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
             TextView fontTitle = new TextView(context);
             fontTitle.setText(context.getString(R.string.NabdhFontTitle));
             fontTitle.setTextSize(18);

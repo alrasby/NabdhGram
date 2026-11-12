@@ -77,7 +77,7 @@ phone_with_brand = """            setOrientation(VERTICAL);
                 ImageView nabdhLoginLogo = new ImageView(context);
                 nabdhLoginLogo.setImageResource(R.drawable.nabdhgram_welcome_logo);
                 nabdhLoginLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                addView(nabdhLoginLogo, LayoutHelper.createLinear(152, 152,
+                addView(nabdhLoginLogo, LayoutHelper.createLinear(170, 170,
                         Gravity.CENTER_HORIZONTAL, 0, 0, 0, 12));
             }
 

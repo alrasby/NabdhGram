@@ -76,9 +76,13 @@ def main():
     tagged_version = """            // Brand newly registered Telegram Devices sessions correctly.
             // Keep Android's actual version and the upstream beta suffix.
             String nabdhVersionName = pInfo.versionName == null ? "unknown" : pInfo.versionName;
-            if (nabdhVersionName.startsWith("NandhGram ")
+            // The package may report e.g. "NandhGram NabdhGram 13.1.1".
+            // Strip ALL leading old/new client prefixes, never only the first.
+            // Do not alter versionCode, the debug/beta suffix or user text.
+            while (nabdhVersionName.startsWith("NandhGram ")
                     || nabdhVersionName.startsWith("NabdhGram ")) {
-                nabdhVersionName = nabdhVersionName.substring(nabdhVersionName.indexOf(' ') + 1);
+                nabdhVersionName = nabdhVersionName.substring(
+                        nabdhVersionName.indexOf(' ') + 1).trim();
             }
             appVersion = "NabdhGram " + nabdhVersionName + " (" + pInfo.versionCode + ")";"""
     if connection_src.count(source_version) != 1:

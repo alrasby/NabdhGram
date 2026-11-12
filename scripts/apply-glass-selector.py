@@ -19,7 +19,9 @@ replacement = """    // Reuse clipping geometry while the user presses a dialog 
         // *above* DialogCell.onDraw. Clip that overlay rather than trying to
         // cover it from the child; leave non-dialog selectors unchanged.
         final boolean nabdhDialog = selectorView instanceof org.telegram.ui.Cells.DialogCell;
-        if (nabdhDialog) {
+        final boolean nabdhCard = nabdhDialog
+                || org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(selectorView);
+        if (nabdhCard) {
             final float density = getResources().getDisplayMetrics().density;
             nabdhDialogSelectorBounds.set(
                     selectorRect.left + 7f * density,
@@ -28,7 +30,7 @@ replacement = """    // Reuse clipping geometry while the user presses a dialog 
                     selectorRect.bottom - 3f * density);
             nabdhDialogSelectorPath.reset();
             nabdhDialogSelectorPath.addRoundRect(nabdhDialogSelectorBounds,
-                    17f * density, 17f * density, android.graphics.Path.Direction.CW);
+                    20f * density, 20f * density, android.graphics.Path.Direction.CW);
             canvas.save();
             canvas.clipPath(nabdhDialogSelectorPath);
         }
@@ -44,7 +46,7 @@ if s.count(anchor2)!=1:raise SystemExit("selector end anchor changed")
 s=s.replace(anchor2,"""        } else {
             selectorDrawable.draw(canvas);
         }
-        if (nabdhDialog) {
+        if (nabdhCard) {
             canvas.restore();
         }
     }
