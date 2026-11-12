@@ -374,14 +374,7 @@ measure = """        int btnWidth = (getWidth() - dp(SIDE_PADDING * 2 + BUTTON_P
 # The first occurrence is onLayout (correct), the second is onMeasure.
 if k.count(measure) != 2:
     raise SystemExit("CustomPhoneKeyboardView onLayout/onMeasure sizing has changed")
-k = k.replace(measure,
-    """        final int availableWidth = MeasureSpec.getSize(widthMeasureSpec);
-        final int availableHeight = MeasureSpec.getSize(heightMeasureSpec);
-        int btnWidth = Math.max(1,
-                (availableWidth - dp(SIDE_PADDING * 2 + BUTTON_PADDING * 2)) / 3);
-        int btnHeight = Math.max(1,
-                (availableHeight - dp(SIDE_PADDING * 3 + BUTTON_PADDING * 2)) / 4);""", 1 if False else 0)
-# replace just the second occurrence explicitly, retaining onLayout.
+# Replace only the onMeasure occurrence, retaining native onLayout.
 original = """        int btnWidth = (getWidth() - dp(SIDE_PADDING * 2 + BUTTON_PADDING * 2)) / 3;
         int btnHeight = (getHeight() - dp(SIDE_PADDING * 3 + BUTTON_PADDING * 2)) / 4;"""
 pos = k.index(original)

@@ -88,9 +88,9 @@ for name, marker, condition, list_anchor, label in pages:
     if s.count(marker) != 1:
         raise SystemExit(f"{label}: adapter type changed")
     if "setSections();" in list_anchor:
-        # setSections() draws an opaque group background behind the child
-        # Glass cards; keep sections' adapter data but not those backgrounds.
-        replacement = f"        // {label}: independent rounded Glass cards, not an opaque section."
+        # Preserve Telegram section offsets and grouping for folder drag and
+        # accessibility; only the backdrop paint becomes independent Glass.
+        replacement = list_anchor + "\n        listView.nabdhHideSectionBackgroundOnly();"
     else:
         replacement = list_anchor
     s = require_replace(s, list_anchor,

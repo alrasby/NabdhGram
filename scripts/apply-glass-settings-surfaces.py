@@ -222,6 +222,23 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
 }
 """, encoding="utf-8")
 
+# One owner for the native section background suppression used by Contacts,
+# Settings, Folders and Lite Mode. Preserve section offsets, selector geometry
+# and accessibility; only skip Telegram's broad grouped fill callback.
+list_path = ui / "Components/RecyclerListView.java"
+list_src = list_path.read_text(encoding="utf-8")
+section_anchor = "    public void disableSections() {"
+if list_src.count(section_anchor) != 1:
+    raise SystemExit("RecyclerListView section API changed")
+section_helper = """    public void nabdhHideSectionBackgroundOnly() {
+        drawSectionBackground = null;
+        invalidate();
+    }
+
+"""
+list_path.write_text(list_src.replace(section_anchor,
+        section_helper + section_anchor, 1), encoding="utf-8")
+
 # Telegram cells still draw flat native divider lines ON TOP of the inset
 # rounded card. Hide only those separators when this exact Glass background is
 # installed; retain separators unchanged in all other application screens.
@@ -260,9 +277,10 @@ for name in GLASS_SETTINGS_SCREENS:
     if source.count(anchor) != 1:
         raise SystemExit(f"{name}: settings list anchor changed ({source.count(anchor)} occurrences)")
     radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\n"
-    source = source.replace(anchor, """
-        // NabdhGram: remove the large white parent section. Draw each native
-        // cell as its own theme-aware Glass card, without touching its data.
+    source = source.replace(anchor, anchor + """
+        // Keep native Telegram section offsets/geometry and accessibility.
+        // Hide only its large group paint; independent cells own Glass fill.
+        listView.nabdhHideSectionBackgroundOnly();
 """ + radius + """        listView.addItemDecoration(
                 new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
     # Add the themed filled card AFTER each native row has been bound.
@@ -391,8 +409,9 @@ for old, new in (
         raise SystemExit("UserInfoActivity custom editor/account action anchor changed")
     user_info_src = user_info_src.replace(old, new, 1)
 account_anchor = "        listView.setSections();\n        listView.setClipToPadding(false);"
-account_card = """        // NabdhGram Glass: style real account Settings factory rows while
-        // keeping name/bio editors and privacy actions native and functional.
+account_card = """        // Preserve native section geometry and account input behavior.
+        listView.setSections();
+        listView.nabdhHideSectionBackgroundOnly();
         listView.adapter.setNabdhGlassSettings(true);
         listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration());
         listView.setClipToPadding(false);"""
@@ -450,7 +469,7 @@ for activity in ("SettingsActivity.java",):
         raise SystemExit(f"{activity}: native grouped background anchor changed")
     content = content.replace(
         group_anchor,
-        "        // NabdhGram: no large grouped background behind individual Glass cards.",
+        group_anchor + "\n        listView.nabdhHideSectionBackgroundOnly();",
         1)
     page.write_text(content, encoding="utf-8")
 

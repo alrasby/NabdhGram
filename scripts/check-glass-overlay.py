@@ -67,8 +67,9 @@ checks = {
                          "NotificationsCheckCell", "TextDetailCell", "TextRadioCell"))
         and "public static boolean isGlassCard(View child)" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
-    "all settings parent group backgrounds absent, child cards retained":
-        all("listView.setSections();" not in (ui / page).read_text(encoding="utf-8")
+    "all settings preserve native section geometry, hide only group fill":
+        all("listView.setSections();" in (ui / page).read_text(encoding="utf-8")
+            and "listView.nabdhHideSectionBackgroundOnly();" in (ui / page).read_text(encoding="utf-8")
             for page in ("SettingsActivity.java", "ProfileActivity.java",
                 "NotificationsSettingsActivity.java", "PrivacySettingsActivity.java",
                 "DataSettingsActivity.java", "ThemeActivity.java",
@@ -87,7 +88,9 @@ checks = {
         and "if (!settingsRow && !isSettingRow(child)) return;" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         and "extends android.graphics.drawable.RippleDrawable" in
-            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+        and selector.count("public void nabdhHideSectionBackgroundOnly()") == 1
+        and "listView.setSections(true);" in contacts,
     "native mixed Arabic/Latin alignment uses first strong direction":
         "titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings
         and "subtitleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings,
