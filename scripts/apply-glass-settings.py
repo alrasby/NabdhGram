@@ -325,6 +325,10 @@ s = s.replace(anchor, anchor + """
                 }
             };
             final Runnable refreshDrawnText = () -> {
+                // Rebuild native chat TextPaint sizes/metrics when switching
+                // between custom Arabic families, then reapply the selected
+                // font to every known canvas-drawn paint below.
+                Theme.createChatResources(context, true);
                 // Telegram has cached TextPaint/StaticLayout for chat labels.
                 // Update known paints before the same notification it uses for
                 // theme-driven cell invalidation; retain the active theme.
@@ -365,8 +369,8 @@ s = s.replace(anchor, anchor + """
                     // cannot leave the font selection pending on disk.
                     prefs.edit().putString("font_family", family).commit();
                     org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
-                    refreshTypography.run();
                     refreshDrawnText.run();
+                    refreshTypography.run();
                     fontTitle.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                     explanation.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                 });
@@ -433,8 +437,8 @@ s = s.replace(anchor, anchor + """
             boldOption.setOnCheckedChangeListener((button, checked) -> {
                 prefs.edit().putBoolean("font_bold", checked).commit();
                 org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
-                refreshTypography.run();
                 refreshDrawnText.run();
+                refreshTypography.run();
             });
             fontCard.addView(boldOption);
             TextView refreshInfo = new TextView(context);

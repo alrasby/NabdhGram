@@ -20,6 +20,7 @@ s = s.replace(field_anchor, field_anchor + """    private final Paint nabdhBubbl
     private static java.lang.ref.WeakReference<Drawable> nabdhLastWallpaper;
     private static Bitmap nabdhBlurredWallpaper;
     private static int nabdhBackdropWidth, nabdhBackdropHeight;
+    private static int nabdhBackdropTheme, nabdhBackdropOrientation;
 """ , 1)
 # Use a low-resolution cached blur. The backing drawable may belong to the
 # active chat (chat-specific theme), not to the global theme.
@@ -34,9 +35,13 @@ helper = """    private static synchronized Bitmap nabdhGetBlurredWallpaper(Draw
         final int screenH = Math.max(1, AndroidUtilities.displaySize.y);
         final int width = 96;
         final int height = Math.max(1, Math.round(width * (float) screenH / screenW));
+        final int themeColor = Theme.getColor(Theme.key_chat_wallpaper);
+        final int orientation = screenW > screenH ? 1 : 0;
         if (nabdhLastWallpaper != null && nabdhLastWallpaper.get() == wallpaper
                 && nabdhBlurredWallpaper != null && !nabdhBlurredWallpaper.isRecycled()
-                && nabdhBackdropWidth == width && nabdhBackdropHeight == height) {
+                && nabdhBackdropWidth == width && nabdhBackdropHeight == height
+                && nabdhBackdropTheme == themeColor
+                && nabdhBackdropOrientation == orientation) {
             return nabdhBlurredWallpaper;
         }
         // Cache a genuinely blurred bitmap; NEVER blur each visible message.
@@ -54,6 +59,8 @@ helper = """    private static synchronized Bitmap nabdhGetBlurredWallpaper(Draw
             nabdhLastWallpaper = new java.lang.ref.WeakReference<>(wallpaper);
             nabdhBackdropWidth = width;
             nabdhBackdropHeight = height;
+            nabdhBackdropTheme = themeColor;
+            nabdhBackdropOrientation = orientation;
             return bitmap;
         } catch (RuntimeException | OutOfMemoryError ignored) {
             // Preserve native bubbles if the wallpaper cannot be sampled.

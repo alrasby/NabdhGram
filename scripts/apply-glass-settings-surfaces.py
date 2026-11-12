@@ -349,6 +349,17 @@ settings_rtl_src = (settings_rtl_src[:cell_start]
         + settings_rtl_src[cell_end:])
 settings_rtl.write_text(settings_rtl_src, encoding="utf-8")
 
+# Style the actual SettingsActivity account hero as its own (larger)
+# theme-aware surface. Leave child avatar/name/camera touch handlers intact.
+settings_hero = ui / "SettingsActivity.java"
+hero_source = settings_hero.read_text(encoding="utf-8")
+hero_old = "        topView = new FrameLayout(context);"
+hero_new = """        topView = new FrameLayout(context);
+        topView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());"""
+if hero_source.count(hero_old) != 1:
+    raise SystemExit("SettingsActivity account hero constructor changed")
+settings_hero.write_text(hero_source.replace(hero_old, hero_new, 1), encoding="utf-8")
+
 # The Account details screen is UserInfoActivity, not ProfileActivity. The
 # latter is a different Telegram profile viewer. Its actual phone, handle,
 # birthday and channel items use SettingsActivity.SettingCell.Factory and

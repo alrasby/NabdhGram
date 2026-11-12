@@ -98,6 +98,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 }
                 nabdhFontDirty = true;
                 nabdhApplyVisibleFonts();
+                // Invalidate the native canvas-backed labels for this visible
+                // frame; never call notifyDataSetChanged on the entire chat.
                 decor.requestLayout();
                 decor.invalidate();
             });
