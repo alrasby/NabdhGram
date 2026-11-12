@@ -108,6 +108,13 @@ if source.count(phoneInput) != 1:
 source = source.replace(phoneInput,
     "            phoneOutlineView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());\n" + phoneInput, 1)
 
+# Country picker is a bounded native 58dp surface, unlike PhoneView.
+countryInput = "            addView(countryOutlineView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 58, 16, 24, 16, 14));"
+if source.count(countryInput) != 1:
+    raise SystemExit("Phone country selector Glass anchor changed")
+source = source.replace(countryInput,
+    "            countryOutlineView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());\n" + countryInput, 1)
+
 # OutlineTextContainerView retains its native focus outline and labels.
 # Do not change edit-text padding, listeners, layout size or auth transitions.
 for name in ("countryOutlineView", "phoneOutlineView", "outlineCodeField"):
