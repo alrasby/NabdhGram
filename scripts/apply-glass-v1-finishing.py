@@ -166,14 +166,52 @@ modify("ActionBar/SimpleTextView.java", [
             int rightDrawableWidth = 0;""",
         """            if (nabdhRtlBadgeBeforeText
                     && (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT
-                    && leftDrawable != null && layout != null && layout.getLineCount() > 0) {
-                // width here excludes the drawable reservation. The draw
-                // translation adds it back, leaving the visible name right
-                // aligned and the verified star to its left.
-                offsetX = Math.round(width - layout.getLineRight(0));
+                    && (leftDrawable != null || rightDrawable != null)
+                    && layout != null && layout.getLineCount() > 0) {
+                // Both Telegram bot-verification (leftDrawable) and premium
+                // status (rightDrawable) can be present on this RTL name.
+                // Align the GLYPHS to the same right edge as ordinary names,
+                // then place both adornments after the visual left edge.
+                int rightStatusSpace = rightDrawable != null && !rightDrawableHidden
+                        && !rightDrawableOutside && !rightDrawableInside
+                        ? (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale)
+                            + drawablePadding : 0;
+                offsetX = Math.round(width + rightStatusSpace - layout.getLineRight(0));
             }
             offsetX += getPaddingLeft();
             int rightDrawableWidth = 0;""",
+        1
+    ),
+    (
+        """        if (rightDrawable != null && !rightDrawableHidden && rightDrawableScale > 0 && !rightDrawableOutside && !rightDrawableInside) {
+            int x = textOffsetX + textWidth + drawablePadding + (int) -scrollingOffset;
+            if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL ||
+                    (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT) {
+                x += offsetX;
+            }
+            int dw = (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale);
+            int dh = (int) (rightDrawable.getIntrinsicHeight() * rightDrawableScale);""",
+        """        if (rightDrawable != null && !rightDrawableHidden && rightDrawableScale > 0 && !rightDrawableOutside && !rightDrawableInside) {
+            int x = textOffsetX + textWidth + drawablePadding + (int) -scrollingOffset;
+            if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL ||
+                    (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT) {
+                x += offsetX;
+            }
+            int dw = (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale);
+            int dh = (int) (rightDrawable.getIntrinsicHeight() * rightDrawableScale);
+            if (nabdhRtlBadgeBeforeText
+                    && (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT
+                    && layout != null && layout.getLineCount() > 0) {
+                // Premium stars/emoji statuses are rightDrawable in Telegram.
+                // For a right-aligned Arabic name their visual location is
+                // AFTER the last glyph (to its left), never in the middle
+                // of Arabic or mixed-script text.
+                int verificationSpace = leftDrawable != null && !leftDrawableOutside
+                        ? leftDrawable.getIntrinsicWidth() + drawablePadding : 0;
+                x = Math.max(0, Math.round(offsetX + textOffsetX
+                        + layout.getLineLeft(0) - verificationSpace
+                        - dw - drawablePadding - dp(3)));
+            }""",
         1
     ),
 ])
