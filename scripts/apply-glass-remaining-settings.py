@@ -118,7 +118,8 @@ theme_cond = ("holder.getItemViewType() == TYPE_TEXT_SIZE"
               " || holder.getItemViewType() == TYPE_TEXT_PREFERENCE"
               " || holder.getItemViewType() == TYPE_TEXT_SETTING"
               " || holder.getItemViewType() == TYPE_TEXT_CHECK"
-              " || holder.getItemViewType() == TYPE_APP_ICON")
+              " || holder.getItemViewType() == TYPE_APP_ICON"
+              " || holder.getItemViewType() == TYPE_CHOOSE_COLOR")
 theme_src = insert_at_method_end(theme_src, theme_src.index(theme_marker),
                                   theme_cond, "chat appearance special controls")
 # The Telegram-native chat preview is an independent wallpaper drawing
@@ -154,7 +155,7 @@ theme_src = theme_src.replace(preview_anchor, preview_style, 1)
 # RippleDrawable with a flat ColorDrawable when the user switches themes.
 # Leave that legacy theme-color callback only on non-Glass/preview cells.
 theme_background_before = """themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{TextSettingsCell.class, TextCheckCell.class, HeaderCell.class, BrightnessControlCell.class, ThemeTypeCell.class, TextSizeCell.class, BubbleRadiusCell.class, ChatListCell.class, NotificationsCheckCell.class, ThemesHorizontalListCell.class, TintRecyclerListView.class, TextCell.class, PeerColorActivity.ChangeNameColorCell.class, SwipeGestureSettingsView.class, DefaultThemesPreviewCell.class, AppIconsSelectorCell.class}, null, null, null, Theme.key_windowBackgroundWhite));"""
-theme_background_after = """themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{HeaderCell.class, BrightnessControlCell.class, ThemesHorizontalListCell.class, TintRecyclerListView.class, PeerColorActivity.ChangeNameColorCell.class}, null, null, null, Theme.key_windowBackgroundWhite));"""
+theme_background_after = """themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{HeaderCell.class, BrightnessControlCell.class, ThemesHorizontalListCell.class, TintRecyclerListView.class}, null, null, null, Theme.key_windowBackgroundWhite));"""
 theme_src = require_replace(theme_src, theme_background_before, theme_background_after,
                             "ThemeActivity must retain live Glass on theme change")
 # The Chat Settings message-size sample is the NESTED TextSizeCell.
