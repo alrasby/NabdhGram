@@ -376,8 +376,11 @@ checks = {
         and '"serif".equals(family)' in typefaces,
     "appearance font preference persisted": 'getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
         and 'putString("font_family", family).commit()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
-    "settings card native ripple": "new android.graphics.drawable.RippleDrawable(" in settings
-        and "card.setBackground(new android.graphics.drawable.RippleDrawable(" in settings,
+    "settings card native ripple": "card.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in settings
+        and "extends android.graphics.drawable.RippleDrawable" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+        and "makeRippleMask()" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
     "pinned decoration never draws a box across mixed chat rows":
         "hasFirstPinnedRow" not in dialogs and "pinnedGroupPaint" not in dialogs,
     "profile channel preview keeps its own layout": "getParent() instanceof ProfileChannelCell" in cell,
