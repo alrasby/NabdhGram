@@ -102,7 +102,7 @@ assert "if (!settingsRow && !isSettingRow(child)) return;" in native_surfaces, "
 
 assert "applyCardStyle(holder.itemView)" in native_surfaces, "Legacy adapters still draw original flat rows"
 assert 'for activity in ("SettingsActivity.java",):' in native_surfaces, "Main settings grouped wrapper removal missing"
-assert 'source = source.replace(anchor, """' in native_surfaces, "Nested settings still install outer section drawing"
+assert 'source = source.replace(anchor, anchor + """' in native_surfaces, "Nested settings must preserve native sections while hiding only group paint"
 assert 'extends android.graphics.drawable.RippleDrawable' in native_surfaces, "Native per-row pressed state/ripple missing"
 assert 'new GlassCardLayers(previous)' not in native_surfaces, "Opaque parent row background still retained"
 assert "view instanceof org.telegram.ui.Cells.LanguageCell" in native_surfaces, "Language selection row is unstyled"
