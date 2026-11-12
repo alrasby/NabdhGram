@@ -34,6 +34,12 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
             new java.util.WeakHashMap<>();
     private final java.util.WeakHashMap<org.telegram.ui.Components.AnimatedTextView, Integer> nabdhAnimatedOriginalStyles =
             new java.util.WeakHashMap<>();
+    // A recycled native row can restore an old Typeface while keeping the
+    // same preference key. Track the actual applied face, not only renderKey.
+    private final java.util.WeakHashMap<android.widget.TextView, android.graphics.Typeface>
+            nabdhExpectedTextFaces = new java.util.WeakHashMap<>();
+    private final java.util.WeakHashMap<org.telegram.ui.Components.AnimatedTextView, android.graphics.Typeface>
+            nabdhExpectedAnimatedFaces = new java.util.WeakHashMap<>();
     private boolean nabdhFontApplying;
     private boolean nabdhFontDirty = true;
     private boolean nabdhRowRefreshPending;
@@ -126,6 +132,23 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
         }
     }
 
+    // Some Telegram setting rows use explicitly supplied Typefaces that are
+    // not Roboto, DEFAULT or any bundled font handle. Arabic labels must
+    // still follow the user-selected family. Exclude private-use icon glyphs,
+    // as well as focused EditTexts handled by the existing guard below.
+    private static boolean nabdhContainsArabic(CharSequence value) {
+        if (value == null) return false;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if ((c >= 0x0600 && c <= 0x06ff)
+                    || (c >= 0x0750 && c <= 0x077f)
+                    || (c >= 0x08a0 && c <= 0x08ff)
+                    || (c >= 0xfb50 && c <= 0xfdff)
+                    || (c >= 0xfe70 && c <= 0xfeff)) return true;
+        }
+        return false;
+    }
+
     private void nabdhApplyVisibleFonts() {
         final android.view.View root = getWindow() == null ? null : getWindow().getDecorView();
         if (root == null || nabdhFontApplying) return;
@@ -180,7 +203,9 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                         || current.equals(org.telegram.messenger.AndroidUtilities.getTypeface(
                                 "fonts/rmedium.ttf"))
                         || packagedTextFaces.contains(current);
-                if (eligible && !renderKey.equals(applied)) {
+                android.graphics.Typeface expected = nabdhExpectedAnimatedFaces.get(animated);
+                if (eligible && (!renderKey.equals(applied)
+                        || expected != null && !expected.equals(current))) {
                     Float original = nabdhAnimatedOriginalPx.get(animated);
                     if (original == null) {
                         original = animated.getPaint().getTextSize();
@@ -207,6 +232,7 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                     animated.requestLayout();
                     animated.invalidate();
                     nabdhAnimatedAppliedFonts.put(animated, renderKey);
+                    nabdhExpectedAnimatedFaces.put(animated, animated.getPaint().getTypeface());
                 }
             }
             // Unfocused native input fields (including profile name/bio)
@@ -238,8 +264,14 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                         || current.equals(android.graphics.Typeface.SERIF)
                         || current.equals(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
                         || current.equals(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
-                if (applied != null || normalFont) {
-                    if (!renderKey.equals(applied)) {
+                // TextView subclasses backed by Arabic strings (including
+                // headers and legacy settings) must not be excluded merely
+                // because the previous font is a custom Typeface instance.
+                boolean arabicLabel = nabdhContainsArabic(label.getText());
+                if (applied != null || normalFont || arabicLabel) {
+                    android.graphics.Typeface expected = nabdhExpectedTextFaces.get(label);
+                    if (!renderKey.equals(applied)
+                            || expected != null && !expected.equals(current)) {
                         Integer originalStyle = nabdhOriginalTextStyles.get(label);
                         if (originalStyle == null) {
                             originalStyle = current == null
@@ -278,6 +310,7 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                                 label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx);
                             }
                             nabdhAppliedFonts.put(label, renderKey);
+                            nabdhExpectedTextFaces.put(label, label.getTypeface());
                         }
                     }
                 }
