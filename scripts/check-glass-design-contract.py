@@ -29,7 +29,7 @@ assert all(pos >= 0 for pos in positions), "Missing Glass integration step"
 assert positions == sorted(positions), "Glass overlays applied out of order"
 identity_overlay = (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8")
 assert 'appVersion = "NabdhGram " + nabdhVersionName' in identity_overlay
-assert "while (nabdhVersionName.startsWith(" in identity_overlay, "Repeated NandhGram / NabdhGram prefixes must be stripped", "Telegram Devices session name still missing"
+assert "while (nabdhVersionName.startsWith(" in identity_overlay, "Repeated NandhGram / NabdhGram prefixes must be stripped"
 assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Install Android SDK and NDK") < workflow.index("      - name: Build branded debug APK"), "Expensive SDK/NDK setup must run only after source overlays pass"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
 assert "!themePreview && !isSelected" in bubble, "Selection or preview protection was removed"
