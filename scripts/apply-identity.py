@@ -84,11 +84,42 @@ def main():
                 nabdhVersionName = nabdhVersionName.substring(
                         nabdhVersionName.indexOf(' ') + 1).trim();
             }
-            appVersion = "NabdhGram " + nabdhVersionName + " (" + pInfo.versionCode + ")";"""
+            appVersion = nabdhVersionName + " (" + pInfo.versionCode + ")";"""
     if connection_src.count(source_version) != 1:
         raise SystemExit("ConnectionsManager app_version anchor changed")
     connection.write_text(connection_src.replace(source_version, tagged_version, 1), encoding="utf-8")
-    print(f"Identity overlay applied: {APP_ID} / {LABEL}; MTProto new-session brand applied")
+    # Telegram's server returns app_name (registered API application) and
+    # app_version (this client) as SEPARATE fields. SessionCell/BottomSheet
+    # concatenate both. The API application still carries the historic
+    # NandhGram typo: normalize only THAT name locally, and strip prefixes
+    # from historic version strings, without altering server auth data or
+    # names of unrelated clients.
+    session_label = """            String nabdhDisplayApp = session.app_name;
+            String nabdhDisplayVersion = session.app_version;
+            if ("NandhGram".equalsIgnoreCase(nabdhDisplayApp)
+                    || "NabdhGram".equalsIgnoreCase(nabdhDisplayApp)) {
+                nabdhDisplayApp = "NabdhGram";
+                if (nabdhDisplayVersion != null) {
+                    while (nabdhDisplayVersion.startsWith("NandhGram ")
+                            || nabdhDisplayVersion.startsWith("NabdhGram ")) {
+                        nabdhDisplayVersion = nabdhDisplayVersion.substring(
+                                nabdhDisplayVersion.indexOf(' ') + 1).trim();
+                    }
+                }
+            }
+            stringBuilder.append(nabdhDisplayApp);
+            if (nabdhDisplayVersion != null && !nabdhDisplayVersion.isEmpty()) {
+                stringBuilder.append(" ").append(nabdhDisplayVersion);
+            }"""
+    for relative in ("Cells/SessionCell.java", "SessionBottomSheet.java"):
+        target = root / "TMessagesProj/src/main/java/org/telegram/ui" / relative
+        src = target.read_text(encoding="utf-8")
+        old = """            stringBuilder.append(session.app_name);
+            stringBuilder.append(" ").append(session.app_version);"""
+        if src.count(old) != 1:
+            raise SystemExit(f"{relative}: native app_name+app_version display anchor changed")
+        target.write_text(src.replace(old, session_label, 1), encoding="utf-8")
+    print(f"Identity overlay applied: {APP_ID} / {LABEL}; Devices app_name/app_version normalized")
     print("NOTE: This does not yet apply approved icon assets or configure private Telegram API credentials.")
 
 if __name__ == "__main__":

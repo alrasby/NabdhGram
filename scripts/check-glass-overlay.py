@@ -50,10 +50,16 @@ checks = {
             (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
         and "nabdhDrawFrostedWallpaper(canvas, path)" in
             (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8"),
-    "Devices sessions report the NabdhGram application name":
+    "Devices source sends the version separately from the registered app name":
         'while (nabdhVersionName.startsWith("NandhGram ")' in connections
-        and 'appVersion = "NabdhGram " + nabdhVersionName' in connections
+        and 'appVersion = nabdhVersionName + " (" + pInfo.versionCode + ")";' in connections
         and 'appVersion += " pbeta";' in connections,
+    "Devices list and detail normalize historic spelling/prefixes":
+        all('"NandhGram".equalsIgnoreCase(nabdhDisplayApp)' in
+                (ui / page).read_text(encoding="utf-8")
+            and 'while (nabdhDisplayVersion.startsWith("NandhGram ")' in
+                (ui / page).read_text(encoding="utf-8")
+            for page in ("Cells/SessionCell.java", "SessionBottomSheet.java")),
     "Glass cards suppress native separator strokes without touching other pages":
         all("if (needDivider && !org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this))" in
             (ui / "Cells" / (name + ".java")).read_text(encoding="utf-8")
