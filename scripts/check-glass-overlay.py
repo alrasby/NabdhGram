@@ -292,7 +292,8 @@ checks = {
     "appearance RTL layout": "content.setLayoutDirection(" in feature
         and "LocaleController.isRTL" in feature,
     "composer native RTL hint renderer enabled": "messageEditText.setSupportRtlHint(true)" in composer,
-    "appearance font options in Glass surface": "fontCard.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in feature
+    "appearance font options in Glass surface": "fontCard.setBackground(" in feature
+        and "org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());" in feature
         and "fontCard.addView(choices);" in feature,
     "all selected fonts bundled": all((font_assets / name).is_file() and (font_assets / name).stat().st_size > 10000 for name in font_files),
     "font options mapped to native renderer": all(name in launch for name in font_files),
@@ -365,7 +366,10 @@ checks = {
         "public void nabdhRefreshAllFonts()" in launch
         and "nabdhRefreshAllFonts();" in feature,
     "Glass settings colors follow active theme":
-        "Theme.key_windowBackgroundWhiteBlueText" in feature
+        "Theme.key_windowBackgroundWhiteBlueText" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+        and "Theme.key_windowBackgroundWhite" in
+            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         and "NabdhGlassRowDecoration.newCardBackground()" in feature
         and "GradientDrawable fontGlass =" not in feature
         and "GradientDrawable infoCard =" not in feature,
