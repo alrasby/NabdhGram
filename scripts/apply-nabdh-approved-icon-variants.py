@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 """Install the six selected NabdhGram launcher variants from the user's artwork.
 
-The repository's approved WEBP is a 3x2 atlas of individually cropped original
-designs (256x256 each). Never create replacement logos or change auth/branding.
+Six independently rendered backgrounds, masks, and frameless options are
+composed around the approved TRANSPARENT glyph, not cropped from a screenshot.
 Existing Telegram/approved default icons and launcher aliases are preserved.
 """
 from pathlib import Path
 import re
+import math
 import sys
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 
 if len(sys.argv) != 2:
     raise SystemExit("Usage: apply-nabdh-approved-icon-variants.py TELEGRAM_SOURCE")
 
 repository = Path(__file__).resolve().parents[1]
 root = Path(sys.argv[1]).resolve()
-source = repository / "branding/approved/NabdhGram_approved_launcher_variants.webp"
+source = repository / "branding/approved/nabdhgram-welcome-transparent.png"
 res = root / "TMessagesProj/src/main/res"
 manifest = root / "TMessagesProj/src/main/AndroidManifest.xml"
 controller = root / "TMessagesProj/src/main/java/org/telegram/ui/LauncherIconController.java"
@@ -23,34 +24,101 @@ if not source.is_file() or not manifest.is_file() or not controller.is_file():
     raise SystemExit("Approved icon atlas or pinned Telegram sources are missing")
 
 VARIANTS = (
-    ("original", "NabdhOriginalIcon", "NabdhIconOriginal", "Original", "الأصلية"),
-    ("dark", "NabdhDarkIcon", "NabdhIconDark", "Dark frame", "الإطار الداكن"),
-    ("light", "NabdhLightIcon", "NabdhIconLight", "Light frame", "الإطار الفاتح"),
-    ("teal", "NabdhTealIcon", "NabdhIconTeal", "Teal frame", "الإطار التركوازي"),
+    ("original", "NabdhOriginalIcon", "NabdhIconOriginal", "iPhone Glass", "آيفون الزجاجية"),
+    ("dark", "NabdhDarkIcon", "NabdhIconDark", "Samsung Style", "أسلوب سامسونج"),
+    ("light", "NabdhLightIcon", "NabdhIconLight", "Light Turquoise", "التركوازية الفاتحة"),
+    ("teal", "NabdhTealIcon", "NabdhIconTeal", "Turquoise · No Frame", "التركوازية الشفافة"),
     ("circular", "NabdhCircularIcon", "NabdhIconCircular", "Circular", "الدائرية"),
-    ("hexagonal", "NabdhHexIcon", "NabdhIconHex", "Hexagonal", "السداسية"),
+    ("hexagonal", "NabdhHexIcon", "NabdhIconHex", "Silver · No Frame", "الفضية الشفافة"),
 )
-densities = (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
-             ("xxhdpi", 144), ("xxxhdpi", 192))
-with Image.open(source) as source_image:
-    source_image.load()
-    if source_image.format != "WEBP" or source_image.size != (768, 512):
-        raise SystemExit("Six original tiles must be a 768x512 WEBP atlas")
-    atlas = source_image.convert("RGB")
-    for index, (slug, _, _, _, _) in enumerate(VARIANTS):
-        left, top = (index % 3) * 256, (index // 3) * 256
-        tile = atlas.crop((left, top, left + 256, top + 256))
-        for density, pixels in densities:
-            # Keep the full approved drawing inside native launcher masks.
-            art_size = round(pixels * 0.88)
-            scaled = tile.resize((art_size, art_size), Image.Resampling.LANCZOS)
-            canvas = Image.new("RGB", (pixels, pixels), (4, 37, 42))
-            canvas.paste(scaled, ((pixels - art_size) // 2,
-                                  (pixels - art_size) // 2))
-            out_dir = res / ("mipmap-" + density)
-            out_dir.mkdir(parents=True, exist_ok=True)
-            canvas.save(out_dir / ("nabdh_icon_" + slug + ".png"),
-                        format="PNG", optimize=True)
+# Source is the identical glyph used for the app's welcome branding.
+# Only icon BACKGROUNDS and masks change. Never stretch or redraw the emblem.
+S = 512
+with Image.open(source) as raw:
+    if raw.format != "PNG":
+        raise SystemExit("The original transparent emblem must be PNG")
+    rgba = raw.convert("RGBA")
+    if rgba.getchannel("A").getextrema()[0] >= 255:
+        raise SystemExit("Welcome emblem must have transparent background")
+    bbox = rgba.getchannel("A").point(lambda value: 255 if value >= 12 else 0).getbbox()
+    if bbox is None or bbox[2] - bbox[0] < 32:
+        raise SystemExit("Transparent emblem is empty or too small")
+    emblem = rgba.crop(bbox)
+
+def make_mask(shape):
+    mask = Image.new("L", (S, S), 0)
+    draw = ImageDraw.Draw(mask)
+    if shape == "circle":
+        draw.ellipse((25, 25, S - 25, S - 25), fill=255)
+    elif shape == "squircle":
+        points = []
+        for degrees in range(360):
+            angle = math.pi * degrees / 180
+            def curve(v):
+                return math.copysign(abs(v) ** (2.0 / 4.5), v)
+            points.append((S / 2 + 235 * curve(math.cos(angle)),
+                           S / 2 + 235 * curve(math.sin(angle))))
+        draw.polygon(points, fill=255)
+    else:
+        draw.rounded_rectangle((19, 19, S - 19, S - 19), radius=109, fill=255)
+    return mask.filter(ImageFilter.GaussianBlur(.45))
+
+def compose_icon(slug):
+    image = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    palettes = {
+        "original": ((1, 59, 72), (2, 112, 119), (1, 31, 49)),
+        "dark": ((2, 51, 65), (5, 122, 127), (0, 47, 59)),
+        "light": ((181, 255, 252), (87, 238, 229), (2, 169, 182)),
+        "circular": ((1, 66, 74), (3, 135, 133), (1, 42, 55))
+    }
+    if slug in palettes:
+        form = "circle" if slug == "circular" else (
+            "squircle" if slug in ("dark", "light") else "square")
+        background = Image.new("RGBA", (S, S))
+        draw = ImageDraw.Draw(background)
+        top, middle, bottom = palettes[slug]
+        for y in range(S):
+            t = y / float(S - 1)
+            a, b, p = (top, middle, t * 2) if t < .5 else (
+                middle, bottom, (t - .5) * 2)
+            rgb = tuple(round(a[k] * (1 - p) + b[k] * p) for k in range(3))
+            draw.line((0, y, S, y), fill=(*rgb, 255))
+        background.putalpha(make_mask(form))
+        image.alpha_composite(background)
+        # A restrained border only for iPhone-style and circular choices.
+        if slug in ("original", "circular"):
+            highlight = Image.new("RGBA", (S, S))
+            line = ImageDraw.Draw(highlight)
+            if slug == "circular":
+                line.ellipse((29, 29, S - 29, S - 29),
+                             outline=(110, 250, 242, 115), width=2)
+            else:
+                line.rounded_rectangle((22, 22, S - 22, S - 22),
+                    radius=106, outline=(104, 255, 245, 95), width=2)
+            image.alpha_composite(highlight)
+    mark = emblem.copy()
+    mark.thumbnail((412 if slug in ("teal", "hexagonal") else 395, 275),
+                   Image.Resampling.LANCZOS)
+    x, y = (S - mark.width) // 2, (S - mark.height) // 2
+    shadow = Image.new("RGBA", (S, S))
+    silhouette = Image.new("RGBA", mark.size, (1, 20, 28, 0))
+    strength = .16 if slug in ("teal", "hexagonal") else .45
+    silhouette.putalpha(mark.getchannel("A").point(
+        lambda value: round(value * strength)))
+    shadow.alpha_composite(silhouette, (x + 3, y + 11))
+    image.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(8)))
+    image.alpha_composite(mark, (x, y))
+    return image
+
+for slug, _, _, _, _ in VARIANTS:
+    icon = compose_icon(slug)
+    for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
+                            ("xxhdpi", 144), ("xxxhdpi", 192)):
+        directory = res / ("mipmap-" + density)
+        directory.mkdir(parents=True, exist_ok=True)
+        icon.resize((pixels, pixels), Image.Resampling.LANCZOS).save(
+            directory / ("nabdh_icon_" + slug + ".png"),
+            format="PNG", optimize=True)
 
 # Use the original Telegram launcher mechanism; six additional, FREE choices
 # are added without replacing DefaultIcon or the pre-existing variants.
@@ -99,7 +167,7 @@ preview = res / "drawable/nabdh_icon_preview_background.xml"
 preview.parent.mkdir(parents=True, exist_ok=True)
 preview.write_text(
     '<shape xmlns:android="http://schemas.android.com/apk/res/android" '
-    'android:shape="rectangle"><solid android:color="#04252A"/></shape>\n',
+    'android:shape="rectangle"><solid android:color="#00000000"/></shape>\n',
     encoding="utf-8")
 
 for folder, label_index in (("values", 3), ("values-ar", 4)):
@@ -112,4 +180,57 @@ for folder, label_index in (("values", 3), ("values-ar", 4)):
     lines.append('</resources>')
     (directory / "nabdhgram_icon_variants.xml").write_text(
         "\n".join(lines) + "\n", encoding="utf-8")
-print("PASS: six original NabdhGram icon choices added to native launcher aliases and picker")
+# AppIconsSelectorCell displays LOC_ERR:null for newly generated R.string IDs
+# when using Telegram's legacy LocaleController.getString(int) mapping.
+# Resolve those six names directly in the selected Telegram locale.
+selector = root / "TMessagesProj/src/main/java/org/telegram/ui/Cells/AppIconsSelectorCell.java"
+selector_src = selector.read_text(encoding="utf-8")
+def replace_selector(before, after, label):
+    global selector_src
+    if selector_src.count(before) != 1:
+        raise SystemExit(f"{label}: upstream picker anchor changed")
+    selector_src = selector_src.replace(before, after, 1)
+
+replace_selector(
+    "                titleView.setText(LocaleController.getString(icon.title));",
+    """                titleView.setText(icon.key.startsWith("Nabdh")
+                        ? nabdhLocalizedIconTitle(icon) : LocaleController.getString(icon.title));""",
+    "New icon title binding")
+replace_selector(
+    "        private void bind(LauncherIconController.LauncherIcon icon) {",
+    """        private String nabdhLocalizedIconTitle(LauncherIconController.LauncherIcon icon) {
+            java.util.Locale selected = LocaleController.getInstance().getCurrentLocale();
+            if (selected == null) return getContext().getString(icon.title);
+            android.content.res.Configuration configuration = new android.content.res.Configuration(
+                    getContext().getResources().getConfiguration());
+            configuration.setLocale(selected);
+            return getContext().createConfigurationContext(configuration).getString(icon.title);
+        }
+
+        private void bind(LauncherIconController.LauncherIcon icon) {""",
+    "Locale-aware Nabdh icon labels")
+replace_selector(
+    "        private float progress;",
+    "        private float progress;\n        private boolean nabdhFrameless;",
+    "Icon preview framing flag")
+replace_selector(
+    "            canvas.drawRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(ICONS_ROUND_RADIUS), AndroidUtilities.dp(ICONS_ROUND_RADIUS), fillPaint);",
+    """            if (!nabdhFrameless) {
+                canvas.drawRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(ICONS_ROUND_RADIUS), AndroidUtilities.dp(ICONS_ROUND_RADIUS), fillPaint);
+            }""",
+    "Transparent preview backplate")
+replace_selector(
+    "            canvas.drawRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(ICONS_ROUND_RADIUS), AndroidUtilities.dp(ICONS_ROUND_RADIUS), outlinePaint);",
+    """            if (!nabdhFrameless || progress > 0.01f) {
+                canvas.drawRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(ICONS_ROUND_RADIUS), AndroidUtilities.dp(ICONS_ROUND_RADIUS), outlinePaint);
+            }""",
+    "Transparent preview outline")
+replace_selector(
+    "            iconView.setImageResource(icon.background);",
+    """            nabdhFrameless = "NabdhTealIcon".equals(icon.key)
+                    || "NabdhHexIcon".equals(icon.key);
+            iconView.setOuterPadding(icon.key.startsWith("Nabdh") ? 0 : AndroidUtilities.dp(5));
+            iconView.setImageResource(icon.background);""",
+    "Native picker transparent drawing")
+selector.write_text(selector_src, encoding="utf-8")
+print("PASS: six DISTINCT logo treatments with true transparent options and translated picker labels")
