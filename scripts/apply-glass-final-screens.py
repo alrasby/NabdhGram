@@ -160,6 +160,15 @@ styling = """                cell.setCallCellStyle(58);
                 cell.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
                 view = cell;"""
 s = replace_once(s, anchor, styling, "Contacts adapter USER_CELL")
+# The two native Contacts actions (invite friends, recent calls) are TEXT_CELL
+# rather than USER_CELL. Style them at construction; keep click and section
+# semantics, headers and fast scroll untouched.
+s = replace_once(s,
+    "                view = new TextCell(mContext);\\n                break;",
+    """                view = new TextCell(mContext);
+                org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(view);
+                break;""",
+    "Contacts adapter action row Glass surface")
 p.write_text(s, encoding="utf-8")
 
 # 3. Profile channel header and body currently share a hard 102dp measured
