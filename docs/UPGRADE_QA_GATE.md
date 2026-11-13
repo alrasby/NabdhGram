@@ -175,3 +175,22 @@ sense of UI coverage. Validate normal/Bold font, smallest and largest UI
 scale, long Arabic help text, actual scroll/touch/hit regions and the three
 bubble presets on a real device. Do not post or upload QA screens that
 contain personal chats or one-time login codes.
+
+## Experimental Header row icon and RTL alignment
+
+On the official 13.2.2 Settings screen, the experimental
+`SettingsActivity` row id **27** ("Header settings" / "رأس الصفحة")
+had `iconResId == 0`; Telegram's native `SettingCell` then hides its
+28dp icon container and shifts the title 2dp, producing a visibly
+unbalanced row in Arabic. The overlay now supplies a dedicated top-bar
+vector (`nabdh_settings_header`) through the **same native factory**
+as Round Video (id 24), Voice Recorder (id 26), and the three Debug rows.
+The existing gradient, RTL icon slot, 50dp minimum row, click action
+(`HeaderSettingsActivity`) and accessibility behavior remain unchanged.
+
+Verify on Android in Arabic/English and both themes: Header icon on the
+right in Arabic, left in English; icon 28dp and text align identically to
+Round Video and Voice Recorder. Check all three Processing/Debug rows
+have correctly placed icons and scrolling/taps still work. This is a
+visual acceptance criterion and needs a new APK; source checks alone
+cannot certify device appearance.

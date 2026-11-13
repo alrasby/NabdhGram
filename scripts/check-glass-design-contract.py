@@ -87,6 +87,11 @@ assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.j
     "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java")), "Missing native settings target"
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
+diagnostic_icons = (ROOT / "scripts/apply-glass-diagnostic-icons.py").read_text(encoding="utf-8")
+assert '"header": (' in diagnostic_icons and "'0, getString(R.string.HeaderSettings)))'" in diagnostic_icons, "Experimental Header row lacks its native vector icon"
+assert 'R.drawable.nabdh_settings_header, getString(R.string.HeaderSettings)))' in diagnostic_icons, "Header icon not bound to its original action"
+assert len([label for label in ('"video":', '"mic":', '"header":', '"logs":', '"history":', '"trash":') if label in diagnostic_icons]) == 6, "Experimental and Debug icons incomplete"
+assert "apply-glass-diagnostic-icons.py Telegram-upstream" in workflow, "Header icon not applied during pinned build"
 assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native_surfaces, "Theme-aware card background and clipped ripple must be shared"
 for obsolete in ("GradientDrawable glassCard =", "GradientDrawable infoCard =", "GradientDrawable fontGlass =", "RippleDrawable touchSurface ="):
     assert obsolete not in settings, f"Second per-card surface allocation survived: {obsolete}"
