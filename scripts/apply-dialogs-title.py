@@ -16,7 +16,22 @@ def main():
                 actionBar.setTitle("NabdhGram", statusDrawable);"""
     if s.count(old) != 1:
         raise SystemExit(f"Expected one pinned dialogs title anchor; found {s.count(old)}")
-    p.write_text(s.replace(old, new, 1), encoding="utf-8")
+    s = s.replace(old, new, 1)
+    # The main list resumes after navigation, language and theme changes.
+    # Restrict the title guard to main chats (never archive/search/share).
+    resume = "    public void onResume() {\n        super.onResume();"
+    guard = """    public void onResume() {
+        super.onResume();
+        if (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect
+                && folderId == 0 && communityId == 0
+                && TextUtils.isEmpty(searchString) && actionBar != null
+                && statusDrawable != null) {
+            actionBar.setTitle("NabdhGram", statusDrawable);
+        }"""
+    if s.count(resume) != 1:
+        raise SystemExit("DialogsActivity resume title anchor changed")
+    s = s.replace(resume, guard, 1)
+    p.write_text(s, encoding="utf-8")
     print("NabdhGram main dialogs title overlay applied.")
 
 if __name__ == "__main__":

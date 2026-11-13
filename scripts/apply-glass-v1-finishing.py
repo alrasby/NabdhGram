@@ -339,7 +339,13 @@ modify("Components/OutlineTextContainerView.java", [
         "    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);",
         """    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private boolean nabdhSoftGlass;
+    private boolean nabdhBorderless;
     private final Paint nabdhSoftFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    public void setNabdhBorderless(boolean enabled) {
+        nabdhBorderless = enabled;
+        invalidate();
+    }
 
     public void setNabdhSoftGlass(boolean enabled) {
         nabdhSoftGlass = enabled;
@@ -348,18 +354,34 @@ modify("Components/OutlineTextContainerView.java", [
         1
     ),
     (outline_draw_anchor, outline_draw_replacement, 1),
+    # Suppress only the outline strokes on the login phone/country fields.
+    # Keep labels, input focus state and validation logic unchanged.
+    ("""        canvas.save();
+        rect.set(getPaddingLeft() + AndroidUtilities.dp(PADDING_LEFT - PADDING_TEXT),""",
+     """        if (!nabdhBorderless) {
+        canvas.save();
+        rect.set(getPaddingLeft() + AndroidUtilities.dp(PADDING_LEFT - PADDING_TEXT),""", 1),
+    ("""        canvas.drawLine(left, lineY, fromRight + (left - fromRight) * (useCenter ? titleProgress : 1f), lineY, outlinePaint);
+
+        canvas.save();""",
+     """        canvas.drawLine(left, lineY, fromRight + (left - fromRight) * (useCenter ? titleProgress : 1f), lineY, outlinePaint);
+        }
+
+        canvas.save();""", 1),
 ])
 modify("LoginActivity.java", [
     (
         "countryOutlineView = new OutlineTextContainerView(context);",
         """countryOutlineView = new OutlineTextContainerView(context);
-            countryOutlineView.setNabdhSoftGlass(true);""",
+            countryOutlineView.setNabdhSoftGlass(true);
+            countryOutlineView.setNabdhBorderless(true);""",
         1
     ),
     (
         "phoneOutlineView = new OutlineTextContainerView(context);",
         """phoneOutlineView = new OutlineTextContainerView(context);
-            phoneOutlineView.setNabdhSoftGlass(true);""",
+            phoneOutlineView.setNabdhSoftGlass(true);
+            phoneOutlineView.setNabdhBorderless(true);""",
         1
     ),
     (
