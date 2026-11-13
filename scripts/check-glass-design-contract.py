@@ -91,7 +91,7 @@ assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native
 for obsolete in ("GradientDrawable glassCard =", "GradientDrawable infoCard =", "GradientDrawable fontGlass =", "RippleDrawable touchSurface ="):
     assert obsolete not in settings, f"Second per-card surface allocation survived: {obsolete}"
 assert "scroll.setBackground(new GradientDrawable(" not in settings, "NabdhGram scroll snapshots old theme colors"
-assert "topView.setBackground(" in native_surfaces and "NabdhGlassRowDecoration.newCardBackground());" in native_surfaces, "Main Settings hero must use the shared card renderer"
+assert "topView.setBackground(" in native_surfaces and "NabdhGlassRowDecoration.newHeroBackground());" in native_surfaces, "Main Settings hero must use the soft Glass renderer"
 remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
 for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java", "ThemeActivity.java"):
     assert screen in remaining, f"Missing dedicated folder / lite mode coverage for {screen}"
@@ -151,7 +151,7 @@ assert "public void nabdhHideSectionBackgroundOnly()" in native_surfaces, "Glass
 assert "nabdhSuppressLegacySectionFill" in native_surfaces and "bitmapSectionsItemDecoration.setDrawBackground(false)" in native_surfaces, "Telegram 13.2 bitmap section fills can still appear"
 assert "newOpaquePageBackground()" in native_surfaces and "Theme.key_windowBackgroundGray" in native_surfaces and "PixelFormat.OPAQUE" in native_surfaces, "Nested settings may leak content from previous fragments"
 assert "contentView.setBackground(" in native_surfaces and "Main Settings root/list initialization anchor changed" in native_surfaces, "Main Settings needs an opaque root-level canvas"
-assert "topView.setBackground(" in native_surfaces and "newCardBackground());" in native_surfaces, "Account hero needs the shared one-inset Glass renderer"
+assert "topView.setBackground(" in native_surfaces and "newHeroBackground());" in native_surfaces, "Account hero must use one inset"
 assert "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_surfaces, "Double-inset account hero regressed"
 assert 'settings_source.replace(enable_anchor, enable_anchor' not in native_surfaces, "Main Settings must not add a redundant ItemDecoration"
 
@@ -186,4 +186,11 @@ assert "proxyDrawable.setConnected(false, connected, animated);" in login_overla
 assert "loginNetwork.resumeNetworkMaybe();" in login_overlay, "Native MTProto preflight is missing"
 assert "nabdhSendCodeStartedMs" in login_overlay and "nabdhSignInStartedMs" in login_overlay, "Privacy-safe auth performance timings missing"
 assert "codeFieldContainer.codeField.length * 45L + 180L" in login_overlay, "Correct-code animation delay still long"
+assert "contentView.setBackground(" in native_surfaces and "listView.adapter.setApplyBackground(false);" in native_surfaces, "Account root must be opaque and native white row fill disabled"
+assert "setNabdhBorderless(boolean enabled)" in finishing_ui and "if (!nabdhBorderless)" in finishing_ui, "Phone and country must use borderless native renderer"
+assert "setNabdhBorderless(true)" in finishing_ui, "Login phone and country must explicitly opt in to borderless fields"
+assert "LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8" in (ROOT / "scripts/apply-nabdh-qr-login.py").read_text(encoding="utf-8"), "QR login must shrink horizontally"
+assert '<string name="AppName">NabdhGram</string>' in (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8"), "In-app AppName remains Telegram"
+assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Main dialogs title still unbranded"
+assert "newHeroBackground()" in native_surfaces and "hero.setAlpha(190)" in native_surfaces, "Main hero remains near-white opaque"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")
