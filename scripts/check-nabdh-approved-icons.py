@@ -62,7 +62,9 @@ with Image.open(native_splash) as image:
     image.load()
     assert image.size == (1080, 1080) and image.mode in ("RGBA", "P"), "Splash foreground must be centered transparent approved PNG"
     rgba = image.convert("RGBA")
-    assert rgba.getpixel((0, 0))[3] == 0 and rgba.getpixel((540, 540))[3] > 0, "Splash emblem must be visible and within Android mask"
+    bounds = rgba.getchannel("A").getbbox()
+    assert rgba.getpixel((0, 0))[3] == 0 and bounds is not None, "Splash mark must be nonempty and transparent outside"
+    assert 100 < bounds[0] < bounds[2] < 980 and 100 < bounds[1] < bounds[3] < 980, "Splash logo exceeds Android safe region"
 manifest_start = 'android:theme="@style/Theme.TMessages.Start"'
 assert manifest_start in manifest, "Native Telegram launch theme no longer applied"
 app_style = (root / "TMessagesProj_App/src/main/res/values-v31/nabdhgram_splash.xml").read_text(encoding="utf-8")
