@@ -34,6 +34,10 @@ assert "pm.getActivityInfo(target, 0)" not in icon_overlay, "Disabled alias quer
 assert "nabdhSetIconVerified(LauncherIcon icon)" in icon_overlay, "Launcher change requires verified success result"
 assert "LauncherIconController.nabdhSetIconVerified(icon)" in icon_overlay, "Icon picker still shows success on failed launcher switch"
 assert "NabdhIconApplyFailed" in icon_overlay, "Localized launcher failure must be visible"
+splash_patch = (ROOT / "scripts/apply-brand-icons.py").read_text(encoding="utf-8")
+assert 'old_splash' in splash_patch and '@drawable/tg_splash_320' in splash_patch and '@drawable/nabdhgram_launcher_foreground' in splash_patch, "Android 12 native startup logo patch removed"
+assert "native_drawable = root / \"TMessagesProj/src/main/res/drawable-nodpi\"" in splash_patch, "Native module startup icon asset not installed"
+assert "values-v31/styles.xml" in splash_patch, "Android 12 startup theme not patched"
 identity_overlay = (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8")
 assert 'appVersion = nabdhVersionName + " (" + pInfo.versionCode + ")";' in identity_overlay
 assert "Cells/SessionCell.java" in identity_overlay and '"NandhGram".equalsIgnoreCase(nabdhDisplayApp)' in identity_overlay, "SessionCell must correct only this client app_name"

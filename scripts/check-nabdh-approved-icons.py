@@ -46,4 +46,27 @@ for locale in ("values", "values-ar"):
 assert "NABDH_HEX" in java and "NOX" in java, "Native icon choices accidentally replaced"
 assert java.index('NABDH_ORIGINAL("NabdhOriginalIcon"') > java.index('DEFAULT("DefaultIcon"'), "Original choice should follow default"
 assert java.index('NABDH_HEXAGONAL("NabdhHexIcon"') < java.index('VINTAGE("VintageIcon"'), "Approved art must be visible before optional Telegram icons"
+# The Android 12+ OS startup animation uses Theme.TMessages.Start from
+# TMessagesProj/res/values-v31/styles.xml, not a launcher alias. Keep it
+# branded even on cold start after the app icon picker changes alias.
+styles = (res / "values-v31/styles.xml").read_text(encoding="utf-8")
+assert '<item name="android:windowSplashScreenAnimatedIcon">@drawable/nabdhgram_launcher_foreground</item>' in styles, "Native Android 12 splash still references Telegram logo"
+assert '<item name="android:windowSplashScreenAnimatedIcon">@drawable/tg_splash_320</item>' not in styles, "Official Telegram launch splash must not return"
+assert '<item name="android:windowSplashScreenBackground">#04252A</item>' in styles, "Native Android 12 splash background mismatches NabdhGram brand"
+native_splash = res / "drawable-nodpi/nabdhgram_launcher_foreground.png"
+app_splash = root / "TMessagesProj_App/src/main/res/drawable-nodpi/nabdhgram_launcher_foreground.png"
+assert native_splash.is_file() and app_splash.is_file(), "Approved splash foreground missing from native or app module"
+import hashlib
+assert hashlib.sha256(native_splash.read_bytes()).digest() == hashlib.sha256(app_splash.read_bytes()).digest(), "Native and app startup foreground art must match"
+with Image.open(native_splash) as image:
+    image.load()
+    assert image.size == (1080, 1080) and image.mode in ("RGBA", "P"), "Splash foreground must be centered transparent approved PNG"
+    rgba = image.convert("RGBA")
+    bounds = rgba.getchannel("A").getbbox()
+    assert rgba.getpixel((0, 0))[3] == 0 and bounds is not None, "Splash mark must be nonempty and transparent outside"
+    assert 100 < bounds[0] < bounds[2] < 980 and 100 < bounds[1] < bounds[3] < 980, "Splash logo exceeds Android safe region"
+manifest_start = 'android:theme="@style/Theme.TMessages.Start"'
+assert manifest_start in manifest, "Native Telegram launch theme no longer applied"
+app_style = (root / "TMessagesProj_App/src/main/res/values-v31/nabdhgram_splash.xml").read_text(encoding="utf-8")
+assert '@drawable/nabdhgram_launcher_foreground' in app_style, "App-level Android 12 style reverts startup icon"
 print("PASS: six selectable launcher aliases, resource labels and every Android density")
