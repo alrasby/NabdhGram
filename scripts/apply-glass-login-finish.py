@@ -427,12 +427,22 @@ k = k[:pos2] + """        // Measure child hit targets from the *new* parent con
                 (availableWidth - dp(SIDE_PADDING * 2 + BUTTON_PADDING * 2)) / 3);
         int btnHeight = Math.max(1,
                 (availableHeight - dp(SIDE_PADDING * 3 + BUTTON_PADDING * 2)) / 4);""" + k[pos2 + len(original):]
-# Constructor and updateColors both tint the same icon; handle both.
+# Maintain backspace tint through constructor and live theme updates.
+# Telegram 13.2.x uses ThemeBind in the constructor and a cached backColor
+# in updateColors(); leave the new binding/cache intact.
 backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
-if k.count(backspace_icon) != 2:
-    raise SystemExit("Backspace icon anchors changed")
-k = k.replace(backspace_icon,
-    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
+if k.count(backspace_icon) == 2:
+    k = k.replace(backspace_icon,
+        "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
+else:
+    modern_constructor = "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);"
+    modern_update = "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);"
+    if k.count(modern_constructor) != 1 or k.count(modern_update) != 1:
+        raise SystemExit("Backspace icon anchors changed")
+    k = k.replace(modern_constructor,
+        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlueText, PorterDuff.Mode.SRC_ATOP);", 1)
+    k = k.replace(modern_update,
+        "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);", 1)
 k = replace_once(k,
     "numberTextPaint.setTextSize(dp(24));",
     "numberTextPaint.setTextSize(dp(22));",
