@@ -17,9 +17,9 @@ verify("NabdhBubblePalette.backgroundAlpha(" in script
        and "NabdhBubblePalette.edgeAlpha(" in script
        and "TYPE_TEXT || currentType == TYPE_MEDIA" in script,
        "text and media must share native draw policy")
-verify("nabdhOriginalAlpha * 136 / 255" not in script
-       and "nabdhOriginalPaintAlpha * 136 / 255" not in script,
-       "old opaque/transparent split remains in the final overlay")
+verify('"gradient normalized opacity"' in script
+       and '"cached normalized opacity"' in script,
+       "source overlay does not replace both old 136/255 alpha paths")
 verify("currentType == TYPE_TEXT) nabdhDrawFrostedWallpaper" in script,
        "actual media photos must never be blurred")
 verify("Math.abs(lightness(bubbleColor) - lightness(wallpaperColor))" in palette,
