@@ -53,6 +53,11 @@ page = read("NabdhGramFeatureCategoryActivity.java")
 guard("NabdhGlassStyle.current()" in bubble and "nabdhStyle == 2" in bubble
       and "nabdhDrawFrostedWallpaper" in bubble,
       "native cached-path Liquid Glass not applied")
+guard("private android.graphics.LinearGradient nabdhLiquidShader;" in bubble
+      and "nabdhLiquidShader == null || nabdhLiquidStyleCache != style" in bubble
+      and "nabdhLiquidMatrix.setTranslate(0, nabdhLiquidBounds.top);" in bubble
+      and "nabdhDrawLiquidLight(canvas, bubblePath, nabdhStyle, accent);" in bubble,
+      "native Liquid/Crystal gradient lacks theme/style cache or path alignment")
 guard("NabdhContextLens.show" in composer and "isSecretChat()" in composer
       and "new AIEditorAlert" in composer, "composer lost safe integration or native AI Editor")
 guard("NabdhIntelligenceTitle" in hub and "addNabdhLensTools" in page

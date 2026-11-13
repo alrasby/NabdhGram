@@ -4,6 +4,11 @@
 
 - Reuse native Telegram MessageDrawable text path, chat wallpaper sampling,
   theme colors, native transitions, message grouping and tail geometry.
+- **Implementation technique:** Material 3-inspired shape/contrast and
+  restrained liquid-glass-style highlights, authored in our own Java painter;
+  no Apple assets or proprietary blur implementation. A 128dp theme-aware
+  light-gradient shader is cached per style/accent and translated over native
+  bubble bounds, instead of being recreated during list scrolling.
 - Three persistent style presets: **Soft Glass** (low contrast rim and no
   highlight), **Liquid Glass** (balanced rim and specular), **Crystal Glass**
   (higher contrast rim and highlight). Default is Liquid Glass. Full-screen
