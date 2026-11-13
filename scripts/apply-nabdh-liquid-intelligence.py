@@ -31,6 +31,55 @@ for filename in ("NabdhGlassStyle.java", "NabdhContextLens.java"):
 # blur. Tune its tint/rim only; never allocate bitmaps, views or models per draw.
 bubble = ui / "ActionBar/MessageDrawable.java"
 src = bubble.read_text(encoding="utf-8")
+# Reuse a cached fixed-size light shader. Width/height changes of
+# recycled message cells never cause shader/bitmap allocations.
+src = patch(src,
+    """    private final Paint nabdhCrystalTint = new Paint(Paint.ANTI_ALIAS_FLAG);""",
+    """    private final Paint nabdhCrystalTint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint nabdhLiquidLight = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Matrix nabdhLiquidMatrix = new Matrix();
+    private final RectF nabdhLiquidBounds = new RectF();
+    private android.graphics.LinearGradient nabdhLiquidShader;
+    private int nabdhLiquidStyleCache = -1;
+    private int nabdhLiquidAccentCache;""",
+    "cached native bubble specular paints")
+src = patch(src,
+    """    private void nabdhDrawCrystalSurface(Canvas canvas, Path bubblePath) {""",
+    """    private void nabdhDrawLiquidLight(Canvas canvas, Path bubblePath, int style, int accent) {
+        if (style == org.telegram.ui.Components.NabdhGlassStyle.SOFT) return;
+        if (nabdhLiquidShader == null || nabdhLiquidStyleCache != style
+                || nabdhLiquidAccentCache != accent) {
+            final int top = style == org.telegram.ui.Components.NabdhGlassStyle.CRYSTAL ? 48 : 30;
+            final int bottom = style == org.telegram.ui.Components.NabdhGlassStyle.CRYSTAL ? 28 : 14;
+            nabdhLiquidShader = new android.graphics.LinearGradient(
+                    0, 0, 0, AndroidUtilities.dp(128),
+                    new int[] {
+                        Color.argb(top, 255, 255, 255),
+                        Color.argb(8, 250, 255, 255),
+                        Color.argb(0, 255, 255, 255),
+                        Color.argb(bottom, Color.red(accent),
+                                Color.green(accent), Color.blue(accent))
+                    },
+                    new float[] {0f, 0.28f, 0.70f, 1f},
+                    android.graphics.Shader.TileMode.CLAMP);
+            nabdhLiquidLight.setShader(nabdhLiquidShader);
+            nabdhLiquidStyleCache = style;
+            nabdhLiquidAccentCache = accent;
+        }
+        bubblePath.computeBounds(nabdhLiquidBounds, true);
+        nabdhLiquidMatrix.setTranslate(0, nabdhLiquidBounds.top);
+        nabdhLiquidShader.setLocalMatrix(nabdhLiquidMatrix);
+        nabdhLiquidLight.setAlpha(alpha);
+        canvas.drawPath(bubblePath, nabdhLiquidLight);
+    }
+
+    private void nabdhDrawCrystalSurface(Canvas canvas, Path bubblePath) {""",
+    "native cached refraction ramp")
+src = patch(src,
+    """        canvas.drawPath(bubblePath, nabdhCrystalTint);""",
+    """        canvas.drawPath(bubblePath, nabdhCrystalTint);
+        nabdhDrawLiquidLight(canvas, bubblePath, nabdhStyle, accent);""",
+    "native bubble light reflection")
 src = patch(src,
     "        final int accent = getColor(Theme.key_windowBackgroundWhiteBlueText);",
     """        final int nabdhStyle = org.telegram.ui.Components.NabdhGlassStyle.current();
