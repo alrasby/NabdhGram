@@ -178,7 +178,7 @@ assert "nabdhContainsArabic(label.getText())" in global_fonts and "nabdhExpected
 assert "nabdhExpectedAnimatedFaces" in global_fonts, "Animated native labels need rebinding drift detection"
 assert "final boolean telegramTextFace" in global_fonts, "Telegram-native typefaces excluded from UI scale"
 assert '"nabdh:secondary-text".equals(label.getTag())' in global_fonts, "Global bold still destroys explanatory text hierarchy"
-assert 'description.setTag(\\"nabdh:secondary-text\\");' in (ROOT / "scripts/apply-glass-settings.py").read_text(encoding="utf-8"), "Settings card descriptions need normal weight"
+assert 'description.setTag("nabdh:secondary-text");' in (ROOT / "scripts/apply-glass-final-screens.py").read_text(encoding="utf-8"), "Final Settings card builder must preserve readable description weight"
 assert 'explanation.setTag("nabdh:secondary-text");' in (ROOT / "scripts/apply-glass-settings.py").read_text(encoding="utf-8"), "Feature-page body must keep legible normal weight"
 assert (ROOT / "scripts/apply-nabdh-liquid-intelligence.py").read_text(encoding="utf-8").count('note.setTag("nabdh:secondary-text");') == 2, "Lens/Glass helper paragraphs must not all become bold"
 assert "(telegramTextFace || arabicLabel)" in global_fonts, "Reset may restore saved custom font"

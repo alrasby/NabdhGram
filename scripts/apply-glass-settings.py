@@ -80,7 +80,7 @@ for before, after in (
     ("        heading.setTextSize(18);",
      "        heading.setTextSize(gridCard ? 15 : 17);\\n        heading.setMaxLines(gridCard ? 2 : 3);\\n        heading.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
     ("        description.setTextSize(14);",
-     "        description.setTextSize(gridCard ? 12 : 13);\\n        description.setTag(\"nabdh:secondary-text\");\\n        description.setMaxLines(gridCard ? 2 : 3);\\n        description.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
+     "        description.setTextSize(gridCard ? 12 : 13);\\n        description.setMaxLines(gridCard ? 2 : 3);\\n        description.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
 ):
     if s.count(before) != 1:
         raise SystemExit("NabdhGram card text style anchor changed: " + before)
