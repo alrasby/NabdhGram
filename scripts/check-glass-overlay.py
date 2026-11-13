@@ -129,7 +129,10 @@ checks = {
         for page in ("FiltersSetupActivity.java", "FilterCreateActivity.java",
                      "FilterChatlistActivity.java", "LiteModeSettingsActivity.java")),
     "main Settings/account header edges match cards and theme canvas":
-        "AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0" in native_settings
+        "contentView.setBackground(" in native_settings
+        and "NabdhGlassRowDecoration.newOpaquePageBackground()" in native_settings
+        and "topView.setBackground(" in native_settings
+        and "newCardBackground()" in native_settings
         and "glassType == VIEW_TYPE_HEADER" in universal
         and "getThemedColor(Theme.key_windowBackgroundGray)" in universal,
     "chat settings preview uses native rounded inset and styles text options":
