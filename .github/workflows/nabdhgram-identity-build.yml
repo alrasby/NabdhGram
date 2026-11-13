@@ -344,6 +344,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-remaining-settings.py Telegram-upstream
 
+      - name: Apply Nabdh Liquid Glass and local Context Lens
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-liquid-intelligence.py Telegram-upstream
+
       - name: Install approved NabdhGram logo in empty chats
         shell: bash
         run: |
@@ -358,6 +364,7 @@ jobs:
           python3 nabdhgram/scripts/check-glass-design-contract.py
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhGlassRowDecoration.java
           # Validate generated Java, not only the Python overlay source.
           python3 - <<'PY'
