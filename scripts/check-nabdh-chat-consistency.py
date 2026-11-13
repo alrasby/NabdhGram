@@ -40,7 +40,7 @@ verify("chat_msgTextCodePaint" in fonts and "stay MONOSPACE" in fonts
        and "chat_msgTextPaintEmoji" not in fonts.split("public static void applyChatPaints()")[1],
        "code and emoji paints must be preserved")
 verify("NabdhTypefaceManager.applyChatPaints();" in script
-       and "Theme native chat-paint lifecycle" in script
+       and "Theme chat-paint lifecycle" in script
        and "explicit selected font refresh" in script,
        "chat paints not wired to creation and onChange")
 verify("apply-nabdh-chat-consistency.py Telegram-upstream" in workflow
