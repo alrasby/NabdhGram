@@ -225,8 +225,10 @@ modify("Cells/UserCell.java", [
     ),
 ])
 
-# Scope Glass styling to the native SETTINGS page. Other screens using the
-# UniversalAdapter retain their own media controls, animation and row grouping.
+# Scope Glass styling to native SETTINGS rows. Preserve upstream's
+# updateColors() implementation: Telegram 13.2.x adds ThemeBind.generation()
+# caching to it. Inject the Glass final pass just before the following
+# updateReorder() method, so old and new theme systems remain intact.
 modify("Components/UniversalAdapter.java", [
     (
         "    private boolean applyBackground = true;",
@@ -239,34 +241,23 @@ modify("Components/UniversalAdapter.java", [
         1
     ),
     (
-        """    private void updateColors(RecyclerView.ViewHolder holder) {
-        if (holder.itemView instanceof Theme.Colorable) {
-            ((Theme.Colorable) holder.itemView).updateColors();
-            if (shouldApplyBackground(holder.getItemViewType())) {
-                final int key_background = dialog ? Theme.key_dialogBackground : Theme.key_windowBackgroundWhite;
-                holder.itemView.setBackgroundColor(getThemedColor(key_background));
-            }
-        }
-    }""",
-        """    private void updateColors(RecyclerView.ViewHolder holder) {
-        if (holder.itemView instanceof Theme.Colorable) {
-            ((Theme.Colorable) holder.itemView).updateColors();
-            if (shouldApplyBackground(holder.getItemViewType())) {
-                final int key_background = dialog ? Theme.key_dialogBackground : Theme.key_windowBackgroundWhite;
-                holder.itemView.setBackgroundColor(getThemedColor(key_background));
-            }
-        }
+        """        }
+    }
+
+    public void updateReorder(RecyclerView.ViewHolder holder, boolean allowReorder) {""",
+        """        }
         int type = holder.getItemViewType();
         if (nabdhGlassSettings && (type == VIEW_TYPE_TEXT_SETTINGS
                 || type == VIEW_TYPE_TEXT || type == VIEW_TYPE_TEXT_CHECK
                 || type == VIEW_TYPE_SWITCH || type == VIEW_TYPE_ICON_TEXT_CHECK)) {
-            // Shared Glass renderer owns tint, stroke, hover and radius.
-            // Avoid allocating a second locally tinted GradientDrawable
-            // that the final settings overlay overwrites on every bind.
+            // Let Telegram finish its native theme binding first, then
+            // re-apply Glass only to the opted-in Settings rows.
             org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(
                     holder.itemView, true);
         }
-    }""",
+    }
+
+    public void updateReorder(RecyclerView.ViewHolder holder, boolean allowReorder) {""",
         1
     ),
 ])
