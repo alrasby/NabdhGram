@@ -101,7 +101,7 @@ for old in ("nabdhBubbleEdge.setStrokeWidth(dp(1));",
 # numeric expression may be reformatted by an earlier overlay. Match only
 # this specific owned field and require exactly TWO occurrences.
 import re
-edge_call = r"nabdhBubbleEdge\\.setAlpha\\([^;\\n]*\\);"
+edge_call = r"nabdhBubbleEdge\.setAlpha\([^;\n]*\);"
 matches = re.findall(edge_call, s)
 if len(matches) != 2:
     raise SystemExit(f"Expected 2 native bubble edge alpha calls, found {len(matches)}: {matches}")
