@@ -55,8 +55,12 @@ fi
 echo "PASS: NabdhGram installed on selected device."
 
 if [[ -n "$expected_version" ]]; then
+  # Do not use grep -m1 here: dumpsys may exit with SIGPIPE under
+  # set -o pipefail when the first versionName is found too early.
   version="$("${adb_cmd[@]}" shell dumpsys package "$package" |
-    grep -m1 -E 'versionName=' | sed -E 's/.*versionName=([^[:space:]]+).*/\1/' | tr -d '\r')"
+    awk '/versionName=/ && !found { found=1; value=$0 }
+         END { if (found) { sub(/.*versionName=/, "", value);
+                            sub(/[[:space:]].*/, "", value); print value } }' | tr -d '\r')"
   [[ "$version" == "$expected_version" ]] ||
     { echo "ERROR: expected version $expected_version, found $version" >&2; exit 1; }
   echo "PASS: package version $version."
