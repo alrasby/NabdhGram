@@ -258,6 +258,26 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
 # and accessibility; only skip Telegram's broad grouped fill callback.
 list_path = ui / "Components/RecyclerListView.java"
 list_src = list_path.read_text(encoding="utf-8")
+# Disabling a section's callback field does not prevent cached draw paths.
+# The native legacy/bitmap renderer and UniversalAdapter fallback can
+# independently repaint opaque white groups underneath rounded Glass rows.
+native_list_fill = (
+    "    protected void drawSectionBackground(Canvas canvas, "
+    "int fromAdapterPosition, int toAdapterPosition, int color, "
+    "int topMargin, int bottomMargin) {"
+)
+native_rounded_fill = (
+    "    public void drawBackgroundRect(Canvas canvas, RectF rect, "
+    "float topRadius, float bottomRadius, float alpha) {"
+)
+for fill_anchor in (native_list_fill, native_rounded_fill):
+    if list_src.count(fill_anchor) != 1:
+        raise SystemExit("Telegram section renderer entrypoint changed")
+    list_src = list_src.replace(fill_anchor, fill_anchor + """
+        // Opt-in only: suppress Telegram's old white section canvas.
+        // Keep upstream section geometry and touch hit testing unchanged.
+        if (nabdhSuppressLegacySectionFill) return;""", 1)
+
 section_anchor = "    public void disableSections() {"
 if list_src.count(section_anchor) != 1:
     raise SystemExit("RecyclerListView section API changed")
@@ -435,6 +455,35 @@ if cell_start < 0 or cell_end < 0:
 cell_source = settings_rtl_src[cell_start:cell_end]
 if cell_source.count(rtl_from) != 1:
     raise SystemExit("SettingsActivity.SettingCell.updateColors changed")
+# Native SettingCell enforces EXACTLY 60dp for described rows. That clips
+# longer Arabic subtitles and large user-selected text. Measure the actual
+# text layout with native width, retain original minimum row height and cap
+# the maximum to avoid runaway layout on extreme font scales.
+native_measure = """        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            super.onMeasure(
+                MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(dp(mini ? 44 : twoLines ? 60 : 50), MeasureSpec.EXACTLY)
+            );
+        }"""
+adaptive_measure = """        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            final int minRowHeight = dp(mini ? 44 : twoLines ? 60 : 50);
+            final int maxRowHeight = dp(mini ? 96 : 200);
+            super.onMeasure(
+                MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(maxRowHeight, MeasureSpec.AT_MOST)
+            );
+            if (getMeasuredHeight() < minRowHeight) {
+                super.onMeasure(
+                    MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(minRowHeight, MeasureSpec.EXACTLY)
+                );
+            }
+        }"""
+if cell_source.count(native_measure) != 1:
+    raise SystemExit("SettingsActivity.SettingCell native measure anchor changed")
+cell_source = cell_source.replace(native_measure, adaptive_measure, 1)
 settings_rtl_src = (settings_rtl_src[:cell_start]
         + cell_source.replace(rtl_from, rtl_to, 1)
         + settings_rtl_src[cell_end:])
@@ -544,6 +593,16 @@ universal_source = universal_source[:end] + """
             }
         }
 """ + universal_source[end:]
+# UniversalRecyclerView falls back to adapter.drawWhiteSections() when
+# section decorators are absent. Suppress this third opaque-white fill
+# ONLY when this native Settings adapter opted into NabdhGram Glass.
+white_fallback_anchor = "    public void drawWhiteSections(Canvas canvas, RecyclerListView listView) {"
+if universal_source.count(white_fallback_anchor) != 1:
+    raise SystemExit("UniversalAdapter native white sections entrypoint changed")
+universal_source = universal_source.replace(
+    white_fallback_anchor,
+    white_fallback_anchor + """
+        if (nabdhGlassSettings) return;""", 1)
 universal_path.write_text(universal_source, encoding="utf-8")
 
 # The modern Settings screen has a SizeNotifierFrameLayout root with its
@@ -577,7 +636,9 @@ settings_main.write_text(settings_source, encoding="utf-8")
 for activity in ("SettingsActivity.java",):
     page = ui / activity
     content = page.read_text(encoding="utf-8")
-    group_anchor = "        listView.setSections();"
+    # Call AFTER native bitmap mode is selected, not just after setSections.
+    # This is specific to main Settings; other screens retain native behavior.
+    group_anchor = "        listView.setSectionsDrawBackground(true);"
     if content.count(group_anchor) != 1:
         raise SystemExit(f"{activity}: native grouped background anchor changed")
     content = content.replace(
