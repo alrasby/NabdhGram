@@ -84,3 +84,25 @@ Prefer component-level, theme-aware integrations over broad string splices.
 When a risky native API change is necessary, review its exact method,
 preserve every unrelated native member and add a focused regression check.
 Do not bypass the source guard with a wildcard allowlist.
+
+## Main Settings root canvas — P0 Android regression 2026-11-13
+
+The second user video and logs.zip show that main Settings still had
+black/dark side rails and remnants of the underlying screen at rest after
+scrolling or returning from nested settings. This is not an evident crash.
+
+Modern upstream SettingsActivity uses a SizeNotifierFrameLayout ROOT with
+independently drawn camera/avatar/header and an over-scrolling list whose
+top/bottom can extend outside normal RecyclerView bounds. A background on
+the RecyclerView alone cannot protect those surrounding root layers.
+The root must own an **opaque, live-theme** backdrop while the cards remain
+translucent. The profile hero uses exactly one horizontal inset, matching
+the cards, and the main UniversalAdapter is the sole Glass row painter
+(no second ItemDecoration fallback on the main list).
+
+Physical acceptance: open main Settings, scroll avatar to bottom and back,
+open Account, Chat Settings, Privacy, Devices, Language, return and repeat,
+change light/dark theme, change font, background/foreground and rotate.
+No ghost text or dark rails should remain after navigation completes.
+A source-level assertion alone cannot certify this until a real APK is
+installed and the sequence is repeated.

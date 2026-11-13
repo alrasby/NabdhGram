@@ -506,6 +506,17 @@ checks["ordinary settings and folders have opaque themed page canvases"] = all(
         "FilterCreateActivity.java", "LiteModeSettingsActivity.java"
     )
 )
+checks["main Settings uses opaque root behind avatar and glass header"] = (
+    "contentView.setBackground(" in native_settings
+    and "NabdhGlassRowDecoration.newOpaquePageBackground()" in native_settings
+    and "topView.setBackground(" in native_settings
+    and "NabdhGlassRowDecoration.newCardBackground()" in native_settings
+    and "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_settings
+)
+checks["main Settings uses exactly one card drawing path"] = (
+    "listView.adapter.setNabdhGlassSettings(true);" in native_settings
+    and "listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration())" not in native_settings
+)
 checks["Glass rows remain independent from the opaque page canvas"] = (
     "newOpaquePageBackground()" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
     and "return new GlassCardLayers();" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")

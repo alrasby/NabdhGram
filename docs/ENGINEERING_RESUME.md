@@ -61,3 +61,15 @@ distinguishes **proved** results from Android checks that are still pending.
 **Important:** A successful compiler does not prove a stable app, and this
 document does not certify zero future upstream regressions. Its purpose is
 to make each future upgrade detectable, reviewable and reversible.
+
+## Android video follow-up (13:42, Nov 13)
+
+Root cause: main Settings SizeNotifierFrameLayout had no opaque canvas
+after suppression of Telegram 13.2 section fills. The earlier nested
+RecyclerListView canvas didn't cover independent avatar/header layers or
+overscroll. PR #65 source change adds the root canvas, removes redundant
+main-only ItemDecoration and avoids doubled hero insets. User supplied
+logs.zip contained no explicit FATAL EXCEPTION for this visual bug.
+Android build #562 completed success, but this new root fix still needs
+a fresh preflight/build and physical-device regression. Do not equate
+successful CI with a fixed visual until demonstrated on the device.
