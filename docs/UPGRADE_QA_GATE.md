@@ -150,3 +150,28 @@ Descriptions can use two or more lines but cannot overlap adjacent cards
 or become clipped by fixed 60dp height. Repeat in English, light/dark and
 imported themes. Validate on the actual new APK and record screenshots
 before merging PR #63 into main. Passing source tests alone is insufficient.
+
+## Android #566 typography regression (2026-11-13 user video)
+
+The 128-second user QA recording confirms #566 runs and navigates, but is
+**not release approved**. The normal chats header STILL displays "Telegram"
+visually although source asserts NabdhGram. New Appearance/Intelligence/
+Privacy pages become excessively bold and wrapped after the global Bold
+option is toggled. The clip does NOT cover switching all three Liquid Glass
+presets or directly using the composer Lens, so those remain untested.
+
+The first scoped source correction preserves user-selected font family and
+size but tags only secondary explanatory TextViews with
+`nabdh:secondary-text`; the global font walker preserves the native
+weight on those text blocks while Bold continues to apply to headings and
+ordinary labels. Do not override the user's entire font preference or
+truncate body text to hide overlap.
+
+Before release: reopen Chats after full process restart and theme/language
+changes and confirm visible NabdhGram title. Investigate the **runtime**
+title owner rather than relying on the presence of a string in
+DialogsActivity source alone; the existing source-only test had a false
+sense of UI coverage. Validate normal/Bold font, smallest and largest UI
+scale, long Arabic help text, actual scroll/touch/hit regions and the three
+bubble presets on a real device. Do not post or upload QA screens that
+contain personal chats or one-time login codes.

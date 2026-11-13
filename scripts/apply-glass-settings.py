@@ -80,7 +80,7 @@ for before, after in (
     ("        heading.setTextSize(18);",
      "        heading.setTextSize(gridCard ? 15 : 17);\\n        heading.setMaxLines(gridCard ? 2 : 3);\\n        heading.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
     ("        description.setTextSize(14);",
-     "        description.setTextSize(gridCard ? 12 : 13);\\n        description.setMaxLines(gridCard ? 2 : 3);\\n        description.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
+     "        description.setTextSize(gridCard ? 12 : 13);\\n        description.setTag(\"nabdh:secondary-text\");\\n        description.setMaxLines(gridCard ? 2 : 3);\\n        description.setEllipsize(android.text.TextUtils.TruncateAt.END);"),
 ):
     if s.count(before) != 1:
         raise SystemExit("NabdhGram card text style anchor changed: " + before)
@@ -235,6 +235,7 @@ if s.count(anchor) != 1:
     raise SystemExit("Expected one feature description anchor")
 # Explanation uses the same live-theme Glass renderer as main Settings.
 s = s.replace(anchor, """        explanation.setPadding(pad, pad, pad, pad);
+        explanation.setTag("nabdh:secondary-text");
         explanation.setBackground(
                 org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         content.addView(explanation);""", 1)
@@ -372,6 +373,7 @@ s = s.replace(anchor, anchor + """
             fontCard.addView(choices);
             TextView note = new TextView(context);
             note.setText(context.getString(R.string.NabdhFontScope));
+            note.setTag("nabdh:secondary-text");
             note.setTextSize(13);
             note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
             fontCard.addView(note);
@@ -436,6 +438,7 @@ s = s.replace(anchor, anchor + """
             fontCard.addView(boldOption);
             TextView refreshInfo = new TextView(context);
             refreshInfo.setText(nabdhText(context, R.string.NabdhFontRefreshInfo));
+            refreshInfo.setTag("nabdh:secondary-text");
             refreshInfo.setTextSize(13);
             refreshInfo.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
             fontCard.addView(refreshInfo);
