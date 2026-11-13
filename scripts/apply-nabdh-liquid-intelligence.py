@@ -108,15 +108,13 @@ hub.write_text(s, encoding="utf-8")
 
 page = ui / "NabdhGramFeatureCategoryActivity.java"
 s = page.read_text(encoding="utf-8")
+# Earlier official appearance overlay already introduces an Appearance block
+# between Privacy and the native fragmentView assignment. Attach our
+# additional controls at the stable end-of-content anchor instead of
+# assuming adjacent if statements from the unmodified feature page.
 s = patch(s,
-    """        if (titleRes == R.string.NabdhPrivacyTitle) {
-            addPrivacyControls(context, content);
-        }
-        fragmentView = scroll;""",
-    """        if (titleRes == R.string.NabdhPrivacyTitle) {
-            addPrivacyControls(context, content);
-        }
-        if (titleRes == R.string.NabdhAppearanceTitle) {
+    """        fragmentView = scroll;""",
+    """        if (titleRes == R.string.NabdhAppearanceTitle) {
             addNabdhGlassPresets(context, content);
         }
         if (titleRes == R.string.NabdhIntelligenceTitle) {
