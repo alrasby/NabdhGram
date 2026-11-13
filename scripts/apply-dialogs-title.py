@@ -32,7 +32,49 @@ def main():
         raise SystemExit("DialogsActivity resume title anchor changed")
     s = s.replace(resume, guard, 1)
     p.write_text(s, encoding="utf-8")
-    print("NabdhGram main dialogs title overlay applied.")
+    # Telegram 13.2 runs DialogsActivity inside a recycled MainTabsActivity
+    # pager. Changing only DialogsActivity.createView/onResume did not fix
+    # the visible chats title in the real #566 video. Guard the host tab
+    # selection and host resume too, without touching search, archive,
+    # share-picker or other Telegram application names.
+    tabs = Path(sys.argv[1]).resolve() / "TMessagesProj/src/main/java/org/telegram/ui/MainTabsActivity.java"
+    main_tabs = tabs.read_text(encoding="utf-8")
+    select_anchor = """    public void selectTab(int position, boolean animated) {
+        for (int a = 0; a < tabs.length; a++) {
+            GlassTabView tab = tabs[a];
+            tab.setSelected(indexToPosition(a) == position, animated);
+        }
+    }"""
+    select_replacement = """    public void selectTab(int position, boolean animated) {
+        for (int a = 0; a < tabs.length; a++) {
+            GlassTabView tab = tabs[a];
+            tab.setSelected(indexToPosition(a) == position, animated);
+        }
+        if (position == POSITION_CHATS) nabdhRestoreChatTitle();
+    }
+
+    private void nabdhRestoreChatTitle() {
+        if (dialogsActivity != null && dialogsActivity.getActionBar() != null) {
+            dialogsActivity.getActionBar().setTitle("NabdhGram");
+        }
+    }"""
+    if main_tabs.count(select_anchor) != 1:
+        raise SystemExit("Telegram main-tabs title ownership anchor changed")
+    main_tabs = main_tabs.replace(select_anchor, select_replacement, 1)
+    resume_anchor = """    public void onResume() {
+        super.onResume();
+        blur3_updateColors();"""
+    if main_tabs.count(resume_anchor) != 1:
+        raise SystemExit("MainTabsActivity resume title anchor changed")
+    main_tabs = main_tabs.replace(resume_anchor, """    public void onResume() {
+        super.onResume();
+        // The host can reuse an older chat ActionBar on process resume.
+        if (viewPager != null && viewPager.getCurrentPosition() == POSITION_CHATS) {
+            nabdhRestoreChatTitle();
+        }
+        blur3_updateColors();""", 1)
+    tabs.write_text(main_tabs, encoding="utf-8")
+    print("NabdhGram main dialogs and main-tabs host title overlays applied.")
 
 if __name__ == "__main__":
     main()
