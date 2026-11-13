@@ -26,6 +26,13 @@ def main():
     if not props.is_file() or not app.is_file():
         raise SystemExit("Not a Telegram Android source tree")
     replace_once(props, "APP_PACKAGE=org.telegram.messenger", f"APP_PACKAGE={APP_ID}")
+    # AppName labels native UI independently from the launcher manifest.
+    # Do not rename Telegram FAQ/Premium/Features or protocol identities.
+    strings = root / "TMessagesProj/src/main/res/values/strings.xml"
+    replace_once(strings, '<string name="AppName">Telegram</string>',
+                 '<string name="AppName">NabdhGram</string>')
+    replace_once(strings, '<string name="AppNameBeta">Telegram Beta</string>',
+                 '<string name="AppNameBeta">NabdhGram Beta</string>')
     # Use the final independent package ID even for internal debug builds.
     # The upstream Gradle debug build type appends .beta unless explicitly removed.
     replace_once(app, '            applicationIdSuffix ".beta"\n', '')

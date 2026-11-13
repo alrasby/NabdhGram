@@ -71,6 +71,14 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         return new GlassCardLayers();
     }
 
+    public static android.graphics.drawable.Drawable newHeroBackground() {
+        // Same radius and theme as rows, but remove the nearly white
+        // appearance of the account hero over the opaque Settings root.
+        GlassCardLayers hero = new GlassCardLayers();
+        hero.setAlpha(190);
+        return hero;
+    }
+
     // The removed Telegram section-group fills no longer mask old fragments.
     // Keep the page canvas OPAQUE while each independent Glass card stays tinted.
     // Resolve the active light/dark/imported-theme color on every draw.
@@ -441,7 +449,7 @@ hero_new = """        topView = new FrameLayout(context);
         // GlassCardLayers already insets 10dp on both sides. The extra
         // InsetDrawable doubled this margin and misaligned the hero.
         topView.setBackground(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());"""
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newHeroBackground());"""
 if hero_source.count(hero_old) != 1:
     raise SystemExit("SettingsActivity account hero constructor changed")
 settings_hero.write_text(hero_source.replace(hero_old, hero_new, 1), encoding="utf-8")
@@ -492,8 +500,13 @@ else:
 account_card = ("""        // Preserve native section geometry and account input behavior.
 """ + native_sections + """
         listView.nabdhHideSectionBackgroundOnly();
+        // The SimpleActionBar UniversalFragment leaves its root transparent:
+        // own the page backdrop behind the account list and header.
+        contentView.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());
+        listView.adapter.setApplyBackground(false);
         listView.adapter.setNabdhGlassSettings(true);
-        listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration());
+        // Avoid a second Glass drawing pass under the adapter's card rows.
         listView.setClipToPadding(false);""")
 user_info.write_text(user_info_src.replace(account_anchor, account_card, 1), encoding="utf-8")
 

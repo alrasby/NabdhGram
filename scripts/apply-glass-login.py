@@ -183,20 +183,12 @@ phone_with_brand = """            setOrientation(VERTICAL);
             titleView = new TextView(context);"""
 source = source.replace(phone_anchor, phone_with_brand, 1)
 
-# Give the actual fixed-height phone input a bounded glass background;
-# never use the full-height scroll container as a card.
+# The native OutlineTextContainerView draws the sole fill for phone and
+# country. A second inset Glass background creates doubled borders.
 phoneInput = "            addView(phoneOutlineView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 58, 16, 8, 16, 8));"
-if source.count(phoneInput) != 1:
-    raise SystemExit("Phone input glass anchor changed")
-source = source.replace(phoneInput,
-    "            phoneOutlineView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());\n" + phoneInput, 1)
-
-# Country picker is a bounded native 58dp surface, unlike PhoneView.
 countryInput = "            addView(countryOutlineView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 58, 16, 24, 16, 14));"
-if source.count(countryInput) != 1:
-    raise SystemExit("Phone country selector Glass anchor changed")
-source = source.replace(countryInput,
-    "            countryOutlineView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());\n" + countryInput, 1)
+if source.count(phoneInput) != 1 or source.count(countryInput) != 1:
+    raise SystemExit("Native phone/country login geometry changed")
 
 # OutlineTextContainerView retains its native focus outline and labels.
 # Do not change edit-text padding, listeners, layout size or auth transitions.

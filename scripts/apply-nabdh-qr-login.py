@@ -250,12 +250,15 @@ once(
                 nabdhQrButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
                 nabdhQrButton.setTypeface(AndroidUtilities.bold());
                 nabdhQrButton.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+                // Change horizontal size only: keep its 52dp touch height.
+                nabdhQrButton.setMinWidth(dp(220));
+                nabdhQrButton.setPadding(dp(24), 0, dp(24), 0);
                 nabdhQrButton.setBackground(
                         org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
                 nabdhQrButton.setContentDescription(context.getString(R.string.NabdhQrLoginButton));
                 nabdhQrButton.setOnClickListener(view -> nabdhShowQrLogin());
                 addView(nabdhQrButton, LayoutHelper.createLinear(
-                        LayoutHelper.MATCH_PARENT, 52, 16, 14, 16, 8));
+                        LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8));
             }""",
     "phone form QR button")
 once("    public void onFragmentDestroy() {\n        super.onFragmentDestroy();",
