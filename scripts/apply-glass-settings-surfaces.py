@@ -269,6 +269,14 @@ GLASS_SETTINGS_SCREENS = (
 )
 for name in GLASS_SETTINGS_SCREENS:
     path = ui / name
+    if not path.is_file():
+        if name == "QuickRepliesSettingsActivity.java":
+            # Telegram 13.2.2 removed the standalone legacy Quick Replies
+            # settings page. Its remaining controls are owned by upstream;
+            # never generate a phantom Activity or alter message behavior.
+            print("NOTE: native QuickRepliesSettingsActivity absent; skipping obsolete Glass hook")
+            continue
+        raise SystemExit(f"Required native settings page missing: {name}")
     source = path.read_text(encoding="utf-8")
     # Telegram's QuickReplies settings use tabs for indentation, unlike the
     # other settings fragments. Match their exact pinned source layout.
