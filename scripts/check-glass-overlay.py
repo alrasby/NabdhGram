@@ -60,13 +60,21 @@ checks = {
         and "applyCardStyle(holder.itemView, true)" in (ui / "ThemeActivity.java").read_text(encoding="utf-8")
         and "PeerColorActivity.ChangeNameColorCell.class}, null, null, null, Theme.key_windowBackgroundWhite" not in
             (ui / "ThemeActivity.java").read_text(encoding="utf-8"),
-    "launcher switching enables selected component before disabling old alias":
-        "getActivityInfo(target, 0)" in (ui / "LauncherIconController.java").read_text(encoding="utf-8")
+    "launcher switching includes disabled alias and confirms it before disabling old":
+        "pm.getActivityInfo(target, PackageManager.MATCH_DISABLED_COMPONENTS);" in
+            (ui / "LauncherIconController.java").read_text(encoding="utf-8")
+        and "pm.getActivityInfo(target, 0)" not in
+            (ui / "LauncherIconController.java").read_text(encoding="utf-8")
         and (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
             "pm.setComponentEnabledSetting(target,") <
             (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
-            "for (LauncherIcon i : LauncherIcon.values()) {", (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
-            "pm.setComponentEnabledSetting(target,")),
+            "for (LauncherIcon other : LauncherIcon.values()) {",
+            (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
+                "pm.setComponentEnabledSetting(target,"))
+        and "pm.getComponentEnabledSetting(target)" in
+            (ui / "LauncherIconController.java").read_text(encoding="utf-8")
+        and "if (!LauncherIconController.nabdhSetIconVerified(icon))" in
+            (ui / "Cells/AppIconsSelectorCell.java").read_text(encoding="utf-8"),
     "chat bubbles use pooled crystal brushes on original Telegram paths":
         all(phrase in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
             for phrase in ("private void nabdhDrawCrystalSurface(Canvas canvas, Path bubblePath)",
