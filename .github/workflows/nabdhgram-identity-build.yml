@@ -35,11 +35,13 @@ jobs:
         with:
           path: nabdhgram
       - name: Configure Java 17
+        if: ${{ !inputs.source_preflight_only }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
       - name: Restore Gradle dependency and build caches
+        if: ${{ !inputs.source_preflight_only }}
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}

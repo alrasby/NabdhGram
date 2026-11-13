@@ -7,7 +7,7 @@ caused nested settings to paint ghost sections, repeated text and underlying
 wallpapers, even though Android build #561 passed. Build success alone is
 never a release criterion.
 
-## Source preservation (automatic — before Gradle)
+## Source-only overlay preflight (fast, before Gradle)
 
 For an inexpensive migration sanity check, run the GitHub Actions
 **NabdhGram identity debug build** via `workflow_dispatch` with
