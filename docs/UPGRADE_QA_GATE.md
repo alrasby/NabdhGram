@@ -106,3 +106,21 @@ change light/dark theme, change font, background/foreground and rotate.
 No ghost text or dark rails should remain after navigation completes.
 A source-level assertion alone cannot certify this until a real APK is
 installed and the sequence is repeated.
+
+## V1 combined device acceptance: login, main settings, Account and title
+
+On a newly compiled APK, verify the following together, without clearing
+the account or altering Telegram credentials:
+- Country/phone fields have one soft rounded fill and **no second border**;
+  labels, phone editing, country selection, cursor and validation still work.
+- QR button keeps 52dp height and an accessible touch area but is visibly
+  narrower and horizontally centered. Open and dismiss the native QR dialog.
+- Main Settings and Account scroll, back navigation, light/dark and imported
+  theme transitions show **no old-page content**, duplicate account text or
+  rectangular opaque white sections. The account hero is a single softer
+  Glass surface and has the same horizontal inset as its row cards.
+- Home Chats title reads NabdhGram both on first startup and after returning
+  from Settings. Telegram FAQ/Premium/Features retain their official names.
+
+These are actual phone QA requirements, not implied by successful source
+preflight or Gradle compilation. PR #63 remains unmerged until observed.

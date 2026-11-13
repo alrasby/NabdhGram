@@ -73,3 +73,15 @@ logs.zip contained no explicit FATAL EXCEPTION for this visual bug.
 Android build #562 completed success, but this new root fix still needs
 a fresh preflight/build and physical-device regression. Do not equate
 successful CI with a fixed visual until demonstrated on the device.
+
+## V1 login / Account / title follow-up (2026-11-13)
+
+Branch `fix/v1-login-settings-account-branding` derives from PR #63.
+Changes: remove duplicate phone/country background; retain floating labels
+but skip three native outline strokes only on login country/phone;
+shrink QR horizontally without changing 52dp height; fix Account page's
+missing UniversalFragment root background and disable native white row fills;
+avoid redundant account row decoration; soften the hero; brand real
+`AppName` resources and restore main Chats title on resume.
+Source contracts and generated-Java checks are added; a full device build
+and real on-device pass are required before merging into production.
