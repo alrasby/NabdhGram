@@ -381,6 +381,16 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream
 
+      - name: Preserve Telegram native Java APIs before Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/check-upstream-api-preservation.py
+          python3 nabdhgram/scripts/check-upstream-api-preservation.py --self-test
+          python3 nabdhgram/scripts/check-upstream-api-preservation.py Telegram-upstream
+          git -C Telegram-upstream diff --check
+          echo "PASS: Native Telegram methods, theme fields, Java syntax, and patch whitespace checked."
+
       - name: Initialize and verify pinned native submodules after overlay preflight
         shell: bash
         run: |
