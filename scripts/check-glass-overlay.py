@@ -101,7 +101,6 @@ checks = {
                 "CacheControlActivity.java", "ArchiveSettingsActivity.java",
                 "DataAutoDownloadActivity.java", "PasscodeActivity.java",
                 "PrivacyUsersActivity.java", "ProxyListActivity.java",
-                "QuickRepliesSettingsActivity.java",
                 "RestrictedLanguagesSelectActivity.java",
                 "ProfileNotificationsActivity.java"))
         and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
