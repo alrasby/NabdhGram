@@ -195,6 +195,17 @@ checks = {
         ("final boolean telegramTextFace", "(telegramTextFace || arabicLabel)",
          "originalPx * uiPercent / 100f")
     ),
+    "generated Settings footer opens Telegram native debug screen": 
+        "versionView.setOnLongClickListener(v -> {" in native_settings
+        and "presentFragment(new DebugSettingsActivity());" in native_settings
+        and "openDebugMenu();" not in native_settings,
+    "generated keypad preserves upstream ThemeBind and cached color declarations":
+        all(token in (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
+            for token in ("private static void setButtonBackground(View v, int index)",
+                          "private int lastBackButtonColor, lastButtonsSelectorColor;",
+                          "ThemeBind.selectorBackground(v, getButtonDrawable(index)"))
+        and (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8").count(
+            "setButtonBackground(v, a);") == 2,
     "third-party login cannot advertise official-only Firebase SMS":
         'settings.allow_firebase = false; // Third-party app' in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
