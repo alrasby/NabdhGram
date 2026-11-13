@@ -209,6 +209,17 @@ checks = {
         ("final boolean telegramTextFace", "(telegramTextFace || arabicLabel)",
          "originalPx * uiPercent / 100f")
     ),
+    "Experimental Header icon uses the same native RTL layout as its siblings":
+        'R.drawable.nabdh_settings_header, getString(R.string.HeaderSettings)))' in native_settings
+        and 'R.drawable.nabdh_settings_video, getString(R.string.RoundVideoSettings)))' in native_settings
+        and 'R.drawable.nabdh_settings_mic, getString(R.string.AudioRecorderSettings)))' in native_settings
+        and all('R.drawable.nabdh_settings_' + icon in native_settings
+                for icon in ("logs", "history", "trash"))
+        and (root / "TMessagesProj/src/main/res/drawable/nabdh_settings_header.xml").is_file()
+        and 'iconLayout.setVisibility(icon != 0 ? View.VISIBLE : View.GONE);' in native_settings
+        and 'addView(iconLayout, LayoutHelper.createLinear(28, 28, Gravity.CENTER_VERTICAL | Gravity.RIGHT' in native_settings
+        and 'case 27: {' in native_settings
+        and 'presentFragment(new HeaderSettingsActivity());' in native_settings,
     "generated Settings footer opens Telegram native debug screen": 
         "versionView.setOnLongClickListener(v -> {" in native_settings
         and "presentFragment(new DebugSettingsActivity());" in native_settings
