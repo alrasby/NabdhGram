@@ -142,8 +142,10 @@ checks = {
         and "int bottomMargin = activityMode == MODE_LOGIN ? 12 : 72;" in login_source
         and "if (getGravity() != desired) setGravity(desired);" in login_source
         and "scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);" in login_source,
-    "main Settings hero uses the shared Glass surface":
-        "topView.setBackground(new android.graphics.drawable.InsetDrawable(" in native_settings,
+    "main Settings hero uses exactly one shared Glass inset":
+        "topView.setBackground(" in native_settings
+        and "NabdhGlassRowDecoration.newCardBackground()" in native_settings
+        and "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_settings,
     "NabdhGram settings categories have no competing pre-renderer":
         not any(token in settings + feature for token in
             ("GradientDrawable glassCard =", "GradientDrawable infoCard =",

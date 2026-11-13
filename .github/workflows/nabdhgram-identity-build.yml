@@ -5,6 +5,13 @@ name: NabdhGram identity debug build
 # killed the real Android build before it reached Gradle.
 # Build the PR head exactly once; workflow_dispatch supports manual branch runs.
 on:
+  workflow_call:
+    inputs:
+      source_preflight_only:
+        description: 'Run every source overlay and API check but skip native compilation'
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       source_preflight_only:
@@ -22,7 +29,7 @@ permissions:
 # Supersede older *PR* commits only. Never cancel a manual dispatch because
 # the very same branch also received a pull_request event.
 concurrency:
-  group: nabdhgram-android-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  group: nabdhgram-android-${{ inputs.source_preflight_only && 'preflight' || 'full' }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:

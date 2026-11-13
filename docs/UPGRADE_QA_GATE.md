@@ -9,7 +9,7 @@ never a release criterion.
 
 ## Source-only overlay preflight (fast, before Gradle)
 
-For an inexpensive migration sanity check, run the GitHub Actions
+On relevant pull requests the **Pinned Telegram overlay preflight** workflow runs the same pinned Telegram checkout, every overlay and the generated-Java compatibility guard automatically, without invoking Gradle. To run the same check manually, use the GitHub Actions
 **NabdhGram identity debug build** via `workflow_dispatch` with
 `source_preflight_only=true`. This runs the exact same pinned-source
 checkout, all overlays and the Java API preflight, but **skips** native

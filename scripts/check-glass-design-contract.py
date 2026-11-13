@@ -91,7 +91,7 @@ assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native
 for obsolete in ("GradientDrawable glassCard =", "GradientDrawable infoCard =", "GradientDrawable fontGlass =", "RippleDrawable touchSurface ="):
     assert obsolete not in settings, f"Second per-card surface allocation survived: {obsolete}"
 assert "scroll.setBackground(new GradientDrawable(" not in settings, "NabdhGram scroll snapshots old theme colors"
-assert "topView.setBackground(new android.graphics.drawable.InsetDrawable(" in native_surfaces and "AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0" in native_surfaces, "Main Settings hero needs the same inset as its cards"
+assert "topView.setBackground(\\n                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());" in native_surfaces, "Main Settings hero must use only the card's built-in inset"
 remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
 for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java", "ThemeActivity.java"):
     assert screen in remaining, f"Missing dedicated folder / lite mode coverage for {screen}"
