@@ -140,7 +140,7 @@ public class NabdhGramSettingsActivity extends BaseFragment {
     # checked-out upstream. Never leave 13.1.1 hardcoded after an upgrade.
     import re
     gradle_props = (root / "gradle.properties").read_text(encoding="utf-8")
-    version_name = re.findall(r"(?m)^APP_VERSION_NAME=([^\\r\\n]+)$", gradle_props)
+    version_name = re.findall(r"(?m)^APP_VERSION_NAME=([^\r\n]+)$", gradle_props)
     version_code = re.findall(r"(?m)^APP_VERSION_CODE=([0-9]+)$", gradle_props)
     if len(version_name) != 1 or len(version_code) != 1:
         raise SystemExit("Official Telegram version metadata missing or ambiguous")
