@@ -66,6 +66,8 @@ nativePalette = read("Components/NabdhBubblePalette.java")
 nativeFonts = read("Components/NabdhTypefaceManager.java")
 verify(bub.count("NabdhBubblePalette.backgroundAlpha(") == 2,
        "text/media alpha not used in both native drawing paths")
+verify("nabdhBubbleEdge.setAlpha((int) (42f * alpha / 255f));" not in bub,
+       "obsolete cache-only blue/gray tint still makes file bubbles differ")
 verify(bub.count("NabdhBubblePalette.edgeAlpha(") == 2
        and bub.count("nabdhBubbleEdge.setStrokeWidth(AndroidUtilities.dpf2(0.85f));") == 2,
        "cached/gradient outlines remain inconsistent")
