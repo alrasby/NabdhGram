@@ -97,7 +97,24 @@ for old in ("nabdhBubbleEdge.setStrokeWidth(dp(1));",
             "nabdhBubbleEdge.setStrokeWidth(dp(0.8f));"):
     s = once(s, old, "nabdhBubbleEdge.setStrokeWidth(AndroidUtilities.dpf2(0.85f));",
              "consistent stroke geometry")
-# The v1-finishing overlay deliberately adds a separate 42-alpha
+# The prior v1 overlay added a 42-alpha FILL exclusively for the cached
+# NinePatch. It made two identically themed messages appear different.
+# The shared Liquid surface already applies the theme-accent tint in BOTH
+# rendering paths; remove the cached-only duplication.
+cached_only_tint = """                    // Semi-transparent theme accent under the message glyphs:
+                    // makes Glass visible for cached solid native bubbles too.
+                    int tint = getColor(isOut
+                            ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow);
+                    if (Color.alpha(tint) < 20) {
+                        tint = getColor(Theme.key_chat_messagePanelText);
+                    }
+                    nabdhBubbleEdge.setStyle(Paint.Style.FILL);
+                    nabdhBubbleEdge.setColor(tint);
+                    nabdhBubbleEdge.setAlpha((int) (42f * alpha / 255f));
+                    canvas.drawPath(makePath(), nabdhBubbleEdge);
+"""
+s = once(s, cached_only_tint, "", "cached-only duplicate Glass tint")
+# The two STROKE operations remain after stripping the cached-only wash.
 # accent FILL; preserve it. Only unify the two STROKE alphas:
 # gradient path 122 and cached NinePatch path 160.
 for current in (122, 160):
