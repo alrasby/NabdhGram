@@ -560,6 +560,10 @@ checks["global font renderer respects secondary explanatory labels"] = (
 checks["NabdhGram settings descriptions opt into readable body weight"] = (
     'description.setTag("nabdh:secondary-text");' in settings
 )
+if not checks["NabdhGram settings descriptions opt into readable body weight"]:
+    pos = settings.find("description.setTextSize(")
+    print("DIAG generated category description code: " +
+          repr(settings[pos:pos + 240] if pos >= 0 else "description size anchor missing"))
 checks["feature category explanations opt into readable body weight"] = (
     'explanation.setTag("nabdh:secondary-text");' in feature
 )
