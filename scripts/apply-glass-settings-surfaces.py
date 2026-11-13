@@ -71,6 +71,29 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         return new GlassCardLayers();
     }
 
+    // The removed Telegram section-group fills no longer mask old fragments.
+    // Keep the page canvas OPAQUE while each independent Glass card stays tinted.
+    // Resolve the active light/dark/imported-theme color on every draw.
+    public static android.graphics.drawable.Drawable newOpaquePageBackground() {
+        return new android.graphics.drawable.Drawable() {
+            private final Paint paint = new Paint();
+            @Override public void draw(@NonNull Canvas canvas) {
+                int current = Theme.getColor(Theme.key_windowBackgroundGray);
+                paint.setColor(Color.rgb(Color.red(current),
+                        Color.green(current), Color.blue(current)));
+                canvas.drawRect(getBounds(), paint);
+            }
+            @Override public void setAlpha(int alpha) {
+                // Never turn the navigation canvas translucent.
+            }
+            @Override public void setColorFilter(android.graphics.ColorFilter filter) {}
+            @Override public int getOpacity() {
+                return android.graphics.PixelFormat.OPAQUE;
+            }
+        };
+    }
+
+
     public static android.graphics.drawable.Drawable newProfileScrim() {
         // The copy menu must not share a Drawable callback with the row.
         return new GlassCardLayers();
@@ -230,8 +253,27 @@ list_src = list_path.read_text(encoding="utf-8")
 section_anchor = "    public void disableSections() {"
 if list_src.count(section_anchor) != 1:
     raise SystemExit("RecyclerListView section API changed")
-section_helper = """    public void nabdhHideSectionBackgroundOnly() {
+# setSectionsDrawBackground(true) may occur AFTER the Glass helper call:
+# do not let Telegram 13.2 re-enable the cached bitmap group fill.
+native_draw_mode = "    public void setSectionsDrawBackground(boolean drawBackground) {"
+if list_src.count(native_draw_mode) != 1:
+    raise SystemExit("RecyclerListView section draw-mode API changed")
+list_src = list_src.replace(native_draw_mode, native_draw_mode + """
+        if (nabdhSuppressLegacySectionFill) {
+            drawBackground = false;
+        }""", 1)
+section_helper = """    private boolean nabdhSuppressLegacySectionFill;
+
+    public void nabdhHideSectionBackgroundOnly() {
+        // Telegram 13.2.x can paint group fills using bitmap decoration,
+        // independent of the legacy drawSectionBackground callback.
+        // Disable BOTH fill paths without removing section row geometry.
+        nabdhSuppressLegacySectionFill = true;
         drawSectionBackground = null;
+        bitmapSectionsDrawBackground = false;
+        if (bitmapSectionsItemDecoration != null) {
+            bitmapSectionsItemDecoration.setDrawBackground(false);
+        }
         invalidate();
     }
 
@@ -285,11 +327,17 @@ for name in GLASS_SETTINGS_SCREENS:
     if source.count(anchor) != 1:
         raise SystemExit(f"{name}: settings list anchor changed ({source.count(anchor)} occurrences)")
     radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\n"
+    # The collapsing Profile hero uses custom visuals; other settings lists
+    # require an opaque page canvas to avoid displaying previous fragments.
+    page_canvas = "" if name == "ProfileActivity.java" else (
+        "        listView.setBackground("
+        "org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());\n"
+    )
     source = source.replace(anchor, anchor + """
         // Keep native Telegram section offsets/geometry and accessibility.
         // Hide only its large group paint; independent cells own Glass fill.
         listView.nabdhHideSectionBackgroundOnly();
-""" + radius + """        listView.addItemDecoration(
+""" + radius + page_canvas + """        listView.addItemDecoration(
                 new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
     # Add the themed filled card AFTER each native row has been bound.
     # No adapters, row data, click handlers or selection logic are changed.

@@ -100,7 +100,8 @@ for name, marker, condition, list_anchor, label in pages:
     else:
         replacement = list_anchor
     s = require_replace(s, list_anchor,
-        replacement + f"\n        listView.addItemDecoration(new {glass}());",
+        replacement + f"\n        listView.setBackground({glass}.newOpaquePageBackground());"
+                    + f"\n        listView.addItemDecoration(new {glass}());",
         f"{label}: RecyclerListView hook")
     adapter_start = s.index(marker)
     s = insert_at_method_end(s, adapter_start, condition, label)

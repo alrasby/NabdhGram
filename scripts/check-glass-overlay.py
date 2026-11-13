@@ -491,6 +491,30 @@ checks = {
     "main chats only": "viewPage.dialogsType == DIALOGS_TYPE_DEFAULT && folderId == 0 && communityId == 0" in dialogs,
 }
 
+# Regression for transparent nested screens reported on 2026-11-13.
+checks["Telegram 13.2 native bitmap sections cannot refill Glass pages"] = (
+    "nabdhSuppressLegacySectionFill" in selector
+    and "bitmapSectionsItemDecoration.setDrawBackground(false)" in selector
+    and "if (nabdhSuppressLegacySectionFill)" in selector
+)
+checks["ordinary settings and folders have opaque themed page canvases"] = all(
+    "newOpaquePageBackground()" in (ui / name).read_text(encoding="utf-8")
+    for name in (
+        "PrivacySettingsActivity.java", "ThemeActivity.java",
+        "NotificationsSettingsActivity.java", "DataSettingsActivity.java",
+        "SessionsActivity.java", "FiltersSetupActivity.java",
+        "FilterCreateActivity.java", "LiteModeSettingsActivity.java"
+    )
+)
+checks["Glass rows remain independent from the opaque page canvas"] = (
+    "newOpaquePageBackground()" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+    and "return new GlassCardLayers();" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+)
+checks["dialogs use NabdhGram title rather than upstream Telegram logo span"] = (
+    'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
+    and 'actionBar.setTitle(ssb, statusDrawable);' not in dialogs
+)
+
 for lang in ("values", "values-ar"):
     xml = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     strings = ET.parse(xml).getroot()
