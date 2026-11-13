@@ -72,3 +72,27 @@
 
 **Verified tests belong in GitHub Actions.** This document alone is not a
 statement that the Android APK is stable or that all AI features are complete.
+
+## Real on-device ML capability — language identification
+
+Telegram's pinned Android source already declares `com.google.mlkit:language-id:17.0.6`.
+Context Lens now offers **Detect language (on-device ML)**, uses that
+existing pre-bundled trained Google ML Kit model on up to 512 characters
+of explicitly supplied text, asynchronously returns a BCP-47 language
+tag, and closes the classifier after completion. The model does not send
+text to NabdhGram servers. Unlike our heuristic summaries/tasks, this
+specific action **does use an actual pretrained machine-learning model**.
+ML Kit may report SDK metrics to Google; review privacy disclosures and
+Google terms before any public Play Store release.
+
+On-device **translation models** are not installed yet: ML Kit's
+`translate:17.0.3` needs an explicit model download (typically tens
+of MB) plus Google Translate attribution and model lifecycle handling.
+The existing native Telegram translation/transcription features remain
+available under their own availability and privacy terms. Google ML Kit
+GenAI embedding/speech agents released in October 2026 require Kotlin
+2.3+, which is not a safe blind upgrade of this Telegram-native
+Java/Gradle codebase. Do not label those capabilities as integrated.
+
+Test the language action with Arabic, English, mixed-script and unknown
+short texts, then exit the dialog during an in-flight async call.

@@ -10,8 +10,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * User-triggered LOCAL text utility. No model, storage, contacts, permissions
+ * User-triggered LOCAL text utility. No GENERATIVE model, persistent storage, contacts, permissions
  * or network. This is intentionally not marketed as a model-generated answer.
+ * Language detection reuses Telegram's already-bundled on-device ML Kit model.
  * Telegram's optional AI Editor, translation and voice transcription stay
  * in their native guarded workflows.
  */

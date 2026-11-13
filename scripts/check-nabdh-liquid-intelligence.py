@@ -21,7 +21,8 @@ guard("private static volatile int cachedStyle" in glass and
 guard("private static final int LIMIT = 8000;" in lens,
       "unbounded input")
 guard(all(x in lens for x in ("summary(source)", "tasks(source)",
-                             "linkSignals(source)", "cleanup(source)")),
+                             "linkSignals(source)", "cleanup(source)",
+                             "detectLanguage(context, source)")),
       "local text actions missing")
 guard("ClipboardManager" in lens and "setPrimaryClip" in lens,
       "explicit copy action absent")
@@ -63,8 +64,10 @@ guard("NabdhContextLens.show" in composer and "isSecretChat()" in composer
 guard("NabdhIntelligenceTitle" in hub and "addNabdhLensTools" in page
       and "addNabdhGlassPresets" in page, "settings are not navigable")
 guard("setLensEnabled" in read("Components/NabdhGlassStyle.java") and
-      "No model" in read("Components/NabdhContextLens.java"),
-      "local helpers are missing")
+      "No GENERATIVE model" in read("Components/NabdhContextLens.java") and
+      "LanguageIdentification.getClient()" in read("Components/NabdhContextLens.java") and
+      "classifier.close();" in read("Components/NabdhContextLens.java"),
+      "bundled on-device ML language recognition or privacy controls missing")
 for loc in ("values", "values-ar"):
     f = root / "TMessagesProj/src/main/res" / loc / "nabdh_liquid_intelligence.xml"
     guard(f.exists(), "missing locale " + loc)
