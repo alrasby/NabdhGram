@@ -337,9 +337,16 @@ for name in GLASS_SETTINGS_SCREENS:
         index += 1
     if depth != 0 or index >= len(source):
         raise SystemExit(f"{name}: could not locate ListAdapter bind end")
-    source = source[:index] + """
-            org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(holder.itemView);
-""" + source[index:]
+    # Insert at the BEGINNING of the original closing-brace line. Inserting
+    # just before '}' leaves its leading spaces as a newly added blank line
+    # (one per settings screen) and makes git diff --check fail. Preserve
+    # the original brace/indentation intact instead.
+    line_start = source.rfind("\n", 0, index) + 1
+    if source[line_start:index].strip():
+        raise SystemExit(f"{name}: unexpected non-whitespace before method close")
+    source = (source[:line_start]
+        + "            org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(holder.itemView);\n"
+        + source[line_start:])
     path.write_text(source, encoding="utf-8")
 # The real main Settings menu uses SettingCell.Factory, whose text has its
 # own layout separate from all native TextCell adjustments.
