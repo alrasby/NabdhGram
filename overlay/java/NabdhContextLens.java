@@ -45,7 +45,7 @@ public final class NabdhContextLens {
             label("Clean up text (local)", "تنسيق النص (محلي)"),
             label("Translation and voice options", "خيارات الترجمة والصوت")
         };
-        new android.app.AlertDialog.Builder(context)
+        new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
             .setTitle(label("Nabdh Context Lens", "عدسة نبض الذكية"))
             .setItems(choices, (dialog, which) -> {
                 final String output;
@@ -62,8 +62,8 @@ public final class NabdhContextLens {
                         + "وللصوت: استخدم التفريغ الصوتي الأصلي عندما يكون متاحًا. "
                         + "هذه الخدمات الأصلية قد تستخدم خوادم Telegram؛ العدسة المحلية لا ترسل النص.");
                 }
-                android.app.AlertDialog.Builder result =
-                    new android.app.AlertDialog.Builder(context)
+                org.telegram.ui.ActionBar.AlertDialog.Builder result =
+                    new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
                         .setTitle(choices[which])
                         .setMessage(output)
                         .setNegativeButton(label("Close", "إغلاق"), null);
