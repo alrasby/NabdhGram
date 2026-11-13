@@ -34,6 +34,11 @@ assert "Cells/SessionCell.java" in identity_overlay and '"NandhGram".equalsIgnor
 assert "SessionBottomSheet.java" in identity_overlay and "nabdhDisplayVersion.startsWith" in identity_overlay, "Session detail must normalize historic versions"
 assert "while (nabdhVersionName.startsWith(" in identity_overlay, "Repeated NandhGram / NabdhGram prefixes must be stripped"
 assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Install Android SDK and NDK") < workflow.index("      - name: Build branded debug APK"), "Expensive SDK/NDK setup must run only after source overlays pass"
+# Every upstream upgrade must retain this symbol-preservation preflight.
+assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Preserve Telegram native Java APIs before Gradle") < workflow.index("      - name: Initialize and verify pinned native submodules after overlay preflight") < workflow.index("      - name: Install Android SDK and NDK"), "Native method/field preservation must run before slow submodule checkout and Gradle"
+assert "check-upstream-api-preservation.py --self-test" in workflow and "git -C Telegram-upstream diff --check" in workflow, "Upgrade compatibility preflight was removed"
+credits_script = (ROOT / "scripts/apply-nabdhgram-settings.py").read_text(encoding="utf-8")
+assert "APP_VERSION_NAME=" in credits_script and "APP_VERSION_CODE=" in credits_script and '"NabdhGramCredits": branded_credits' in credits_script, "NabdhGram credits must match pinned Telegram version"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
 assert "!themePreview && !isSelected" in bubble, "Selection or preview protection was removed"
 assert finishing.count("if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected)") == 2, "Final overlay no longer matches text/media anchor"
