@@ -85,3 +85,15 @@ avoid redundant account row decoration; soften the hero; brand real
 `AppName` resources and restore main Chats title on resume.
 Source contracts and generated-Java checks are added; a full device build
 and real on-device pass are required before merging into production.
+
+## Main settings screenshot — white group backdrop / Arabic row truncation
+
+Source patch on `fix/settings-sections-arabic-text-v1`: add Glass-only
+guards in both RecyclerListView group draw entrypoints and UniversalAdapter
+white-section fallback; move main Settings `nabdhHideSectionBackgroundOnly`
+opt-in AFTER `setSectionsDrawBackground(true)`. Replace SettingsActivity
+SettingCell's EXACTLY-60dp described rows with measured content plus
+original height minima (bounded maximum). Add generated Java invariants.
+Must pass real pinned Telegram overlay preflight and merged APK build,
+then demonstrate a real Arabic screenshot with no white group slabs or
+clipped subtitles. Existing `main` remains unchanged.

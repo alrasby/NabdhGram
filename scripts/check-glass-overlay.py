@@ -519,6 +519,17 @@ checks["ordinary settings and folders have opaque themed page canvases"] = all(
         "FilterCreateActivity.java", "LiteModeSettingsActivity.java"
     )
 )
+checks["all three white section painter paths are guarded on Glass settings"] = (
+    selector.count("if (nabdhSuppressLegacySectionFill) return;") >= 2
+    and "listView.setSectionsDrawBackground(true);\n        listView.nabdhHideSectionBackgroundOnly();" in native_settings
+    and "if (nabdhGlassSettings) return;" in universal
+)
+checks["main settings Arabic titles and subtitles use adaptive row height"] = (
+    "final int minRowHeight = dp(mini ? 44 : twoLines ? 60 : 50);" in native_settings
+    and "final int maxRowHeight = dp(mini ? 96 : 200);" in native_settings
+    and "MeasureSpec.AT_MOST" in native_settings
+    and "getMeasuredHeight() < minRowHeight" in native_settings
+)
 checks["main Settings uses opaque root behind avatar and glass header"] = (
     "contentView.setBackground(" in native_settings
     and "NabdhGlassRowDecoration.newOpaquePageBackground()" in native_settings

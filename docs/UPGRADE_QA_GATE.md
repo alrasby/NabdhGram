@@ -124,3 +124,29 @@ the account or altering Telegram credentials:
 
 These are actual phone QA requirements, not implied by successful source
 preflight or Gradle compilation. PR #63 remains unmerged until observed.
+
+## 2026-11-13 screenshot regression — native white sections and Arabic clipping
+
+The white rounded rectangular *parent groups* in main Settings are not
+NabdhGram's individual blue Glass cards. Telegram 13.2.2 retains a legacy
+section decorator, bitmap section background and UniversalAdapter fallback.
+The original source callback nulling was insufficient in all paths. On
+main Settings, disable section paint AFTER native
+`setSectionsDrawBackground(true)`; guard the final legacy and bitmap
+drawing entrypoints only on explicitly opted-in Glass RecyclerListViews;
+skip UniversalAdapter white fallback only on opted-in Glass Settings.
+Keep native section geometry and adapter content.
+
+The real SettingsActivity.SettingCell previously requested EXACTLY 60dp
+for any title with a subtitle even when Arabic text wraps into 3 lines or
+when an app-wide selected font expands glyph metrics. Row measurement now
+uses AT_MOST with actual child text layouts and native minimum row heights.
+No global font/weight is overwritten by the correction.
+
+**Acceptance on Android:** in Arabic with Readex Pro and enlarged fonts,
+open Settings at top, scroll through all grouped cards and to Debug. There
+must be **zero broad white parent backgrounds** behind blue row cards.
+Descriptions can use two or more lines but cannot overlap adjacent cards
+or become clipped by fixed 60dp height. Repeat in English, light/dark and
+imported themes. Validate on the actual new APK and record screenshots
+before merging PR #63 into main. Passing source tests alone is insufficient.
