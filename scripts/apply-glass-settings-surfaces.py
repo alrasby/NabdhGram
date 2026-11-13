@@ -264,7 +264,7 @@ GLASS_SETTINGS_SCREENS = (
     "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java",
     "ArchiveSettingsActivity.java", "DataAutoDownloadActivity.java",
     "PasscodeActivity.java", "PrivacyUsersActivity.java",
-    "ProxyListActivity.java", "QuickRepliesSettingsActivity.java",
+    "ProxyListActivity.java",
     "RestrictedLanguagesSelectActivity.java", "ProfileNotificationsActivity.java",
 )
 for name in GLASS_SETTINGS_SCREENS:
