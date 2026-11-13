@@ -112,7 +112,8 @@ checks = {
         and "extends android.graphics.drawable.RippleDrawable" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         and selector.count("public void nabdhHideSectionBackgroundOnly()") == 1
-        and "listView.setSections(true);" in contacts,
+        and ("listView.setSections(true);" in contacts
+             or "listView.setSections();" in contacts),
     "native mixed Arabic/Latin alignment uses first strong direction":
         "titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings
         and "subtitleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings,
@@ -202,8 +203,11 @@ checks = {
             for part in ("class NabdhCircleKey", "canvas.drawCircle(",
                          "Math.min(box.width(), box.height())", "state_pressed",
                          "54 + android.graphics.Color.red(accent) * 46",
-                         "R.drawable.nabdh_keypad_delete",
-                         "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")),
+                         "R.drawable.nabdh_keypad_delete"))
+        and ("backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));" in
+             (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
+             or "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);" in
+             (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")),
     "Telegram empty-chat egg replaced by approved NabdhGram logo":
         (root / "TMessagesProj/src/main/res/drawable-nodpi/nabdh_empty_logo.png").is_file()
         and all(t in (ui / "Cells/DialogsEmptyCell.java").read_text(encoding="utf-8")
