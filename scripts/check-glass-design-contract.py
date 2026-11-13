@@ -201,5 +201,7 @@ assert "setNabdhBorderless(true)" in finishing_ui, "Login phone and country must
 assert "LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8" in (ROOT / "scripts/apply-nabdh-qr-login.py").read_text(encoding="utf-8"), "QR login must shrink horizontally"
 assert '<string name="AppName">NabdhGram</string>' in (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8"), "In-app AppName remains Telegram"
 assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Main dialogs title still unbranded"
+assert "private void nabdhRestoreChatTitle()" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "MainTabs host can still reintroduce native Telegram title"
+assert "position == POSITION_CHATS" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Brand restoration must only apply to Chats tab"
 assert "newHeroBackground()" in native_surfaces and "hero.setAlpha(190)" in native_surfaces, "Main hero remains near-white opaque"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")
