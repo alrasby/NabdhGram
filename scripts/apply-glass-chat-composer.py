@@ -12,7 +12,11 @@ p = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui/Components/
 s = p.read_text(encoding="utf-8")
 anchor = """        messageEditText.setBackgroundDrawable(null);
         messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));"""
-if s.count(anchor) != 1:
+# Telegram 13.2.x migrated text color assignments to ThemeBind; keep
+# those bindings intact so user-installed themes still update the composer.
+new_theme_bind_anchor = """        messageEditText.setBackgroundDrawable(null);
+        ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider);"""
+if s.count(anchor) != 1 and s.count(new_theme_bind_anchor) != 1:
     raise SystemExit("Message entry background anchor changed")
 replacement = """        // NabdhGram Glass: light, theme-aware input surface. Keep the
         // original edit field and all of its behavior unchanged.
@@ -45,7 +49,15 @@ replacement = """        // NabdhGram Glass: light, theme-aware input surface. K
         messageEditText.setSupportRtlHint(true);
         nabdhRefreshComposerFont();
         messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));"""
-s=s.replace(anchor,replacement,1)
+if s.count(anchor) == 1:
+    s = s.replace(anchor, replacement, 1)
+else:
+    # The new API owns text-color updates; don't also call setTextColor()
+    # here, which could override live ThemeBind color updates.
+    bound_replacement = replacement.replace(
+        "messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));",
+        "ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider);", 1)
+    s = s.replace(new_theme_bind_anchor, bound_replacement, 1)
 
 resume_anchor = """    public void onResume() {
         isPaused = false;"""
