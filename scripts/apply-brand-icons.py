@@ -167,6 +167,38 @@ def main():
         library_manifest.write_text(library_xml, encoding="utf-8")
         print("DefaultIcon launcher activity-alias now explicitly uses NabdhGram artwork.")
 
+        # Android 12+ draws the LAUNCH THEME icon, not the Android launcher
+        # alias icon. Telegram's Theme.TMessages.Start still references
+        # @drawable/tg_splash_320; that is why the blue Telegram circle
+        # appears when launching our otherwise branded app.
+        # Use the exact approved NabdhGram mark on the native startup theme.
+        splash_source = drawable / "nabdhgram_launcher_foreground.png"
+        native_drawable = root / "TMessagesProj/src/main/res/drawable-nodpi"
+        native_drawable.mkdir(parents=True, exist_ok=True)
+        native_splash = native_drawable / "nabdhgram_launcher_foreground.png"
+        if native_splash.exists():
+            raise SystemExit("Unexpected native splash foreground: inspect upstream changes")
+        from shutil import copyfile
+        copyfile(splash_source, native_splash)
+
+        android12_styles = root / "TMessagesProj/src/main/res/values-v31/styles.xml"
+        styles = android12_styles.read_text(encoding="utf-8")
+        old_splash = ('<item name="android:windowSplashScreenAnimatedIcon">'
+                      '@drawable/tg_splash_320</item>')
+        new_splash = ('<item name="android:windowSplashScreenAnimatedIcon">'
+                      '@drawable/nabdhgram_launcher_foreground</item>')
+        if styles.count(old_splash) != 1:
+            raise SystemExit("Pinned Android 12 native splash icon changed")
+        styles = styles.replace(old_splash, new_splash, 1)
+        old_background = ('<item name="android:windowSplashScreenBackground">'
+                          '?android:windowBackground</item>')
+        if styles.count(old_background) != 1:
+            raise SystemExit("Pinned Android 12 native splash background changed")
+        styles = styles.replace(old_background,
+            '<item name="android:windowSplashScreenBackground">#04252A</item>', 1)
+        android12_styles.write_text(styles, encoding="utf-8")
+        print("PASS: Android 12+ native launch splash displays approved NabdhGram mark")
+
         print("Debug manifest launcher resources: nabdhgram_launcher / nabdhgram_launcher_round")
     print("Approved NabdhGram launcher artwork integrated; verify adaptive icon crop on device.")
 
