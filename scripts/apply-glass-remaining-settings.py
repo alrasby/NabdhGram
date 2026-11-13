@@ -66,7 +66,13 @@ def insert_at_method_end(s, after, condition, label):
                 {glass}.applyCardStyle(holder.itemView, true);
             }}
 """
-    return s[:pos] + snippet + s[pos:]
+    # Place the new snippet BEFORE the indentation of the closing
+    # brace, not between that indentation and '}'. The old splice
+    # inserted whitespace-only lines in five Telegram settings classes.
+    line_start = s.rfind("\n", 0, pos) + 1
+    if s[line_start:pos].strip():
+        raise SystemExit(f"{label}: unexpected text before Java method close")
+    return s[:line_start] + snippet.lstrip("\n") + s[line_start:]
 
 pages = [
     ("FiltersSetupActivity.java", "class ListAdapter extends",
