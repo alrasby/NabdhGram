@@ -130,7 +130,7 @@ def declared_methods(code):
 def modified_native_files(root):
     prefix = JAVA.as_posix()
     changed = subprocess.run(
-        ["git", "-C", str(root), "diff", "--name-only", "--diff-filter=ACMRT",
+        ["git", "-C", str(root), "diff", "--name-only", "--diff-filter=ACDMRT",
          "HEAD", "--", prefix],
         capture_output=True, text=True, check=True, encoding="utf-8"
     ).stdout

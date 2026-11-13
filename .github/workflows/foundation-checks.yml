@@ -22,6 +22,8 @@ jobs:
         run: |
           bash -n scripts/bootstrap-upstream.sh
           bash -n scripts/verify-upstream.sh
+          bash -n scripts/device-smoke-check.sh
+          bash scripts/device-smoke-check.sh --help >/dev/null
       - name: Validate all Python overlay scripts before Android checkout
         shell: bash
         run: |
