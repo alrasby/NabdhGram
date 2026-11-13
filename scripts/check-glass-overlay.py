@@ -548,7 +548,8 @@ checks["Glass rows remain independent from the opaque page canvas"] = (
 )
 checks["main-tab host rebrands the actual visible chats title on tab switch and resume"] = (
     "private void nabdhRestoreChatTitle()" in main_tabs
-    and 'dialogsActivity.getActionBar().setTitle("NabdhGram");' in main_tabs
+    and 'bar.setTitle("NabdhGram", currentTitle == null' in main_tabs
+    and 'currentTitle.getRightDrawable()' in main_tabs
     and "if (position == POSITION_CHATS) nabdhRestoreChatTitle();" in main_tabs
     and "if (viewPager != null && viewPager.getCurrentPosition() == POSITION_CHATS)" in main_tabs
 )
