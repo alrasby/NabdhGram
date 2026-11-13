@@ -147,18 +147,18 @@ additional = """    private int nabdhDp(Context context, int dp) {
             row.setOnClickListener(v -> {
                 org.telegram.ui.Components.NabdhGlassStyle.choose(context, preset);
                 for (int k = 0; k < 3; ++k) {
-                    choices[k].setText(context.getString(titleRes[k]) +
+                    choices[k].setText(nabdhText(context, titleRes[k]) +
                         (k == preset ? "  ✓" : ""));
                 }
             });
         }
         final int current = org.telegram.ui.Components.NabdhGlassStyle.current();
         for (int i = 0; i < 3; ++i) {
-            choices[i].setText(context.getString(titleRes[i]) +
+            choices[i].setText(nabdhText(context, titleRes[i]) +
                     (i == current ? "  ✓" : ""));
         }
         TextView note = new TextView(context);
-        note.setText(R.string.NabdhGlassPresetNote);
+        note.setText(nabdhText(context, R.string.NabdhGlassPresetNote));
         note.setTextSize(13);
         note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
         content.addView(note);
@@ -166,7 +166,7 @@ additional = """    private int nabdhDp(Context context, int dp) {
 
     private void addNabdhLensTools(Context context, LinearLayout content) {
         android.widget.Switch toggle = new android.widget.Switch(context);
-        toggle.setText(R.string.NabdhLensSwitch);
+        toggle.setText(nabdhText(context, R.string.NabdhLensSwitch));
         toggle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         toggle.setChecked(org.telegram.ui.Components.NabdhGlassStyle.lensEnabled(context));
         toggle.setOnCheckedChangeListener((button, enabled) ->
@@ -174,7 +174,7 @@ additional = """    private int nabdhDp(Context context, int dp) {
         content.addView(toggle);
 
         TextView note = new TextView(context);
-        note.setText(R.string.NabdhLensPrivacyNote);
+        note.setText(nabdhText(context, R.string.NabdhLensPrivacyNote));
         note.setTextSize(13);
         note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, -2);
@@ -186,7 +186,7 @@ additional = """    private int nabdhDp(Context context, int dp) {
         input.setMinLines(3);
         input.setMaxLines(8);
         input.setGravity(android.view.Gravity.TOP);
-        input.setHint(R.string.NabdhLensSampleHint);
+        input.setHint(nabdhText(context, R.string.NabdhLensSampleHint));
         input.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
                            android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         LinearLayout.LayoutParams editParams = new LinearLayout.LayoutParams(-1, -2);
@@ -195,7 +195,7 @@ additional = """    private int nabdhDp(Context context, int dp) {
 
         TextView run = new TextView(context);
         run.setGravity(android.view.Gravity.CENTER);
-        run.setText(R.string.NabdhLensAnalyze);
+        run.setText(nabdhText(context, R.string.NabdhLensAnalyze));
         run.setTextSize(16);
         run.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         run.setPadding(nabdhDp(context, 24), nabdhDp(context, 16),
@@ -207,7 +207,7 @@ additional = """    private int nabdhDp(Context context, int dp) {
         run.setOnClickListener(v -> {
             if (!org.telegram.ui.Components.NabdhContextLens.show(context, input.getText(),
                 text -> { input.setText(text); input.setSelection(input.length()); })) {
-                android.widget.Toast.makeText(context, R.string.NabdhLensEmpty,
+                android.widget.Toast.makeText(context, nabdhText(context, R.string.NabdhLensEmpty),
                     android.widget.Toast.LENGTH_SHORT).show();
             }
         });
