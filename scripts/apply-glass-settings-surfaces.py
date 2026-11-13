@@ -438,11 +438,10 @@ settings_hero = ui / "SettingsActivity.java"
 hero_source = settings_hero.read_text(encoding="utf-8")
 hero_old = "        topView = new FrameLayout(context);"
 hero_new = """        topView = new FrameLayout(context);
-        // Match the horizontal edges of Settings' own 10dp-inset cards.
-        // Do not change avatar/camera/name click regions or topView height.
-        topView.setBackground(new android.graphics.drawable.InsetDrawable(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground(),
-                AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0));"""
+        // GlassCardLayers already insets 10dp on both sides. The extra
+        // InsetDrawable doubled this margin and misaligned the hero.
+        topView.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());"""
 if hero_source.count(hero_old) != 1:
     raise SystemExit("SettingsActivity account hero constructor changed")
 settings_hero.write_text(hero_source.replace(hero_old, hero_new, 1), encoding="utf-8")
@@ -534,19 +533,32 @@ universal_source = universal_source[:end] + """
 """ + universal_source[end:]
 universal_path.write_text(universal_source, encoding="utf-8")
 
-# The main SettingsActivity uses UniversalRecyclerView; profile and other
-# native screens are covered by the loop above. Remove its parent section
-# once, leaving child cards, row order and adapters untouched.
-# Main Settings uses a UniversalRecyclerView adapter, which can recreate
-# native row backgrounds after updateColors(). Install the same fallback
-# decorator there, just as on the ten legacy settings screens.
+# The modern Settings screen has a SizeNotifierFrameLayout root with its
+# OWN floating avatar, camera, and glass action bar. A backdrop on the
+# RecyclerView alone cannot cover those layers or its negative overscroll.
+# Removing Telegram's section paint then exposes underlying tabs and causes
+# the ghost text/black rails recorded on device. The outer root MUST own the
+# opaque theme canvas while inner Glass row surfaces stay translucent.
+# UniversalAdapter already reapplies Glass after binding and theme changes;
+# a second main-list ItemDecoration duplicates draw work and can disturb the
+# original glass capture pipeline. Other legacy lists keep their decorator.
 settings_main = ui / "SettingsActivity.java"
 settings_source = settings_main.read_text(encoding="utf-8")
 enable_anchor = "        listView.adapter.setNabdhGlassSettings(true);"
 if settings_source.count(enable_anchor) != 1:
     raise SystemExit("Main Settings unified card opt-in anchor changed")
-settings_source = settings_source.replace(enable_anchor, enable_anchor + """
-        listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
+native_list_anchor = (
+    "        listView = new UniversalRecyclerView("
+    "this, this::fillItems, this::onClick, this::onLongClick);"
+)
+if settings_source.count(native_list_anchor) != 1:
+    raise SystemExit("Main Settings root/list initialization anchor changed")
+settings_source = settings_source.replace(native_list_anchor,
+    """        // This root covers the avatar, glass action bar and over-scrolled
+        // list; only individual cards are semi-transparent.
+        contentView.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());
+""" + native_list_anchor, 1)
 settings_main.write_text(settings_source, encoding="utf-8")
 
 for activity in ("SettingsActivity.java",):

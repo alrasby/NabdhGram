@@ -44,3 +44,9 @@ The developer **confirmed updating the API application App title to NabdhGram** 
 ## Release gating
 
 Work on source-level hardening is tracked under [#64](https://github.com/alrasby/NabdhGram/issues/64) as P0. PR #63 stays a draft until Android APK compilation, signing/artifact checks and **device** regression (login, QR/email when supported by Telegram, chats, Glass, RTL/fonts, themes and icons). Only after those pass should the baseline upgrade be merged. Never automatically merge, force-relogin users or claim that the new external App title changed old sessions.
+
+## Upstream release readiness (source, Android, and device)
+
+The P0 upgrade acceptance matrix and reproducible, non-destructive physical-device
+launcher test are documented in [UPGRADE_QA_GATE.md](UPGRADE_QA_GATE.md). CI
+must pass *and* a fresh device QA pass must be recorded before merging PR #63.

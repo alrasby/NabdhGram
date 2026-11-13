@@ -7,6 +7,7 @@ Gradle compilation or real-device regression tests.
 """
 from collections import Counter
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import re
 import subprocess
 import sys
@@ -124,6 +125,85 @@ def declared_methods(code):
     # of the same name must still be reported.
     return Counter(m.group("name") for m in METHOD.finditer(mask_noncode(code)))
 
+# The original 15 critical files remain mandatory even if an overlay does
+# not touch them. Every other tracked Java file edited by an overlay is also
+# checked, eliminating the previous blind spot for newer Telegram classes.
+def modified_native_files(root):
+    prefix = JAVA.as_posix()
+    changed = subprocess.run(
+        ["git", "-C", str(root), "diff", "--name-only", "--diff-filter=ACDMRT",
+         "HEAD", "--", prefix],
+        capture_output=True, text=True, check=True, encoding="utf-8"
+    ).stdout
+    added = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "--others", "--exclude-standard",
+         "--", prefix],
+        capture_output=True, text=True, check=True, encoding="utf-8"
+    ).stdout
+    changed_paths = {Path(line) for line in changed.splitlines()
+                     if line.endswith(".java")}
+    added_paths = {Path(line) for line in added.splitlines()
+                   if line.endswith(".java")}
+    return changed_paths, added_paths
+
+
+# Comparing names alone misses an erased overload when a different overload
+# has the same name. Count method-name + argument arity, ignoring commas inside
+# generic type arguments and annotations. This is deliberately a conservative
+# *preflight*, not a complete Java AST parser; javac is still mandatory.
+def declared_method_arities(code):
+    masked = mask_noncode(code)
+    found = Counter()
+    for method in METHOD.finditer(masked):
+        parens = 1
+        angles = 0
+        braces = 0
+        brackets = 0
+        arity = 0
+        parameter = False
+        for char in masked[method.end():]:
+            if char == "(":
+                parens += 1
+            elif char == ")":
+                parens -= 1
+                if parens == 0:
+                    if parameter:
+                        arity += 1
+                    found[(method.group("name"), arity)] += 1
+                    break
+            elif parens == 1:
+                if char == "<":
+                    angles += 1
+                elif char == ">" and angles:
+                    angles -= 1
+                elif char == "{":
+                    braces += 1
+                elif char == "}" and braces:
+                    braces -= 1
+                elif char == "[":
+                    brackets += 1
+                elif char == "]" and brackets:
+                    brackets -= 1
+                elif char == "," and not (angles or braces or brackets):
+                    arity += 1
+                    parameter = False
+                    continue
+            if parens == 1 and not char.isspace():
+                parameter = True
+        else:
+            raise ValueError("Unclosed Java method declaration: " + method.group("name"))
+    return found
+
+
+JAVA_TYPE = re.compile(r"\b(?P<kind>class|interface|enum|record)\s+"
+                       r"(?P<name>[A-Za-z_$][\w$]*)\b")
+
+
+def declared_types(code):
+    return Counter((match.group("kind"), match.group("name"))
+                   for match in JAVA_TYPE.finditer(mask_noncode(code)))
+
+
 def path_for(name):
     if name == "ConnectionsManager.java":
         return JAVA / "tgnet" / name
@@ -138,21 +218,65 @@ def baseline(root, relative):
 
 def assert_compatible(root):
     failures = []
-    for name in CRITICAL_FILES:
-        relative = path_for(name)
+    changed, added = modified_native_files(root)
+    protected = {path_for(name) for name in CRITICAL_FILES} | changed
+    missing_files = 0
+    checked_methods = 0
+    for relative in sorted(protected):
+        generated_file = root / relative
+        if not generated_file.is_file():
+            failures.append(str(relative) + ": upstream Java file removed by overlays")
+            missing_files += 1
+            continue
         original = baseline(root, relative)
-        generated = (root / relative).read_text(encoding="utf-8")
-        before, after = declared_methods(original), declared_methods(generated)
+        generated = generated_file.read_text(encoding="utf-8")
         if not syntax_delimiters_ok(generated):
             failures.append(str(relative) + ": unbalanced Java delimiters after overlays")
-        missing = before - after
-        if missing:
+        # Name-only counts are kept as a useful diagnostic while overload arity
+        # checks catch a second failure mode (replaced same-name declarations).
+        names_before, names_after = declared_methods(original), declared_methods(generated)
+        lost_names = names_before - names_after
+        if lost_names:
             failures.append(
-                str(relative) + ": erased native Java method declaration(s): "
-                + ", ".join(f"{m} (x{n})" for m, n in sorted(missing.items()))
+                str(relative) + ": erased native Java method(s): "
+                + ", ".join(f"{name} (x{count})"
+                            for name, count in sorted(lost_names.items()))
             )
-        else:
-            print(f"PASS: preserved {sum(before.values())} native method declarations: {relative}")
+        try:
+            arities_before = declared_method_arities(original)
+            arities_after = declared_method_arities(generated)
+        except ValueError as error:
+            failures.append(str(relative) + ": " + str(error))
+            continue
+        checked_methods += sum(arities_before.values())
+        lost_overloads = arities_before - arities_after
+        if lost_overloads:
+            failures.append(
+                str(relative) + ": erased native Java overload(s): "
+                + ", ".join(f"{name}/{arity} (x{count})"
+                            for (name, arity), count in sorted(lost_overloads.items()))
+            )
+        lost_types = declared_types(original) - declared_types(generated)
+        if lost_types:
+            failures.append(
+                str(relative) + ": erased native Java type(s): "
+                + ", ".join(f"{kind} {name} (x{count})"
+                            for (kind, name), count in sorted(lost_types.items()))
+            )
+        if not (lost_names or lost_overloads or lost_types):
+            print(f"PASS: preserved {sum(arities_before.values())} Java method "
+                  f"declarations and native types: {relative}")
+
+    for relative in sorted(added):
+        # Generated helper classes have no original upstream baseline; guard
+        # their structural syntax before the expensive Java compiler runs.
+        generated = root / relative
+        if not generated.is_file() or not syntax_delimiters_ok(
+                generated.read_text(encoding="utf-8")):
+            failures.append(str(relative) + ": invalid generated Java source")
+    print(f"CHECKED: {len(protected)} upstream Java files "
+          f"({len(changed)} modified), {len(added)} generated helpers, "
+          f"{checked_methods} original method declarations")
 
     keyboard = (root / path_for("Components/CustomPhoneKeyboardView.java")).read_text(encoding="utf-8")
     for symbol in (
@@ -200,7 +324,47 @@ def self_test():
     assert syntax_delimiters_ok(fixture)
     assert not syntax_delimiters_ok(fixture + " public void deleted(int x) {")
     assert syntax_delimiters_ok('class C { String s = "{ [ )"; }')
-    print("PASS: upstream API preservation parser self-tests")
+    overload = """public class Example {
+        public void run(java.util.Map<String, Integer> arg) {}
+        public void run(int left, int right) {}
+        public void run(@Some(value = {1, 2}) int value, boolean flag) {}
+    }"""
+    assert declared_method_arities(overload)[("run", 1)] == 1
+    assert declared_method_arities(overload)[("run", 2)] == 2
+    # An erased two-parameter overload is invisible to name-only counts if
+    # replaced by a one-parameter overload; the new guard must reject it.
+    switched = overload.replace("run(int left, int right)",
+                                "run(String replacement)")
+    assert declared_methods(overload) == declared_methods(switched)
+    assert declared_method_arities(overload) - declared_method_arities(switched)
+    assert declared_types(overload)[("class", "Example")] == 1
+    assert declared_types(overload.replace("class Example", "class Renamed")) != declared_types(overload)
+    # Exercise the real Git-path discovery on a disposable repository:
+    # native changes, removals and untracked generated helpers must be found.
+    with TemporaryDirectory(prefix="nabdhgram-upgrade-preflight-") as temp:
+        sandbox = Path(temp)
+        subprocess.run(["git", "init", "-q", str(sandbox)], check=True)
+        source_dir = sandbox / JAVA / "ui"
+        source_dir.mkdir(parents=True)
+        modified = source_dir / "Modified.java"
+        removed = source_dir / "Removed.java"
+        fresh = source_dir / "NewHelper.java"
+        modified.write_text("public class Modified { public void old() {} }")
+        removed.write_text("public class Removed { public void old() {} }")
+        subprocess.run(["git", "-C", str(sandbox), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(sandbox), "-c", "user.name=Guard",
+                        "-c", "user.email=guard@example.invalid", "commit",
+                        "-qm", "test upstream source"], check=True)
+        modified.write_text("public class Modified { public void newName() {} }")
+        removed.unlink()
+        fresh.write_text("public class NewHelper {}")
+        changed, added = modified_native_files(sandbox)
+        assert JAVA / "ui/Modified.java" in changed
+        assert JAVA / "ui/Removed.java" in changed, "Deleted native class not detected"
+        assert JAVA / "ui/NewHelper.java" in added
+        assert JAVA / "ui/NewHelper.java" not in changed
+    print("PASS: Git discovery catches modified/deleted Java and new helpers")
+    print("PASS: upstream API preservation parser and overload self-tests")
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "--self-test":

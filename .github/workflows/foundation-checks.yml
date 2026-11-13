@@ -1,7 +1,11 @@
 name: Foundation checks
 
 on:
+  # Avoid running Foundation twice for each push to an open PR: PR branches
+  # run on pull_request, while the release baseline runs on direct main pushes.
   push:
+    branches:
+      - main
     paths:
       - 'scripts/**'
       - 'docs/**'
@@ -22,6 +26,10 @@ jobs:
         run: |
           bash -n scripts/bootstrap-upstream.sh
           bash -n scripts/verify-upstream.sh
+          bash -n scripts/device-smoke-check.sh
+          bash scripts/device-smoke-check.sh --help >/dev/null
+          bash -n scripts/test-device-smoke.sh
+          bash scripts/test-device-smoke.sh
       - name: Validate all Python overlay scripts before Android checkout
         shell: bash
         run: |

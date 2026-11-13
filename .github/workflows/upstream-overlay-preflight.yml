@@ -1,0 +1,23 @@
+name: Pinned Telegram overlay preflight
+
+# Test actual pinned Telegram and all overlays before Gradle, independent
+# from the expensive Android build so we cannot cancel a valid APK run.
+on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'upstream/**'
+      - '.github/workflows/nabdhgram-identity-build.yml'
+      - '.github/workflows/upstream-overlay-preflight.yml'
+      - '.github/workflows/foundation-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-source:
+    uses: ./.github/workflows/nabdhgram-identity-build.yml
+    with:
+      source_preflight_only: true
+    secrets: inherit

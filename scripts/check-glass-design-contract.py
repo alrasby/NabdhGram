@@ -37,6 +37,8 @@ assert workflow.index("      - name: Verify NabdhGram Glass overlays before Grad
 # Every upstream upgrade must retain this symbol-preservation preflight.
 assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Preserve Telegram native Java APIs before Gradle") < workflow.index("      - name: Initialize and verify pinned native submodules after overlay preflight") < workflow.index("      - name: Install Android SDK and NDK"), "Native method/field preservation must run before slow submodule checkout and Gradle"
 assert "check-upstream-api-preservation.py --self-test" in workflow and "git -C Telegram-upstream diff --check" in workflow, "Upgrade compatibility preflight was removed"
+assert "source_preflight_only:" in workflow and "Report source-only preflight success" in workflow, "Source-only upgrade preflight cannot be triggered"
+assert workflow.count("!inputs.source_preflight_only") == 12, "Expensive Android or APK steps are not completely excluded from source-only preflight"
 credits_script = (ROOT / "scripts/apply-nabdhgram-settings.py").read_text(encoding="utf-8")
 assert "APP_VERSION_NAME=" in credits_script and "APP_VERSION_CODE=" in credits_script and '"NabdhGramCredits": branded_credits' in credits_script, "NabdhGram credits must match pinned Telegram version"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
@@ -89,7 +91,7 @@ assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native
 for obsolete in ("GradientDrawable glassCard =", "GradientDrawable infoCard =", "GradientDrawable fontGlass =", "RippleDrawable touchSurface ="):
     assert obsolete not in settings, f"Second per-card surface allocation survived: {obsolete}"
 assert "scroll.setBackground(new GradientDrawable(" not in settings, "NabdhGram scroll snapshots old theme colors"
-assert "topView.setBackground(new android.graphics.drawable.InsetDrawable(" in native_surfaces and "AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0" in native_surfaces, "Main Settings hero needs the same inset as its cards"
+assert "topView.setBackground(" in native_surfaces and "NabdhGlassRowDecoration.newCardBackground());" in native_surfaces, "Main Settings hero must use the shared card renderer"
 remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
 for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java", "ThemeActivity.java"):
     assert screen in remaining, f"Missing dedicated folder / lite mode coverage for {screen}"
@@ -148,6 +150,11 @@ assert 'listView.setSections(true);' in (ROOT / "scripts/apply-glass-contacts.py
 assert "public void nabdhHideSectionBackgroundOnly()" in native_surfaces, "Glass source must own section helper"
 assert "nabdhSuppressLegacySectionFill" in native_surfaces and "bitmapSectionsItemDecoration.setDrawBackground(false)" in native_surfaces, "Telegram 13.2 bitmap section fills can still appear"
 assert "newOpaquePageBackground()" in native_surfaces and "Theme.key_windowBackgroundGray" in native_surfaces and "PixelFormat.OPAQUE" in native_surfaces, "Nested settings may leak content from previous fragments"
+assert "contentView.setBackground(" in native_surfaces and "Main Settings root/list initialization anchor changed" in native_surfaces, "Main Settings needs an opaque root-level canvas"
+assert "topView.setBackground(" in native_surfaces and "newCardBackground());" in native_surfaces, "Account hero needs the shared one-inset Glass renderer"
+assert "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_surfaces, "Double-inset account hero regressed"
+assert 'settings_source.replace(enable_anchor, enable_anchor' not in native_surfaces, "Main Settings must not add a redundant ItemDecoration"
+
 assert "page_canvas = " in native_surfaces and "radius + page_canvas" in native_surfaces, "Opaque settings canvas must be installed without changing Profile hero"
 assert "newOpaquePageBackground()" in (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8"), "Folders/Lite page canvas absent"
 assert "source.replace(anchor, anchor +" in native_surfaces, "Nested pages must preserve setSections()"
