@@ -43,11 +43,16 @@ public final class NabdhContextLens {
             label("Extract tasks (local)", "استخراج المهام (محلي)"),
             label("Check link signals (local)", "فحص مؤشرات الروابط (محلي)"),
             label("Clean up text (local)", "تنسيق النص (محلي)"),
+            label("Detect language (on-device ML)", "التعرّف على اللغة (نموذج محلي)"),
             label("Translation and voice options", "خيارات الترجمة والصوت")
         };
         new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
             .setTitle(label("Nabdh Context Lens", "عدسة نبض الذكية"))
             .setItems(choices, (dialog, which) -> {
+                if (which == 4) {
+                    detectLanguage(context, source);
+                    return;
+                }
                 final String output;
                 switch (which) {
                     case 0: output = summary(source); break;
@@ -70,7 +75,7 @@ public final class NabdhContextLens {
                 if (which == 3 && apply != null) {
                     result.setPositiveButton(label("Use in composer", "استخدام في المحادثة"),
                         (d, button) -> apply.use(output));
-                } else if (which != 4) {
+                } else if (which != 5) {
                     result.setPositiveButton(label("Copy result", "نسخ النتيجة"), (d, button) -> {
                         ClipboardManager cm = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
                         if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Nabdh Lens result", output));
@@ -81,6 +86,45 @@ public final class NabdhContextLens {
             .setNegativeButton(label("Cancel", "إلغاء"), null)
             .show();
         return true;
+    }
+
+    private static void detectLanguage(Context context, String text) {
+        // Telegram already bundles com.google.mlkit:language-id:17.0.6.
+        // Run its real ML model only after explicit user action; its Task is
+        // asynchronous, text is not logged, and the client is always closed.
+        final com.google.mlkit.nl.languageid.LanguageIdentifier classifier =
+            com.google.mlkit.nl.languageid.LanguageIdentification.getClient();
+        final String sample = text.substring(0, Math.min(text.length(), 512));
+        classifier.identifyLanguage(sample).addOnCompleteListener(task -> {
+            try {
+                if (context instanceof android.app.Activity &&
+                        ((android.app.Activity) context).isFinishing()) return;
+                final String result;
+                if (!task.isSuccessful()) {
+                    result = label("Language model unavailable on this device.",
+                                   "نموذج التعرف على اللغة غير متاح على هذا الجهاز.");
+                } else {
+                    String code = task.getResult();
+                    if (code == null || "und".equals(code)) {
+                        result = label("Language could not be determined.",
+                                       "تعذر تحديد اللغة بثقة.");
+                    } else {
+                        java.util.Locale locale = java.util.Locale.forLanguageTag(code);
+                        result = locale.getDisplayLanguage(
+                            arabic() ? new java.util.Locale("ar") : java.util.Locale.ENGLISH)
+                            + " (" + code + ")";
+                    }
+                }
+                new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
+                    .setTitle(label("On-device language recognition",
+                                    "التعرف المحلي على اللغة"))
+                    .setMessage(result)
+                    .setPositiveButton(label("OK", "موافق"), null)
+                    .show();
+            } finally {
+                classifier.close();
+            }
+        });
     }
 
     static String summary(String source) {
