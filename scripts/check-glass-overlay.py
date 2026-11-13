@@ -553,12 +553,18 @@ checks["main-tab host rebrands the actual visible chats title on tab switch and 
     and "if (position == POSITION_CHATS) nabdhRestoreChatTitle();" in main_tabs
     and "if (viewPager != null && viewPager.getCurrentPosition() == POSITION_CHATS)" in main_tabs
 )
-checks["opt-in explanatory text keeps normal weight under global Bold"] = (
+checks["global font renderer respects secondary explanatory labels"] = (
     '"nabdh:secondary-text".equals(label.getTag())' in
     (ui / "LaunchActivity.java").read_text(encoding="utf-8")
-    and 'description.setTag("nabdh:secondary-text");' in settings
-    and 'explanation.setTag("nabdh:secondary-text");' in feature
-    and feature.count('note.setTag("nabdh:secondary-text");') >= 2
+)
+checks["NabdhGram settings descriptions opt into readable body weight"] = (
+    'description.setTag("nabdh:secondary-text");' in settings
+)
+checks["feature category explanations opt into readable body weight"] = (
+    'explanation.setTag("nabdh:secondary-text");' in feature
+)
+checks["new Glass and Intelligence help texts opt into readable body weight"] = (
+    feature.count('note.setTag("nabdh:secondary-text");') >= 2
 )
 checks["dialogs use NabdhGram title rather than upstream Telegram logo span"] = (
     'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
