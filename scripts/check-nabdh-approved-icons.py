@@ -31,6 +31,18 @@ for slug, alias, label in names:
     for locale in ("values", "values-ar"):
         text = (res / locale / "nabdhgram_icon_variants.xml").read_text(encoding="utf-8")
         assert ('name="' + label + '"') in text, "Missing label " + locale + " " + slug
+assert "pm.getActivityInfo(target, PackageManager.MATCH_DISABLED_COMPONENTS);" in java, "Disabled aliases wrongly filtered from PackageManager"
+assert "pm.getActivityInfo(target, 0)" not in java, "Old disabled-alias lookup must not be packaged"
+assert "public static boolean nabdhSetIconVerified(LauncherIcon icon)" in java, "Launcher switch must return verified result"
+assert "pm.getComponentEnabledSetting(target)" in java, "Launcher switch must verify target enabled state"
+assert "PackageManager.COMPONENT_ENABLED_STATE_ENABLED" in java, "Selected launcher alias must be enabled"
+assert "PackageManager.COMPONENT_ENABLED_STATE_DISABLED" in java, "Previous launcher aliases must be disabled"
+selector = (root / "TMessagesProj/src/main/java/org/telegram/ui/Cells/AppIconsSelectorCell.java").read_text(encoding="utf-8")
+assert "if (!LauncherIconController.nabdhSetIconVerified(icon))" in selector, "Chooser still reports success on a failed switch"
+assert 'context.getString(R.string.NabdhIconApplyFailed)' in selector, "Chooser must disclose actual icon-switch failure"
+for locale in ("values", "values-ar"):
+    localized = (res / locale / "nabdhgram_icon_variants.xml").read_text(encoding="utf-8")
+    assert 'name="NabdhIconApplyFailed"' in localized, "Missing localized icon change failure"
 assert "NABDH_HEX" in java and "NOX" in java, "Native icon choices accidentally replaced"
 assert java.index('NABDH_ORIGINAL("NabdhOriginalIcon"') > java.index('DEFAULT("DefaultIcon"'), "Original choice should follow default"
 assert java.index('NABDH_HEXAGONAL("NabdhHexIcon"') < java.index('VINTAGE("VintageIcon"'), "Approved art must be visible before optional Telegram icons"

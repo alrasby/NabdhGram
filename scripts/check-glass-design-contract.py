@@ -28,6 +28,12 @@ ordered = [
 positions = [workflow.find("python3 nabdhgram/scripts/" + name) for name in ordered]
 assert all(pos >= 0 for pos in positions), "Missing Glass integration step"
 assert positions == sorted(positions), "Glass overlays applied out of order"
+icon_overlay = (ROOT / "scripts/apply-nabdh-approved-icon-variants.py").read_text(encoding="utf-8")
+assert "PackageManager.MATCH_DISABLED_COMPONENTS" in icon_overlay, "Disabled launcher aliases cannot pass PackageManager lookup"
+assert "pm.getActivityInfo(target, 0)" not in icon_overlay, "Disabled alias queries must never omit matching flags"
+assert "nabdhSetIconVerified(LauncherIcon icon)" in icon_overlay, "Launcher change requires verified success result"
+assert "LauncherIconController.nabdhSetIconVerified(icon)" in icon_overlay, "Icon picker still shows success on failed launcher switch"
+assert "NabdhIconApplyFailed" in icon_overlay, "Localized launcher failure must be visible"
 identity_overlay = (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8")
 assert 'appVersion = nabdhVersionName + " (" + pInfo.versionCode + ")";' in identity_overlay
 assert "Cells/SessionCell.java" in identity_overlay and '"NandhGram".equalsIgnoreCase(nabdhDisplayApp)' in identity_overlay, "SessionCell must correct only this client app_name"
