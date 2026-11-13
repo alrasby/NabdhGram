@@ -18,6 +18,12 @@ public final class NabdhBubblePalette {
                 + 114 * android.graphics.Color.blue(color)) / 1000;
     }
 
+    public static int edgeAlpha(int style, int drawableAlpha) {
+        int strength = style == NabdhGlassStyle.SOFT ? 85 :
+                       style == NabdhGlassStyle.CRYSTAL ? 157 : 122;
+        return Math.max(0, Math.min(255, strength * drawableAlpha / 255));
+    }
+
     public static int backgroundAlpha(int style, int bubbleColor,
                                       int wallpaperColor, boolean media) {
         int opacity = style == NabdhGlassStyle.SOFT ? 226 :
