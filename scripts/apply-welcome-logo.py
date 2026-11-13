@@ -98,11 +98,37 @@ def main():
     if drawable.exists():
         raise SystemExit("Refusing to overwrite existing welcome logo")
     normalized.save(drawable, format="PNG")
-    # Synchronize the opaque overlay with the app's light/dark theme changes.
-    content = replace_once(content,
-        '        fragmentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));',
-        '        fragmentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));\\n        if (nabdhgramWelcomeLogo != null) {\\n            ((View) nabdhgramWelcomeLogo.getParent()).setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));\\n        }'.replace('\\n', '\n'),
-        "welcome cover theme background")
+    # Telegram 13.2.x has both updateColors() and onThemeColorsChanged().
+    # Match the precise method context rather than counting a shared line
+    # across the entire class. The latter is optional on older pinned builds.
+    cover_color_refresh = """        if (nabdhgramWelcomeLogo != null
+                && nabdhgramWelcomeLogo.getParent() instanceof View) {
+            ((View) nabdhgramWelcomeLogo.getParent()).setBackgroundColor(
+                    Theme.getColor(Theme.key_windowBackgroundWhite));
+        }
+"""
+    original_update = """        fragmentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        switchLanguageTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText4));"""
+    refreshed_update = """        fragmentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+""" + cover_color_refresh + """        switchLanguageTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText4));"""
+    content = replace_once(content, original_update, refreshed_update,
+                           "updateColors welcome-cover theme callback")
+    # From Telegram 13.2.x: onThemeColorsChanged updates the same color
+    # separately, so update the cover there as well (without touching UI
+    # elsewhere or changing how the native theme is selected).
+    newer_theme_anchor = """            fragmentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+            if (switchLanguageTextView != null) {"""
+    if content.count(newer_theme_anchor) == 1:
+        content = content.replace(newer_theme_anchor,
+            """            fragmentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+            if (nabdhgramWelcomeLogo != null
+                    && nabdhgramWelcomeLogo.getParent() instanceof View) {
+                ((View) nabdhgramWelcomeLogo.getParent()).setBackgroundColor(
+                        Theme.getColor(Theme.key_windowBackgroundWhite));
+            }
+            if (switchLanguageTextView != null) {""", 1)
+    elif content.count(newer_theme_anchor) != 0:
+        raise SystemExit("Ambiguous newer Telegram intro color callback")
     source.write_text(content, encoding="utf-8")
     print("First welcome page: approved transparent NabdhGram logo. Other pages retain upstream animation.")
 
