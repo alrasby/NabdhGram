@@ -368,9 +368,14 @@ k = replace_once(k,
     private static Drawable getButtonDrawable(int index) {""",
     "keyboard circular drawable declaration")
 key_start = k.index("    private static Drawable getButtonDrawable(int index) {")
-key_end = k.index("\n    public void updateColors() {", key_start)
+# Replace ONLY the shape factory. Telegram 13.2.x has a
+# setButtonBackground() ThemeBind helper and two cached tint fields
+# between this method and updateColors(); cutting to updateColors()
+# deleted those declarations and caused seven javac errors.
+key_end = k.find("\n    }", key_start)
 if key_end < key_start:
-    raise SystemExit("Custom keyboard color update boundary changed")
+    raise SystemExit("Custom keyboard shape factory boundary changed")
+key_end += len("\n    }")
 # Replace complete shape logic rather than tweaking any of its 4 corner radii.
 k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) {
         final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
@@ -396,6 +401,13 @@ k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) 
                         android.graphics.Color.WHITE));
     }
 """ + k[key_end:]
+# Regression guard: original Telegram 13.2.x theme-binding members must
+# survive the replacement, including their on-theme-update call sites.
+if "ThemeBind.selectorBackground(v, getButtonDrawable(index)" in k:
+    if ("private static void setButtonBackground(View v, int index)" not in k
+            or "private int lastBackButtonColor, lastButtonsSelectorColor;" not in k
+            or k.count("setButtonBackground(v, a);") != 2):
+        raise SystemExit("Custom keyboard theme binding declarations were lost")
 # Expand actual *key cell height*, not only the drawable radius. The stock
 # 230dp keyboard uses 10dp outer + 6dp inter-key gaps, capping circles to
 # about 47dp. Smaller gutters yield 52dp keys (+11%) at the SAME 230dp height
