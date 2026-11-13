@@ -298,6 +298,42 @@ modify("SettingsActivity.java", [
 # Soft filled surfaces for number/country and code containers WITHOUT adding
 # a second stroke. The upstream OutlineTextContainerView still paints the
 # native focus/validation line and accessibility/keyboard behavior.
+# Telegram 13.2.x refreshes ThemeBind colors inside onDraw() before
+# drawing the native outline. Retain this new call and add the subtle fill
+# below it, rather than replacing the whole draw routine.
+outline_file = ui / "Components/OutlineTextContainerView.java"
+outline_source = outline_file.read_text(encoding="utf-8")
+legacy_outline_draw = """    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+        float textOffset ="""
+modern_outline_draw = """    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        applyThemeColorsOnDraw();
+
+        float textOffset ="""
+if outline_source.count(legacy_outline_draw) == 1:
+    outline_draw_anchor = legacy_outline_draw
+elif outline_source.count(modern_outline_draw) == 1:
+    outline_draw_anchor = modern_outline_draw
+else:
+    raise SystemExit("OutlineTextContainerView draw callback changed")
+outline_glass_fill = """        if (nabdhSoftGlass) {
+            int base = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
+            int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
+            nabdhSoftFillPaint.setColor(android.graphics.Color.rgb(
+                    (android.graphics.Color.red(base) * 94 + android.graphics.Color.red(accent) * 6) / 100,
+                    (android.graphics.Color.green(base) * 94 + android.graphics.Color.green(accent) * 6) / 100,
+                    (android.graphics.Color.blue(base) * 94 + android.graphics.Color.blue(accent) * 6) / 100));
+            canvas.drawRoundRect(AndroidUtilities.dp(2), AndroidUtilities.dp(3),
+                    getWidth() - AndroidUtilities.dp(2), getHeight() - AndroidUtilities.dp(3),
+                    AndroidUtilities.dp(17), AndroidUtilities.dp(17), nabdhSoftFillPaint);
+        }
+
+"""
+outline_draw_replacement = outline_draw_anchor.replace(
+    "        float textOffset =", outline_glass_fill + "        float textOffset =")
+
 modify("Components/OutlineTextContainerView.java", [
     (
         "    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);",
@@ -311,28 +347,7 @@ modify("Components/OutlineTextContainerView.java", [
     }""",
         1
     ),
-    (
-        """    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-
-        float textOffset =""",
-        """    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        if (nabdhSoftGlass) {
-            int base = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
-            int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
-            nabdhSoftFillPaint.setColor(android.graphics.Color.rgb(
-                    (android.graphics.Color.red(base) * 94 + android.graphics.Color.red(accent) * 6) / 100,
-                    (android.graphics.Color.green(base) * 94 + android.graphics.Color.green(accent) * 6) / 100,
-                    (android.graphics.Color.blue(base) * 94 + android.graphics.Color.blue(accent) * 6) / 100));
-            canvas.drawRoundRect(AndroidUtilities.dp(2), AndroidUtilities.dp(3),
-                    getWidth() - AndroidUtilities.dp(2), getHeight() - AndroidUtilities.dp(3),
-                    AndroidUtilities.dp(17), AndroidUtilities.dp(17), nabdhSoftFillPaint);
-        }
-
-        float textOffset =""",
-        1
-    ),
+    (outline_draw_anchor, outline_draw_replacement, 1),
 ])
 modify("LoginActivity.java", [
     (
