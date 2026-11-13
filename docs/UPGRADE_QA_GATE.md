@@ -9,6 +9,15 @@ never a release criterion.
 
 ## Source preservation (automatic — before Gradle)
 
+For an inexpensive migration sanity check, run the GitHub Actions
+**NabdhGram identity debug build** via `workflow_dispatch` with
+`source_preflight_only=true`. This runs the exact same pinned-source
+checkout, all overlays and the Java API preflight, but **skips** native
+submodules, SDK/NDK, Gradle, APK publication and release claims. After
+a clean source-only run, use the full build for actual Android verification.
+
+## Source preservation (automatic — before Gradle)
+
 Run `scripts/check-upstream-api-preservation.py --self-test` and then run it
 against the pinned, modified Telegram checkout. The check compares **all
 tracked native Java files touched by overlays**, plus the high-risk baseline

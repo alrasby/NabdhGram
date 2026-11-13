@@ -37,6 +37,8 @@ assert workflow.index("      - name: Verify NabdhGram Glass overlays before Grad
 # Every upstream upgrade must retain this symbol-preservation preflight.
 assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Preserve Telegram native Java APIs before Gradle") < workflow.index("      - name: Initialize and verify pinned native submodules after overlay preflight") < workflow.index("      - name: Install Android SDK and NDK"), "Native method/field preservation must run before slow submodule checkout and Gradle"
 assert "check-upstream-api-preservation.py --self-test" in workflow and "git -C Telegram-upstream diff --check" in workflow, "Upgrade compatibility preflight was removed"
+assert "source_preflight_only:" in workflow and "Report source-only preflight success" in workflow, "Source-only upgrade preflight cannot be triggered"
+assert workflow.count("!inputs.source_preflight_only") == 10, "Expensive Android or APK steps are not completely excluded from source-only preflight"
 credits_script = (ROOT / "scripts/apply-nabdhgram-settings.py").read_text(encoding="utf-8")
 assert "APP_VERSION_NAME=" in credits_script and "APP_VERSION_CODE=" in credits_script and '"NabdhGramCredits": branded_credits' in credits_script, "NabdhGram credits must match pinned Telegram version"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
