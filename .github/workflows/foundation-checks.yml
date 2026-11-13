@@ -1,7 +1,11 @@
 name: Foundation checks
 
 on:
+  # Avoid running Foundation twice for each push to an open PR: PR branches
+  # run on pull_request, while the release baseline runs on direct main pushes.
   push:
+    branches:
+      - main
     paths:
       - 'scripts/**'
       - 'docs/**'
