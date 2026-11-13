@@ -69,7 +69,62 @@ def main():
         raise SystemExit("Expected upstream debug application label was not found")
     debug_xml = debug_xml.replace('tools:replace="android:supportsRtl"', 'tools:replace="android:supportsRtl,android:label"')
     debug_manifest.write_text(debug_xml, encoding="utf-8")
-    print(f"Identity overlay applied: {APP_ID} / {LABEL}")
+    # Telegram Devices reads this MTProto app_version, not the launcher label.
+    connection = root / "TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsManager.java"
+    connection_src = connection.read_text(encoding="utf-8")
+    source_version = '            appVersion = pInfo.versionName + " (" + pInfo.versionCode + ")";'
+    tagged_version = """            // Brand newly registered Telegram Devices sessions correctly.
+            // Keep Android's actual version and the upstream beta suffix.
+            String nabdhVersionName = pInfo.versionName == null ? "unknown" : pInfo.versionName;
+            // The package may report e.g. "NandhGram NabdhGram 13.1.1".
+            // Strip ALL leading old/new client prefixes, never only the first.
+            // Do not alter versionCode, the debug/beta suffix or user text.
+            while (nabdhVersionName.startsWith("NandhGram ")
+                    || nabdhVersionName.startsWith("NabdhGram ")) {
+                nabdhVersionName = nabdhVersionName.substring(
+                        nabdhVersionName.indexOf(' ') + 1).trim();
+            }
+            appVersion = nabdhVersionName + " (" + pInfo.versionCode + ")";"""
+    if connection_src.count(source_version) != 1:
+        raise SystemExit("ConnectionsManager app_version anchor changed")
+    connection.write_text(connection_src.replace(source_version, tagged_version, 1), encoding="utf-8")
+    # Telegram's server returns app_name (registered API application) and
+    # app_version (this client) as SEPARATE fields. SessionCell/BottomSheet
+    # concatenate both. The API application still carries the historic
+    # NandhGram typo: normalize only THAT name locally, and strip prefixes
+    # from historic version strings, without altering server auth data or
+    # names of unrelated clients.
+    session_label = """            String nabdhDisplayApp = session.app_name;
+            String nabdhDisplayVersion = session.app_version;
+            if ("NandhGram".equalsIgnoreCase(nabdhDisplayApp)
+                    || "NabdhGram".equalsIgnoreCase(nabdhDisplayApp)) {
+                nabdhDisplayApp = "NabdhGram";
+                if (nabdhDisplayVersion != null) {
+                    while (nabdhDisplayVersion.startsWith("NandhGram ")
+                            || nabdhDisplayVersion.startsWith("NabdhGram ")) {
+                        nabdhDisplayVersion = nabdhDisplayVersion.substring(
+                                nabdhDisplayVersion.indexOf(' ') + 1).trim();
+                    }
+                }
+            }
+            stringBuilder.append(nabdhDisplayApp);
+            if (nabdhDisplayVersion != null && !nabdhDisplayVersion.isEmpty()) {
+                stringBuilder.append(" ").append(nabdhDisplayVersion);
+            }"""
+    for relative in ("Cells/SessionCell.java", "SessionBottomSheet.java"):
+        target = root / "TMessagesProj/src/main/java/org/telegram/ui" / relative
+        src = target.read_text(encoding="utf-8")
+        # The details bottom sheet has 8-space indentation, whereas the
+        # SessionCell rendering branch has 12. Preserve each native scope.
+        import textwrap
+        indent = "            " if relative == "Cells/SessionCell.java" else "        "
+        old = (indent + "stringBuilder.append(session.app_name);\n"
+               + indent + 'stringBuilder.append(" ").append(session.app_version);')
+        new = textwrap.indent(textwrap.dedent(session_label), indent).rstrip()
+        if src.count(old) != 1:
+            raise SystemExit(f"{relative}: native app_name+app_version display anchor changed")
+        target.write_text(src.replace(old, new, 1), encoding="utf-8")
+    print(f"Identity overlay applied: {APP_ID} / {LABEL}; Devices app_name/app_version normalized")
     print("NOTE: This does not yet apply approved icon assets or configure private Telegram API credentials.")
 
 if __name__ == "__main__":

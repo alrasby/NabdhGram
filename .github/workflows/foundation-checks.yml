@@ -22,8 +22,22 @@ jobs:
         run: |
           bash -n scripts/bootstrap-upstream.sh
           bash -n scripts/verify-upstream.sh
+      - name: Validate all Python overlay scripts before Android checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          files = sorted(Path("scripts").glob("*.py"))
+          for path in files:
+              ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+          print(f"Validated {len(files)} Python scripts")
+          PY
+      - name: Verify integrated Glass design contract
+        run: python3 scripts/check-glass-design-contract.py
       - name: Ensure no Android APK is misrepresented
         run: |
           test -f docs/BUILD_SETUP.md
           test -f docs/UPSTREAM.md
-          echo "Foundation checks passed; Android compilation not configured yet."
+          echo "Foundation source checks passed; Android compilation and device validation run separately."

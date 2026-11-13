@@ -1,13 +1,23 @@
 name: NabdhGram identity debug build
 
+# A branch with an open PR produces two events for the same commit if both
+# push and pull_request are enabled. Their concurrency cancellation previously
+# killed the real Android build before it reached Gradle.
+# Build the PR head exactly once; workflow_dispatch supports manual branch runs.
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     branches:
-      - design/glass-chat-cards
+      - main
 
 permissions:
   contents: read
+
+# Supersede older *PR* commits only. Never cancel a manual dispatch because
+# the very same branch also received a pull_request event.
+concurrency:
+  group: nabdhgram-android-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -28,31 +38,6 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Install Android SDK and NDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          test -x "$SDKMANAGER"
-          "$SDKMANAGER" --licenses < <(yes) >/dev/null
-          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
-          NDK_DIR="$ANDROID_HOME/ndk/27.2.12479018"
-          for attempt in 1 2 3; do
-            echo "Installing NDK 27.2.12479018 (attempt $attempt of 3)"
-            if "$SDKMANAGER" --install "ndk;27.2.12479018" && \
-               test -x "$NDK_DIR/ndk-build" && \
-               grep -q '^Pkg.Revision = 27.2.12479018$' "$NDK_DIR/source.properties"; then
-              echo "NDK installation verified: $NDK_DIR"
-              break
-            fi
-            echo "::warning::NDK install attempt $attempt failed or incomplete"
-            if [ "$attempt" -eq 3 ]; then
-              echo "::error::NDK installation failed after 3 attempts; check SDK download/archive integrity"
-              exit 1
-            fi
-            rm -rf "$NDK_DIR"
-            sleep $((attempt * 15))
-          done
       - name: Checkout pinned Telegram source
         shell: bash
         run: |
@@ -103,6 +88,10 @@ jobs:
             exit 1
           fi
 
+      - name: Install six approved NabdhGram icon variants
+        run: |
+          python3 nabdhgram/scripts/apply-nabdh-approved-icon-variants.py Telegram-upstream
+
       - name: Apply NabdhGram welcome screen copy
         shell: bash
         run: |
@@ -120,6 +109,12 @@ jobs:
           else
             echo "::notice::Welcome logo not committed yet: branding/approved/nabdhgram-welcome-transparent.png"
           fi
+
+      - name: Apply theme-aware NabdhGram Glass login styling
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-login.py Telegram-upstream
 
       - name: Apply NabdhGram main chats title
         shell: bash
@@ -145,6 +140,52 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nested-feature-settings.py Telegram-upstream
 
+      - name: Register NabdhGram bundled theme presets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-bundled-themes.py Telegram-upstream
+
+      - name: Bundle licensed Readex Pro font
+        shell: bash
+        run: |
+          set -euo pipefail
+          FONT="nabdhgram/branding/fonts/ReadexPro.ttf"
+          test -s "$FONT"
+          python3 - "$FONT" <<'PY'
+          import pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          if p.read_bytes()[:4] not in (b"\x00\x01\x00\x00", b"OTTO"):
+              raise SystemExit("Readex Pro font has an invalid sfnt signature")
+          PY
+          test -s nabdhgram/branding/fonts/OFL-ReadexPro.txt
+          mkdir -p Telegram-upstream/TMessagesProj/src/main/assets/fonts
+          cp "$FONT" Telegram-upstream/TMessagesProj/src/main/assets/fonts/ReadexPro.ttf
+
+      - name: Bundle pinned OFL Arabic fonts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/install-open-fonts.py Telegram-upstream
+
+      - name: Apply persisted typography to Telegram text rendering
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-global-font.py Telegram-upstream
+
+      - name: Apply selected font to native canvas-drawn chat messages
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-chat-typefaces.py Telegram-upstream
+
+      - name: Apply saved font to native Telegram labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-global-textviews.py Telegram-upstream
+
       - name: Apply NabdhGram Glass settings design
         shell: bash
         run: |
@@ -157,18 +198,160 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-dialog-cards.py Telegram-upstream
 
+      - name: Clip pressed dialog selection to Glass card corners
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-selector.py Telegram-upstream
+
+      - name: Apply rounded Glass chat bubble defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-bubble-radius.py Telegram-upstream
+
+      - name: Add theme-aware outlines to gradient chat bubbles
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-bubble-outline.py Telegram-upstream
+
+      - name: Align native settings section headings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-header-insets.py Telegram-upstream
+
+      - name: Center unread badge numerals
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-badge-centering.py Telegram-upstream
+
+      - name: Apply rounded Glass message composer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-chat-composer.py Telegram-upstream
+
+      - name: Correct document title and subtitle spacing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-document-layout.py Telegram-upstream
+
       - name: Apply NabdhGram Glass pinned and regular chat sections
         shell: bash
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-dialog-sections.py Telegram-upstream
 
+      - name: Align names across Arabic chat and archive lists
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-dialog-typography.py Telegram-upstream
+
+      - name: Apply rounded Glass contacts touch feedback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-contacts.py Telegram-upstream
+
+      - name: Apply colored Experimental and Debug settings icons
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-diagnostic-icons.py Telegram-upstream
+
+      - name: Apply Glass native settings and profile selectors
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-native-settings-profile.py Telegram-upstream
+
+      - name: Apply tested contacts permission policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-contacts-permission-policy.py Telegram-upstream
+
+      - name: Align NabdhGram locale and RTL layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-locale-polish.py Telegram-upstream
+
+      - name: Finish NabdhGram Glass screens and layout geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-final-screens.py Telegram-upstream
+
+      - name: Finish Telegram-native Glass widgets and RTL verified names
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-v1-finishing.py Telegram-upstream
+
+      - name: Finalize polished login keypad and private code-route diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-login-finish.py Telegram-upstream
+
+      - name: Integrate native Telegram QR-code login
+        run: |
+          python3 nabdhgram/scripts/apply-nabdh-qr-login.py Telegram-upstream
+
+      - name: Dismiss MTProxy promotional channel through native Telegram API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-hide-proxy-promo.py Telegram-upstream
+
+      - name: Keep NabdhGram Arabic translations in Android APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-arabic-resources.py Telegram-upstream
+
+      - name: Apply unified Glass to native privacy, notifications, data and theme settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-settings-surfaces.py Telegram-upstream
+
+      - name: Complete Glass coverage on folder and power saving settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-glass-remaining-settings.py Telegram-upstream
+
+      - name: Install approved NabdhGram logo in empty chats
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-empty-state.py Telegram-upstream
+
       - name: Verify NabdhGram Glass overlays before Gradle
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m py_compile nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-dialog-sections.py nabdhgram/scripts/check-glass-overlay.py
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-qr-login.py nabdhgram/scripts/apply-glass-remaining-settings.py nabdhgram/scripts/apply-nabdh-empty-state.py nabdhgram/scripts/apply-glass-login-finish.py nabdhgram/scripts/apply-glass-v1-finishing.py nabdhgram/scripts/apply-glass-final-screens.py nabdhgram/scripts/apply-glass-chat-typefaces.py nabdhgram/scripts/apply-nabdh-arabic-resources.py nabdhgram/scripts/apply-hide-proxy-promo.py nabdhgram/scripts/apply-glass-diagnostic-icons.py nabdhgram/scripts/apply-glass-login.py nabdhgram/scripts/apply-glass-dialog-typography.py nabdhgram/scripts/apply-glass-document-layout.py nabdhgram/scripts/apply-glass-locale-polish.py nabdhgram/scripts/apply-glass-badge-centering.py nabdhgram/scripts/apply-glass-header-insets.py nabdhgram/scripts/install-open-fonts.py nabdhgram/scripts/apply-glass-global-textviews.py nabdhgram/scripts/apply-glass-bubble-outline.py nabdhgram/scripts/apply-glass-bubble-radius.py nabdhgram/scripts/apply-glass-native-settings-profile.py nabdhgram/scripts/apply-glass-contacts.py nabdhgram/scripts/apply-glass-chat-composer.py nabdhgram/scripts/apply-glass-selector.py nabdhgram/scripts/apply-glass-global-font.py nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-dialog-sections.py nabdhgram/scripts/check-glass-overlay.py nabdhgram/scripts/apply-contacts-permission-policy.py nabdhgram/scripts/apply-nabdh-approved-icon-variants.py nabdhgram/scripts/check-nabdh-approved-icons.py
+          python3 nabdhgram/scripts/check-glass-design-contract.py
+          python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhGlassRowDecoration.java
+          # Validate generated Java, not only the Python overlay source.
+          python3 - <<'PY'
+          from pathlib import Path
+          login = Path("Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/LoginActivity.java").read_text(encoding="utf-8")
+          expected = "settings.allow_firebase = false; // Third-party app: no privileged Firebase SMS"
+          assert login.count(expected) == 1, "Firebase SMS capability generated incorrectly"
+          assert r"\n            settings.allow_firebase" not in login, "Literal escaped newline found in LoginActivity.java"
+          print("PASS: Auth Java overlay contains a real newline")
+          PY
 
       - name: Apply privacy-minimal network diagnostics
         shell: bash
@@ -197,6 +380,31 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream
 
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --licenses < <(yes) >/dev/null
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+          NDK_DIR="$ANDROID_HOME/ndk/27.2.12479018"
+          for attempt in 1 2 3; do
+            echo "Installing NDK 27.2.12479018 (attempt $attempt of 3)"
+            if "$SDKMANAGER" --install "ndk;27.2.12479018" && \
+               test -x "$NDK_DIR/ndk-build" && \
+               grep -q '^Pkg.Revision = 27.2.12479018$' "$NDK_DIR/source.properties"; then
+              echo "NDK installation verified: $NDK_DIR"
+              break
+            fi
+            echo "::warning::NDK install attempt $attempt failed or incomplete"
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::NDK installation failed after 3 attempts; check SDK download/archive integrity"
+              exit 1
+            fi
+            rm -rf "$NDK_DIR"
+            sleep $((attempt * 15))
+          done
       - name: Build branded debug APK
         id: compile
         continue-on-error: true
@@ -325,7 +533,7 @@ jobs:
           {
             echo "## NabdhGram identity build"
             echo "Gradle result: **${{ steps.compile.outcome }}**"
-            echo "Expected debug ID: `net.nabdhserv.nabdhgram`"
+            echo "Expected debug ID: net.nabdhserv.nabdhgram"
             echo "Firebase/Google Services integration is disabled for this experimental debug build; push notifications may not work."
             echo "Launcher icon status: **${{ steps.brand.outputs.icon_status }}**" 
             echo "Developer-owned Telegram API configuration required via GitHub Actions secrets."

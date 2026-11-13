@@ -19,6 +19,16 @@ if s.count(field_anchor) != 1:
 s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded chat surfaces.
     private final android.graphics.Paint nabdhCardPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
     private final android.graphics.RectF nabdhCardBounds = new android.graphics.RectF();
+""" + """    // Blend resolved Telegram theme colors instead of fixed light/dark palette values.
+    // This keeps imported .attheme palettes effective for the custom dialog cards.
+    private static int nabdhBlendThemeColor(int base, int tint, float ratio) {
+        float inv = 1.0f - ratio;
+        return android.graphics.Color.rgb(
+                Math.round(android.graphics.Color.red(base) * inv + android.graphics.Color.red(tint) * ratio),
+                Math.round(android.graphics.Color.green(base) * inv + android.graphics.Color.green(tint) * ratio),
+                Math.round(android.graphics.Color.blue(base) * inv + android.graphics.Color.blue(tint) * ratio));
+    }
+
 """ + field_anchor, 1)
 # Draw after Telegram's base pinned/archive background, before message content.
 # Painting at the beginning of onDraw would be hidden by the later base fill.
@@ -31,27 +41,32 @@ s = s.replace(anchor, """        canvas.restore();
         // backgrounds and before message content. Do not interfere with archive,
         // swipe-to-reveal, tablet slide effects, or transient edit animations.
         if (translationX == 0 && currentRevealProgress == 0.0f
-                && rightFragmentOpenedProgress == 0.0f && !drawArchive
-                && currentDialogFolderId == 0 && !isTopic
+                && rightFragmentOpenedProgress == 0.0f
+                // drawArchive defaults to true for ordinary Telegram dialogs;
+                // it is NOT an archive-row test. Use folder ID instead.
+                && !isTopic
+                && !(getParent() instanceof ProfileChannelCell)
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12)) {
             final int surface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
-            final boolean dark = android.graphics.Color.red(surface)
-                    + android.graphics.Color.green(surface)
-                    + android.graphics.Color.blue(surface) < 360;
+            final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
+            final int alternate = Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider);
+            final boolean archived = isFolderCell();
             final boolean pinned = getIsPinned();
             final boolean selected = isPressed() || isSelected || isSelected();
             final int fill = selected
-                    ? (dark ? 0xFF146E75 : 0xFFB6E9E6)
-                    : pinned ? (dark ? 0xFF104B52 : 0xFFE0F5F2)
-                    : (dark ? 0xFF172D36 : 0xFFF6FBFB);
+                    ? nabdhBlendThemeColor(surface, accent, 0.23f)
+                    : archived ? nabdhBlendThemeColor(surface, alternate, 0.67f)
+                    : pinned ? nabdhBlendThemeColor(surface, accent, 0.19f)
+                    : nabdhBlendThemeColor(surface, alternate, 0.55f);
+            // Keep Telegram's selection feedback, but confine our Glass
+            // surface to the same rounded bounds for every dialog row.
             nabdhCardPaint.setColor(fill);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
             nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
                     getMeasuredHeight() - dp(3));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
-            nabdhCardPaint.setColor(pinned
-                    ? (dark ? 0xFF1CA6A6 : 0xFF8ACFCC)
-                    : (dark ? 0xFF24545D : 0xFFD9EAEA));
+            nabdhCardPaint.setColor(nabdhBlendThemeColor(
+                    archived ? alternate : surface, accent, pinned ? 0.55f : 0.36f));
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
             nabdhCardPaint.setStrokeWidth(dp(1));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);

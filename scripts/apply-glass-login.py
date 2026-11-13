@@ -1,0 +1,247 @@
+#!/usr/bin/env python3
+"""Apply NabdhGram Glass styling to native Telegram login input surfaces only.
+
+Preserves the upstream authentication state machine, network calls, text listeners,
+editability, keyboard handling, CAPTCHA and verification code transitions.
+"""
+from pathlib import Path
+import sys
+
+if len(sys.argv) != 2:
+    raise SystemExit("Usage: apply-glass-login.py TELEGRAM_SOURCE")
+
+path = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui/LoginActivity.java"
+source = path.read_text(encoding="utf-8")
+
+anchor = "    @Override\n    public View createView(Context context) {"
+if source.count(anchor) != 1:
+    raise SystemExit("LoginActivity createView anchor changed")
+helper = """    // NabdhGram Glass: native Telegram theme keys respect installed .attheme
+    // palettes. Backgrounds are decorative only; no focus or click interceptors.
+    private static android.graphics.drawable.GradientDrawable nabdhLoginSurface(
+            float radiusDp, float tintStrength) {
+        int base = Theme.getColor(Theme.key_windowBackgroundWhite);
+        int tint = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        int red = Math.round(Color.red(base) * (1f - tintStrength) + Color.red(tint) * tintStrength);
+        int green = Math.round(Color.green(base) * (1f - tintStrength) + Color.green(tint) * tintStrength);
+        int blue = Math.round(Color.blue(base) * (1f - tintStrength) + Color.blue(tint) * tintStrength);
+        android.graphics.drawable.GradientDrawable shape =
+                new android.graphics.drawable.GradientDrawable();
+        shape.setColor(Color.rgb(red, green, blue));
+        shape.setCornerRadius(dp(radiusDp));
+        // The upstream OutlineTextContainerView and code boxes already draw
+        // their own focus borders. A second stroke causes the double-outline
+        // artifact visible in phone and verification screenshots.
+        return shape;
+    }
+
+"""
+source = source.replace(anchor, helper + anchor, 1)
+# Upstream forcibly extends each slide 16dp beyond its measured container
+# in BOTH onMeasure and onLayout. With the fixed 230dp keypad this makes
+# the login surface overflow and jump when keyboard visibility changes.
+# Remove only that synthetic overshoot; preserve Telegram's native scroll
+# and the actual software-keyboard compensation.
+overshoot_layout = "int childBottom = getHeight() + AndroidUtilities.dp(16);"
+overshoot_measure = "int childHeight = height - params.topMargin + AndroidUtilities.dp(16);"
+if source.count(overshoot_layout) != 1 or source.count(overshoot_measure) != 1:
+    raise SystemExit("Login slide overflow geometry changed")
+source = source.replace(overshoot_layout, "int childBottom = getHeight();", 1)
+source = source.replace(overshoot_measure, "int childHeight = height - params.topMargin;", 1)
+
+# Keep scrolling only when genuinely required on compact screens. The
+# stock login ScrollView exposes an overscroll/scrollbar even when our Glass
+# form fits. Do not disable accessibility or scrolling for tall content.
+scroll_settings = "        scrollView.setFillViewport(true);"
+if source.count(scroll_settings) != 1:
+    raise SystemExit("Login ScrollView setup changed")
+source = source.replace(scroll_settings, scroll_settings + """
+        scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        scrollView.setVerticalScrollBarEnabled(false);""", 1)
+
+# Screen transitions reused the SAME ScrollView, preserving a nonzero scroll
+# offset from the prior auth page. Reset only on actual page changes.
+page_anchor = "    public void setPage(@ViewNumber int page, boolean animated, Bundle params, boolean back) {"
+if source.count(page_anchor) != 1:
+    raise SystemExit("Login page transition anchor changed")
+source = source.replace(page_anchor, page_anchor + """
+        if (page != currentViewNum && keyboardLinearLayout != null
+                && keyboardLinearLayout.getParent() instanceof ScrollView) {
+            ((ScrollView) keyboardLinearLayout.getParent()).scrollTo(0, 0);
+        }""", 1)
+
+# Correct the *real* blank-space source: upstream inserts 72dp of empty
+# vertical content below the phone form even when our separate 52dp QR
+# action already reserves a safe tap target. Retain a small 12dp gap.
+bottom_gap = "            int bottomMargin = 72;"
+if source.count(bottom_gap) != 1:
+    raise SystemExit("Native phone bottom spacer anchor changed")
+source = source.replace(bottom_gap,
+    "            int bottomMargin = activityMode == MODE_LOGIN ? 12 : 72;", 1)
+
+# Native sync/test checkboxes incorrectly specify MATCH_PARENT height in a
+# VERTICAL LinearLayout. If visible, each fills the whole form and creates an
+# enormous scrolling region. They are optional and must wrap their text.
+for checkbox in ("syncContactsBox", "testBackendCheckBox"):
+    old = ("addView(" + checkbox +
+           ", LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT,")
+    if source.count(old) != 1:
+        raise SystemExit("Login optional checkbox height changed: " + checkbox)
+    source = source.replace(old,
+        "addView(" + checkbox +
+        ", LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT,", 1)
+
+# Responsive alignment: center the entire phone form in the portion ABOVE
+# the native keypad only when all its measured children fit. Fall back to
+# top alignment/real ScrollView for small phones, rotation and large font scale.
+phone_ctor = "        public PhoneView(Context context) {"
+phone_measure = """        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            int required = getPaddingTop() + getPaddingBottom();
+            for (int i = 0; i < getChildCount(); i++) {
+                View child = getChildAt(i);
+                if (child.getVisibility() == View.GONE) continue;
+                required += child.getMeasuredHeight();
+                if (child.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams margins =
+                            (ViewGroup.MarginLayoutParams) child.getLayoutParams();
+                    required += margins.topMargin + margins.bottomMargin;
+                }
+            }
+            int vertical = required + dp(12) <= getMeasuredHeight()
+                    ? Gravity.CENTER_VERTICAL : Gravity.TOP;
+            int desired = vertical | Gravity.CENTER_HORIZONTAL;
+            if (getGravity() != desired) setGravity(desired);
+        }
+
+"""
+if source.count(phone_ctor) != 1:
+    raise SystemExit("PhoneView constructor anchor changed")
+source = source.replace(phone_ctor, phone_measure + phone_ctor, 1)
+
+# Give the login canvas a restrained theme-native gradient without
+# touching the native phone keyboard, measurement or auth handlers.
+root_anchor = "        fragmentView = sizeNotifierFrameLayout;"
+if source.count(root_anchor) != 1:
+    raise SystemExit("Login root canvas anchor changed")
+source = source.replace(root_anchor, root_anchor + """
+        sizeNotifierFrameLayout.setBackground(
+                new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                        new int[] {
+                            Theme.getColor(Theme.key_windowBackgroundWhite),
+                            Theme.getColor(Theme.key_windowBackgroundGray)
+                        }));
+""", 1)
+
+
+# A Java annotation must immediately precede the method it annotates.
+if "    @Override\n    // NabdhGram Glass:" in source:
+    raise SystemExit("Glass helper accidentally inserted after @Override")
+if source.count(anchor) != 1:
+    raise SystemExit("LoginActivity createView @Override was displaced")
+
+# Show the genuine project-approved transparent artwork, already generated by
+# apply-welcome-logo.py (not an AI mockup or substitute app icon).
+phone_anchor = """            setOrientation(VERTICAL);
+            setGravity(Gravity.CENTER);
+
+            titleView = new TextView(context);"""
+if source.count(phone_anchor) != 1:
+    raise SystemExit("Phone login title layout anchor changed")
+phone_with_brand = """            setOrientation(VERTICAL);
+            // Native ScrollView must remain for accessibility and auth flows.
+            // Position the phone form predictably above its separate 230dp
+            // keypad instead of vertically centering a tall invisible logo
+            // box inside the remaining viewport.
+            setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            // One live, theme-aware Glass panel for the real native phone form.
+            // No replacement auth screen, no overlay intercepting phone entry.
+            // The surface shares the same fill/stroke as settings cards.
+            // Do NOT attach a rounded card to the entire scrolling PhoneView:
+            // that view is taller than the visible viewport, so the lower
+            // corners are clipped and the keyboard appears outside the card.
+            // Keep the viewport transparent; individual input controls below
+            // receive bounded Glass surfaces with their own measured height.
+            setPadding(0, dp(8), 0, dp(8));
+
+            // NabdhGram identity: shared approved artwork from the Welcome page.
+            // Hide on short/landscape screens to keep the native keyboard visible.
+            if (!AndroidUtilities.isSmallScreen()
+                    && AndroidUtilities.displaySize.y >= AndroidUtilities.displaySize.x) {
+                ImageView nabdhLoginLogo = new ImageView(context);
+                nabdhLoginLogo.setImageResource(R.drawable.nabdhgram_welcome_logo);
+                nabdhLoginLogo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                // Same approved artwork, but trim its unused vertical box.
+                // CENTER_CROP removes transparent logo padding; it does not
+                // change the asset used by the welcome screen.
+                addView(nabdhLoginLogo, LayoutHelper.createLinear(136, 84,
+                        Gravity.CENTER_HORIZONTAL, 0, 0, 0, 12));
+            }
+
+            titleView = new TextView(context);"""
+source = source.replace(phone_anchor, phone_with_brand, 1)
+
+# Give the actual fixed-height phone input a bounded glass background;
+# never use the full-height scroll container as a card.
+phoneInput = "            addView(phoneOutlineView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 58, 16, 8, 16, 8));"
+if source.count(phoneInput) != 1:
+    raise SystemExit("Phone input glass anchor changed")
+source = source.replace(phoneInput,
+    "            phoneOutlineView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());\n" + phoneInput, 1)
+
+# Country picker is a bounded native 58dp surface, unlike PhoneView.
+countryInput = "            addView(countryOutlineView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 58, 16, 24, 16, 14));"
+if source.count(countryInput) != 1:
+    raise SystemExit("Phone country selector Glass anchor changed")
+source = source.replace(countryInput,
+    "            countryOutlineView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());\n" + countryInput, 1)
+
+# OutlineTextContainerView retains its native focus outline and labels.
+# Do not change edit-text padding, listeners, layout size or auth transitions.
+for name in ("countryOutlineView", "phoneOutlineView", "outlineCodeField"):
+    needle = f"{name} = new OutlineTextContainerView(context);"
+    if source.count(needle) != 1:
+        raise SystemExit(f"Unexpected native login field anchor: {name}")
+    # Native OutlineTextContainerView already renders the focused rounded
+    # border. A second drawable behind it causes overlapping double outlines.
+    # Keep its upstream native rendering, keyboard actions and accessibility.
+    source = source.replace(needle, needle, 1)
+
+# Covers SMS/Telegram app verification, missed call and email code inputs,
+# including variants with different native code lengths and custom keyboards.
+code_needle = "codeFieldContainer = new CodeFieldContainer(context) {"
+if source.count(code_needle) != 4:
+    raise SystemExit("Telegram verification field count changed")
+# Add a background only when each field is placed into a parent. Applying it
+# in the constructor would require fragile brace matching; these four branches
+# have stable parent-add anchors.
+anchors = (
+    "addView(codeFieldContainer, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 42, Gravity.CENTER_HORIZONTAL, 0, 32, 0, 0));",
+    "addView(codeFieldContainer, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 42, Gravity.CENTER_HORIZONTAL, 0, setup ? 48 : 32, 0, 0));",
+)
+# Upstream uses the same 42dp layout in both SMS/Telegram code and
+# a second login verification flow; the email layout occurs once.
+expected_counts = (2, 1)
+for needle, expected in zip(anchors, expected_counts):
+    count = source.count(needle)
+    if count != expected:
+        raise SystemExit(f"Login code input layout anchor changed: expected {expected}, found {count}")
+    source = source.replace(
+        needle,
+        needle,
+        expected
+    )
+
+# Test Backend is a developer-only diagnostic. Keep it reachable only
+# when already connected to Telegram's test servers, so debug APK users
+# signing into production accounts see a clean login screen.
+test_toggle = "if (allowTestBackend && activityMode == MODE_LOGIN) {"
+if source.count(test_toggle) != 1:
+    raise SystemExit("Telegram login test-server option anchor changed")
+source = source.replace(test_toggle,
+    "if (allowTestBackend && activityMode == MODE_LOGIN && getConnectionsManager().isTestBackend()) {",
+    1)
+path.write_text(source, encoding="utf-8")
+print("NabdhGram Glass login phone, password and verification surfaces installed.")
