@@ -420,15 +420,27 @@ for old, new in (
     if user_info_src.count(old) != 1:
         raise SystemExit("UserInfoActivity custom editor/account action anchor changed")
     user_info_src = user_info_src.replace(old, new, 1)
-account_anchor = "        listView.setSections();\n        listView.setClipToPadding(false);"
-account_card = """        // Preserve native section geometry and account input behavior.
-        listView.setSections();
+account_anchor_legacy = "        listView.setSections();\n        listView.setClipToPadding(false);"
+account_anchor_modern = ("        listView.setSections();\n"
+        "        listView.setSectionsDrawBackground(true);\n"
+        "        listView.setClipToPadding(false);")
+if user_info_src.count(account_anchor_legacy) == 1:
+    account_anchor = account_anchor_legacy
+    native_sections = "        listView.setSections();"
+elif user_info_src.count(account_anchor_modern) == 1:
+    # Telegram 13.2.x explicitly re-enables section fill. Preserve its
+    # setup and opt out of the opaque paint AFTER that call.
+    account_anchor = account_anchor_modern
+    native_sections = ("        listView.setSections();\n"
+                       "        listView.setSectionsDrawBackground(true);")
+else:
+    raise SystemExit("UserInfoActivity Account rows anchor changed")
+account_card = ("""        // Preserve native section geometry and account input behavior.
+""" + native_sections + """
         listView.nabdhHideSectionBackgroundOnly();
         listView.adapter.setNabdhGlassSettings(true);
         listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration());
-        listView.setClipToPadding(false);"""
-if user_info_src.count(account_anchor) != 1:
-    raise SystemExit("UserInfoActivity Account rows anchor changed")
+        listView.setClipToPadding(false);""")
 user_info.write_text(user_info_src.replace(account_anchor, account_card, 1), encoding="utf-8")
 
 # Main Telegram Settings uses UniversalAdapter rather than the legacy
