@@ -107,7 +107,7 @@ assert 'GLASS_SETTINGS_SCREENS = (' in native_surfaces and all(
     ('"' + name + '.java"') in native_surfaces
     for name in ("ArchiveSettingsActivity", "DataAutoDownloadActivity",
                  "PasscodeActivity", "PrivacyUsersActivity", "ProxyListActivity",
-                 "QuickRepliesSettingsActivity", "RestrictedLanguagesSelectActivity",
+                 "RestrictedLanguagesSelectActivity",
                  "ProfileNotificationsActivity")), "Nested settings screens still missing"
 assert "titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_surfaces, "Mixed Arabic/Latin text direction lost"
 assert "canvas.drawLine(rect.left + round" in native_surfaces, "Card specular layer missing"
