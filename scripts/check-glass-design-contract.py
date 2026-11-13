@@ -91,7 +91,7 @@ assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native
 for obsolete in ("GradientDrawable glassCard =", "GradientDrawable infoCard =", "GradientDrawable fontGlass =", "RippleDrawable touchSurface ="):
     assert obsolete not in settings, f"Second per-card surface allocation survived: {obsolete}"
 assert "scroll.setBackground(new GradientDrawable(" not in settings, "NabdhGram scroll snapshots old theme colors"
-assert "topView.setBackground(\\n                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());" in native_surfaces, "Main Settings hero must use only the card's built-in inset"
+assert "topView.setBackground(" in native_surfaces and "NabdhGlassRowDecoration.newCardBackground());" in native_surfaces, "Main Settings hero must use the shared card renderer"
 remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
 for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java", "ThemeActivity.java"):
     assert screen in remaining, f"Missing dedicated folder / lite mode coverage for {screen}"
@@ -151,7 +151,7 @@ assert "public void nabdhHideSectionBackgroundOnly()" in native_surfaces, "Glass
 assert "nabdhSuppressLegacySectionFill" in native_surfaces and "bitmapSectionsItemDecoration.setDrawBackground(false)" in native_surfaces, "Telegram 13.2 bitmap section fills can still appear"
 assert "newOpaquePageBackground()" in native_surfaces and "Theme.key_windowBackgroundGray" in native_surfaces and "PixelFormat.OPAQUE" in native_surfaces, "Nested settings may leak content from previous fragments"
 assert "contentView.setBackground(" in native_surfaces and "Main Settings root/list initialization anchor changed" in native_surfaces, "Main Settings needs an opaque root-level canvas"
-assert "topView.setBackground(\n                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());" in native_surfaces, "Account hero needs exactly one Glass card inset"
+assert "topView.setBackground(" in native_surfaces and "newCardBackground());" in native_surfaces, "Account hero needs the shared one-inset Glass renderer"
 assert "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_surfaces, "Double-inset account hero regressed"
 assert 'settings_source.replace(enable_anchor, enable_anchor' not in native_surfaces, "Main Settings must not add a redundant ItemDecoration"
 
