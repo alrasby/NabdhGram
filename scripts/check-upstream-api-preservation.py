@@ -106,6 +106,19 @@ def mask_noncode(source):
         i += 1
     return "".join(out)
 
+def syntax_delimiters_ok(code):
+    # Catch unbalanced Java expression/block delimiters before spending time
+    # initializing the native toolchain. Do not parse symbols inside strings.
+    stack = []
+    pairs = {")": "(", "]": "[", "}": "{"}
+    for char in mask_noncode(code):
+        if char in "([{":
+            stack.append(char)
+        elif char in ")]}":
+            if not stack or stack.pop() != pairs[char]:
+                return False
+    return not stack
+
 def declared_methods(code):
     # Count rather than just set: an erased overload with another declaration
     # of the same name must still be reported.
@@ -130,6 +143,8 @@ def assert_compatible(root):
         original = baseline(root, relative)
         generated = (root / relative).read_text(encoding="utf-8")
         before, after = declared_methods(original), declared_methods(generated)
+        if not syntax_delimiters_ok(generated):
+            failures.append(str(relative) + ": unbalanced Java delimiters after overlays")
         missing = before - after
         if missing:
             failures.append(
@@ -182,6 +197,9 @@ def self_test():
         fixture.replace("public void updateColors(int number) { }", "")
     )["updateColors"]
     assert mask_noncode("/* hi */ public void ok() {}").count("ok") == 1
+    assert syntax_delimiters_ok(fixture)
+    assert not syntax_delimiters_ok(fixture + " public void deleted(int x) {")
+    assert syntax_delimiters_ok('class C { String s = "{ [ )"; }')
     print("PASS: upstream API preservation parser self-tests")
 
 if __name__ == "__main__":
