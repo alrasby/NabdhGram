@@ -277,7 +277,7 @@ translations = {
         "NabdhCrystalGlass": "Crystal Glass — vivid highlights",
         "NabdhGlassPresetNote": "Theme colors and original bubble shapes are always preserved. Changes apply to the next chat drawing pass.",
         "NabdhLensSwitch": "Show Lens and AI Editor for short drafts",
-        "NabdhLensPrivacyNote": "Long-press the native AI Editor icon in a normal chat to open LOCAL Lens tools. No messages are uploaded. Native Telegram AI Editor and translation may use Telegram services. No generative model is bundled.",
+        "NabdhLensPrivacyNote": "Long-press the native AI Editor icon to open local Lens tools. Message text stays on device. Google ML Kit may send usage metrics, not text; Telegram AI Editor and translation may use Telegram services. No generative model is bundled.",
         "NabdhLensSampleHint": "Enter or paste text for a local summary, task extraction, link hints or spacing cleanup",
         "NabdhLensAnalyze": "Open local Context Lens",
         "NabdhLensEmpty": "Type or paste some text first"
@@ -290,7 +290,7 @@ translations = {
         "NabdhCrystalGlass": "زجاج بلوري — انعكاسات أوضح",
         "NabdhGlassPresetNote": "تظل ألوان الثيم وشكل الفقاعات الأصلي محفوظة. يظهر الاختيار في الرسم التالي للمحادثة.",
         "NabdhLensSwitch": "إظهار العدسة ومحرر الكتابة مع النصوص القصيرة",
-        "NabdhLensPrivacyNote": "اضغط مطولًا على أيقونة محرر الذكاء في المحادثة لفتح أدوات العدسة المحلية. لا يُرفع محتوى الرسالة. قد تستخدم خدمات Telegram الأصلية للكتابة والترجمة خوادم Telegram. لم ندمج نموذجًا توليديًا داخل التطبيق.",
+        "NabdhLensPrivacyNote": "اضغط مطولًا على أيقونة محرر الذكاء لفتح الأدوات المحلية. يبقى نص الرسالة على جهازك. قد ترسل حزمة Google ML Kit مقاييس استخدام دون النص، وقد تستخدم خدمات Telegram الأصلية خوادمها. لا يوجد نموذج توليدي مدمج.",
         "NabdhLensSampleHint": "اكتب أو الصق نصًا لتلخيص مقتطفاته أو استخراج مهامه أو فحص مؤشرات الروابط وتنظيمه",
         "NabdhLensAnalyze": "فتح عدسة نبض المحلية",
         "NabdhLensEmpty": "اكتب نصًا أولًا"
