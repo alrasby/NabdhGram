@@ -97,12 +97,18 @@ for old in ("nabdhBubbleEdge.setStrokeWidth(dp(1));",
             "nabdhBubbleEdge.setStrokeWidth(dp(0.8f));"):
     s = once(s, old, "nabdhBubbleEdge.setStrokeWidth(AndroidUtilities.dpf2(0.85f));",
              "consistent stroke geometry")
-for old in ("nabdhBubbleEdge.setAlpha((int) (122f * alpha / 255f));",
-            "nabdhBubbleEdge.setAlpha((int) (142f * alpha / 255f));"):
-    s = once(s, old,
-        """nabdhBubbleEdge.setAlpha(
+# Both native draw branches have one edge setAlpha call each, but its
+# numeric expression may be reformatted by an earlier overlay. Match only
+# this specific owned field and require exactly TWO occurrences.
+import re
+edge_call = r"nabdhBubbleEdge\\.setAlpha\\([^;\\n]*\\);"
+matches = re.findall(edge_call, s)
+if len(matches) != 2:
+    raise SystemExit(f"Expected 2 native bubble edge alpha calls, found {len(matches)}: {matches}")
+s = re.sub(edge_call,
+    """nabdhBubbleEdge.setAlpha(
                     org.telegram.ui.Components.NabdhBubblePalette.edgeAlpha(
                         org.telegram.ui.Components.NabdhGlassStyle.current(), alpha));""",
-        "consistent stroke contrast")
+    s)
 bubble.write_text(s, encoding="utf-8")
 print("PASS: chat fonts and text/media bubble colors now share native managers")
