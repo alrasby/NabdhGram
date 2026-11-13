@@ -55,7 +55,12 @@ def main():
 
     private void nabdhRestoreChatTitle() {
         if (dialogsActivity != null && dialogsActivity.getActionBar() != null) {
-            dialogsActivity.getActionBar().setTitle("NabdhGram");
+            org.telegram.ui.ActionBar.ActionBar bar = dialogsActivity.getActionBar();
+            org.telegram.ui.ActionBar.SimpleTextView currentTitle = bar.getTitleTextView();
+            // setTitle(value) clears Telegram's emoji-status right drawable.
+            // Preserve it to avoid regressing Premium/status controls.
+            bar.setTitle("NabdhGram", currentTitle == null
+                    ? null : currentTitle.getRightDrawable());
         }
     }"""
     if main_tabs.count(select_anchor) != 1:
