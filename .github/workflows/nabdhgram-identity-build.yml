@@ -46,8 +46,9 @@ jobs:
           [[ "$COMMIT" =~ ^[a-f0-9]{40}$ ]]
           git clone --filter=blob:none https://github.com/DrKLO/Telegram.git Telegram-upstream
           git -C Telegram-upstream checkout --detach "$COMMIT"
-          git -C Telegram-upstream submodule update --init --recursive --depth=1 --jobs=4
-          bash nabdhgram/scripts/verify-upstream.sh Telegram-upstream
+          test "$(git -C Telegram-upstream rev-parse HEAD)" = "$COMMIT"
+          # Source-only Glass overlays do not use native submodules. Defer
+          # recursive checkout until ALL generated-source checks have passed.
       - name: Apply NabdhGram package and label overlay
         shell: bash
         run: |
@@ -379,6 +380,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream
+
+      - name: Initialize and verify pinned native submodules after overlay preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C Telegram-upstream submodule update --init --recursive --depth=1 --jobs=4
+          bash nabdhgram/scripts/verify-upstream.sh Telegram-upstream
 
       - name: Install Android SDK and NDK
         shell: bash
