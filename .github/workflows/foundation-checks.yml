@@ -46,6 +46,8 @@ jobs:
         run: python3 scripts/check-upstream-api-preservation.py --self-test
       - name: Self-test Liquid Glass and local Lens safety
         run: python3 scripts/check-nabdh-liquid-intelligence.py --self-test
+      - name: Test chat bubble palette and Arabic text-manager source
+        run: python3 scripts/check-nabdh-chat-consistency.py --self-test
       - name: Verify integrated Glass design contract
         run: python3 scripts/check-glass-design-contract.py
       - name: Ensure no Android APK is misrepresented
