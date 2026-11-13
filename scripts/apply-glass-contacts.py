@@ -17,8 +17,15 @@ s = s.replace(anchor, anchor + """        // NabdhGram Glass: use the existing T
 # offsets/fast scroll/clip behavior; hiding the decorator itself previously
 # coincided with the app restarting on Contacts. Suppress ONLY its opaque
 # background paint, since ContactsAdapter paints individual Glass cells.
-group = "        listView.setSections(true);"
-if s.count(group) != 1:
+legacy_group = "        listView.setSections(true);"
+current_group = "        listView.setSections();"
+if s.count(legacy_group) == 1:
+    group = legacy_group
+elif s.count(current_group) == 1:
+    # Telegram 13.2.x updates the sticky section API and sets the section
+    # type separately. Keep that native setup; only suppress its opaque fill.
+    group = current_group
+else:
     raise SystemExit("Telegram Contacts section initialization changed")
 s = s.replace(group, group + "\n        listView.nabdhHideSectionBackgroundOnly();", 1)
 p.write_text(s, encoding="utf-8")
