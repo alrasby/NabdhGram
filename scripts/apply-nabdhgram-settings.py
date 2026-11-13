@@ -17,12 +17,19 @@ def main():
     # Keep upstream version reporting available; add a branded, clickable credit.
     s = once(s, "versionView.setText(getVersionName());",
         'versionView.setText(getString(R.string.NabdhGramCredits));', "credits label")
+    # Telegram 13.2.x removed openDebugMenu(), but exposes the same
+    # DebugSettingsActivity through its native versionView click handler.
+    # Reuse the real upstream action on a deliberate long press: no
+    # invocation of an obsolete helper or changes to the debug screen.
+    native_debug_action = "presentFragment(new DebugSettingsActivity());"
+    if s.count(native_debug_action) != 1:
+        raise SystemExit("Telegram native debug-menu action changed")
     start = s.index("        versionView.setOnClickListener(v -> {")
     end = s.index("\n\n        navigationBar = new View(context);", start)
     s = s[:start] + '''        versionView.setOnClickListener(v -> Browser.openUrl(getContext(), "https://nabdhserv.net"));
-        // Retain Telegram's debug menu through a deliberate long press.
+        // The native Telegram debug settings remain available by long press.
         versionView.setOnLongClickListener(v -> {
-            openDebugMenu();
+            presentFragment(new DebugSettingsActivity());
             return true;
         });''' + s[end:]
     s = once(s,
