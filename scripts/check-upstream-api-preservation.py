@@ -7,6 +7,7 @@ Gradle compilation or real-device regression tests.
 """
 from collections import Counter
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import re
 import subprocess
 import sys
@@ -338,6 +339,31 @@ def self_test():
     assert declared_method_arities(overload) - declared_method_arities(switched)
     assert declared_types(overload)[("class", "Example")] == 1
     assert declared_types(overload.replace("class Example", "class Renamed")) != declared_types(overload)
+    # Exercise the real Git-path discovery on a disposable repository:
+    # native changes, removals and untracked generated helpers must be found.
+    with TemporaryDirectory(prefix="nabdhgram-upgrade-preflight-") as temp:
+        sandbox = Path(temp)
+        subprocess.run(["git", "init", "-q", str(sandbox)], check=True)
+        source_dir = sandbox / JAVA / "ui"
+        source_dir.mkdir(parents=True)
+        modified = source_dir / "Modified.java"
+        removed = source_dir / "Removed.java"
+        fresh = source_dir / "NewHelper.java"
+        modified.write_text("public class Modified { public void old() {} }")
+        removed.write_text("public class Removed { public void old() {} }")
+        subprocess.run(["git", "-C", str(sandbox), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(sandbox), "-c", "user.name=Guard",
+                        "-c", "user.email=guard@example.invalid", "commit",
+                        "-qm", "test upstream source"], check=True)
+        modified.write_text("public class Modified { public void newName() {} }")
+        removed.unlink()
+        fresh.write_text("public class NewHelper {}")
+        changed, added = modified_native_files(sandbox)
+        assert JAVA / "ui/Modified.java" in changed
+        assert JAVA / "ui/Removed.java" in changed, "Deleted native class not detected"
+        assert JAVA / "ui/NewHelper.java" in added
+        assert JAVA / "ui/NewHelper.java" not in changed
+    print("PASS: Git discovery catches modified/deleted Java and new helpers")
     print("PASS: upstream API preservation parser and overload self-tests")
 
 if __name__ == "__main__":
