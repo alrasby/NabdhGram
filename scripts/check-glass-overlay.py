@@ -10,6 +10,7 @@ if len(sys.argv) != 2:
 root = Path(sys.argv[1])
 ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
 dialogs = (ui / "DialogsActivity.java").read_text(encoding="utf-8")
+main_tabs = (ui / "MainTabsActivity.java").read_text(encoding="utf-8")
 cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
 settings = (ui / "NabdhGramSettingsActivity.java").read_text(encoding="utf-8")
 selector = (ui / "Components/RecyclerListView.java").read_text(encoding="utf-8")
@@ -544,6 +545,26 @@ checks["main Settings uses exactly one card drawing path"] = (
 checks["Glass rows remain independent from the opaque page canvas"] = (
     "newOpaquePageBackground()" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
     and "return new GlassCardLayers();" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+)
+checks["main-tab host rebrands the actual visible chats title on tab switch and resume"] = (
+    "private void nabdhRestoreChatTitle()" in main_tabs
+    and 'bar.setTitle("NabdhGram", currentTitle == null' in main_tabs
+    and 'currentTitle.getRightDrawable()' in main_tabs
+    and "if (position == POSITION_CHATS) nabdhRestoreChatTitle();" in main_tabs
+    and "if (viewPager != null && viewPager.getCurrentPosition() == POSITION_CHATS)" in main_tabs
+)
+checks["global font renderer respects secondary explanatory labels"] = (
+    '"nabdh:secondary-text".equals(label.getTag())' in
+    (ui / "LaunchActivity.java").read_text(encoding="utf-8")
+)
+checks["NabdhGram settings descriptions opt into readable body weight"] = (
+    'description.setTag("nabdh:secondary-text");' in settings
+)
+checks["feature category explanations opt into readable body weight"] = (
+    'explanation.setTag("nabdh:secondary-text");' in feature
+)
+checks["new Glass and Intelligence help texts opt into readable body weight"] = (
+    feature.count('note.setTag("nabdh:secondary-text");') >= 2
 )
 checks["dialogs use NabdhGram title rather than upstream Telegram logo span"] = (
     'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs

@@ -208,6 +208,7 @@ additional = """    private int nabdhDp(Context context, int dp) {
         }
         TextView note = new TextView(context);
         note.setText(nabdhText(context, R.string.NabdhGlassPresetNote));
+        note.setTag("nabdh:secondary-text");
         note.setTextSize(13);
         note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
         content.addView(note);
@@ -224,6 +225,7 @@ additional = """    private int nabdhDp(Context context, int dp) {
 
         TextView note = new TextView(context);
         note.setText(nabdhText(context, R.string.NabdhLensPrivacyNote));
+        note.setTag("nabdh:secondary-text");
         note.setTextSize(13);
         note.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, -2);
