@@ -12,10 +12,20 @@ on:
         type: boolean
         required: false
         default: false
+      release_mode:
+        description: 'Private production-signed Release (requires secrets and manual main dispatch)'
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       source_preflight_only:
         description: 'Validate every upstream overlay without native SDK, NDK or Gradle'
+        required: false
+        default: false
+        type: boolean
+      release_mode:
+        description: 'Build signed Release from main using project-owned signing credentials'
         required: false
         default: false
         type: boolean
@@ -52,6 +62,25 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: nabdhgram
+      - name: Validate private Release dispatch before cloning sources
+        if: ${{ inputs.release_mode }}
+        shell: bash
+        env:
+          NABDH_RELEASE_KEYSTORE_B64: ${{ secrets.NABDH_RELEASE_KEYSTORE_B64 }}
+          NABDH_RELEASE_STORE_PASSWORD: ${{ secrets.NABDH_RELEASE_STORE_PASSWORD }}
+          NABDH_RELEASE_KEY_ALIAS: ${{ secrets.NABDH_RELEASE_KEY_ALIAS }}
+          NABDH_RELEASE_KEY_PASSWORD: ${{ secrets.NABDH_RELEASE_KEY_PASSWORD }}
+          NABDH_RELEASE_CERT_SHA256: ${{ secrets.NABDH_RELEASE_CERT_SHA256 }}
+          NABDH_FIREBASE_CONFIG_B64: ${{ secrets.NABDH_FIREBASE_CONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" || "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]]; then
+            echo "::error::Signed release only allowed from a manual main dispatch"
+            exit 1
+          fi
+          for name in NABDH_RELEASE_KEYSTORE_B64 NABDH_RELEASE_STORE_PASSWORD NABDH_RELEASE_KEY_ALIAS NABDH_RELEASE_KEY_PASSWORD NABDH_RELEASE_CERT_SHA256 NABDH_FIREBASE_CONFIG_B64; do
+            if [[ -z "${!name:-}" ]]; then echo "::error::Missing project-owned release secret: $name"; exit 1; fi
+          done
       - name: Configure Java 17
         if: ${{ !inputs.source_preflight_only }}
         uses: actions/setup-java@v5
@@ -367,6 +396,13 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-liquid-intelligence.py Telegram-upstream
 
+      - name: Install real local V1 Shield, Focus, recap, and encrypted Workspace tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-v1-signatures.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-v1-hierarchy.py Telegram-upstream
+
       - name: Unify chat bubble palette and native Arabic TextPaint refresh
         shell: bash
         run: |
@@ -408,9 +444,11 @@ jobs:
           python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream
           python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --verify Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-v1-integration.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-v1-hierarchy.py
           python3 nabdhgram/scripts/check-nabdh-chat-consistency.py Telegram-upstream
           python3 nabdhgram/scripts/check-chat-settings-visual-fixes.py Telegram-upstream
-          python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py nabdhgram/scripts/check-profile-composer-visual-fixes.py
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py nabdhgram/scripts/check-profile-composer-visual-fixes.py nabdhgram/scripts/apply-nabdh-v1-signatures.py nabdhgram/scripts/check-nabdh-v1-integration.py
           python3 -m py_compile nabdhgram/scripts/apply-chat-settings-visual-fixes.py nabdhgram/scripts/check-chat-settings-visual-fixes.py
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhGlassRowDecoration.java
           # Validate generated Java, not only the Python overlay source.
@@ -430,6 +468,7 @@ jobs:
           python3 nabdhgram/scripts/apply-network-diagnostics.py Telegram-upstream
 
       - name: Disable upstream Google Services configuration for experimental debug build
+        if: ${{ !inputs.release_mode }}
         shell: bash
         run: |
           set -euo pipefail
@@ -445,6 +484,7 @@ jobs:
           PY
 
       - name: Limit experimental APK to arm64-v8a
+        if: ${{ !inputs.release_mode }}
         shell: bash
         run: |
           set -euo pipefail
@@ -504,22 +544,42 @@ jobs:
             rm -rf "$NDK_DIR"
             sleep $((attempt * 15))
           done
-      - name: Build branded debug APK
+      - name: Provision owner signing and matching Firebase release configuration
+        if: ${{ inputs.release_mode }}
+        shell: bash
+        env:
+          NABDH_RELEASE_KEYSTORE_B64: ${{ secrets.NABDH_RELEASE_KEYSTORE_B64 }}
+          NABDH_RELEASE_STORE_PASSWORD: ${{ secrets.NABDH_RELEASE_STORE_PASSWORD }}
+          NABDH_RELEASE_KEY_ALIAS: ${{ secrets.NABDH_RELEASE_KEY_ALIAS }}
+          NABDH_RELEASE_KEY_PASSWORD: ${{ secrets.NABDH_RELEASE_KEY_PASSWORD }}
+          NABDH_RELEASE_CERT_SHA256: ${{ secrets.NABDH_RELEASE_CERT_SHA256 }}
+          NABDH_FIREBASE_CONFIG_B64: ${{ secrets.NABDH_FIREBASE_CONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/configure-release-signing.py Telegram-upstream
+      - name: Build branded Android APK
         if: ${{ !inputs.source_preflight_only }}
         id: compile
         continue-on-error: true
         working-directory: Telegram-upstream
         shell: bash
+        env:
+          RELEASE_MODE: ${{ inputs.release_mode }}
         run: |
           set -o pipefail
           chmod +x ./gradlew
-          ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-build.log
+          if [[ "$RELEASE_MODE" == "true" ]]; then
+            task=":TMessagesProj_App:assembleAfatRelease"
+          else
+            task=":TMessagesProj_App:assembleAfatDebug"
+          fi
+          ./gradlew "$task" --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-build.log
       - name: Verify APK identity and collect launcher diagnostics
         if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
-          APK="Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk"
+          APK="Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/${{ inputs.release_mode && 'release' || 'debug' }}/app.apk"
           test -s "$APK" || { echo "::error::APK missing at $APK"; exit 1; }
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
@@ -576,28 +636,36 @@ jobs:
           # Inspect FINAL compiled resources, not just source XML. In build #572
           # Android night-v29 selected tg_splash_320 despite branded day-v31.
           python3 nabdhgram/scripts/check-packaged-splash.py "$APK" apk-resources.txt apk-manifest-tree.txt
+          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
+            python3 nabdhgram/scripts/verify-release-apk.py "$APK" apk-badging.txt apk-manifest-tree.txt
+          fi
       - name: Publish verified APK with a clean filename
         if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk dist/nabdhgram.apk
-          cmp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk dist/nabdhgram.apk
+          cp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/${{ inputs.release_mode && 'release' || 'debug' }}/app.apk dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
+          cmp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/${{ inputs.release_mode && 'release' || 'debug' }}/app.apk dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
           python3 - <<'PY'
           import pathlib, zipfile, sys
-          apk = pathlib.Path("dist/nabdhgram.apk")
+          apk = pathlib.Path("dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk")
           with zipfile.ZipFile(apk) as z:
               abis = sorted({p.split("/")[1] for p in z.namelist() if p.startswith("lib/") and p.count("/") >= 2})
           print(f"Packaged native ABIs: {abis}")
           print(f"APK size: {apk.stat().st_size / 1024 / 1024:.2f} MiB")
-          if abis != ["arm64-v8a"]:
-              sys.exit("APK contains unexpected or missing native ABIs")
+          if not abis or "arm64-v8a" not in abis:
+              sys.exit("APK lacks arm64 native libraries")
+          if "${{ inputs.release_mode }}" != "true" and abis != ["arm64-v8a"]:
+              sys.exit("Debug ABI filter changed")
+          if "${{ inputs.release_mode }}" == "true" and "armeabi-v7a" not in abis:
+              sys.exit("Release is missing 32-bit ARM libraries")
           PY
-          sha256sum dist/nabdhgram.apk
+          sha256sum dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
           echo "### NabdhGram APK" >> "$GITHUB_STEP_SUMMARY"
-          echo "Filename: \`nabdhgram.apk\` (arm64-v8a only)" >> "$GITHUB_STEP_SUMMARY"
-          du -h dist/nabdhgram.apk >> "$GITHUB_STEP_SUMMARY"
+          echo "APK mode: ${{ inputs.release_mode && 'privately signed Release' || 'experimental Debug' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Filename: nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk" >> "$GITHUB_STEP_SUMMARY"
+          du -h dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk >> "$GITHUB_STEP_SUMMARY"
 
       - name: Collect APK paths
         if: ${{ always() && !inputs.source_preflight_only }}
@@ -609,8 +677,8 @@ jobs:
         if: ${{ always() && !inputs.source_preflight_only }}
         uses: actions/upload-artifact@v4
         with:
-          name: nabdhgram-identity-debug-apk
-          path: dist/nabdhgram.apk
+          name: ${{ inputs.release_mode && 'nabdhgram-owner-signed-release-apk' || 'nabdhgram-identity-debug-apk' }}
+          path: dist/nabdhgram*.apk
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload diagnostics
@@ -636,12 +704,19 @@ jobs:
           {
             echo "## NabdhGram identity build"
             echo "Gradle result: **${{ steps.compile.outcome }}**"
-            echo "Expected debug ID: net.nabdhserv.nabdhgram"
-            echo "Firebase/Google Services integration is disabled for this experimental debug build; push notifications may not work."
-            echo "Launcher icon status: **${{ steps.brand.outputs.icon_status }}**" 
-            echo "Developer-owned Telegram API configuration required via GitHub Actions secrets."
-            echo "Do not distribute this experimental APK."
+            echo "Package: net.nabdhserv.nabdhgram"
+            echo "Build mode: ${{ inputs.release_mode && 'owner-signed Release' || 'experimental Debug with Firebase disabled' }}"
+            echo "Launcher icon: **${{ steps.brand.outputs.icon_status }}**"
+            echo "Public distribution additionally needs license/privacy and final device QA."
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Erase private release keys from ephemeral build workspace
+        if: ${{ always() && inputs.release_mode }}
+        shell: bash
+        run: |
+          rm -f Telegram-upstream/TMessagesProj/config/release.keystore Telegram-upstream/TMessagesProj_App/google-services.json
+          if [ -f Telegram-upstream/gradle.properties ]; then
+            sed -i -E 's/^(RELEASE_(STORE_PASSWORD|KEY_ALIAS|KEY_PASSWORD))=.*/\1=REMOVED/' Telegram-upstream/gradle.properties
+          fi
       - name: Fail on build error or missing APK
         if: ${{ always() && !inputs.source_preflight_only }}
         shell: bash
@@ -649,4 +724,4 @@ jobs:
           BUILD_RESULT: ${{ steps.compile.outcome }}
         run: |
           test "$BUILD_RESULT" = success
-          test -s dist/nabdhgram.apk
+          test -s dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk

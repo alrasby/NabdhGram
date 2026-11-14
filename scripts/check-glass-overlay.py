@@ -366,8 +366,15 @@ checks = {
             "heading.setText(NabdhStrings.get(context, titleRes));",
             "description.setText(NabdhStrings.get(context, summaryRes));",
         )
-    ) and "actionBar.setTitle(NabdhStrings.get(context, titleRes));" in feature
-      and "explanation.setText(NabdhStrings.get(context, descriptionRes));" in feature,
+    ) and (
+        ("actionBar.setTitle(NabdhStrings.get(context, titleRes));" in feature
+         and "explanation.setText(NabdhStrings.get(context, descriptionRes));" in feature)
+        or (
+            "actionBar.setTitle(NabdhStrings.get(context, featureId == 0 ? titleRes : nabdhDetailTitle(featureId)));" in feature
+            and "explanation.setText(NabdhStrings.get(context, featureId == 0 ? nabdhCategoryDescription() : nabdhDetailDescription(featureId)));" in feature
+            and "addNabdhFeatureMenu(context, content);" in feature
+        )
+    ),
     "appearance settings describe working Glass and fonts": "Choose the application font below." in appearance_en
         and "اختر خط التطبيق أدناه." in appearance_ar
         and "Glass appearance and application fonts" in appearance_en
