@@ -1,0 +1,17 @@
+{
+  "name": "NabdhGram Release Setup (Browser)",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "remoteEnv": {
+    "NABDH_GRAM_SIGNING_GUIDE": "docs/RELEASE_BROWSER_SETUP_AR.md"
+  }
+}
