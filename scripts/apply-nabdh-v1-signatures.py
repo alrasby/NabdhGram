@@ -36,6 +36,9 @@ patch("        fragmentView = scroll;",
                 titleRes == R.string.NabdhProductivityTitle) {
             addNabdhV1Tools(context, content);
         }
+        if (titleRes == R.string.NabdhNetworkTitle) {
+            addNabdhNetworkTools(context, content);
+        }
         fragmentView = scroll;""",
       "V1 category route")
 methods = """    private void nabdhV1Button(Context context, LinearLayout content,
@@ -80,6 +83,22 @@ methods = """    private void nabdhV1Button(Context context, LinearLayout conten
                             "Nabdh local result", output));
                 }
             }).show();
+    }
+
+    private void addNabdhNetworkTools(Context context, LinearLayout content) {
+        // Real native Telegram data/auto-download and storage screens. No
+        // fake "AI optimizer" toggle or modification to transfer limits.
+        TextView disclosure = new TextView(context);
+        disclosure.setText(nabdhText(context, R.string.NabdhV1NetworkDisclosure));
+        disclosure.setTextSize(13);
+        disclosure.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+        content.addView(disclosure);
+        nabdhV1Button(context, content, R.string.NabdhV1DataSettings,
+            () -> presentFragment(new DataSettingsActivity()));
+        nabdhV1Button(context, content, R.string.NabdhV1CacheSettings,
+            () -> presentFragment(new CacheControlActivity()));
+        nabdhV1Button(context, content, R.string.NabdhV1ProxySettings,
+            () -> presentFragment(new ProxyListActivity()));
     }
 
     private void addNabdhV1Tools(Context context, LinearLayout content) {
@@ -142,6 +161,10 @@ strings = {
         "NabdhV1CatchUp": "Review pasted conversation excerpt",
         "NabdhV1Save": "Save encrypted local note",
         "NabdhV1OpenWorkspace": "Open saved local notes",
+        "NabdhV1DataSettings": "Wi-Fi and mobile data / auto-download",
+        "NabdhV1CacheSettings": "Storage and cache manager",
+        "NabdhV1ProxySettings": "Telegram proxy settings",
+        "NabdhV1NetworkDisclosure": "Open the official Telegram data, storage and proxy controls. No hidden connection optimizer or Premium bypass is added.",
         "NabdhV1ShieldDisclosure": "Opt-in link signals only. Not a real-time blacklist, virus scanner or guarantee of safe files.",
         "NabdhV1ManualDisclosure": "Local analysis of only the text you explicitly enter. No unread chats are accessed. Saved notes are encrypted on this device only.",
         "NabdhV1Empty": "Enter or paste text first",
@@ -155,6 +178,10 @@ strings = {
         "NabdhV1CatchUp": "مراجعة مقتطف محادثة ملصق",
         "NabdhV1Save": "حفظ ملاحظة محلية مشفرة",
         "NabdhV1OpenWorkspace": "فتح الملاحظات المحفوظة",
+        "NabdhV1DataSettings": "البيانات والتنزيل التلقائي للواي فاي والجوال",
+        "NabdhV1CacheSettings": "إدارة التخزين والذاكرة المؤقتة",
+        "NabdhV1ProxySettings": "إعدادات البروكسي الرسمية",
+        "NabdhV1NetworkDisclosure": "تُفتح إعدادات Telegram الأصلية للبيانات والتخزين والبروكسي دون إضافة محرك تحسين اتصال وهمي أو تجاوز أي حدود.",
         "NabdhV1ShieldDisclosure": "تحذيرات محلية اختيارية فقط؛ ليست قاعدة روابط ضارة أو فحص فيروسات أو ضمانًا لسلامة الملفات.",
         "NabdhV1ManualDisclosure": "يحلل التطبيق النص الذي تدخله فقط؛ لا يصل تلقائيًا للمحادثات غير المقروءة. الملاحظات المحفوظة مشفرة محليًا على هذا الجهاز.",
         "NabdhV1Empty": "أدخل نصًا أو الصقه أولًا",
