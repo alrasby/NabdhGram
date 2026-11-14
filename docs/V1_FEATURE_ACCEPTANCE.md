@@ -73,6 +73,19 @@ The toggle is located exclusively in NabdhGram Settings → Language and Voice
 playback if an OEM rejects the audio effect. No recording, music, calls or
 video processing. No denoising claims until real DSP and listening tests.
 
+### Notifications RTL / Arabic font regression (source fix; device QA pending)
+
+The Telegram 13.2.2 `NotificationsCheckCell` shows chat/group/channel/story
+notification descriptions using `AnimatedTextView`. Its gradient always
+fades the right edge, which is the **beginning** of RTL Arabic. A new targeted
+overlay removes that incorrect gradient from the cell; native END ellipsizing,
+toggle behavior and icon layout remain unchanged. Notification titles and
+subtitles rebind the selected medium/regular family. The global font walker now
+recognizes Arabic animated labels even when Telegram assigned an explicit
+typeface, and rebuilds their layouts on font changes. New source preflight
+verifies all these invariants. Confirm long Arabic descriptions, mixed digits,
+RTL and LTR, selected fonts and UI scale on the device.
+
 ## Not yet integrated as complete V1
 
 - **Smart Chat Preview:** the official Telegram-native modal preview is ALREADY visible in the owner's installed screenshot; pinned DialogsActivity.showChatPreview opens ChatActivity through presentFragmentAsPreviewWithMenu and provides a separate explicit markAsRead(dialogId) action. Preserve the existing preview; do not duplicate it or claim custom implementation. Verify unread count AND server read acknowledgements stay unchanged from preview until the user marks read or opens chat normally.

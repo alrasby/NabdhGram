@@ -242,6 +242,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-global-textviews.py Telegram-upstream
 
+      - name: Fix RTL notification detail fade and rebind selected Arabic text
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-notification-typography.py Telegram-upstream
+
       - name: Apply NabdhGram Glass settings design
         shell: bash
         run: |
@@ -442,11 +448,12 @@ jobs:
           python3 nabdhgram/scripts/check-glass-design-contract.py
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-notification-typography.py Telegram-upstream
           python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream
           python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --verify Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-v1-integration.py Telegram-upstream
-          python3 -m py_compile nabdhgram/scripts/apply-nabdh-v1-hierarchy.py nabdhgram/scripts/apply-nabdh-voice-clarity.py
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-v1-hierarchy.py nabdhgram/scripts/apply-nabdh-voice-clarity.py nabdhgram/scripts/apply-nabdh-notification-typography.py nabdhgram/scripts/check-nabdh-notification-typography.py
           python3 nabdhgram/scripts/check-nabdh-chat-consistency.py Telegram-upstream
           python3 nabdhgram/scripts/check-chat-settings-visual-fixes.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py nabdhgram/scripts/check-profile-composer-visual-fixes.py nabdhgram/scripts/apply-nabdh-v1-signatures.py nabdhgram/scripts/check-nabdh-v1-integration.py

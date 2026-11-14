@@ -203,6 +203,10 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                         || current.equals(org.telegram.messenger.AndroidUtilities.getTypeface(
                                 "fonts/rmedium.ttf"))
                         || packagedTextFaces.contains(current)
+                        // Arabic AnimatedTextView labels (notably notification
+                        // subtitles) need the same eligibility as TextView.
+                        // Keep private-use glyph/icon paints untouched.
+                        || nabdhContainsArabic(animated.getText())
                         || nabdhExpectedAnimatedFaces.containsKey(animated);
                 android.graphics.Typeface expected = nabdhExpectedAnimatedFaces.get(animated);
                 if (eligible && (!renderKey.equals(applied)
