@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Fail-closed source integration checks for explicit local V1 tools."""
+import re
 import sys
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -66,6 +67,13 @@ for contract in ("featureId == 0", "nabdhFeatureRow", "NabdhHShieldOverview",
                  "NabdhHChooseFile", "featureId == 103"):
     check(contract in hierarchy, "missing hierarchy / retained-control contract: " + contract)
 
+# Prevent Liquid Glass presets from leaking into the parent Appearance page
+# and its Fonts subpage (all three share the same titleRes).
+check('if (featureId == 602) {' in hierarchy
+      and 'addNabdhGlassPresets(context, content);' in hierarchy
+      and 'exclusive Glass presets detail routing' in hierarchy,
+      "Glass presets are not explicitly routed to the Themes detail")
+
 check("apply-nabdh-v1-signatures.py Telegram-upstream" in workflow and
       "check-nabdh-v1-integration.py Telegram-upstream" in workflow,
       "Native v1 overlay not installed/checked before building")
@@ -82,6 +90,20 @@ for name in ("NabdhV1Engine", "NabdhWorkspace", "NabdhFileGuard"):
     check(f.read_text(encoding="utf-8") == (ROOT / "overlay/java" / (name + ".java")).read_text(encoding="utf-8"),
           name + " differs from pinned template")
 page = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
+# Exactly one route: featureId 602 = Appearance > Glass Themes. Both the
+# Appearance index (0) and Fonts (601) must remain free of preset controls.
+glass_route = re.findall(
+    r"if\\s*\\(\\s*featureId\\s*==\\s*602\\s*\\)\\s*\\{\\s*addNabdhGlassPresets\\(context, content\\);\\s*\\}",
+    page)
+check(len(glass_route) == 1
+      and page.count("addNabdhGlassPresets(context, content);") == 1
+      and not re.search(
+          r"if\\s*\\(\\s*titleRes\\s*==\\s*R\\.string\\.NabdhAppearanceTitle\\s*\\)"
+          r"\\s*\\{\\s*addNabdhGlassPresets\\(",
+          page),
+      "Glass presets must appear only under Appearance > Glass Themes, not index/fonts")
+check("if (featureId == 601)" in page and "addNabdhFeatureMenu(context, content);" in page,
+      "Appearance fonts and navigation must remain independent of themes")
 for symbol in ("addNabdhV1Tools", "addNabdhNetworkTools", "NabdhShieldTitle", "NabdhProductivityTitle", "NabdhNetworkTitle",
                "NabdhV1Engine.focus", "NabdhV1Engine.catchUp",
                "NabdhV1Engine.shield", "NabdhWorkspace.saveWithFeedback"):
