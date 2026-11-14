@@ -64,7 +64,29 @@ def main():
         firebase(json.dumps({"project_info":{"project_id":"x","project_number":"1"},
             "client":[{"client_info":{"android_client_info":{"package_name":PACKAGE},
                                        "mobilesdk_app_id":"x"}}]}))
-        print("PASS: certificate and Firebase package guards")
+        # Prove the installed JDK accepts :env password handling and the
+        # fingerprint parser against a disposable 1-off test key (not Release).
+        import tempfile
+        if not shutil.which("keytool"):
+            die("JDK keytool missing for self-test")
+        with tempfile.TemporaryDirectory(prefix="nabdh-keytool-test-") as temp:
+            test_path = Path(temp) / "temporary-test-only.jks"
+            test_pass = "NabdhTestOnly!12345"
+            env = dict(os.environ, NABDH_LOCAL_STORE_PASSWORD=test_pass)
+            cmd = ["keytool", "-J-Duser.language=en", "-genkeypair", "-noprompt",
+                   "-keystore", str(test_path), "-storetype", "PKCS12",
+                   "-alias", "test-only", "-keyalg", "RSA", "-keysize", "2048",
+                   "-validity", "2", "-dname", "CN=NabdhSelfTest",
+                   "-keypass:env", "NABDH_LOCAL_STORE_PASSWORD",
+                   "-storepass:env", "NABDH_LOCAL_STORE_PASSWORD"]
+            t = subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL)
+            if t.returncode:
+                die("JDK could not create ephemeral test key")
+            report = keytool(["-list", "-v", "-keystore", str(test_path),
+                              "-alias", "test-only"], test_pass)
+            assert len(cert_from_output(report)) == 64
+        print("PASS: disposable keytool key generation, fingerprint and Firebase package guards")
         return
     if not (p.create or p.existing):
         ap.error("Choose --create or --existing")
