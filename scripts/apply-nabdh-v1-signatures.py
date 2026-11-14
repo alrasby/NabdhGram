@@ -15,7 +15,7 @@ root = Path(sys.argv[1]).resolve()
 ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
 source_templates = Path(__file__).resolve().parent.parent / "overlay/java"
 
-for name in ("NabdhV1Engine.java", "NabdhWorkspace.java"):
+for name in ("NabdhV1Engine.java", "NabdhWorkspace.java", "NabdhFileGuard.java"):
     target = ui / "Components" / name
     if target.exists():
         raise SystemExit("Existing native component: " + name)
@@ -69,6 +69,7 @@ methods = """    private void nabdhV1Button(Context context, LinearLayout conten
         boolean arabic = org.telegram.messenger.LocaleController.isRTL;
         String output = mode == 0 ? org.telegram.ui.Components.NabdhV1Engine.focus(value, arabic)
                 : mode == 1 ? org.telegram.ui.Components.NabdhV1Engine.catchUp(value, arabic)
+                : mode == 3 ? org.telegram.ui.Components.NabdhV1Engine.scam(value, arabic)
                 : org.telegram.ui.Components.NabdhV1Engine.shield(value, arabic);
         new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
             .setTitle(nabdhText(context, title))
@@ -127,6 +128,8 @@ methods = """    private void nabdhV1Button(Context context, LinearLayout conten
             nabdhV1Button(context, content, R.string.NabdhV1Shield, () ->
                 nabdhV1Result(context, input.getText(), R.string.NabdhV1Shield, 2));
         } else {
+            nabdhV1Button(context, content, R.string.NabdhV1Scam, () ->
+                nabdhV1Result(context, input.getText(), R.string.NabdhV1Scam, 3));
             nabdhV1Button(context, content, R.string.NabdhV1Focus, () ->
                 nabdhV1Result(context, input.getText(), R.string.NabdhV1Focus, 0));
             nabdhV1Button(context, content, R.string.NabdhV1CatchUp, () ->
@@ -157,6 +160,7 @@ strings = {
     "values": {
         "NabdhV1InputHint": "Paste text, a link or a conversation excerpt (nothing is read automatically)",
         "NabdhV1Shield": "Check local URL warning signals",
+        "NabdhV1Scam": "Check local message scam signals",
         "NabdhV1Focus": "Extract focus signals from pasted text",
         "NabdhV1CatchUp": "Review pasted conversation excerpt",
         "NabdhV1Save": "Save encrypted local note",
@@ -174,6 +178,7 @@ strings = {
     "values-ar": {
         "NabdhV1InputHint": "الصق نصًا أو رابطًا أو مقتطف محادثة (لا تتم قراءة الرسائل تلقائيًا)",
         "NabdhV1Shield": "فحص مؤشرات الروابط محليًا",
+        "NabdhV1Scam": "فحص مؤشرات احتيال النص محليًا",
         "NabdhV1Focus": "استخراج مؤشرات التركيز من النص",
         "NabdhV1CatchUp": "مراجعة مقتطف محادثة ملصق",
         "NabdhV1Save": "حفظ ملاحظة محلية مشفرة",
