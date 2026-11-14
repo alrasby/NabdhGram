@@ -43,14 +43,14 @@ toolbar = re.findall(r"actionBar\.setTitle\([^;\n]+\);", s)
 if len(toolbar) != 1:
     raise SystemExit(f"V1 hierarchy: expected one native toolbar call, got {len(toolbar)}")
 replace(toolbar[0],
-        "actionBar.setTitle(nabdhText(context, featureId == 0 ? titleRes : nabdhDetailTitle(featureId)));",
+        "actionBar.setTitle(NabdhStrings.get(context, featureId == 0 ? titleRes : nabdhDetailTitle(featureId)));",
         "detail toolbar")
 # Match whichever localization wrapper the preceding theme pass generated.
 description_calls = re.findall(r"explanation\.setText\([^;]+\);", s)
 if len(description_calls) != 1:
     raise SystemExit(f"V1 hierarchy: expected one explanation setter, got {len(description_calls)}")
 replace(description_calls[0],
-        "explanation.setText(nabdhText(context, featureId == 0 ? nabdhCategoryDescription() : nabdhDetailDescription(featureId)));",
+        "explanation.setText(NabdhStrings.get(context, featureId == 0 ? nabdhCategoryDescription() : nabdhDetailDescription(featureId)));",
         "explanation")
 
 # Font controls are already functional; move them behind Appearance > Fonts.
