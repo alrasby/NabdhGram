@@ -77,7 +77,7 @@ replace("""        if (titleRes == R.string.NabdhShieldTitle ||
         }""",
         """        if (featureId == 0) {
             addNabdhFeatureMenu(context, content);
-        } else if (featureId == 101 || featureId == 301 ||
+        } else if (featureId == 101 || featureId == 103 || featureId == 301 ||
                    featureId == 302 || featureId == 303) {
             addNabdhV1Tools(context, content);
         } else if (featureId == 501 || featureId == 502 || featureId == 503) {
@@ -94,6 +94,8 @@ replace("""if (titleRes == R.string.NabdhShieldTitle) {
             nabdhV1Button""",
         """if (featureId == 101) {
             nabdhV1Button""", "shield tool")
+replace("            nabdhV1Button(context, content, R.string.NabdhV1Scam,",
+        "            if (featureId == 103) nabdhV1Button(context, content, R.string.NabdhV1Scam,", "scam")
 replace("            nabdhV1Button(context, content, R.string.NabdhV1Focus,",
         "            if (featureId == 301) nabdhV1Button(context, content, R.string.NabdhV1Focus,", "focus")
 replace("            nabdhV1Button(context, content, R.string.NabdhV1CatchUp,",
@@ -106,6 +108,13 @@ for symbol, detail in [("NabdhV1DataSettings", 501), ("NabdhV1CacheSettings", 50
     replace(f"        nabdhV1Button(context, content, R.string.{symbol},",
             f"        if (featureId == {detail}) nabdhV1Button(context, content, R.string.{symbol},",
             symbol)
+
+replace("        fragmentView = scroll;",
+        """        if (featureId == 102) {
+            nabdhV1Button(context, content, R.string.NabdhHChooseFile,
+                    () -> nabdhPickFile());
+        }
+        fragmentView = scroll;""", "manual file picker")
 
 methods = r'''    private int nabdhCategoryDescription() {
         if (titleRes == R.string.NabdhShieldTitle) return R.string.NabdhHShieldOverview;
@@ -208,7 +217,7 @@ methods = r'''    private int nabdhCategoryDescription() {
         name.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         labels.addView(name);
         TextView status = new TextView(context);
-        status.setText(nabdhText(context, (id == 102 || id == 103 || id == 402)
+        status.setText(nabdhText(context, (id == 402)
                 ? R.string.NabdhHStatusPending : R.string.NabdhHStatusDetails));
         status.setTextSize(12);
         status.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
@@ -228,6 +237,58 @@ methods = r'''    private int nabdhCategoryDescription() {
                 new NabdhGramFeatureCategoryActivity(titleRes, descriptionRes, id)));
     }
 
+    // Explicit ACTION_OPEN_DOCUMENT: read first 16 bytes only, with the user's
+    // chosen URI grant. Never copy chosen files or upload them for scanning.
+    private void nabdhPickFile() {
+        android.content.Intent intent =
+                new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivityForResult(intent, 6102);
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode,
+                                         android.content.Intent data) {
+        super.onActivityResultFragment(requestCode, resultCode, data);
+        if (featureId != 102 || requestCode != 6102
+                || resultCode != android.app.Activity.RESULT_OK
+                || data == null || data.getData() == null || getParentActivity() == null) {
+            return;
+        }
+        Context context = getParentActivity();
+        android.net.Uri uri = data.getData();
+        String name = "";
+        try (android.database.Cursor cursor = context.getContentResolver().query(
+                uri, new String[]{android.provider.OpenableColumns.DISPLAY_NAME},
+                null, null, null)) {
+            if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0)) {
+                name = cursor.getString(0);
+            }
+        } catch (RuntimeException ignored) {
+            // Filename is optional, SAF provider can deny metadata queries.
+        }
+        try (java.io.InputStream input = context.getContentResolver().openInputStream(uri)) {
+            if (input == null) throw new java.io.IOException("Cannot open content URI");
+            byte[] buffer = new byte[16];
+            int count = input.read(buffer);
+            byte[] header = java.util.Arrays.copyOf(buffer, Math.max(0, count));
+            String mime = context.getContentResolver().getType(uri);
+            String verdict = org.telegram.ui.Components.NabdhFileGuard.inspect(
+                    name, mime, header, org.telegram.messenger.LocaleController.isRTL);
+            new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
+                .setTitle(nabdhText(context, R.string.NabdhHFiles))
+                .setMessage(verdict)
+                .setPositiveButton(nabdhText(context, R.string.NabdhV1Close), null)
+                .show();
+        } catch (java.io.IOException | SecurityException error) {
+            android.widget.Toast.makeText(context,
+                    nabdhText(context, R.string.NabdhHFileError),
+                    android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
 '''
 replace("    private void addPrivacyControls(Context context, LinearLayout content) {",
         methods + "    private void addPrivacyControls(Context context, LinearLayout content) {",
@@ -237,7 +298,7 @@ page.write_text(s, encoding="utf-8")
 
 locales = {
     "values": {
-        "NabdhHShieldOverview": "Choose a security feature. Link checks are opt-in; file inspection and scam detection are not yet integrated.",
+        "NabdhHShieldOverview": "Local opt-in link checks, manually selected file-header inspection and pasted-text scam signals. Real-time blocking is not implemented.",
         "NabdhHPrivacyOverview": "Privacy controls, native chat preview and Telegram scheduled messages.",
         "NabdhHProductivityOverview": "Local, opt-in text tools. Live chat and message-linked workflows remain in development.",
         "NabdhHLanguageOverview": "Translation follows available Telegram features. Voice processing improvements are still in development.",
@@ -248,9 +309,11 @@ locales = {
         "NabdhHLinks": "Safe Link Preview",
         "NabdhHLinksDescription": "Paste a link or text to check local warning signs. A lack of warnings never guarantees safety.",
         "NabdhHFiles": "File Guardian",
-        "NabdhHFilesDescription": "Pre-open file scanning is not yet integrated. No file is scanned or certified safe by this page.",
+        "NabdhHChooseFile": "Choose a file to inspect locally",
+        "NabdhHFileError": "Could not read selected file; review its permissions.",
+        "NabdhHFilesDescription": "Choose a file manually to compare its header with common extensions. This is not antivirus protection or automatic pre-open interception.",
         "NabdhHScam": "Scam warnings",
-        "NabdhHScamDescription": "Message-level fraud detection and impersonation warnings are in development. Do not share login or OTP codes.",
+        "NabdhHScamDescription": "Paste text for local urgency, OTP, payment and support-impersonation indicators. No chats are read automatically.",
         "NabdhHPrivacyScreen": "Privacy Screen",
         "NabdhHPrivacyScreenDescription": "Control Android 13+ recent-app snapshots. Ordinary screenshots are unaffected.",
         "NabdhHScheduled": "Scheduled messages",
@@ -279,7 +342,7 @@ locales = {
         "NabdhHThemesDescription": "Telegram's native theme manager supports built-in and .attheme themes. Use Telegram Appearance settings to change them; no duplicate theme engine is added.",
     },
     "values-ar": {
-        "NabdhHShieldOverview": "اختر ميزة الحماية. فحص الروابط يدوي واختياري؛ فحص الملفات والاحتيال التلقائي لم يُدمجا بعد.",
+        "NabdhHShieldOverview": "فحص محلي اختياري للروابط ورؤوس الملفات المختارة يدويًا ومؤشرات الاحتيال في النص الملصق. الحماية التلقائية لم تُدمج بعد.",
         "NabdhHPrivacyOverview": "إعدادات الخصوصية ومعاينة المحادثات الأصلية والرسائل المجدولة في Telegram.",
         "NabdhHProductivityOverview": "أدوات نصية محلية باختيارك. ربط الرسائل والتلخيص المباشر للمحادثات ما زالا قيد التطوير.",
         "NabdhHLanguageOverview": "الترجمة المتاحة من Telegram، وتحسينات معالجة الصوت ما زالت قيد التطوير.",
@@ -290,9 +353,11 @@ locales = {
         "NabdhHLinks": "معاينة الروابط الآمنة",
         "NabdhHLinksDescription": "ألصق رابطًا أو نصًا لفحص مؤشرات خطورة محلية؛ عدم وجود تحذير لا يعني أن الرابط آمن.",
         "NabdhHFiles": "حارس الملفات",
-        "NabdhHFilesDescription": "لم يُدمج فحص الملفات قبل فتحها بعد. لا تفحص هذه الصفحة الملفات ولا تصنفها آمنة.",
+        "NabdhHChooseFile": "اختيار ملف لفحصه محليًا",
+        "NabdhHFileError": "تعذر قراءة الملف المختار؛ تحقق من الأذونات.",
+        "NabdhHFilesDescription": "اختر ملفًا لفحص توقيع بدايته ومقارنته بالامتداد يدويًا. هذا ليس مضاد فيروسات أو اعتراضًا تلقائيًا قبل الفتح.",
         "NabdhHScam": "تحذيرات الاحتيال",
-        "NabdhHScamDescription": "كشف الاحتيال وانتحال الدعم داخل الرسائل قيد التطوير. لا تشارك رموز الدخول أو التحقق.",
+        "NabdhHScamDescription": "ألصق نصًا لاكتشاف مؤشرات استعجال وطلبات رموز التحقق والتحويلات وانتحال الدعم محليًا. لا تُقرأ المحادثات تلقائيًا.",
         "NabdhHPrivacyScreen": "شاشة الخصوصية",
         "NabdhHPrivacyScreenDescription": "التحكم في معاينات التطبيقات الأخيرة على Android 13 والأحدث دون تعطيل لقطات الشاشة العادية.",
         "NabdhHScheduled": "الرسائل المجدولة",
