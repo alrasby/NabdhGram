@@ -17,7 +17,7 @@ keytool -help >/dev/null
 gh --version
 ```
 
-يستخدم الفرع `.devcontainer/devcontainer.json` مع صورة Universal لتجهيز Python وJDK، إضافة إلى ميزة GitHub CLI. إذا فشل تجهيز الصورة، لا تنشئ مفاتيح بديلة في خدمات ويب عشوائية.
+يعتمد الفرع الآن **صورة Codespaces الافتراضية دون أي إضافات للحاوية**، لتجنب خطأ البناء السابق. تتضمن صورة GitHub الافتراضية Python وJava وGitHub CLI. إذا وجدت Codespace في وضع Recovery القديم، نفّذ `git pull --ff-only` في الطرفية ثم **Ctrl+Shift+P → Codespaces: Rebuild Container**. لا تنشئ أي مفاتيح أثناء وضع الاسترداد. إذا تكرر الخطأ بعد إعادة البناء، افتح **Codespaces: View Creation Log** واقرأ السطر الذي يبدأ بـ ERROR قبل إجراء تغييرات أخرى.
 
 ## 2. التحقق من صلاحية GitHub Secrets
 
