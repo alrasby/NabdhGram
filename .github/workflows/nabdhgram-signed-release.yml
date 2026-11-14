@@ -1,0 +1,23 @@
+name: NabdhGram owner-signed Release APK
+
+# Private manual release only. CI never invents a signing key or falls back to
+# Telegram's bundled sample key. Only maintainers with repository permissions
+# can dispatch this from main after approved real-device QA.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nabdhgram-production-signing
+  cancel-in-progress: false
+
+jobs:
+  signed-release:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    uses: ./.github/workflows/nabdhgram-identity-build.yml
+    with:
+      source_preflight_only: false
+      release_mode: true
+    secrets: inherit
