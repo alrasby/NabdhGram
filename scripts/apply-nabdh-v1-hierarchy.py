@@ -59,8 +59,8 @@ replace("if (titleRes == R.string.NabdhAppearanceTitle) {\n            // Dedica
 
 # Existing Privacy Screen control stays exactly as created by Telegram overlay,
 # but is no longer mixed with the scheduled-messages help page.
-replace("if (titleRes == R.string.NabdhPrivacyTitle) {",
-        "if (featureId == 201) {", "privacy detail routing")
+replace("if (titleRes == R.string.NabdhPrivacyTitle) {\n            addPrivacyControls(context, content);",
+        "if (featureId == 201) {\n            addPrivacyControls(context, content);", "privacy detail routing")
 schedule = re.search(r"\n\s*TextView scheduleTitle = new TextView\(context\);.*?\n\s*content.addView\(scheduleInfo\);", s, re.S)
 if not schedule:
     raise SystemExit("V1 hierarchy: scheduled message help was not found")
