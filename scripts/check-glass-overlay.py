@@ -612,6 +612,23 @@ checks["Account root is opaque with adapter-owned rounded cards"] = (
     (ui / "UserInfoActivity.java").read_text(encoding="utf-8")
 )
 
+# The public AboutLinkCell manually draws its native gradient_bottom even
+# when its RecyclerView row has a rounded Glass background. Scope the fix
+# to ProfileActivity only; shared chat/link interactions stay unchanged.
+about = (ui / "Cells/AboutLinkCell.java").read_text(encoding="utf-8")
+checks["Profile bio never draws native white bottom shadow beneath Glass"] = (
+    "private boolean nabdhProfileGlass;" in about
+    and "public void nabdhSetProfileGlass(boolean enabled)" in about
+    and "if (!nabdhProfileGlass && viewAlpha > 0)" in about
+    and "aboutLinkCell.nabdhSetProfileGlass(true);" in profile
+    and "bottomShadow.setVisibility(enabled ? GONE : VISIBLE);" in about
+)
+checks["Android 12 night and day startup styles share approved icon"] = all(
+    '<item name="android:windowSplashScreenAnimatedIcon">@drawable/nabdhgram_launcher_foreground</item>' in
+    (root / "TMessagesProj/src/main/res" / folder / "styles.xml").read_text(encoding="utf-8")
+    for folder in ("values-v31", "values-night")
+)
+
 for lang in ("values", "values-ar"):
     xml = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     strings = ET.parse(xml).getroot()

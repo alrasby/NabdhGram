@@ -38,6 +38,14 @@ splash_patch = (ROOT / "scripts/apply-brand-icons.py").read_text(encoding="utf-8
 assert 'old_splash' in splash_patch and '@drawable/tg_splash_320' in splash_patch and '@drawable/nabdhgram_launcher_foreground' in splash_patch, "Android 12 native startup logo patch removed"
 assert "native_drawable = root / \"TMessagesProj/src/main/res/drawable-nodpi\"" in splash_patch, "Native module startup icon asset not installed"
 assert "values-v31/styles.xml" in splash_patch, "Android 12 startup theme not patched"
+assert 'values-night/styles.xml' in splash_patch and 'night.count(old_splash)' in splash_patch, "Night mode can still select the original Telegram logo"
+assert 'check-packaged-splash.py "$APK" apk-resources.txt apk-manifest-tree.txt' in workflow, "No mandatory FINAL APK resource variant check"
+bio_overlay = (ROOT / "scripts/apply-nabdh-profile-bio-glass.py").read_text(encoding="utf-8")
+assert 'nabdhProfileGlass' in bio_overlay and 'if (!nabdhProfileGlass && viewAlpha > 0)' in bio_overlay, "White bio shadow can reappear under Glass card"
+assert 'aboutLinkCell.nabdhSetProfileGlass(true);' in bio_overlay, "Native profile bio opt-in to white-shadow suppression missing"
+assert "apply-nabdh-profile-bio-glass.py Telegram-upstream" in workflow, "Bio Glass correction missing from native build"
+assert workflow.index("apply-glass-settings-surfaces.py Telegram-upstream") < workflow.index("apply-nabdh-profile-bio-glass.py Telegram-upstream") < workflow.index("check-glass-overlay.py Telegram-upstream"), "Profile white-shadow fix must execute after all Glass surfaces and before smoke checks"
+
 identity_overlay = (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8")
 assert 'appVersion = nabdhVersionName + " (" + pInfo.versionCode + ")";' in identity_overlay
 assert "Cells/SessionCell.java" in identity_overlay and '"NandhGram".equalsIgnoreCase(nabdhDisplayApp)' in identity_overlay, "SessionCell must correct only this client app_name"

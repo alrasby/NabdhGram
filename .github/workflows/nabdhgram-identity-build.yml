@@ -362,6 +362,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-empty-state.py Telegram-upstream
 
+      - name: Remove white shadow from native profile biography Glass card
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-profile-bio-glass.py Telegram-upstream
+
       - name: Verify NabdhGram Glass overlays before Gradle
         shell: bash
         run: |
@@ -372,6 +378,7 @@ jobs:
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-consistency.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhGlassRowDecoration.java
           # Validate generated Java, not only the Python overlay source.
           python3 - <<'PY'
@@ -533,6 +540,9 @@ jobs:
               print("::warning::DefaultIcon alias not found in compiled manifest tree", flush=True)
           print("NOTE: Device launcher artwork still requires visual verification.", flush=True)
           PY
+          # Inspect FINAL compiled resources, not just source XML. In build #572
+          # Android night-v29 selected tg_splash_320 despite branded day-v31.
+          python3 nabdhgram/scripts/check-packaged-splash.py "$APK" apk-resources.txt apk-manifest-tree.txt
       - name: Publish verified APK with a clean filename
         if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
         shell: bash
