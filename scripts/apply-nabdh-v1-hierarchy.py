@@ -39,7 +39,7 @@ replace("""        this.descriptionRes = descriptionRes;
     }""", "overloaded constructor")
 # Earlier Glass/locale passes may change how the toolbar title is resolved.
 # Match only the actual single actionBar title call, without assuming a helper.
-toolbar = re.findall(r"actionBar\\.setTitle\\([^;\\n]+\\);", s)
+toolbar = re.findall(r"actionBar\.setTitle\([^;\n]+\);", s)
 if len(toolbar) != 1:
     raise SystemExit(f"V1 hierarchy: expected one native toolbar call, got {len(toolbar)}")
 replace(toolbar[0],
