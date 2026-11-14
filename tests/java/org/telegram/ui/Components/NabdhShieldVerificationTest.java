@@ -72,7 +72,7 @@ public final class NabdhShieldVerificationTest {
         contains(NabdhFileGuard.inspect("image.png", null, new byte[0], true),
                 "توقيع غير معروف", "arabic-unknown-file");
         contains(NabdhFileGuard.inspect("image.png", null, new byte[0], true),
-                "هذا ليس إثبات أمان", "arabic-no-file-safety-cert");
+                "لا يتحقق من سلامة الملف", "arabic-no-file-safety-cert");
         System.out.println("PASS: " + count + " synthetic NabdhShield assertions");
         System.out.println("NOTE: unit regressions are not real-world precision/recall");
     }
