@@ -654,7 +654,12 @@ for activity in ("SettingsActivity.java",):
 profile_path = ui / "ProfileActivity.java"
 profile_src = profile_path.read_text(encoding="utf-8")
 old_scrim = ".setScrimViewBackground(listView.getClipBackground(view))"
-new_scrim = """.setScrimViewBackground(
+new_scrim = """.setRoundRadius(
+                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                                ? org.telegram.messenger.AndroidUtilities.dp(20) : 0,
+                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                                ? org.telegram.messenger.AndroidUtilities.dp(10) : 0)
+                    .setScrimViewBackground(
                         org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
                                 ? org.telegram.ui.Components.NabdhGlassRowDecoration.newProfileScrim()
                                 : listView.getClipBackground(view))"""

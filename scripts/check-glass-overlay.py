@@ -427,7 +427,7 @@ checks = {
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
         and "if (nabdhFontDirty && android.os.SystemClock.uptimeMillis()" in launch
         and "nabdhLastFontScanMs >= 48L" in launch,
-    "composer retains native padding and RTL": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
+    "composer retains RTL and content padding": "messageEditText.setPadding(dp(6), dp(9), dp(6), dp(10));" in composer
         and "TEXT_DIRECTION_FIRST_STRONG" in composer
         and "LocaleController.isRTL" in composer
         and "android.view.Gravity.RIGHT : android.view.Gravity.LEFT" in composer,
@@ -464,9 +464,11 @@ checks = {
         and "GradientDrawable fontGlass =" not in feature
         and "GradientDrawable infoCard =" not in feature,
 
-    "chat composer rounded theme surface": "messageEditText.setBackground(nabdhInputGlass)" in composer
-        and "nabdhInputGlass.setCornerRadius(dp(19))" in composer
-        and "Theme.key_chat_messagePanelBackground" in composer,
+    "chat composer is ONE native-theme surface, not a white inner pill":
+        "messageEditText.setBackgroundDrawable(null);" in composer
+        and "messageEditText.setBackground(nabdhInputGlass)" not in composer
+        and "nabdhInputGlass.setCornerRadius" not in composer
+        and "ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider)" in composer,
     "dialog selector rounded clipping installed": "selectorView instanceof org.telegram.ui.Cells.DialogCell" in selector
         and "canvas.clipPath(nabdhDialogSelectorPath)" in selector
         and "selectorRect.left + 7f * density" in selector
