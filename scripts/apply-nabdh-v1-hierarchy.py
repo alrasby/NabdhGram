@@ -45,7 +45,11 @@ if len(toolbar) != 1:
 replace(toolbar[0],
         "actionBar.setTitle(nabdhText(context, featureId == 0 ? titleRes : nabdhDetailTitle(featureId)));",
         "detail toolbar")
-replace("explanation.setText(nabdhText(context, descriptionRes));",
+# Match whichever localization wrapper the preceding theme pass generated.
+description_calls = re.findall(r"explanation\.setText\([^;]+\);", s)
+if len(description_calls) != 1:
+    raise SystemExit(f"V1 hierarchy: expected one explanation setter, got {len(description_calls)}")
+replace(description_calls[0],
         "explanation.setText(nabdhText(context, featureId == 0 ? nabdhCategoryDescription() : nabdhDetailDescription(featureId)));",
         "explanation")
 
