@@ -22,6 +22,17 @@ on:
   pull_request:
     branches:
       - main
+  # Build the accepted upgrade once from the real main head, not only the
+  # ephemeral PR branch. Avoid spending a full NDK build on docs-only edits.
+  push:
+    branches:
+      - main
+    paths:
+      - 'upstream/**'
+      - 'scripts/**'
+      - 'overlay/**'
+      - 'branding/**'
+      - '.github/workflows/nabdhgram-identity-build.yml'
 
 permissions:
   contents: read
