@@ -374,6 +374,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-profile-bio-glass.py Telegram-upstream
 
+      - name: Enforce native toggle ON thumb physically left for every locale
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --apply Telegram-upstream
+
       - name: Verify NabdhGram Glass overlays before Gradle
         shell: bash
         run: |
@@ -382,6 +388,7 @@ jobs:
           python3 nabdhgram/scripts/check-glass-design-contract.py
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --verify Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-consistency.py Telegram-upstream
           python3 nabdhgram/scripts/check-chat-settings-visual-fixes.py Telegram-upstream
