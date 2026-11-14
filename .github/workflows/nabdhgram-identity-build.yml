@@ -396,6 +396,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-liquid-intelligence.py Telegram-upstream
 
+      - name: Install real local V1 Shield, Focus, recap, and encrypted Workspace tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-v1-signatures.py Telegram-upstream
+
       - name: Unify chat bubble palette and native Arabic TextPaint refresh
         shell: bash
         run: |
@@ -437,9 +443,10 @@ jobs:
           python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream
           python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --verify Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-v1-integration.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-consistency.py Telegram-upstream
           python3 nabdhgram/scripts/check-chat-settings-visual-fixes.py Telegram-upstream
-          python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py nabdhgram/scripts/check-profile-composer-visual-fixes.py
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py nabdhgram/scripts/check-profile-composer-visual-fixes.py nabdhgram/scripts/apply-nabdh-v1-signatures.py nabdhgram/scripts/check-nabdh-v1-integration.py
           python3 -m py_compile nabdhgram/scripts/apply-chat-settings-visual-fixes.py nabdhgram/scripts/check-chat-settings-visual-fixes.py
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhGlassRowDecoration.java
           # Validate generated Java, not only the Python overlay source.
