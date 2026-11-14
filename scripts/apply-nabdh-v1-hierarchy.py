@@ -54,8 +54,8 @@ replace(description_calls[0],
         "explanation")
 
 # Font controls are already functional; move them behind Appearance > Fonts.
-replace("if (titleRes == R.string.NabdhAppearanceTitle) {",
-        "if (featureId == 601) {", "font detail routing")
+replace("if (titleRes == R.string.NabdhAppearanceTitle) {\n            // Dedicated static Glass surface:",
+        "if (featureId == 601) {\n            // Dedicated static Glass surface:", "font detail routing")
 
 # Existing Privacy Screen control stays exactly as created by Telegram overlay,
 # but is no longer mixed with the scheduled-messages help page.
