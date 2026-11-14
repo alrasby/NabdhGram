@@ -105,6 +105,21 @@ replace("Cells/NotificationsCheckCell.java",
         "(LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 21, 0, 21, 0",
         "Gravity.LEFT | Gravity.CENTER_VERTICAL, 21, 0, 21, 0")
 
+# Icon-bearing TextCheckCell rows have a separately created icon. A native
+# LTR icon at LEFT would collide with the newly fixed-left toggle. Place the
+# icon at the physical RIGHT and reserve both icon and switch gutters.
+replace("Cells/TextCheckCell.java",
+        "addView(imageView, LayoutHelper.createFrame(29, 29, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL, 19, 0, 19, 0));",
+        "addView(imageView, LayoutHelper.createFrame(29, 29, Gravity.RIGHT | Gravity.CENTER_VERTICAL, 19, 0, 19, 0));")
+replace("Cells/TextCheckCell.java",
+        "((MarginLayoutParams)textView.getLayoutParams()).leftMargin = LocaleController.isRTL ? 70 : padding;",
+        "((MarginLayoutParams)textView.getLayoutParams()).leftMargin = AndroidUtilities.dp(70);")
+replace("Cells/TextCheckCell.java",
+        "((MarginLayoutParams)textView.getLayoutParams()).rightMargin = LocaleController.isRTL ? padding: 70;",
+        """((MarginLayoutParams)textView.getLayoutParams()).rightMargin = padding;
+            ((MarginLayoutParams)valueTextView.getLayoutParams()).leftMargin = AndroidUtilities.dp(70);
+            ((MarginLayoutParams)valueTextView.getLayoutParams()).rightMargin = padding;""")
+
 # TextCell is used for Power Saver's Smooth Transitions switch and for
 # other native setting rows. Unlike FrameLayout-based cells above, TextCell
 # overrides onLayout() and would keep the switch RIGHT in English even if

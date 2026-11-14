@@ -60,6 +60,10 @@ check("Gravity.LEFT | Gravity.CENTER_VERTICAL, 21, 0, 21, 0" in notifications
 check("Gravity.RIGHT | Gravity.CENTER_VERTICAL, 8, 0, 8, 0" in notifications,
       "native with-image icon may overlap left switch")
 
+check("addView(imageView, LayoutHelper.createFrame(29, 29, Gravity.RIGHT | Gravity.CENTER_VERTICAL" in textcheck
+      and "((MarginLayoutParams)textView.getLayoutParams()).leftMargin = AndroidUtilities.dp(70)" in textcheck,
+      "Icon-bearing TextCheckCell could overlap fixed-left toggle")
+
 textcell = load("Cells/TextCell.java")
 check(textcell.count("Gravity.LEFT | Gravity.CENTER_VERTICAL, 22, 0, 22, 0") == 2
       and "viewLeft = dp(22);" in textcell,
