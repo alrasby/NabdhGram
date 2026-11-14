@@ -178,7 +178,7 @@ for locale in ("values", "values-ar"):
     check(len(keys) == len(set(keys)), "duplicate hierarchy resource: " + locale)
     for key in ("NabdhHLinks", "NabdhHFiles", "NabdhHScam", "NabdhHPreview",
                 "NabdhHWorkspace", "NabdhHVoice", "NabdhHData",
-                "NabdhHFonts", "NabdhHThemes", "NabdhHStatusPending",
+                "NabdhHFonts", "NabdhHThemes", "NabdhHStatusPartial",
                 "NabdhHChooseFile", "NabdhHFileError"):
         check(key in keys, "missing " + locale + " label: " + key)
 check("if (titleRes == R.string.NabdhShieldTitle) {" not in page.split("private void addNabdhV1Tools",1)[1].split("private int nabdhCategoryDescription",1)[0],

@@ -229,7 +229,7 @@ methods = r'''    private int nabdhCategoryDescription() {
         labels.addView(name);
         TextView status = new TextView(context);
         status.setText(nabdhText(context, (id == 402)
-                ? R.string.NabdhHStatusPending : R.string.NabdhHStatusDetails));
+                ? R.string.NabdhHStatusPartial : R.string.NabdhHStatusDetails));
         status.setTextSize(12);
         status.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
         labels.addView(status);
@@ -312,11 +312,12 @@ locales = {
         "NabdhHShieldOverview": "Local opt-in link checks, manually selected file-header inspection and pasted-text scam signals. Real-time blocking is not implemented.",
         "NabdhHPrivacyOverview": "Privacy controls, native chat preview and Telegram scheduled messages.",
         "NabdhHProductivityOverview": "Local, opt-in text tools. Live chat and message-linked workflows remain in development.",
-        "NabdhHLanguageOverview": "Translation follows available Telegram features. Voice processing improvements are still in development.",
+        "NabdhHLanguageOverview": "Telegram translation and an optional voice-message boost are available; advanced speech processing is still in development.",
         "NabdhHNetworkOverview": "Native Telegram data, storage and proxy controls; no artificial network optimizer.",
         "NabdhHAppearanceOverview": "Personalize fonts and use Telegram's existing theme management.",
         "NabdhHStatusPending": "In development — not enabled",
         "NabdhHStatusDetails": "Open feature options",
+        "NabdhHStatusPartial": "Gentle gain available · advanced processing pending",
         "NabdhHLinks": "Safe Link Preview",
         "NabdhHLinksDescription": "Paste a link or text to check local warning signs. A lack of warnings never guarantees safety.",
         "NabdhHFiles": "File Guardian",
@@ -340,7 +341,7 @@ locales = {
         "NabdhHTranslation": "Translation",
         "NabdhHTranslationDescription": "Telegram's built-in translation options remain accessible in chats and Telegram Settings. Optional automatic live translation is not implemented here.",
         "NabdhHVoice": "Voice Clarity",
-        "NabdhHVoiceDescription": "Advanced playback noise and clarity processing is in development. Native Telegram voice playback remains unchanged.",
+        "NabdhHVoiceDescription": "Optional gentle boost for voice messages is available below. Noise removal and advanced clarity DSP remain in development.",
         "NabdhHData": "Wi-Fi and mobile downloads",
         "NabdhHDataDescription": "Open Telegram's existing auto-download and mobile-data options. No additional background optimization is claimed.",
         "NabdhHStorage": "Storage and cache",
@@ -356,11 +357,12 @@ locales = {
         "NabdhHShieldOverview": "فحص محلي اختياري للروابط ورؤوس الملفات المختارة يدويًا ومؤشرات الاحتيال في النص الملصق. الحماية التلقائية لم تُدمج بعد.",
         "NabdhHPrivacyOverview": "إعدادات الخصوصية ومعاينة المحادثات الأصلية والرسائل المجدولة في Telegram.",
         "NabdhHProductivityOverview": "أدوات نصية محلية باختيارك. ربط الرسائل والتلخيص المباشر للمحادثات ما زالا قيد التطوير.",
-        "NabdhHLanguageOverview": "الترجمة المتاحة من Telegram، وتحسينات معالجة الصوت ما زالت قيد التطوير.",
+        "NabdhHLanguageOverview": "ترجمة Telegram وتعزيز خفيف اختياري لصوت الرسائل متاحان؛ معالجة الصوت المتقدمة قيد التطوير.",
         "NabdhHNetworkOverview": "خيارات Telegram الأصلية للتنزيل والتخزين والبروكسي، دون محرك تحسين اتصال وهمي.",
         "NabdhHAppearanceOverview": "تخصيص الخطوط مع إدارة الثيمات الأصلية في Telegram.",
         "NabdhHStatusPending": "قيد التطوير — غير مفعّل",
         "NabdhHStatusDetails": "فتح خيارات الميزة",
+        "NabdhHStatusPartial": "تعزيز خفيف متاح · المعالجة المتقدمة قيد التطوير",
         "NabdhHLinks": "معاينة الروابط الآمنة",
         "NabdhHLinksDescription": "ألصق رابطًا أو نصًا لفحص مؤشرات خطورة محلية؛ عدم وجود تحذير لا يعني أن الرابط آمن.",
         "NabdhHFiles": "حارس الملفات",
@@ -384,7 +386,7 @@ locales = {
         "NabdhHTranslation": "الترجمة",
         "NabdhHTranslationDescription": "خيارات ترجمة Telegram الأصلية متاحة من المحادثات والإعدادات. الترجمة المباشرة الإضافية غير مدمجة هنا.",
         "NabdhHVoice": "وضوح الصوت",
-        "NabdhHVoiceDescription": "معالجة الضوضاء ووضوح التشغيل المتقدمة قيد التطوير. تشغيل صوت Telegram الأصلي لم يتغير.",
+        "NabdhHVoiceDescription": "يتوفر أدناه تعزيز اختياري خفيف لصوت الرسائل. إزالة الضوضاء ومعالجة الوضوح المتقدمة قيد التطوير.",
         "NabdhHData": "تنزيلات الواي فاي والبيانات",
         "NabdhHDataDescription": "تفتح خيارات التنزيل التلقائي وبيانات الهاتف الأصلية في Telegram دون ادعاء تحسين خلفي إضافي.",
         "NabdhHStorage": "التخزين والذاكرة المؤقتة",
