@@ -36,7 +36,7 @@ main-screen tabs and no replacements for Telegram-native services.
 | NabdhShield | Safe Link Preview; File Guardian; Scam warnings | Explicit local link signals; manual SAF document-header inspection; pasted-text fraud hints, all without automatic chat/file monitoring |
 | Privacy and messaging | Privacy Screen; Smart Chat Preview; scheduled messages | Preserved Android 13+ privacy toggle, native Telegram preview and native scheduling |
 | Productivity | Focus Lens; Message Workspace; Catch Me Up | Opt-in pasted-text extraction, encrypted local notes, pasted-excerpt review |
-| Language and voice | Translation; Voice Clarity | Existing Telegram translation; advanced clarity DSP explicitly pending |
+| Language and voice | Translation; Voice Clarity | Native Telegram translation; optional gentle +2.5 dB voice-message playback gain on AudioSession (Android LoudnessEnhancer). Noise cancellation and DSP quality validation still pending |
 | Network and media | Wi-Fi/mobile downloads; cache; proxy | Native Telegram data, storage and proxy settings |
 | Appearance | Fonts/size/weight; Glass themes | Existing NabdhGram font settings and Telegram theme integration |
 
@@ -56,11 +56,32 @@ verified that all six private GitHub Actions Release/Firebase secrets exist
 owner-signed APK has been produced or Firebase notifications were validated.
 The first public build remains blocked on signed Release and phone QA.
 
+### Arabic Typography Architecture integration (requires phone QA)
+
+The existing `overlay/java/NabdhTypefaceManager.java` is now copied to
+Telegram native Components. Telegram Theme.createCommonChatResources calls
+it once after its real TextPaint instances are initialized, including chat,
+reply, forward, media metadata, timestamps and labels. The existing font
+settings refresh calls the same manager after font preference changes.
+Code/monospace and emoji paints remain native. This is more complete than
+updating TextView alone; visual RTL/bidi, chat layout remeasure and device
+regression still require QA.
+
+### Voice Clarity integration (requires phone QA)
+
+Voice-only, opt-in +2.5 dB native audio-session gain (off by default).
+The toggle is located exclusively in NabdhGram Settings → Language and Voice
+→ Voice Clarity, affects the next voice message and falls back to ordinary
+playback if an OEM rejects the audio effect. No recording, music, calls or
+video processing. No denoising claims until real DSP and listening tests.
+
 ## Not yet integrated as complete V1
 
 - **Smart Chat Preview:** the official Telegram-native modal preview is ALREADY visible in the owner's installed screenshot; pinned DialogsActivity.showChatPreview opens ChatActivity through presentFragmentAsPreviewWithMenu and provides a separate explicit markAsRead(dialogId) action. Preserve the existing preview; do not duplicate it or claim custom implementation. Verify unread count AND server read acknowledgements stay unchanged from preview until the user marks read or opens chat normally.
-- **Voice Clarity:** tested DSP / playback-quality and level processing, not just
-  relabeling native speed controls.
+- **Voice Clarity:** opt-in 2.5 dB Android LoudnessEnhancer is now wired only to
+  voice-message ExoPlayer audio sessions, automatically released at player
+  teardown. Device/OEM support, audible distortion/volume and latency need
+  QA. This is *not* noise cancellation or a full clarity DSP.
 - **Network Intelligence:** actual intelligent and persistent Wi-Fi/mobile
   caching/transfer behavior and functional tests; current network diagnostics
   are diagnostics only.

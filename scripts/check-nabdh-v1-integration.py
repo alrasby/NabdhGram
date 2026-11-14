@@ -12,6 +12,10 @@ fileguard = (ROOT / "overlay/java/NabdhFileGuard.java").read_text(encoding="utf-
 lens = (ROOT / "overlay/java/NabdhContextLens.java").read_text(encoding="utf-8")
 overlay = (ROOT / "scripts/apply-nabdh-v1-signatures.py").read_text(encoding="utf-8")
 workflow = (ROOT / ".github/workflows/nabdhgram-identity-build.yml").read_text(encoding="utf-8")
+typography = (ROOT / "overlay/java/NabdhTypefaceManager.java").read_text(encoding="utf-8")
+chat_typefaces = (ROOT / "scripts/apply-glass-chat-typefaces.py").read_text(encoding="utf-8")
+voice_overlay = (ROOT / "scripts/apply-nabdh-voice-clarity.py").read_text(encoding="utf-8")
+font_settings = (ROOT / "scripts/apply-glass-settings.py").read_text(encoding="utf-8")
 
 
 def check(condition, why):
@@ -56,6 +60,20 @@ check("NabdhShieldTitle" in overlay and "NabdhProductivityTitle" in overlay and
       "NabdhWorkspace.show(" in overlay,
       "V1 tools lack real user-facing category actions")
 hierarchy = (ROOT / "scripts/apply-nabdh-v1-hierarchy.py").read_text(encoding="utf-8")
+check("NabdhTypefaceManager.applyChatPaints()" in chat_typefaces
+      and 'manager_target.write_text(' in chat_typefaces
+      and "NabdhTypefaceManager.applyChatPaints()" in font_settings
+      and "Theme.chat_msgTextCodePaint" in typography
+      and "Theme.chat_audioTitlePaint" in typography
+      and "Theme.chat_replyNamePaint" in typography,
+      "Central Arabic typography manager is not integrated on initial paint creation and font changes")
+check("apply-nabdh-voice-clarity.py Telegram-upstream" in workflow
+      and "messageObject.isVoice()" in voice_overlay
+      and "onAudioSessionIdChanged(int audioSessionId)" in voice_overlay
+      and "nabdhReleaseVoiceBoost();" in voice_overlay
+      and "if (featureId == 402)" in voice_overlay
+      and "voice_boost_enabled" in voice_overlay,
+      "Voice Clarity must be opt-in, voice-only, session scoped and shown only in its detail page")
 check("apply-nabdh-v1-hierarchy.py Telegram-upstream" in workflow,
       "hierarchical feature routing overlay not installed")
 for contract in ("featureId == 0", "nabdhFeatureRow", "NabdhHShieldOverview",
@@ -90,6 +108,27 @@ for name in ("NabdhV1Engine", "NabdhWorkspace", "NabdhFileGuard"):
     check(f.read_text(encoding="utf-8") == (ROOT / "overlay/java" / (name + ".java")).read_text(encoding="utf-8"),
           name + " differs from pinned template")
 page = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
+theme = (ui / "ActionBar/Theme.java").read_text(encoding="utf-8")
+native_manager = (ui / "Components/NabdhTypefaceManager.java")
+check(native_manager.is_file()
+      and native_manager.read_text(encoding="utf-8") == typography,
+      "Arabic canvas typography manager not generated from approved template")
+check(theme.count("NabdhTypefaceManager.applyChatPaints();") == 1,
+      "Theme must call canvas font manager once at the common chat paint initialization boundary")
+voice_source = (ui / "Components/VideoPlayer.java").read_text(encoding="utf-8")
+media_source = (target / "TMessagesProj/src/main/java/org/telegram/messenger/MediaController.java").read_text(encoding="utf-8")
+check("nabdhEnableVoiceBoost(messageObject.isVoice()" in media_source
+      and "onAudioSessionIdChanged(int audioSessionId)" in voice_source
+      and "effect.setTargetGain(250);" in voice_source
+      and "nabdhReleaseVoiceBoost();" in voice_source
+      and "if (featureId == 402)" in page,
+      "Voice Clarity is not bound to actual voice player, correct session, and Glass detail")
+for locale in ("values", "values-ar"):
+    audio_res = target / "TMessagesProj/src/main/res" / locale / "nabdh_voice_boost.xml"
+    check(audio_res.is_file(), "Missing voice boost translation: " + locale)
+    keys = [e.attrib.get("name") for e in ET.parse(audio_res).getroot()]
+    check(keys == ["NabdhVoiceBoostLabel", "NabdhVoiceBoostNote"],
+          "Voice boost translation missing keys or duplicate: " + locale)
 # Exactly one route: featureId 602 = Appearance > Glass Themes. Both the
 # Appearance index (0) and Fonts (601) must remain free of preset controls.
 glass_route = re.findall(
