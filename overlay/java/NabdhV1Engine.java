@@ -115,6 +115,50 @@ public final class NabdhV1Engine {
     }
 
     /**
+     * Explicit pasted-text warning signals. Local keyword patterns can miss
+     * sophisticated scams and can flag benign conversations. No hidden access
+     * to chats, contacts, OTPs or message notifications.
+     */
+    public static String scam(CharSequence input, boolean ar) {
+        String text = bounded(input);
+        if (text.isEmpty()) return lang(ar,
+                "أدخل نصًا لفحص مؤشرات الاحتيال محليًا.",
+                "Enter text to check local scam signals.");
+        StringBuilder out = new StringBuilder(lang(ar,
+                "مؤشرات تحذير نصية أولية، وليست إثباتًا لوجود احتيال أو عدمه.\n",
+                "Basic pasted-text warning signals; not proof of fraud or safety.\n"));
+        Pattern code = Pattern.compile("(?iu)(?:\\b(?:otp|one.time code|verification code|login code|2fa code)\\b|رمز التحقق|كود التحقق|رمز الدخول|الرمز السري)");
+        Pattern pressure = Pattern.compile("(?iu)(?:\\b(?:urgent|immediately|act now|limited time|account suspended|blocked account)\\b|فوراً|فورا|عاجل|حالاً|حالا|سيتم إيقاف حسابك|تعطيل حسابك)");
+        Pattern financial = Pattern.compile("(?iu)(?:\\b(?:send money|bank transfer|gift card|payment required|wire transfer)\\b|تحويل بنكي|حوّل المبلغ|ارسل المبلغ|بطاقة هدايا|رسوم تفعيل)");
+        Pattern impersonation = Pattern.compile("(?iu)(?:\\b(?:support team|official support|telegram admin|administrator)\\b|فريق الدعم|الدعم الرسمي|إدارة تليجرام|مسؤول تليجرام)");
+        int count = 0;
+        if (code.matcher(text).find()) {
+            out.append(lang(ar, "⚠ ذكر رمز دخول أو تحقق: لا تشارك رموز حسابك مع أحد.\n",
+                    "⚠ Verification/login code mentioned: never share your account code.\n"));
+            count++;
+        }
+        if (pressure.matcher(text).find()) {
+            out.append(lang(ar, "⚠ صياغة استعجال أو تهديد محتملة.\n",
+                    "⚠ Potential urgency or account-threat pressure.\n"));
+            count++;
+        }
+        if (financial.matcher(text).find()) {
+            out.append(lang(ar, "⚠ طلب مالي أو تحويل محتمل؛ تحقق من المستفيد.\n",
+                    "⚠ Potential payment or transfer request; verify the recipient.\n"));
+            count++;
+        }
+        if (impersonation.matcher(text).find()) {
+            out.append(lang(ar, "⚠ ادعاء صفة دعم أو إدارة؛ تحقق عبر قناة رسمية مستقلة.\n",
+                    "⚠ Claimed support/admin identity; verify through an independent official channel.\n"));
+            count++;
+        }
+        if (count == 0) out.append(lang(ar,
+                "لم تُكتشف الأنماط البسيطة المحددة؛ هذا لا يعني أن الرسالة آمنة.",
+                "No listed basic patterns found; this does not mean the message is safe."));
+        return out.toString().trim();
+    }
+
+    /**
      * URL/filename heuristic signals; NO network lookup, phishing database,
      * MIME inference, permission bypass, APK execution or malware scan.
      */
