@@ -88,11 +88,9 @@ replace("Cells/TextCheckCell2.java",
 replace("Cells/TextCheckCell2.java",
         "(LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 22, 0, 22, 0",
         "Gravity.LEFT | Gravity.CENTER_VERTICAL, 22, 0, 22, 0")
-# Expanded-switch arrow was laid at the same left edge as its RTL/LTR toggle.
-# With the fixed-left switch, put this optional disclosure control at the RIGHT.
-replace("Cells/TextCheckCell2.java",
-        "LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL));",
-        "LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.RIGHT));")
+# Keep Telegram's TextCheckCell2 disclosure container at its original
+# origin: onLayout() already translates it next to the title in RTL/LTR.
+# Changing its gravity without changing the translation causes overflow.
 
 replace("Cells/NotificationsCheckCell.java",
         "(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL, 8, 0, 8, 0",
@@ -106,6 +104,28 @@ replace("Cells/NotificationsCheckCell.java",
 replace("Cells/NotificationsCheckCell.java",
         "(LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 21, 0, 21, 0",
         "Gravity.LEFT | Gravity.CENTER_VERTICAL, 21, 0, 21, 0")
+
+# TextCell is used for Power Saver's Smooth Transitions switch and for
+# other native setting rows. Unlike FrameLayout-based cells above, TextCell
+# overrides onLayout() and would keep the switch RIGHT in English even if
+# its LayoutParams were changed. Correct BOTH layout and text/icon gutters.
+replace("Cells/TextCell.java",
+        "(LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 22, 0, 22, 0",
+        "Gravity.LEFT | Gravity.CENTER_VERTICAL, 22, 0, 22, 0", 2)
+replace("Cells/TextCell.java",
+        "viewLeft = LocaleController.isRTL ? dp(22) : width - checkBox.getMeasuredWidth() - dp(22);",
+        "viewLeft = dp(22);")
+replace("Cells/TextCell.java",
+        "viewLeft = dp(imageView.getVisibility() == VISIBLE ? offsetFromImage : leftPadding);",
+        "viewLeft = dp(checkBox != null && checkBox.getVisibility() == VISIBLE ? 75 : (imageView.getVisibility() == VISIBLE ? offsetFromImage : leftPadding));")
+replace("Cells/TextCell.java",
+        "viewLeft = !LocaleController.isRTL ? dp(imageLeft) : width - imageView.getMeasuredWidth() - dp(imageLeft);",
+        "viewLeft = !LocaleController.isRTL ? (checkBox != null && checkBox.getVisibility() == VISIBLE ? width - imageView.getMeasuredWidth() - dp(imageLeft) : dp(imageLeft)) : width - imageView.getMeasuredWidth() - dp(imageLeft);")
+# For LTR rows that also show an icon, the moved icon is at the right.
+# Limit the width of title/subtitle to keep them outside its 56dp region.
+replace("Cells/TextCell.java",
+        "width - dp(71 + leftPadding)",
+        "width - dp(71 + leftPadding + (checkBox != null && checkBox.getVisibility() == VISIBLE && !LocaleController.isRTL && imageView.getVisibility() == VISIBLE ? 56 : 0))", 4)
 
 # 3. Power Saver has its own custom SwitchCell, plus a special split
 # click zone for rows with expandable sub-options. Move BOTH the switch
