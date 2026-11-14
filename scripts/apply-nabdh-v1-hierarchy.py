@@ -37,7 +37,12 @@ replace("""        this.descriptionRes = descriptionRes;
         this.descriptionRes = descriptionRes;
         this.featureId = featureId;
     }""", "overloaded constructor")
-replace("actionBar.setTitle(nabdhText(context, titleRes));",
+# Earlier Glass/locale passes may change how the toolbar title is resolved.
+# Match only the actual single actionBar title call, without assuming a helper.
+toolbar = re.findall(r"actionBar\\.setTitle\\([^;\\n]+\\);", s)
+if len(toolbar) != 1:
+    raise SystemExit(f"V1 hierarchy: expected one native toolbar call, got {len(toolbar)}")
+replace(toolbar[0],
         "actionBar.setTitle(nabdhText(context, featureId == 0 ? titleRes : nabdhDetailTitle(featureId)));",
         "detail toolbar")
 replace("explanation.setText(nabdhText(context, descriptionRes));",
