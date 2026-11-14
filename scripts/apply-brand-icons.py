@@ -197,7 +197,26 @@ def main():
         styles = styles.replace(old_background,
             '<item name="android:windowSplashScreenBackground">#04252A</item>', 1)
         android12_styles.write_text(styles, encoding="utf-8")
-        print("PASS: Android 12+ native launch splash displays approved NabdhGram mark")
+
+        # Telegram ALSO declares Theme.TMessages.Start in values-night/styles.
+        # Android's night qualifier can outrank the higher v31 qualifier:
+        # inspecting APK #572's compiled resources.arsc proved that normal
+        # v31 used NabdhGram, but night-v29 still referenced tg_splash_320.
+        # We must patch BOTH source variants; the binary APK audit below
+        # checks every final resource configuration after Gradle merging.
+        night_styles = root / "TMessagesProj/src/main/res/values-night/styles.xml"
+        night = night_styles.read_text(encoding="utf-8")
+        if night.count(old_splash) != 1:
+            raise SystemExit("Pinned Telegram night splash icon changed")
+        night = night.replace(old_splash, new_splash, 1)
+        night_background = ('<item name="android:windowSplashScreenBackground">'
+                            '#1f2732</item>')
+        if night.count(night_background) != 1:
+            raise SystemExit("Pinned Telegram night splash background changed")
+        night = night.replace(night_background,
+            '<item name="android:windowSplashScreenBackground">#04252A</item>', 1)
+        night_styles.write_text(night, encoding="utf-8")
+        print("PASS: Android launch themes branded in both normal and dark modes")
 
         print("Debug manifest launcher resources: nabdhgram_launcher / nabdhgram_launcher_round")
     print("Approved NabdhGram launcher artwork integrated; verify adaptive icon crop on device.")
