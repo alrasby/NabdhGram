@@ -34,6 +34,26 @@ source = replace_exact(
         // The native 12dp white gradient_bottom leaks beneath our rounded
         // transparent profile bio card. Keep the ripple and text interactions.
         nabdhProfileGlass = enabled;
+        if (enabled) {
+            // The original native selector is rectangular and extends past
+            // the inset Glass card. Mask both tap and long-press tint exactly
+            // to the rounded 10dp horizontal / 2dp vertical card bounds.
+            android.graphics.drawable.GradientDrawable nabdhMask =
+                    new android.graphics.drawable.GradientDrawable();
+            nabdhMask.setColor(android.graphics.Color.WHITE);
+            nabdhMask.setCornerRadius(org.telegram.messenger.AndroidUtilities.dp(20));
+            rippleBackground = new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(
+                            Theme.getColor(Theme.key_listSelector, resourcesProvider)),
+                    null, new android.graphics.drawable.InsetDrawable(nabdhMask,
+                            org.telegram.messenger.AndroidUtilities.dp(10),
+                            org.telegram.messenger.AndroidUtilities.dp(2),
+                            org.telegram.messenger.AndroidUtilities.dp(10),
+                            org.telegram.messenger.AndroidUtilities.dp(2)));
+            if (container.getBackground() != null) {
+                container.setBackground(rippleBackground);
+            }
+        }
         if (bottomShadow != null) {
             bottomShadow.setVisibility(enabled ? GONE : VISIBLE);
         }
