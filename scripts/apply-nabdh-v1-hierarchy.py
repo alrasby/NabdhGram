@@ -57,6 +57,17 @@ replace(description_calls[0],
 replace("if (titleRes == R.string.NabdhAppearanceTitle) {\n            // Dedicated static Glass surface:",
         "if (featureId == 601) {\n            // Dedicated static Glass surface:", "font detail routing")
 
+# Liquid Glass was previously routed by the parent Appearance title. Because
+# feature detail pages retain the parent titleRes, that condition leaked the
+# same three style buttons into the Appearance index AND Fonts detail page.
+# Only the Glass Themes detail (602) may render the preset controls.
+replace("""if (titleRes == R.string.NabdhAppearanceTitle) {
+            addNabdhGlassPresets(context, content);
+        }""",
+        """if (featureId == 602) {
+            addNabdhGlassPresets(context, content);
+        }""", "exclusive Glass presets detail routing")
+
 # Existing Privacy Screen control stays exactly as created by Telegram overlay,
 # but is no longer mixed with the scheduled-messages help page.
 replace("if (titleRes == R.string.NabdhPrivacyTitle) {\n            addPrivacyControls(context, content);",
