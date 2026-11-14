@@ -19,7 +19,7 @@ This says nothing about new V1 tools until their APK is compiled and tested.
 | --- | --- | --- |
 | Focus Lens | Opt-in explicit-text local task/question/date/decision signals, no background chats | New source / awaiting APK + device |
 | Catch Me Up | **Manual pasted-excerpt** extraction; no unread group history access or LLM | Partial, not full approved behavior |
-| NabdhShield Safe Link | Opt-in local URL risk hints: HTTP, userinfo, punycode, IP host, executable disguise | Partial: no pre-open file interception or real malware/known-bad database |
+| NabdhShield local signals | Opt-in pasted-link warnings; user-picked file header/extension check (first 16 bytes); local pasted-text OTP/urgency/payment/impersonation signals | Partial: no interception of Telegram file opening, malware scanning, known-bad database or live-message monitoring |
 | Message Workspace | User-chosen local draft notes with AndroidKeyStore AES-256-GCM, copy/delete | Partial: no links back to source Telegram messages |
 | Lens | Existing manual composer/context dialog extended with above local actions | Needs device checks |
 | Release | Full `assembleAfatRelease` pipeline, Firebase + owner certificate pinned; main-only manual | Prepared; no valid private signing inputs verified and no Release APK produced |
@@ -33,7 +33,7 @@ main-screen tabs and no replacements for Telegram-native services.
 
 | Category | Feature detail pages | Actually working controls |
 | --- | --- | --- |
-| NabdhShield | Safe Link Preview; File Guardian; Scam warnings | Explicit local link signals only; file and fraud guards explicitly marked not enabled |
+| NabdhShield | Safe Link Preview; File Guardian; Scam warnings | Explicit local link signals; manual SAF document-header inspection; pasted-text fraud hints, all without automatic chat/file monitoring |
 | Privacy and messaging | Privacy Screen; Smart Chat Preview; scheduled messages | Preserved Android 13+ privacy toggle, native Telegram preview and native scheduling |
 | Productivity | Focus Lens; Message Workspace; Catch Me Up | Opt-in pasted-text extraction, encrypted local notes, pasted-excerpt review |
 | Language and voice | Translation; Voice Clarity | Existing Telegram translation; advanced clarity DSP explicitly pending |
@@ -41,7 +41,9 @@ main-screen tabs and no replacements for Telegram-native services.
 | Appearance | Fonts/size/weight; Glass themes | Existing NabdhGram font settings and Telegram theme integration |
 
 Each feature gets its own Glass card with AR/EN title, RTL-aware chevron and
-separate detail page. Pending features have **no fake working switch**. 
+separate detail page. File inspection runs only when a user selects a file using
+Android's document picker; scam warnings run only against pasted text. Pending
+automatic protections have **no fake working switch**. 
 The structure is an implementation deliverable, not acceptance of complete
 V1 behavior. Device check must cover navigation, persistence, back navigation,
 theme/day-night, accessibility and new source-generated resources.
@@ -62,9 +64,7 @@ The first public build remains blocked on signed Release and phone QA.
 - **Network Intelligence:** actual intelligent and persistent Wi-Fi/mobile
   caching/transfer behavior and functional tests; current network diagnostics
   are diagnostics only.
-- **NabdhShield file guardian:** inspect downloaded bytes for MIME/extension
-  discrepancy *before* Telegram opens a file, honor SAF/URI permissions,
-  add false-positive controls, and test malicious/benign samples.
+- **NabdhShield automatic file guardian:** manual SAF selection now inspects only a 16-byte header and declared filename/MIME, with no upload. Intercepting Telegram's pre-open flow, robust document inspection, false-positive tuning and safe/unsafe device fixtures are **not** done.
 - **Catch Me Up live unread summaries, Focus links to source messages, and
   message-linked Workspace:** deep linking and correct read/secret-chat/privacy
   behavior must be verified on actual Telegram message objects.
@@ -75,8 +75,9 @@ The first public build remains blocked on signed Release and phone QA.
 
 - Java host tests for Focus/recap/URL parser limits, Arabic questions/decisions,
   non-generative claims and failure boundaries.
-- Source preflight verifies actual generated `NabdhV1Engine`,
-  `NabdhWorkspace`, category actions and Arabic/English Android resources.
+- Source preflight verifies actual generated `NabdhV1Engine`, `NabdhFileGuard`,
+  `NabdhWorkspace`, nested category actions, SAF chooser and Arabic/English Android resources.
+- Host Java tests exercise Arabic/English local scam warning patterns, masked ZIP/PDF and ELF file signatures, unknown headers and no false safety certification.
 - Workspace device tests: Android 23–36, encryption/decryption, restart,
   tamper/backup key failure, limits, clipboard, explicit delete, no plaintext
   prefs or logs.
