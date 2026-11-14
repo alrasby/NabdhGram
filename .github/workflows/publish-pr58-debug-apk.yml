@@ -1,0 +1,49 @@
+name: Publish prebuilt NabdhGram test APK (one-time delivery)
+
+on:
+  push:
+    branches:
+      - delivery/pr58-f2efb9b-apk
+    paths:
+      - .github/workflows/publish-pr58-debug-apk.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download previously verified test build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha="f2efb9bed5d8e5a5f490805bf307814a5c2a90e7"
+          run_sha="$(gh api repos/${{ github.repository }}/actions/runs/43078951806 --jq '.head_sha')"
+          run_status="$(gh api repos/${{ github.repository }}/actions/runs/43078951806 --jq '.conclusion')"
+          test "$run_sha" = "$expected_sha"
+          test "$run_status" = "success"
+          mkdir -p dist
+          gh run download 43078951806 --repo "${{ github.repository }}" --name nabdhgram-identity-debug-apk --dir dist
+          mapfile -t apks < <(find dist -type f -name '*.apk' -print)
+          test "${#apks[@]}" -eq 1
+          test "$(stat -c %s "${apks[0]}")" -gt 10000000
+          unzip -tq "${apks[0]}" >/dev/null
+          mv "${apks[0]}" dist/NabdhGram-PR58-arm64-debug.apk
+          sha256sum dist/NabdhGram-PR58-arm64-debug.apk | tee dist/SHA256SUMS.txt
+      - name: Publish direct-download GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="nabdhgram-pr58-f2efb9b-debug"
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release already published; not overwriting existing APK"
+            exit 0
+          fi
+          gh release create "$tag"             dist/NabdhGram-PR58-arm64-debug.apk             dist/SHA256SUMS.txt             --repo "${{ github.repository }}"             --target f2efb9bed5d8e5a5f490805bf307814a5c2a90e7             --title "NabdhGram PR58 — experimental Android APK (unverified UI)"             --prerelease             --notes "Exact successful CI build #43078951806 (commit f2efb9b). Android ARM64 experimental DEBUG APK, not a final release. UI and login/network behavior still require phone verification. This prerelease is only a direct-download mirror of the verified GitHub Actions APK; no rebuild."
