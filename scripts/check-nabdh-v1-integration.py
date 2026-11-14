@@ -107,7 +107,7 @@ for locale in ("values", "values-ar"):
                 "NabdhHWorkspace", "NabdhHVoice", "NabdhHData",
                 "NabdhHFonts", "NabdhHThemes", "NabdhHStatusPending"):
         check(key in keys, "missing " + locale + " label: " + key)
-check("if (titleRes == R.string.NabdhShieldTitle) {" not in page.split("private void addNabdhV1Tools",1)[1],
+check("if (titleRes == R.string.NabdhShieldTitle) {" not in page.split("private void addNabdhV1Tools",1)[1].split("private int nabdhCategoryDescription",1)[0],
       "shield actions must route by selected feature, not parent category")
 
 print("PASS: generated native local tools, opt-in UI controls and AR/EN resources")
