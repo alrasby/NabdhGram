@@ -344,6 +344,12 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-remaining-settings.py Telegram-upstream
 
+      - name: Fix icon clipping, chat-list samples and left-side toggle geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-chat-settings-visual-fixes.py Telegram-upstream
+
       - name: Apply Nabdh Liquid Glass and local Context Lens
         shell: bash
         run: |
@@ -378,7 +384,9 @@ jobs:
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-consistency.py Telegram-upstream
+          python3 nabdhgram/scripts/check-chat-settings-visual-fixes.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py
+          python3 -m py_compile nabdhgram/scripts/apply-chat-settings-visual-fixes.py nabdhgram/scripts/check-chat-settings-visual-fixes.py
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhGlassRowDecoration.java
           # Validate generated Java, not only the Python overlay source.
           python3 - <<'PY'
