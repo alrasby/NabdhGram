@@ -71,6 +71,37 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         return new GlassCardLayers();
     }
 
+    public static android.graphics.drawable.Drawable newHeroBackground() {
+        // Same radius and theme as rows, but remove the nearly white
+        // appearance of the account hero over the opaque Settings root.
+        GlassCardLayers hero = new GlassCardLayers();
+        hero.setAlpha(190);
+        return hero;
+    }
+
+    // The removed Telegram section-group fills no longer mask old fragments.
+    // Keep the page canvas OPAQUE while each independent Glass card stays tinted.
+    // Resolve the active light/dark/imported-theme color on every draw.
+    public static android.graphics.drawable.Drawable newOpaquePageBackground() {
+        return new android.graphics.drawable.Drawable() {
+            private final Paint paint = new Paint();
+            @Override public void draw(@NonNull Canvas canvas) {
+                int current = Theme.getColor(Theme.key_windowBackgroundGray);
+                paint.setColor(Color.rgb(Color.red(current),
+                        Color.green(current), Color.blue(current)));
+                canvas.drawRect(getBounds(), paint);
+            }
+            @Override public void setAlpha(int alpha) {
+                // Never turn the navigation canvas translucent.
+            }
+            @Override public void setColorFilter(android.graphics.ColorFilter filter) {}
+            @Override public int getOpacity() {
+                return android.graphics.PixelFormat.OPAQUE;
+            }
+        };
+    }
+
+
     public static android.graphics.drawable.Drawable newProfileScrim() {
         // The copy menu must not share a Drawable callback with the row.
         return new GlassCardLayers();
@@ -227,11 +258,50 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
 # and accessibility; only skip Telegram's broad grouped fill callback.
 list_path = ui / "Components/RecyclerListView.java"
 list_src = list_path.read_text(encoding="utf-8")
+# Disabling a section's callback field does not prevent cached draw paths.
+# The native legacy/bitmap renderer and UniversalAdapter fallback can
+# independently repaint opaque white groups underneath rounded Glass rows.
+native_list_fill = (
+    "    protected void drawSectionBackground(Canvas canvas, "
+    "int fromAdapterPosition, int toAdapterPosition, int color, "
+    "int topMargin, int bottomMargin) {"
+)
+native_rounded_fill = (
+    "    public void drawBackgroundRect(Canvas canvas, RectF rect, "
+    "float topRadius, float bottomRadius, float alpha) {"
+)
+for fill_anchor in (native_list_fill, native_rounded_fill):
+    if list_src.count(fill_anchor) != 1:
+        raise SystemExit("Telegram section renderer entrypoint changed")
+    list_src = list_src.replace(fill_anchor, fill_anchor + """
+        // Opt-in only: suppress Telegram's old white section canvas.
+        // Keep upstream section geometry and touch hit testing unchanged.
+        if (nabdhSuppressLegacySectionFill) return;""", 1)
+
 section_anchor = "    public void disableSections() {"
 if list_src.count(section_anchor) != 1:
     raise SystemExit("RecyclerListView section API changed")
-section_helper = """    public void nabdhHideSectionBackgroundOnly() {
+# setSectionsDrawBackground(true) may occur AFTER the Glass helper call:
+# do not let Telegram 13.2 re-enable the cached bitmap group fill.
+native_draw_mode = "    public void setSectionsDrawBackground(boolean drawBackground) {"
+if list_src.count(native_draw_mode) != 1:
+    raise SystemExit("RecyclerListView section draw-mode API changed")
+list_src = list_src.replace(native_draw_mode, native_draw_mode + """
+        if (nabdhSuppressLegacySectionFill) {
+            drawBackground = false;
+        }""", 1)
+section_helper = """    private boolean nabdhSuppressLegacySectionFill;
+
+    public void nabdhHideSectionBackgroundOnly() {
+        // Telegram 13.2.x can paint group fills using bitmap decoration,
+        // independent of the legacy drawSectionBackground callback.
+        // Disable BOTH fill paths without removing section row geometry.
+        nabdhSuppressLegacySectionFill = true;
         drawSectionBackground = null;
+        bitmapSectionsDrawBackground = false;
+        if (bitmapSectionsItemDecoration != null) {
+            bitmapSectionsItemDecoration.setDrawBackground(false);
+        }
         invalidate();
     }
 
@@ -264,11 +334,19 @@ GLASS_SETTINGS_SCREENS = (
     "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java",
     "ArchiveSettingsActivity.java", "DataAutoDownloadActivity.java",
     "PasscodeActivity.java", "PrivacyUsersActivity.java",
-    "ProxyListActivity.java", "QuickRepliesSettingsActivity.java",
+    "ProxyListActivity.java",
     "RestrictedLanguagesSelectActivity.java", "ProfileNotificationsActivity.java",
 )
 for name in GLASS_SETTINGS_SCREENS:
     path = ui / name
+    if not path.is_file():
+        if name == "QuickRepliesSettingsActivity.java":
+            # Telegram 13.2.2 removed the standalone legacy Quick Replies
+            # settings page. Its remaining controls are owned by upstream;
+            # never generate a phantom Activity or alter message behavior.
+            print("NOTE: native QuickRepliesSettingsActivity absent; skipping obsolete Glass hook")
+            continue
+        raise SystemExit(f"Required native settings page missing: {name}")
     source = path.read_text(encoding="utf-8")
     # Telegram's QuickReplies settings use tabs for indentation, unlike the
     # other settings fragments. Match their exact pinned source layout.
@@ -277,11 +355,17 @@ for name in GLASS_SETTINGS_SCREENS:
     if source.count(anchor) != 1:
         raise SystemExit(f"{name}: settings list anchor changed ({source.count(anchor)} occurrences)")
     radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\n"
+    # The collapsing Profile hero uses custom visuals; other settings lists
+    # require an opaque page canvas to avoid displaying previous fragments.
+    page_canvas = "" if name == "ProfileActivity.java" else (
+        "        listView.setBackground("
+        "org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());\n"
+    )
     source = source.replace(anchor, anchor + """
         // Keep native Telegram section offsets/geometry and accessibility.
         // Hide only its large group paint; independent cells own Glass fill.
         listView.nabdhHideSectionBackgroundOnly();
-""" + radius + """        listView.addItemDecoration(
+""" + radius + page_canvas + """        listView.addItemDecoration(
                 new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
     # Add the themed filled card AFTER each native row has been bound.
     # No adapters, row data, click handlers or selection logic are changed.
@@ -329,9 +413,16 @@ for name in GLASS_SETTINGS_SCREENS:
         index += 1
     if depth != 0 or index >= len(source):
         raise SystemExit(f"{name}: could not locate ListAdapter bind end")
-    source = source[:index] + """
-            org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(holder.itemView);
-""" + source[index:]
+    # Insert at the BEGINNING of the original closing-brace line. Inserting
+    # just before '}' leaves its leading spaces as a newly added blank line
+    # (one per settings screen) and makes git diff --check fail. Preserve
+    # the original brace/indentation intact instead.
+    line_start = source.rfind("\n", 0, index) + 1
+    if source[line_start:index].strip():
+        raise SystemExit(f"{name}: unexpected non-whitespace before method close")
+    source = (source[:line_start]
+        + "            org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(holder.itemView);\n"
+        + source[line_start:])
     path.write_text(source, encoding="utf-8")
 # The real main Settings menu uses SettingCell.Factory, whose text has its
 # own layout separate from all native TextCell adjustments.
@@ -364,6 +455,35 @@ if cell_start < 0 or cell_end < 0:
 cell_source = settings_rtl_src[cell_start:cell_end]
 if cell_source.count(rtl_from) != 1:
     raise SystemExit("SettingsActivity.SettingCell.updateColors changed")
+# Native SettingCell enforces EXACTLY 60dp for described rows. That clips
+# longer Arabic subtitles and large user-selected text. Measure the actual
+# text layout with native width, retain original minimum row height and cap
+# the maximum to avoid runaway layout on extreme font scales.
+native_measure = """        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            super.onMeasure(
+                MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(dp(mini ? 44 : twoLines ? 60 : 50), MeasureSpec.EXACTLY)
+            );
+        }"""
+adaptive_measure = """        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            final int minRowHeight = dp(mini ? 44 : twoLines ? 60 : 50);
+            final int maxRowHeight = dp(mini ? 96 : 200);
+            super.onMeasure(
+                MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(maxRowHeight, MeasureSpec.AT_MOST)
+            );
+            if (getMeasuredHeight() < minRowHeight) {
+                super.onMeasure(
+                    MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(minRowHeight, MeasureSpec.EXACTLY)
+                );
+            }
+        }"""
+if cell_source.count(native_measure) != 1:
+    raise SystemExit("SettingsActivity.SettingCell native measure anchor changed")
+cell_source = cell_source.replace(native_measure, adaptive_measure, 1)
 settings_rtl_src = (settings_rtl_src[:cell_start]
         + cell_source.replace(rtl_from, rtl_to, 1)
         + settings_rtl_src[cell_end:])
@@ -375,11 +495,10 @@ settings_hero = ui / "SettingsActivity.java"
 hero_source = settings_hero.read_text(encoding="utf-8")
 hero_old = "        topView = new FrameLayout(context);"
 hero_new = """        topView = new FrameLayout(context);
-        // Match the horizontal edges of Settings' own 10dp-inset cards.
-        // Do not change avatar/camera/name click regions or topView height.
-        topView.setBackground(new android.graphics.drawable.InsetDrawable(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground(),
-                AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0));"""
+        // GlassCardLayers already insets 10dp on both sides. The extra
+        // InsetDrawable doubled this margin and misaligned the hero.
+        topView.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newHeroBackground());"""
 if hero_source.count(hero_old) != 1:
     raise SystemExit("SettingsActivity account hero constructor changed")
 settings_hero.write_text(hero_source.replace(hero_old, hero_new, 1), encoding="utf-8")
@@ -412,15 +531,32 @@ for old, new in (
     if user_info_src.count(old) != 1:
         raise SystemExit("UserInfoActivity custom editor/account action anchor changed")
     user_info_src = user_info_src.replace(old, new, 1)
-account_anchor = "        listView.setSections();\n        listView.setClipToPadding(false);"
-account_card = """        // Preserve native section geometry and account input behavior.
-        listView.setSections();
-        listView.nabdhHideSectionBackgroundOnly();
-        listView.adapter.setNabdhGlassSettings(true);
-        listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration());
-        listView.setClipToPadding(false);"""
-if user_info_src.count(account_anchor) != 1:
+account_anchor_legacy = "        listView.setSections();\n        listView.setClipToPadding(false);"
+account_anchor_modern = ("        listView.setSections();\n"
+        "        listView.setSectionsDrawBackground(true);\n"
+        "        listView.setClipToPadding(false);")
+if user_info_src.count(account_anchor_legacy) == 1:
+    account_anchor = account_anchor_legacy
+    native_sections = "        listView.setSections();"
+elif user_info_src.count(account_anchor_modern) == 1:
+    # Telegram 13.2.x explicitly re-enables section fill. Preserve its
+    # setup and opt out of the opaque paint AFTER that call.
+    account_anchor = account_anchor_modern
+    native_sections = ("        listView.setSections();\n"
+                       "        listView.setSectionsDrawBackground(true);")
+else:
     raise SystemExit("UserInfoActivity Account rows anchor changed")
+account_card = ("""        // Preserve native section geometry and account input behavior.
+""" + native_sections + """
+        listView.nabdhHideSectionBackgroundOnly();
+        // The SimpleActionBar UniversalFragment leaves its root transparent:
+        // own the page backdrop behind the account list and header.
+        contentView.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());
+        listView.adapter.setApplyBackground(false);
+        listView.adapter.setNabdhGlassSettings(true);
+        // Avoid a second Glass drawing pass under the adapter's card rows.
+        listView.setClipToPadding(false);""")
 user_info.write_text(user_info_src.replace(account_anchor, account_card, 1), encoding="utf-8")
 
 # Main Telegram Settings uses UniversalAdapter rather than the legacy
@@ -457,27 +593,52 @@ universal_source = universal_source[:end] + """
             }
         }
 """ + universal_source[end:]
+# UniversalRecyclerView falls back to adapter.drawWhiteSections() when
+# section decorators are absent. Suppress this third opaque-white fill
+# ONLY when this native Settings adapter opted into NabdhGram Glass.
+white_fallback_anchor = "    public void drawWhiteSections(Canvas canvas, RecyclerListView listView) {"
+if universal_source.count(white_fallback_anchor) != 1:
+    raise SystemExit("UniversalAdapter native white sections entrypoint changed")
+universal_source = universal_source.replace(
+    white_fallback_anchor,
+    white_fallback_anchor + """
+        if (nabdhGlassSettings) return;""", 1)
 universal_path.write_text(universal_source, encoding="utf-8")
 
-# The main SettingsActivity uses UniversalRecyclerView; profile and other
-# native screens are covered by the loop above. Remove its parent section
-# once, leaving child cards, row order and adapters untouched.
-# Main Settings uses a UniversalRecyclerView adapter, which can recreate
-# native row backgrounds after updateColors(). Install the same fallback
-# decorator there, just as on the ten legacy settings screens.
+# The modern Settings screen has a SizeNotifierFrameLayout root with its
+# OWN floating avatar, camera, and glass action bar. A backdrop on the
+# RecyclerView alone cannot cover those layers or its negative overscroll.
+# Removing Telegram's section paint then exposes underlying tabs and causes
+# the ghost text/black rails recorded on device. The outer root MUST own the
+# opaque theme canvas while inner Glass row surfaces stay translucent.
+# UniversalAdapter already reapplies Glass after binding and theme changes;
+# a second main-list ItemDecoration duplicates draw work and can disturb the
+# original glass capture pipeline. Other legacy lists keep their decorator.
 settings_main = ui / "SettingsActivity.java"
 settings_source = settings_main.read_text(encoding="utf-8")
 enable_anchor = "        listView.adapter.setNabdhGlassSettings(true);"
 if settings_source.count(enable_anchor) != 1:
     raise SystemExit("Main Settings unified card opt-in anchor changed")
-settings_source = settings_source.replace(enable_anchor, enable_anchor + """
-        listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration());""", 1)
+native_list_anchor = (
+    "        listView = new UniversalRecyclerView("
+    "this, this::fillItems, this::onClick, this::onLongClick);"
+)
+if settings_source.count(native_list_anchor) != 1:
+    raise SystemExit("Main Settings root/list initialization anchor changed")
+settings_source = settings_source.replace(native_list_anchor,
+    """        // This root covers the avatar, glass action bar and over-scrolled
+        // list; only individual cards are semi-transparent.
+        contentView.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());
+""" + native_list_anchor, 1)
 settings_main.write_text(settings_source, encoding="utf-8")
 
 for activity in ("SettingsActivity.java",):
     page = ui / activity
     content = page.read_text(encoding="utf-8")
-    group_anchor = "        listView.setSections();"
+    # Call AFTER native bitmap mode is selected, not just after setSections.
+    # This is specific to main Settings; other screens retain native behavior.
+    group_anchor = "        listView.setSectionsDrawBackground(true);"
     if content.count(group_anchor) != 1:
         raise SystemExit(f"{activity}: native grouped background anchor changed")
     content = content.replace(
@@ -493,7 +654,12 @@ for activity in ("SettingsActivity.java",):
 profile_path = ui / "ProfileActivity.java"
 profile_src = profile_path.read_text(encoding="utf-8")
 old_scrim = ".setScrimViewBackground(listView.getClipBackground(view))"
-new_scrim = """.setScrimViewBackground(
+new_scrim = """.setRoundRadius(
+                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                                ? org.telegram.messenger.AndroidUtilities.dp(20) : 0,
+                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                                ? org.telegram.messenger.AndroidUtilities.dp(10) : 0)
+                    .setScrimViewBackground(
                         org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
                                 ? org.telegram.ui.Components.NabdhGlassRowDecoration.newProfileScrim()
                                 : listView.getClipBackground(view))"""

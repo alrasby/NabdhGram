@@ -143,33 +143,55 @@ old_switch = """        for (LauncherIcon i : LauncherIcon.values()) {
             pm.setComponentEnabledSetting(i.getComponentName(ctx), i == icon ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED :
                     PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
         }"""
-new_switch = """        if (icon == null) return;
-        final ComponentName target = icon.getComponentName(ctx);
+new_switch = """        // Preserve the original void method for every upstream caller.
+        nabdhSetIconVerified(icon);"""
+if java.count(old_switch) != 1:
+    raise SystemExit("Pinned launcher component switching changed")
+java = java.replace(old_switch, new_switch, 1)
+# The selected alias is disabled in the manifest before its first use.
+# PackageManager.getActivityInfo(component, 0) excludes disabled aliases:
+# this formerly returned early without enabling the icon, while the picker
+# still displayed an unconditional success bulletin. Use the correct query
+# flags, and confirm the enabled state before reporting success.
+method_anchor = "    public enum LauncherIcon {"
+if java.count(method_anchor) != 1:
+    raise SystemExit("Pinned launcher enum anchor changed")
+verified_method = """    public static boolean nabdhSetIconVerified(LauncherIcon icon) {
+        if (icon == null || ApplicationLoader.applicationContext == null) return false;
+        Context ctx = ApplicationLoader.applicationContext;
+        PackageManager pm = ctx.getPackageManager();
+        ComponentName target = icon.getComponentName(ctx);
         try {
-            ctx.getPackageManager().getActivityInfo(target, 0);
-        } catch (PackageManager.NameNotFoundException missing) {
-            org.telegram.messenger.FileLog.e(missing);
-            return;
-        }
-        try {
-            // Enabling the new alias before disabling the old one avoids a
-            // transient state with no launcher component on some OEM devices.
+            // Every alternate activity-alias starts android:enabled=false.
+            // 0 flags HID these aliases, so the old switch silently failed.
+            pm.getActivityInfo(target, PackageManager.MATCH_DISABLED_COMPONENTS);
+            // Make the replacement launchable BEFORE disabling the old alias.
             pm.setComponentEnabledSetting(target,
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
-            for (LauncherIcon i : LauncherIcon.values()) {
-                if (i != icon && isEnabled(i)) {
-                    pm.setComponentEnabledSetting(i.getComponentName(ctx),
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    PackageManager.DONT_KILL_APP);
+            if (pm.getComponentEnabledSetting(target)
+                    != PackageManager.COMPONENT_ENABLED_STATE_ENABLED) return false;
+            for (LauncherIcon other : LauncherIcon.values()) {
+                if (other != icon && isEnabled(other)) {
+                    pm.setComponentEnabledSetting(other.getComponentName(ctx),
                             PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
                             PackageManager.DONT_KILL_APP);
                 }
             }
+            return isEnabled(icon);
+        } catch (PackageManager.NameNotFoundException missing) {
+            org.telegram.messenger.FileLog.e(missing);
+            return false;
         } catch (RuntimeException failure) {
             org.telegram.messenger.FileLog.e(failure);
-            // Keep at least the new launcher component enabled on failure.
-        }"""
-if java.count(old_switch) != 1:
-    raise SystemExit("Pinned launcher component switching changed")
-java = java.replace(old_switch, new_switch, 1)
+            // A previously enabled launcher is never disabled before the
+            // new alias has been enabled; preserve recoverability.
+            return false;
+        }
+    }
+
+"""
+java = java.replace(method_anchor, verified_method + method_anchor, 1)
 controller.write_text(java, encoding="utf-8")
 
 xml = manifest.read_text(encoding="utf-8")
@@ -212,6 +234,9 @@ for folder, label_index in (("values", 3), ("values-ar", 4)):
     for _, _, name, en, ar in VARIANTS:
         lines.append('    <string name="' + name + '">' +
                      (en if label_index == 3 else ar) + '</string>')
+    lines.append('    <string name="NabdhIconApplyFailed">' +
+                 ('Could not change the app icon. Please try again.' if label_index == 3
+                  else 'تعذر تغيير أيقونة التطبيق، حاول مرة أخرى.') + '</string>')
     lines.append('</resources>')
     (directory / "nabdhgram_icon_variants.xml").write_text(
         "\n".join(lines) + "\n", encoding="utf-8")
@@ -267,6 +292,18 @@ replace_selector(
             iconView.setOuterPadding(icon.key.startsWith("Nabdh") ? 0 : AndroidUtilities.dp(5));
             iconView.setImageResource(icon.background);""",
     "Native picker transparent drawing")
+# Never tell the user "Icon changed" before PackageManager confirms
+# the selected alias is enabled. Keep Telegram's original animated chooser.
+on_click = "            LauncherIconController.setIcon(icon);"
+if selector_src.count(on_click) != 1:
+    raise SystemExit("Pinned icon chooser onClick anchor changed")
+selector_src = selector_src.replace(on_click,
+    """            if (!LauncherIconController.nabdhSetIconVerified(icon)) {
+                android.widget.Toast.makeText(context,
+                        context.getString(R.string.NabdhIconApplyFailed),
+                        android.widget.Toast.LENGTH_LONG).show();
+                return;
+            }""", 1)
 selector.write_text(selector_src, encoding="utf-8")
 # The icon-change toast is rendered by AppIconBulletinLayout, not by
 # AppIconsSelectorCell. LocaleController's legacy resource map does not

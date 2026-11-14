@@ -1,7 +1,11 @@
 name: Foundation checks
 
 on:
+  # Avoid running Foundation twice for each push to an open PR: PR branches
+  # run on pull_request, while the release baseline runs on direct main pushes.
   push:
+    branches:
+      - main
     paths:
       - 'scripts/**'
       - 'docs/**'
@@ -22,6 +26,10 @@ jobs:
         run: |
           bash -n scripts/bootstrap-upstream.sh
           bash -n scripts/verify-upstream.sh
+          bash -n scripts/device-smoke-check.sh
+          bash scripts/device-smoke-check.sh --help >/dev/null
+          bash -n scripts/test-device-smoke.sh
+          bash scripts/test-device-smoke.sh
       - name: Validate all Python overlay scripts before Android checkout
         shell: bash
         run: |
@@ -34,8 +42,16 @@ jobs:
               ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
           print(f"Validated {len(files)} Python scripts")
           PY
+      - name: Self-test pinned upstream Java API preservation guard
+        run: python3 scripts/check-upstream-api-preservation.py --self-test
+      - name: Self-test Liquid Glass and local Lens safety
+        run: python3 scripts/check-nabdh-liquid-intelligence.py --self-test
+      - name: Test chat bubble palette and Arabic text-manager source
+        run: python3 scripts/check-nabdh-chat-consistency.py --self-test
       - name: Verify integrated Glass design contract
         run: python3 scripts/check-glass-design-contract.py
+      - name: Verify fixed-left ON thumb and native state invariants
+        run: python3 scripts/apply-fixed-left-toggle-thumb.py --self-test
       - name: Ensure no Android APK is misrepresented
         run: |
           test -f docs/BUILD_SETUP.md

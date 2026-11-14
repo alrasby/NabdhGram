@@ -28,12 +28,37 @@ ordered = [
 positions = [workflow.find("python3 nabdhgram/scripts/" + name) for name in ordered]
 assert all(pos >= 0 for pos in positions), "Missing Glass integration step"
 assert positions == sorted(positions), "Glass overlays applied out of order"
+icon_overlay = (ROOT / "scripts/apply-nabdh-approved-icon-variants.py").read_text(encoding="utf-8")
+assert "PackageManager.MATCH_DISABLED_COMPONENTS" in icon_overlay, "Disabled launcher aliases cannot pass PackageManager lookup"
+assert "pm.getActivityInfo(target, 0)" not in icon_overlay, "Disabled alias queries must never omit matching flags"
+assert "nabdhSetIconVerified(LauncherIcon icon)" in icon_overlay, "Launcher change requires verified success result"
+assert "LauncherIconController.nabdhSetIconVerified(icon)" in icon_overlay, "Icon picker still shows success on failed launcher switch"
+assert "NabdhIconApplyFailed" in icon_overlay, "Localized launcher failure must be visible"
+splash_patch = (ROOT / "scripts/apply-brand-icons.py").read_text(encoding="utf-8")
+assert 'old_splash' in splash_patch and '@drawable/tg_splash_320' in splash_patch and '@drawable/nabdhgram_launcher_foreground' in splash_patch, "Android 12 native startup logo patch removed"
+assert "native_drawable = root / \"TMessagesProj/src/main/res/drawable-nodpi\"" in splash_patch, "Native module startup icon asset not installed"
+assert "values-v31/styles.xml" in splash_patch, "Android 12 startup theme not patched"
+assert 'values-night/styles.xml' in splash_patch and 'night.count(old_splash)' in splash_patch, "Night mode can still select the original Telegram logo"
+assert 'check-packaged-splash.py "$APK" apk-resources.txt apk-manifest-tree.txt' in workflow, "No mandatory FINAL APK resource variant check"
+bio_overlay = (ROOT / "scripts/apply-nabdh-profile-bio-glass.py").read_text(encoding="utf-8")
+assert 'nabdhProfileGlass' in bio_overlay and 'if (!nabdhProfileGlass && viewAlpha > 0)' in bio_overlay, "White bio shadow can reappear under Glass card"
+assert 'aboutLinkCell.nabdhSetProfileGlass(true);' in bio_overlay, "Native profile bio opt-in to white-shadow suppression missing"
+assert "apply-nabdh-profile-bio-glass.py Telegram-upstream" in workflow, "Bio Glass correction missing from native build"
+assert workflow.index("apply-glass-settings-surfaces.py Telegram-upstream") < workflow.index("apply-nabdh-profile-bio-glass.py Telegram-upstream") < workflow.index("check-glass-overlay.py Telegram-upstream"), "Profile white-shadow fix must execute after all Glass surfaces and before smoke checks"
+
 identity_overlay = (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8")
 assert 'appVersion = nabdhVersionName + " (" + pInfo.versionCode + ")";' in identity_overlay
 assert "Cells/SessionCell.java" in identity_overlay and '"NandhGram".equalsIgnoreCase(nabdhDisplayApp)' in identity_overlay, "SessionCell must correct only this client app_name"
 assert "SessionBottomSheet.java" in identity_overlay and "nabdhDisplayVersion.startsWith" in identity_overlay, "Session detail must normalize historic versions"
 assert "while (nabdhVersionName.startsWith(" in identity_overlay, "Repeated NandhGram / NabdhGram prefixes must be stripped"
 assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Install Android SDK and NDK") < workflow.index("      - name: Build branded debug APK"), "Expensive SDK/NDK setup must run only after source overlays pass"
+# Every upstream upgrade must retain this symbol-preservation preflight.
+assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Preserve Telegram native Java APIs before Gradle") < workflow.index("      - name: Initialize and verify pinned native submodules after overlay preflight") < workflow.index("      - name: Install Android SDK and NDK"), "Native method/field preservation must run before slow submodule checkout and Gradle"
+assert "check-upstream-api-preservation.py --self-test" in workflow and "git -C Telegram-upstream diff --check" in workflow, "Upgrade compatibility preflight was removed"
+assert "source_preflight_only:" in workflow and "Report source-only preflight success" in workflow, "Source-only upgrade preflight cannot be triggered"
+assert workflow.count("!inputs.source_preflight_only") == 12, "Expensive Android or APK steps are not completely excluded from source-only preflight"
+credits_script = (ROOT / "scripts/apply-nabdhgram-settings.py").read_text(encoding="utf-8")
+assert "APP_VERSION_NAME=" in credits_script and "APP_VERSION_CODE=" in credits_script and '"NabdhGramCredits": branded_credits' in credits_script, "NabdhGram credits must match pinned Telegram version"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
 assert "!themePreview && !isSelected" in bubble, "Selection or preview protection was removed"
 assert finishing.count("if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected)") == 2, "Final overlay no longer matches text/media anchor"
@@ -80,11 +105,16 @@ assert all(name in native_surfaces for name in ("NotificationsSettingsActivity.j
     "NotificationsCustomSettingsActivity.java", "CacheControlActivity.java")), "Missing native settings target"
 assert "getColor(Theme.key_windowBackgroundWhiteBlueText)" in native_surfaces, "Theme-independent settings border"
 assert "onDrawOver" in native_surfaces and "isSettingRow" in native_surfaces, "Settings decoration must exclude non-row views"
+diagnostic_icons = (ROOT / "scripts/apply-glass-diagnostic-icons.py").read_text(encoding="utf-8")
+assert '"header": (' in diagnostic_icons and "'0, getString(R.string.HeaderSettings)))'" in diagnostic_icons, "Experimental Header row lacks its native vector icon"
+assert 'R.drawable.nabdh_settings_header, getString(R.string.HeaderSettings)))' in diagnostic_icons, "Header icon not bound to its original action"
+assert len([label for label in ('"video":', '"mic":', '"header":', '"logs":', '"history":', '"trash":') if label in diagnostic_icons]) == 6, "Experimental and Debug icons incomplete"
+assert "apply-glass-diagnostic-icons.py Telegram-upstream" in workflow, "Header icon not applied during pinned build"
 assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native_surfaces, "Theme-aware card background and clipped ripple must be shared"
 for obsolete in ("GradientDrawable glassCard =", "GradientDrawable infoCard =", "GradientDrawable fontGlass =", "RippleDrawable touchSurface ="):
     assert obsolete not in settings, f"Second per-card surface allocation survived: {obsolete}"
 assert "scroll.setBackground(new GradientDrawable(" not in settings, "NabdhGram scroll snapshots old theme colors"
-assert "topView.setBackground(new android.graphics.drawable.InsetDrawable(" in native_surfaces and "AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0" in native_surfaces, "Main Settings hero needs the same inset as its cards"
+assert "topView.setBackground(" in native_surfaces and "NabdhGlassRowDecoration.newHeroBackground());" in native_surfaces, "Main Settings hero must use the soft Glass renderer"
 remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
 for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java", "ThemeActivity.java"):
     assert screen in remaining, f"Missing dedicated folder / lite mode coverage for {screen}"
@@ -107,7 +137,7 @@ assert 'GLASS_SETTINGS_SCREENS = (' in native_surfaces and all(
     ('"' + name + '.java"') in native_surfaces
     for name in ("ArchiveSettingsActivity", "DataAutoDownloadActivity",
                  "PasscodeActivity", "PrivacyUsersActivity", "ProxyListActivity",
-                 "QuickRepliesSettingsActivity", "RestrictedLanguagesSelectActivity",
+                 "RestrictedLanguagesSelectActivity",
                  "ProfileNotificationsActivity")), "Nested settings screens still missing"
 assert "titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_surfaces, "Mixed Arabic/Latin text direction lost"
 assert "canvas.drawLine(rect.left + round" in native_surfaces, "Card specular layer missing"
@@ -141,6 +171,20 @@ assert "nabdhAppliedFonts.clear();" in (ROOT / "scripts/apply-glass-global-textv
 assert "new android.view.ViewTreeObserver.OnPreDrawListener()" in (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8"), "Typography scan still races RecyclerView rebinding"
 assert 'listView.setSections(true);' in (ROOT / "scripts/apply-glass-contacts.py").read_text(encoding="utf-8") and 'nabdhHideSectionBackgroundOnly' in (ROOT / "scripts/apply-glass-contacts.py").read_text(encoding="utf-8"), "Contacts sections must survive"
 assert "public void nabdhHideSectionBackgroundOnly()" in native_surfaces, "Glass source must own section helper"
+assert "nabdhSuppressLegacySectionFill" in native_surfaces and "bitmapSectionsItemDecoration.setDrawBackground(false)" in native_surfaces, "Telegram 13.2 bitmap section fills can still appear"
+assert "native_list_fill = (" in native_surfaces and "native_rounded_fill = (" in native_surfaces, "Cached native section draw entrypoints not protected"
+assert "if (nabdhSuppressLegacySectionFill) return;" in native_surfaces, "Native section draw callbacks still paint white groups"
+assert "if (nabdhGlassSettings) return;" in native_surfaces, "UniversalAdapter can still paint white fallback groups"
+assert 'group_anchor = "        listView.setSectionsDrawBackground(true);"' in native_surfaces, "Main Settings section suppression runs before native bitmap setup"
+assert "final int maxRowHeight = dp(mini ? 96 : 200);" in native_surfaces and "MeasureSpec.AT_MOST" in native_surfaces, "Arabic descriptions may clip at fixed 60dp"
+assert "newOpaquePageBackground()" in native_surfaces and "Theme.key_windowBackgroundGray" in native_surfaces and "PixelFormat.OPAQUE" in native_surfaces, "Nested settings may leak content from previous fragments"
+assert "contentView.setBackground(" in native_surfaces and "Main Settings root/list initialization anchor changed" in native_surfaces, "Main Settings needs an opaque root-level canvas"
+assert "topView.setBackground(" in native_surfaces and "newHeroBackground());" in native_surfaces, "Account hero must use one inset"
+assert "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_surfaces, "Double-inset account hero regressed"
+assert 'settings_source.replace(enable_anchor, enable_anchor' not in native_surfaces, "Main Settings must not add a redundant ItemDecoration"
+
+assert "page_canvas = " in native_surfaces and "radius + page_canvas" in native_surfaces, "Opaque settings canvas must be installed without changing Profile hero"
+assert "newOpaquePageBackground()" in (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8"), "Folders/Lite page canvas absent"
 assert "source.replace(anchor, anchor +" in native_surfaces, "Nested pages must preserve setSections()"
 assert "listView.setSections();" in native_surfaces and "listView.nabdhHideSectionBackgroundOnly();" in native_surfaces, "Account/main sections must survive"
 assert 'replacement = list_anchor + "\\n        listView.nabdhHideSectionBackgroundOnly();"' in (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8"), "Folder/Lite Mode sections must survive"
@@ -156,6 +200,10 @@ global_fonts = (ROOT / "scripts/apply-glass-global-textviews.py").read_text(enco
 assert "nabdhContainsArabic(label.getText())" in global_fonts and "nabdhExpectedTextFaces" in global_fonts, "Arabic settings must follow font changes despite native custom faces"
 assert "nabdhExpectedAnimatedFaces" in global_fonts, "Animated native labels need rebinding drift detection"
 assert "final boolean telegramTextFace" in global_fonts, "Telegram-native typefaces excluded from UI scale"
+assert '"nabdh:secondary-text".equals(label.getTag())' in global_fonts, "Global bold still destroys explanatory text hierarchy"
+assert 'description.setTag("nabdh:secondary-text");' in (ROOT / "scripts/apply-glass-final-screens.py").read_text(encoding="utf-8"), "Final Settings card builder must preserve readable description weight"
+assert 'explanation.setTag("nabdh:secondary-text");' in (ROOT / "scripts/apply-glass-settings.py").read_text(encoding="utf-8"), "Feature-page body must keep legible normal weight"
+assert (ROOT / "scripts/apply-nabdh-liquid-intelligence.py").read_text(encoding="utf-8").count('note.setTag("nabdh:secondary-text");') == 2, "Lens/Glass helper paragraphs must not all become bold"
 assert "(telegramTextFace || arabicLabel)" in global_fonts, "Reset may restore saved custom font"
 assert "nabdhLastFontScanMs >= 48L" in global_fonts, "Font scan throttle missing"
 assert "view instanceof org.telegram.ui.Components.AnimatedTextView" in global_fonts, "Animated native labels excluded from app-wide typography"
@@ -170,4 +218,14 @@ assert "proxyDrawable.setConnected(false, connected, animated);" in login_overla
 assert "loginNetwork.resumeNetworkMaybe();" in login_overlay, "Native MTProto preflight is missing"
 assert "nabdhSendCodeStartedMs" in login_overlay and "nabdhSignInStartedMs" in login_overlay, "Privacy-safe auth performance timings missing"
 assert "codeFieldContainer.codeField.length * 45L + 180L" in login_overlay, "Correct-code animation delay still long"
+assert "contentView.setBackground(" in native_surfaces and "listView.adapter.setApplyBackground(false);" in native_surfaces, "Account root must be opaque and native white row fill disabled"
+assert "setNabdhBorderless(boolean enabled)" in finishing_ui and "if (!nabdhBorderless)" in finishing_ui, "Phone and country must use borderless native renderer"
+assert "setNabdhBorderless(true)" in finishing_ui, "Login phone and country must explicitly opt in to borderless fields"
+assert "LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8" in (ROOT / "scripts/apply-nabdh-qr-login.py").read_text(encoding="utf-8"), "QR login must shrink horizontally"
+assert '<string name="AppName">NabdhGram</string>' in (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8"), "In-app AppName remains Telegram"
+assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Main dialogs title still unbranded"
+assert "private void nabdhRestoreChatTitle()" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "MainTabs host can still reintroduce native Telegram title"
+assert "currentTitle.getRightDrawable()" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Restoring chats title must preserve Telegram emoji status drawable"
+assert "position == POSITION_CHATS" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Brand restoration must only apply to Chats tab"
+assert "newHeroBackground()" in native_surfaces and "hero.setAlpha(190)" in native_surfaces, "Main hero remains near-white opaque"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")

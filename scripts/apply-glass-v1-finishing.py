@@ -225,8 +225,10 @@ modify("Cells/UserCell.java", [
     ),
 ])
 
-# Scope Glass styling to the native SETTINGS page. Other screens using the
-# UniversalAdapter retain their own media controls, animation and row grouping.
+# Scope Glass styling to native SETTINGS rows. Preserve upstream's
+# updateColors() implementation: Telegram 13.2.x adds ThemeBind.generation()
+# caching to it. Inject the Glass final pass just before the following
+# updateReorder() method, so old and new theme systems remain intact.
 modify("Components/UniversalAdapter.java", [
     (
         "    private boolean applyBackground = true;",
@@ -239,34 +241,23 @@ modify("Components/UniversalAdapter.java", [
         1
     ),
     (
-        """    private void updateColors(RecyclerView.ViewHolder holder) {
-        if (holder.itemView instanceof Theme.Colorable) {
-            ((Theme.Colorable) holder.itemView).updateColors();
-            if (shouldApplyBackground(holder.getItemViewType())) {
-                final int key_background = dialog ? Theme.key_dialogBackground : Theme.key_windowBackgroundWhite;
-                holder.itemView.setBackgroundColor(getThemedColor(key_background));
-            }
-        }
-    }""",
-        """    private void updateColors(RecyclerView.ViewHolder holder) {
-        if (holder.itemView instanceof Theme.Colorable) {
-            ((Theme.Colorable) holder.itemView).updateColors();
-            if (shouldApplyBackground(holder.getItemViewType())) {
-                final int key_background = dialog ? Theme.key_dialogBackground : Theme.key_windowBackgroundWhite;
-                holder.itemView.setBackgroundColor(getThemedColor(key_background));
-            }
-        }
+        """        }
+    }
+
+    public void updateReorder(RecyclerView.ViewHolder holder, boolean allowReorder) {""",
+        """        }
         int type = holder.getItemViewType();
         if (nabdhGlassSettings && (type == VIEW_TYPE_TEXT_SETTINGS
                 || type == VIEW_TYPE_TEXT || type == VIEW_TYPE_TEXT_CHECK
                 || type == VIEW_TYPE_SWITCH || type == VIEW_TYPE_ICON_TEXT_CHECK)) {
-            // Shared Glass renderer owns tint, stroke, hover and radius.
-            // Avoid allocating a second locally tinted GradientDrawable
-            // that the final settings overlay overwrites on every bind.
+            // Let Telegram finish its native theme binding first, then
+            // re-apply Glass only to the opted-in Settings rows.
             org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(
                     holder.itemView, true);
         }
-    }""",
+    }
+
+    public void updateReorder(RecyclerView.ViewHolder holder, boolean allowReorder) {""",
         1
     ),
 ])
@@ -307,27 +298,27 @@ modify("SettingsActivity.java", [
 # Soft filled surfaces for number/country and code containers WITHOUT adding
 # a second stroke. The upstream OutlineTextContainerView still paints the
 # native focus/validation line and accessibility/keyboard behavior.
-modify("Components/OutlineTextContainerView.java", [
-    (
-        "    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);",
-        """    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private boolean nabdhSoftGlass;
-    private final Paint nabdhSoftFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-
-    public void setNabdhSoftGlass(boolean enabled) {
-        nabdhSoftGlass = enabled;
-        invalidate();
-    }""",
-        1
-    ),
-    (
-        """    protected void onDraw(Canvas canvas) {
+# Telegram 13.2.x refreshes ThemeBind colors inside onDraw() before
+# drawing the native outline. Retain this new call and add the subtle fill
+# below it, rather than replacing the whole draw routine.
+outline_file = ui / "Components/OutlineTextContainerView.java"
+outline_source = outline_file.read_text(encoding="utf-8")
+legacy_outline_draw = """    protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        float textOffset =""",
-        """    protected void onDraw(Canvas canvas) {
+        float textOffset ="""
+modern_outline_draw = """    protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (nabdhSoftGlass) {
+        applyThemeColorsOnDraw();
+
+        float textOffset ="""
+if outline_source.count(legacy_outline_draw) == 1:
+    outline_draw_anchor = legacy_outline_draw
+elif outline_source.count(modern_outline_draw) == 1:
+    outline_draw_anchor = modern_outline_draw
+else:
+    raise SystemExit("OutlineTextContainerView draw callback changed")
+outline_glass_fill = """        if (nabdhSoftGlass) {
             int base = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
             int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
             nabdhSoftFillPaint.setColor(android.graphics.Color.rgb(
@@ -339,21 +330,58 @@ modify("Components/OutlineTextContainerView.java", [
                     AndroidUtilities.dp(17), AndroidUtilities.dp(17), nabdhSoftFillPaint);
         }
 
-        float textOffset =""",
+"""
+outline_draw_replacement = outline_draw_anchor.replace(
+    "        float textOffset =", outline_glass_fill + "        float textOffset =")
+
+modify("Components/OutlineTextContainerView.java", [
+    (
+        "    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);",
+        """    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private boolean nabdhSoftGlass;
+    private boolean nabdhBorderless;
+    private final Paint nabdhSoftFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    public void setNabdhBorderless(boolean enabled) {
+        nabdhBorderless = enabled;
+        invalidate();
+    }
+
+    public void setNabdhSoftGlass(boolean enabled) {
+        nabdhSoftGlass = enabled;
+        invalidate();
+    }""",
         1
     ),
+    (outline_draw_anchor, outline_draw_replacement, 1),
+    # Suppress only the outline strokes on the login phone/country fields.
+    # Keep labels, input focus state and validation logic unchanged.
+    ("""        canvas.save();
+        rect.set(getPaddingLeft() + AndroidUtilities.dp(PADDING_LEFT - PADDING_TEXT),""",
+     """        if (!nabdhBorderless) {
+        canvas.save();
+        rect.set(getPaddingLeft() + AndroidUtilities.dp(PADDING_LEFT - PADDING_TEXT),""", 1),
+    ("""        canvas.drawLine(left, lineY, fromRight + (left - fromRight) * (useCenter ? titleProgress : 1f), lineY, outlinePaint);
+
+        canvas.save();""",
+     """        canvas.drawLine(left, lineY, fromRight + (left - fromRight) * (useCenter ? titleProgress : 1f), lineY, outlinePaint);
+        }
+
+        canvas.save();""", 1),
 ])
 modify("LoginActivity.java", [
     (
         "countryOutlineView = new OutlineTextContainerView(context);",
         """countryOutlineView = new OutlineTextContainerView(context);
-            countryOutlineView.setNabdhSoftGlass(true);""",
+            countryOutlineView.setNabdhSoftGlass(true);
+            countryOutlineView.setNabdhBorderless(true);""",
         1
     ),
     (
         "phoneOutlineView = new OutlineTextContainerView(context);",
         """phoneOutlineView = new OutlineTextContainerView(context);
-            phoneOutlineView.setNabdhSoftGlass(true);""",
+            phoneOutlineView.setNabdhSoftGlass(true);
+            phoneOutlineView.setNabdhBorderless(true);""",
         1
     ),
     (

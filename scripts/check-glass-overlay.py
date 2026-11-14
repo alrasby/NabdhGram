@@ -10,6 +10,7 @@ if len(sys.argv) != 2:
 root = Path(sys.argv[1])
 ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
 dialogs = (ui / "DialogsActivity.java").read_text(encoding="utf-8")
+main_tabs = (ui / "MainTabsActivity.java").read_text(encoding="utf-8")
 cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
 settings = (ui / "NabdhGramSettingsActivity.java").read_text(encoding="utf-8")
 selector = (ui / "Components/RecyclerListView.java").read_text(encoding="utf-8")
@@ -45,9 +46,13 @@ checks = {
         and "codeFieldContainer.codeField.length * 45L + 180L" in login_source,
     "login language glyph is valid vector drawable":
         ET.parse(root / "TMessagesProj/src/main/res/drawable/nabdh_login_language.xml") is not None,
-    "phone login draws the same live Glass card while keeping native auth":
+    "login country/phone use one borderless soft fill":
         "if (activityMode == MODE_LOGIN)" in login_source
-        and "setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in login_source
+        and "countryOutlineView.setNabdhBorderless(true)" in login_source
+        and "phoneOutlineView.setNabdhBorderless(true)" in login_source
+        and "countryOutlineView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" not in login_source
+        and "phoneOutlineView.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" not in login_source
+        and "if (!nabdhBorderless)" in (ui / "Components/OutlineTextContainerView.java").read_text(encoding="utf-8")
         and "countryOutlineView.setNabdhSoftGlass(true)" in login_source
         and "phoneOutlineView.setNabdhSoftGlass(true)" in login_source,
     "name color selector is a true theme-aware Glass card":
@@ -55,13 +60,21 @@ checks = {
         and "applyCardStyle(holder.itemView, true)" in (ui / "ThemeActivity.java").read_text(encoding="utf-8")
         and "PeerColorActivity.ChangeNameColorCell.class}, null, null, null, Theme.key_windowBackgroundWhite" not in
             (ui / "ThemeActivity.java").read_text(encoding="utf-8"),
-    "launcher switching enables selected component before disabling old alias":
-        "getActivityInfo(target, 0)" in (ui / "LauncherIconController.java").read_text(encoding="utf-8")
+    "launcher switching includes disabled alias and confirms it before disabling old":
+        "pm.getActivityInfo(target, PackageManager.MATCH_DISABLED_COMPONENTS);" in
+            (ui / "LauncherIconController.java").read_text(encoding="utf-8")
+        and "pm.getActivityInfo(target, 0)" not in
+            (ui / "LauncherIconController.java").read_text(encoding="utf-8")
         and (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
             "pm.setComponentEnabledSetting(target,") <
             (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
-            "for (LauncherIcon i : LauncherIcon.values()) {", (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
-            "pm.setComponentEnabledSetting(target,")),
+            "for (LauncherIcon other : LauncherIcon.values()) {",
+            (ui / "LauncherIconController.java").read_text(encoding="utf-8").index(
+                "pm.setComponentEnabledSetting(target,"))
+        and "pm.getComponentEnabledSetting(target)" in
+            (ui / "LauncherIconController.java").read_text(encoding="utf-8")
+        and "if (!LauncherIconController.nabdhSetIconVerified(icon))" in
+            (ui / "Cells/AppIconsSelectorCell.java").read_text(encoding="utf-8"),
     "chat bubbles use pooled crystal brushes on original Telegram paths":
         all(phrase in (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
             for phrase in ("private void nabdhDrawCrystalSurface(Canvas canvas, Path bubblePath)",
@@ -101,7 +114,6 @@ checks = {
                 "CacheControlActivity.java", "ArchiveSettingsActivity.java",
                 "DataAutoDownloadActivity.java", "PasscodeActivity.java",
                 "PrivacyUsersActivity.java", "ProxyListActivity.java",
-                "QuickRepliesSettingsActivity.java",
                 "RestrictedLanguagesSelectActivity.java",
                 "ProfileNotificationsActivity.java"))
         and "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
@@ -113,7 +125,8 @@ checks = {
         and "extends android.graphics.drawable.RippleDrawable" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
         and selector.count("public void nabdhHideSectionBackgroundOnly()") == 1
-        and "listView.setSections(true);" in contacts,
+        and ("listView.setSections(true);" in contacts
+             or "listView.setSections();" in contacts),
     "native mixed Arabic/Latin alignment uses first strong direction":
         "titleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings
         and "subtitleView.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG)" in native_settings,
@@ -129,7 +142,10 @@ checks = {
         for page in ("FiltersSetupActivity.java", "FilterCreateActivity.java",
                      "FilterChatlistActivity.java", "LiteModeSettingsActivity.java")),
     "main Settings/account header edges match cards and theme canvas":
-        "AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0" in native_settings
+        "contentView.setBackground(" in native_settings
+        and "NabdhGlassRowDecoration.newOpaquePageBackground()" in native_settings
+        and "topView.setBackground(" in native_settings
+        and "newHeroBackground()" in native_settings
         and "glassType == VIEW_TYPE_HEADER" in universal
         and "getThemedColor(Theme.key_windowBackgroundGray)" in universal,
     "chat settings preview uses native rounded inset and styles text options":
@@ -142,8 +158,10 @@ checks = {
         and "int bottomMargin = activityMode == MODE_LOGIN ? 12 : 72;" in login_source
         and "if (getGravity() != desired) setGravity(desired);" in login_source
         and "scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);" in login_source,
-    "main Settings hero uses the shared Glass surface":
-        "topView.setBackground(new android.graphics.drawable.InsetDrawable(" in native_settings,
+    "main Settings hero uses exactly one shared Glass inset":
+        "topView.setBackground(" in native_settings
+        and "NabdhGlassRowDecoration.newHeroBackground()" in native_settings
+        and "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_settings,
     "NabdhGram settings categories have no competing pre-renderer":
         not any(token in settings + feature for token in
             ("GradientDrawable glassCard =", "GradientDrawable infoCard =",
@@ -157,7 +175,11 @@ checks = {
     "account info uses same Glass for actual SettingCell factory rows":
         "listView.adapter.setNabdhGlassSettings(true)" in
             (ui / "UserInfoActivity.java").read_text(encoding="utf-8")
-        and "new org.telegram.ui.Components.NabdhGlassRowDecoration()" in
+        and "NabdhGlassRowDecoration.newOpaquePageBackground()" in
+            (ui / "UserInfoActivity.java").read_text(encoding="utf-8")
+        and "listView.adapter.setApplyBackground(false);" in
+            (ui / "UserInfoActivity.java").read_text(encoding="utf-8")
+        and "listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration())" not in
             (ui / "UserInfoActivity.java").read_text(encoding="utf-8"),
     "native settings and profile use filled theme-aware backgrounds": all(
         "NabdhGlassRowDecoration.applyCardStyle(holder.itemView)" in
@@ -195,6 +217,28 @@ checks = {
         ("final boolean telegramTextFace", "(telegramTextFace || arabicLabel)",
          "originalPx * uiPercent / 100f")
     ),
+    "Experimental Header icon uses the same native RTL layout as its siblings":
+        'R.drawable.nabdh_settings_header, getString(R.string.HeaderSettings)))' in native_settings
+        and 'R.drawable.nabdh_settings_video, getString(R.string.RoundVideoSettings)))' in native_settings
+        and 'R.drawable.nabdh_settings_mic, getString(R.string.AudioRecorderSettings)))' in native_settings
+        and all('R.drawable.nabdh_settings_' + icon in native_settings
+                for icon in ("logs", "history", "trash"))
+        and (root / "TMessagesProj/src/main/res/drawable/nabdh_settings_header.xml").is_file()
+        and 'iconLayout.setVisibility(icon != 0 ? View.VISIBLE : View.GONE);' in native_settings
+        and 'addView(iconLayout, LayoutHelper.createLinear(28, 28, Gravity.CENTER_VERTICAL | Gravity.RIGHT' in native_settings
+        and 'case 27: {' in native_settings
+        and 'presentFragment(new HeaderSettingsActivity());' in native_settings,
+    "generated Settings footer opens Telegram native debug screen": 
+        "versionView.setOnLongClickListener(v -> {" in native_settings
+        and "presentFragment(new DebugSettingsActivity());" in native_settings
+        and "openDebugMenu();" not in native_settings,
+    "generated keypad preserves upstream ThemeBind and cached color declarations":
+        all(token in (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
+            for token in ("private static void setButtonBackground(View v, int index)",
+                          "private int lastBackButtonColor, lastButtonsSelectorColor;",
+                          "ThemeBind.selectorBackground(v, getButtonDrawable(index)"))
+        and (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8").count(
+            "setButtonBackground(v, a);") == 2,
     "third-party login cannot advertise official-only Firebase SMS":
         'settings.allow_firebase = false; // Third-party app' in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
@@ -203,8 +247,11 @@ checks = {
             for part in ("class NabdhCircleKey", "canvas.drawCircle(",
                          "Math.min(box.width(), box.height())", "state_pressed",
                          "54 + android.graphics.Color.red(accent) * 46",
-                         "R.drawable.nabdh_keypad_delete",
-                         "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")),
+                         "R.drawable.nabdh_keypad_delete"))
+        and ("backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));" in
+             (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
+             or "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);" in
+             (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")),
     "Telegram empty-chat egg replaced by approved NabdhGram logo":
         (root / "TMessagesProj/src/main/res/drawable-nodpi/nabdh_empty_logo.png").is_file()
         and all(t in (ui / "Cells/DialogsEmptyCell.java").read_text(encoding="utf-8")
@@ -380,7 +427,7 @@ checks = {
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
         and "if (nabdhFontDirty && android.os.SystemClock.uptimeMillis()" in launch
         and "nabdhLastFontScanMs >= 48L" in launch,
-    "composer retains native padding and RTL": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
+    "composer retains RTL and content padding": "messageEditText.setPadding(dp(6), dp(9), dp(6), dp(10));" in composer
         and "TEXT_DIRECTION_FIRST_STRONG" in composer
         and "LocaleController.isRTL" in composer
         and "android.view.Gravity.RIGHT : android.view.Gravity.LEFT" in composer,
@@ -417,9 +464,11 @@ checks = {
         and "GradientDrawable fontGlass =" not in feature
         and "GradientDrawable infoCard =" not in feature,
 
-    "chat composer rounded theme surface": "messageEditText.setBackground(nabdhInputGlass)" in composer
-        and "nabdhInputGlass.setCornerRadius(dp(19))" in composer
-        and "Theme.key_chat_messagePanelBackground" in composer,
+    "chat composer is ONE native-theme surface, not a white inner pill":
+        "messageEditText.setBackgroundDrawable(null);" in composer
+        and "messageEditText.setBackground(nabdhInputGlass)" not in composer
+        and "nabdhInputGlass.setCornerRadius" not in composer
+        and "ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider)" in composer,
     "dialog selector rounded clipping installed": "selectorView instanceof org.telegram.ui.Cells.DialogCell" in selector
         and "canvas.clipPath(nabdhDialogSelectorPath)" in selector
         and "selectorRect.left + 7f * density" in selector
@@ -476,6 +525,111 @@ checks = {
         and "itemInternals.add(regularFirst" not in dialogs,
     "main chats only": "viewPage.dialogsType == DIALOGS_TYPE_DEFAULT && folderId == 0 && communityId == 0" in dialogs,
 }
+
+# Regression for transparent nested screens reported on 2026-11-13.
+checks["Telegram 13.2 native bitmap sections cannot refill Glass pages"] = (
+    "nabdhSuppressLegacySectionFill" in selector
+    and "bitmapSectionsItemDecoration.setDrawBackground(false)" in selector
+    and "if (nabdhSuppressLegacySectionFill)" in selector
+)
+checks["ordinary settings and folders have opaque themed page canvases"] = all(
+    "newOpaquePageBackground()" in (ui / name).read_text(encoding="utf-8")
+    for name in (
+        "PrivacySettingsActivity.java", "ThemeActivity.java",
+        "NotificationsSettingsActivity.java", "DataSettingsActivity.java",
+        "SessionsActivity.java", "FiltersSetupActivity.java",
+        "FilterCreateActivity.java", "LiteModeSettingsActivity.java"
+    )
+)
+checks["all three white section painter paths are guarded on Glass settings"] = (
+    selector.count("if (nabdhSuppressLegacySectionFill) return;") >= 2
+    and "listView.setSectionsDrawBackground(true);\n        listView.nabdhHideSectionBackgroundOnly();" in native_settings
+    and "if (nabdhGlassSettings) return;" in universal
+)
+checks["main settings Arabic titles and subtitles use adaptive row height"] = (
+    "final int minRowHeight = dp(mini ? 44 : twoLines ? 60 : 50);" in native_settings
+    and "final int maxRowHeight = dp(mini ? 96 : 200);" in native_settings
+    and "MeasureSpec.AT_MOST" in native_settings
+    and "getMeasuredHeight() < minRowHeight" in native_settings
+)
+checks["main Settings uses opaque root behind avatar and glass header"] = (
+    "contentView.setBackground(" in native_settings
+    and "NabdhGlassRowDecoration.newOpaquePageBackground()" in native_settings
+    and "topView.setBackground(" in native_settings
+    and "NabdhGlassRowDecoration.newHeroBackground()" in native_settings
+    and "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_settings
+)
+checks["main Settings uses exactly one card drawing path"] = (
+    "listView.adapter.setNabdhGlassSettings(true);" in native_settings
+    and "listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration())" not in native_settings
+)
+checks["Glass rows remain independent from the opaque page canvas"] = (
+    "newOpaquePageBackground()" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+    and "return new GlassCardLayers();" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+)
+checks["main-tab host rebrands the actual visible chats title on tab switch and resume"] = (
+    "private void nabdhRestoreChatTitle()" in main_tabs
+    and 'bar.setTitle("NabdhGram", currentTitle == null' in main_tabs
+    and 'currentTitle.getRightDrawable()' in main_tabs
+    and "if (position == POSITION_CHATS) nabdhRestoreChatTitle();" in main_tabs
+    and "if (viewPager != null && viewPager.getCurrentPosition() == POSITION_CHATS)" in main_tabs
+)
+checks["global font renderer respects secondary explanatory labels"] = (
+    '"nabdh:secondary-text".equals(label.getTag())' in
+    (ui / "LaunchActivity.java").read_text(encoding="utf-8")
+)
+checks["NabdhGram settings descriptions opt into readable body weight"] = (
+    'description.setTag("nabdh:secondary-text");' in settings
+)
+checks["feature category explanations opt into readable body weight"] = (
+    'explanation.setTag("nabdh:secondary-text");' in feature
+)
+checks["new Glass and Intelligence help texts opt into readable body weight"] = (
+    feature.count('note.setTag("nabdh:secondary-text");') >= 2
+)
+checks["dialogs use NabdhGram title rather than upstream Telegram logo span"] = (
+    'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
+    and 'actionBar.setTitle(ssb, statusDrawable);' not in dialogs
+)
+
+checks["QR button is narrower while retaining native 52dp height"] = (
+    "nabdhQrButton.setMinWidth(dp(220));" in login_source
+    and "nabdhQrButton.setPadding(dp(24), 0, dp(24), 0);" in login_source
+    and "LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8" in login_source
+)
+checks["AppName and default main title use NabdhGram after navigation"] = (
+    '<string name="AppName">NabdhGram</string>' in
+    (root / "TMessagesProj/src/main/res/values/strings.xml").read_text(encoding="utf-8")
+    and '<string name="AppNameBeta">NabdhGram Beta</string>' in
+    (root / "TMessagesProj/src/main/res/values/strings.xml").read_text(encoding="utf-8")
+    and 'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
+    and "&& statusDrawable != null" in dialogs
+)
+checks["Account root is opaque with adapter-owned rounded cards"] = (
+    "NabdhGlassRowDecoration.newOpaquePageBackground()" in
+    (ui / "UserInfoActivity.java").read_text(encoding="utf-8")
+    and "listView.adapter.setApplyBackground(false);" in
+    (ui / "UserInfoActivity.java").read_text(encoding="utf-8")
+    and "listView.addItemDecoration(new org.telegram.ui.Components.NabdhGlassRowDecoration())" not in
+    (ui / "UserInfoActivity.java").read_text(encoding="utf-8")
+)
+
+# The public AboutLinkCell manually draws its native gradient_bottom even
+# when its RecyclerView row has a rounded Glass background. Scope the fix
+# to ProfileActivity only; shared chat/link interactions stay unchanged.
+about = (ui / "Cells/AboutLinkCell.java").read_text(encoding="utf-8")
+checks["Profile bio never draws native white bottom shadow beneath Glass"] = (
+    "private boolean nabdhProfileGlass;" in about
+    and "public void nabdhSetProfileGlass(boolean enabled)" in about
+    and "if (!nabdhProfileGlass && viewAlpha > 0)" in about
+    and "aboutLinkCell.nabdhSetProfileGlass(true);" in profile
+    and "bottomShadow.setVisibility(enabled ? GONE : VISIBLE);" in about
+)
+checks["Android 12 night and day startup styles share approved icon"] = all(
+    '<item name="android:windowSplashScreenAnimatedIcon">@drawable/nabdhgram_launcher_foreground</item>' in
+    (root / "TMessagesProj/src/main/res" / folder / "styles.xml").read_text(encoding="utf-8")
+    for folder in ("values-v31", "values-night")
+)
 
 for lang in ("values", "values-ar"):
     xml = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"

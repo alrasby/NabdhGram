@@ -121,6 +121,9 @@ method = """    private void section(Context context, LinearLayout parent, int t
         TextView description = new TextView(context);
         description.setText(NabdhStrings.get(context, summaryRes));
         description.setTextSize(12);
+        // This final layout replaces the earlier settings category builder.
+        // Preserve readable summary weight when the global Bold control is on.
+        description.setTag("nabdh:secondary-text");
         description.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
         description.setMaxLines(2);
         description.setEllipsize(android.text.TextUtils.TruncateAt.END);

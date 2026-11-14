@@ -66,7 +66,13 @@ def insert_at_method_end(s, after, condition, label):
                 {glass}.applyCardStyle(holder.itemView, true);
             }}
 """
-    return s[:pos] + snippet + s[pos:]
+    # Place the new snippet BEFORE the indentation of the closing
+    # brace, not between that indentation and '}'. The old splice
+    # inserted whitespace-only lines in five Telegram settings classes.
+    line_start = s.rfind("\n", 0, pos) + 1
+    if s[line_start:pos].strip():
+        raise SystemExit(f"{label}: unexpected text before Java method close")
+    return s[:line_start] + snippet.lstrip("\n") + s[line_start:]
 
 pages = [
     ("FiltersSetupActivity.java", "class ListAdapter extends",
@@ -94,7 +100,8 @@ for name, marker, condition, list_anchor, label in pages:
     else:
         replacement = list_anchor
     s = require_replace(s, list_anchor,
-        replacement + f"\n        listView.addItemDecoration(new {glass}());",
+        replacement + f"\n        listView.setBackground({glass}.newOpaquePageBackground());"
+                    + f"\n        listView.addItemDecoration(new {glass}());",
         f"{label}: RecyclerListView hook")
     adapter_start = s.index(marker)
     s = insert_at_method_end(s, adapter_start, condition, label)
@@ -161,7 +168,16 @@ theme_src = require_replace(theme_src, theme_background_before, theme_background
 # The Chat Settings message-size sample is the NESTED TextSizeCell.
 # The earlier TYPE_THEME_PREVIEW edit only affected the themes browser, so
 # it did not constrain this live wallpaper preview at all.
-sample_before = """            addView(messagesCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 0, 53, 0, 0));"""
+# Telegram 13.2.x introduces an optional compact-mode row above the
+# wallpaper sample. Preserve its variable top offset instead of forcing 53dp.
+old_sample = """            addView(messagesCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 0, 53, 0, 0));"""
+new_sample = """            addView(messagesCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 0, 53 + (showCompactMode ? 50 : 0), 0, 0));"""
+if theme_src.count(old_sample) == 1:
+    sample_before, top_offset = old_sample, "53"
+elif theme_src.count(new_sample) == 1:
+    sample_before, top_offset = new_sample, "53 + (showCompactMode ? 50 : 0)"
+else:
+    raise SystemExit("ThemeActivity nested wallpaper layout anchor changed")
 sample_after = """            messagesCell.setOutlineProvider(new android.view.ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, android.graphics.Outline outline) {
@@ -171,28 +187,49 @@ sample_after = """            messagesCell.setOutlineProvider(new android.view.V
             messagesCell.setClipToOutline(true);
             // Match the native row's 10dp Glass inset on BOTH sides.
             addView(messagesCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT,
-                    LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 10, 53, 10, 8));"""
+                    LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 10, """ + top_offset + """, 10, 8));"""
 theme_src = require_replace(theme_src, sample_before, sample_after,
                             "TextSizeCell actual chat wallpaper sample")
 theme.write_text(theme_src, encoding="utf-8")
 
-# The night-mode and Browse Themes buttons live INSIDE a single
-# DefaultThemesPreviewCell, not inside ThemeActivity's TYPE_TEXT_PREFERENCE
-# items. Their updateColors() explicitly restored flat white selectors,
-# defeating the shared Glass card even after a successful adapter bind.
+# Night-mode and Browse Themes buttons live in DefaultThemesPreviewCell.
+# In Telegram 13.2.x ThemeBind owns their colors and background caching.
+# Preserve the native binding and apply the shared live Glass after updates.
 preview_page = ui / "DefaultThemesPreviewCell.java"
 preview_src = preview_page.read_text(encoding="utf-8")
-preview_src = require_replace(preview_src,
-    "dayNightCell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));",
-    "dayNightCell.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());",
-    "DefaultThemesPreviewCell initial night-mode card")
+old_night = "dayNightCell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));"
+new_night = "ThemeBind.selectorBackground(dayNightCell, Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL), null, ThemeBind.of(Theme.key_listSelector));"
+glass_night = "org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(dayNightCell, true);"
+if preview_src.count(old_night) == 1:
+    preview_src = require_replace(preview_src, old_night, glass_night,
+                                  "DefaultThemesPreviewCell initial night-mode card")
+elif preview_src.count(new_night) == 1:
+    preview_src = require_replace(preview_src, new_night,
+                                  new_night + "\n            " + glass_night,
+                                  "ThemeBind night-mode Glass card")
+else:
+    raise SystemExit("DefaultThemesPreviewCell night-mode card anchor changed")
 preview_src = require_replace(preview_src,
     "Theme.setSelectorDrawableColor(dayNightCell.getBackground(), Theme.getColor(Theme.key_listSelector), true);",
-    "org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(dayNightCell, true);",
-    "DefaultThemesPreviewCell themed night-mode card")
-preview_src = require_replace(preview_src,
-    "browseThemesCell.setBackground(Theme.createSelectorWithBackgroundDrawable(Theme.getColor(Theme.key_windowBackgroundWhite), Theme.getColor(Theme.key_listSelector)));",
-    "org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(browseThemesCell, true);",
-    "DefaultThemesPreviewCell themed Browse Themes card")
+    glass_night, "DefaultThemesPreviewCell themed night-mode card")
+
+old_browse = "browseThemesCell.setBackground(Theme.createSelectorWithBackgroundDrawable(Theme.getColor(Theme.key_windowBackgroundWhite), Theme.getColor(Theme.key_listSelector)));"
+new_browse = "browseThemesCell.setColors(Theme.key_windowBackgroundWhiteBlueText4, Theme.key_windowBackgroundWhiteBlueText4);"
+glass_browse = "org.telegram.ui.Components.NabdhGlassRowDecoration.applyCardStyle(browseThemesCell, true);"
+if preview_src.count(old_browse) == 1:
+    preview_src = require_replace(preview_src, old_browse, glass_browse,
+                                  "DefaultThemesPreviewCell themed Browse Themes card")
+elif preview_src.count(new_browse) == 1:
+    # Reapply after upstream caches its selector; keep colors and click
+    # handlers intact and provide the same Glass on initial construction.
+    preview_src = require_replace(preview_src, new_browse,
+                                  new_browse + "\n                " + glass_browse,
+                                  "ThemeBind Browse Themes card refresh")
+    browse_add = "addView(browseThemesCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));"
+    preview_src = require_replace(preview_src, browse_add,
+                                  browse_add + "\n            " + glass_browse,
+                                  "ThemeBind Browse Themes initial card")
+else:
+    raise SystemExit("DefaultThemesPreviewCell Browse Themes anchor changed")
 preview_page.write_text(preview_src, encoding="utf-8")
 print("PASS: nested Chat Settings wallpaper clipped; night/theme actions use real live Glass")

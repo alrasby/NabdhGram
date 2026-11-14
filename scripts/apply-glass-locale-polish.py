@@ -86,6 +86,10 @@ if replaced == 0 and "NabdhStrings.get(getParentActivity()," not in s:
 old = 'UItem.asHeader("Experimental")'
 if s.count(old) == 1:
     s = s.replace(old, 'UItem.asHeader(org.telegram.messenger.LocaleController.isRTL ? "خيارات تجريبية" : "Experimental")', 1)
+elif 'UItem.asHeader(getString(R.string.SettingsExperimental))' in s:
+    # Telegram 13.2.2 already uses its own translated string resource.
+    # Avoid replacing the native dynamic locale with a hard-coded title.
+    pass
 elif "خيارات تجريبية" not in s:
     raise SystemExit("Telegram Experimental header is neither original nor localized")
 settings.write_text(s, encoding="utf-8")

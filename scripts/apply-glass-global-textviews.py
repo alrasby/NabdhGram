@@ -306,8 +306,14 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                         if (base != null && (!deviceDefault || applied != null || forceBold || uiPercent != 100)) {
                             // Optional typefaces start Regular; returning to
                             // Device font restores this native TextView style.
+                            // Do not turn explanatory paragraphs into large
+                            // bold headings. They still receive the chosen
+                            // family and size; only weight keeps its native
+                            // hierarchy, including when global Bold is on.
+                            boolean secondary = "nabdh:secondary-text".equals(label.getTag());
                             label.setTypeface(base,
-                                    forceBold ? android.graphics.Typeface.BOLD : originalStyle);
+                                    forceBold && !secondary
+                                    ? android.graphics.Typeface.BOLD : originalStyle);
                             float sizePx = originalPx * uiPercent / 100f;
                             if (Math.abs(label.getTextSize() - sizePx) > 0.5f) {
                                 label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx);

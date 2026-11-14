@@ -175,9 +175,20 @@ s = replace_once(s,
             showProxyButton(true, animated);
         } else if (getMessagesController().blockedCountry && !SharedConfig.proxyList.isEmpty() || connecting) {""",
     "preauth proxy always accessible")
-s = replace_once(s,
-    """        proxyButtonView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector)));""",
-    """        proxyButtonView.setBackground(new android.graphics.drawable.RippleDrawable(
+# Telegram 13.2.x uses applySelectorBackground() to synchronize its
+# theme-generation cache instead of setBackground(Theme.createSelectorDrawable).
+# Keep the native call, then layer the opt-in NabdhGram buttons over it.
+legacy_proxy = "        proxyButtonView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector)));"
+modern_proxy = ("        proxyButtonSelectorColor = applySelectorBackground("
+                "proxyButtonView, Theme.getColor(Theme.key_listSelector), "
+                "proxyButtonSelectorColor, Theme.RIPPLE_MASK_CIRCLE_20DP);")
+if s.count(legacy_proxy) == 1:
+    proxy_anchor = legacy_proxy
+elif s.count(modern_proxy) == 1:
+    proxy_anchor = modern_proxy
+else:
+    raise SystemExit("Login theme selector callback changed")
+glass_proxy = """        proxyButtonView.setBackground(new android.graphics.drawable.RippleDrawable(
                 android.content.res.ColorStateList.valueOf(Theme.getColor(Theme.key_listSelector)),
                 nabdhLoginSurface(14, .10f), null));
         if (nabdhLanguageButtonView != null) {
@@ -186,8 +197,9 @@ s = replace_once(s,
                     nabdhLoginSurface(14, .10f), null));
             nabdhLanguageButtonView.setColorFilter(
                     Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-        }""",
-    "theme-updated native quick controls")
+        }"""
+s = replace_once(s, proxy_anchor, proxy_anchor + "\n" + glass_proxy,
+                 "theme-updated native quick controls")
 s = replace_once(s,
     """    @Override
     public void onResume() {
@@ -356,9 +368,14 @@ k = replace_once(k,
     private static Drawable getButtonDrawable(int index) {""",
     "keyboard circular drawable declaration")
 key_start = k.index("    private static Drawable getButtonDrawable(int index) {")
-key_end = k.index("\n    public void updateColors() {", key_start)
+# Replace ONLY the shape factory. Telegram 13.2.x has a
+# setButtonBackground() ThemeBind helper and two cached tint fields
+# between this method and updateColors(); cutting to updateColors()
+# deleted those declarations and caused seven javac errors.
+key_end = k.find("\n    }", key_start)
 if key_end < key_start:
-    raise SystemExit("Custom keyboard color update boundary changed")
+    raise SystemExit("Custom keyboard shape factory boundary changed")
+key_end += len("\n    }")
 # Replace complete shape logic rather than tweaking any of its 4 corner radii.
 k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) {
         final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
@@ -384,6 +401,13 @@ k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) 
                         android.graphics.Color.WHITE));
     }
 """ + k[key_end:]
+# Regression guard: original Telegram 13.2.x theme-binding members must
+# survive the replacement, including their on-theme-update call sites.
+if "ThemeBind.selectorBackground(v, getButtonDrawable(index)" in k:
+    if ("private static void setButtonBackground(View v, int index)" not in k
+            or "private int lastBackButtonColor, lastButtonsSelectorColor;" not in k
+            or k.count("setButtonBackground(v, a);") != 2):
+        raise SystemExit("Custom keyboard theme binding declarations were lost")
 # Expand actual *key cell height*, not only the drawable radius. The stock
 # 230dp keyboard uses 10dp outer + 6dp inter-key gaps, capping circles to
 # about 47dp. Smaller gutters yield 52dp keys (+11%) at the SAME 230dp height
@@ -415,12 +439,22 @@ k = k[:pos2] + """        // Measure child hit targets from the *new* parent con
                 (availableWidth - dp(SIDE_PADDING * 2 + BUTTON_PADDING * 2)) / 3);
         int btnHeight = Math.max(1,
                 (availableHeight - dp(SIDE_PADDING * 3 + BUTTON_PADDING * 2)) / 4);""" + k[pos2 + len(original):]
-# Constructor and updateColors both tint the same icon; handle both.
+# Maintain backspace tint through constructor and live theme updates.
+# Telegram 13.2.x uses ThemeBind in the constructor and a cached backColor
+# in updateColors(); leave the new binding/cache intact.
 backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
-if k.count(backspace_icon) != 2:
-    raise SystemExit("Backspace icon anchors changed")
-k = k.replace(backspace_icon,
-    "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
+if k.count(backspace_icon) == 2:
+    k = k.replace(backspace_icon,
+        "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
+else:
+    modern_constructor = "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);"
+    modern_update = "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);"
+    if k.count(modern_constructor) != 1 or k.count(modern_update) != 1:
+        raise SystemExit("Backspace icon anchors changed")
+    k = k.replace(modern_constructor,
+        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlueText, PorterDuff.Mode.SRC_ATOP);", 1)
+    k = k.replace(modern_update,
+        "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);", 1)
 k = replace_once(k,
     "numberTextPaint.setTextSize(dp(24));",
     "numberTextPaint.setTextSize(dp(22));",

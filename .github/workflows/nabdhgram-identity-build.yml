@@ -5,10 +5,34 @@ name: NabdhGram identity debug build
 # killed the real Android build before it reached Gradle.
 # Build the PR head exactly once; workflow_dispatch supports manual branch runs.
 on:
+  workflow_call:
+    inputs:
+      source_preflight_only:
+        description: 'Run every source overlay and API check but skip native compilation'
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
+    inputs:
+      source_preflight_only:
+        description: 'Validate every upstream overlay without native SDK, NDK or Gradle'
+        required: false
+        default: false
+        type: boolean
   pull_request:
     branches:
       - main
+  # Build the accepted upgrade once from the real main head, not only the
+  # ephemeral PR branch. Avoid spending a full NDK build on docs-only edits.
+  push:
+    branches:
+      - main
+    paths:
+      - 'upstream/**'
+      - 'scripts/**'
+      - 'overlay/**'
+      - 'branding/**'
+      - '.github/workflows/nabdhgram-identity-build.yml'
 
 permissions:
   contents: read
@@ -16,7 +40,7 @@ permissions:
 # Supersede older *PR* commits only. Never cancel a manual dispatch because
 # the very same branch also received a pull_request event.
 concurrency:
-  group: nabdhgram-android-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  group: nabdhgram-android-${{ inputs.source_preflight_only && 'preflight' || 'full' }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -29,11 +53,13 @@ jobs:
         with:
           path: nabdhgram
       - name: Configure Java 17
+        if: ${{ !inputs.source_preflight_only }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
       - name: Restore Gradle dependency and build caches
+        if: ${{ !inputs.source_preflight_only }}
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
@@ -46,8 +72,9 @@ jobs:
           [[ "$COMMIT" =~ ^[a-f0-9]{40}$ ]]
           git clone --filter=blob:none https://github.com/DrKLO/Telegram.git Telegram-upstream
           git -C Telegram-upstream checkout --detach "$COMMIT"
-          git -C Telegram-upstream submodule update --init --recursive --depth=1 --jobs=4
-          bash nabdhgram/scripts/verify-upstream.sh Telegram-upstream
+          test "$(git -C Telegram-upstream rev-parse HEAD)" = "$COMMIT"
+          # Source-only Glass overlays do not use native submodules. Defer
+          # recursive checkout until ALL generated-source checks have passed.
       - name: Apply NabdhGram package and label overlay
         shell: bash
         run: |
@@ -328,11 +355,47 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-remaining-settings.py Telegram-upstream
 
+      - name: Fix icon clipping, chat-list samples and left-side toggle geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-chat-settings-visual-fixes.py Telegram-upstream
+
+      - name: Apply Nabdh Liquid Glass and local Context Lens
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-liquid-intelligence.py Telegram-upstream
+
+      - name: Unify chat bubble palette and native Arabic TextPaint refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-chat-consistency.py Telegram-upstream
+
       - name: Install approved NabdhGram logo in empty chats
         shell: bash
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-empty-state.py Telegram-upstream
+
+      - name: Remove white shadow from native profile biography Glass card
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-profile-bio-glass.py Telegram-upstream
+
+      - name: Verify rounded Profile bio presses and unified chat input
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream
+
+      - name: Enforce native toggle ON thumb physically left for every locale
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --apply Telegram-upstream
 
       - name: Verify NabdhGram Glass overlays before Gradle
         shell: bash
@@ -342,6 +405,13 @@ jobs:
           python3 nabdhgram/scripts/check-glass-design-contract.py
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --verify Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-chat-consistency.py Telegram-upstream
+          python3 nabdhgram/scripts/check-chat-settings-visual-fixes.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py nabdhgram/scripts/check-profile-composer-visual-fixes.py
+          python3 -m py_compile nabdhgram/scripts/apply-chat-settings-visual-fixes.py nabdhgram/scripts/check-chat-settings-visual-fixes.py
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhGlassRowDecoration.java
           # Validate generated Java, not only the Python overlay source.
           python3 - <<'PY'
@@ -380,7 +450,36 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream
 
+      - name: Preserve Telegram native Java APIs before Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-chat-consistency.py nabdhgram/scripts/check-nabdh-chat-consistency.py nabdhgram/scripts/check-upstream-api-preservation.py
+          python3 nabdhgram/scripts/check-upstream-api-preservation.py --self-test
+          python3 nabdhgram/scripts/check-upstream-api-preservation.py Telegram-upstream
+          git -C Telegram-upstream diff --check
+          echo "PASS: Native Telegram methods, theme fields, Java syntax, and patch whitespace checked."
+
+      - name: Report source-only preflight success
+        if: ${{ inputs.source_preflight_only && success() }}
+        shell: bash
+        run: |
+          {
+            echo "## NabdhGram source-only upgrade preflight: PASS"
+            echo "All pinned Telegram overlays and native method/type preservation checks completed."
+            echo "Native submodules, Android SDK/NDK, Gradle, APK and physical-device QA were NOT run."
+            echo "This is NOT a release-ready or Android-verified result."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Initialize and verify pinned native submodules after overlay preflight
+        if: ${{ !inputs.source_preflight_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C Telegram-upstream submodule update --init --recursive --depth=1 --jobs=4
+          bash nabdhgram/scripts/verify-upstream.sh Telegram-upstream
+
       - name: Install Android SDK and NDK
+        if: ${{ !inputs.source_preflight_only }}
         shell: bash
         run: |
           set -euo pipefail
@@ -406,6 +505,7 @@ jobs:
             sleep $((attempt * 15))
           done
       - name: Build branded debug APK
+        if: ${{ !inputs.source_preflight_only }}
         id: compile
         continue-on-error: true
         working-directory: Telegram-upstream
@@ -415,7 +515,7 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-build.log
       - name: Verify APK identity and collect launcher diagnostics
-        if: steps.compile.outcome == 'success'
+        if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -473,8 +573,11 @@ jobs:
               print("::warning::DefaultIcon alias not found in compiled manifest tree", flush=True)
           print("NOTE: Device launcher artwork still requires visual verification.", flush=True)
           PY
+          # Inspect FINAL compiled resources, not just source XML. In build #572
+          # Android night-v29 selected tg_splash_320 despite branded day-v31.
+          python3 nabdhgram/scripts/check-packaged-splash.py "$APK" apk-resources.txt apk-manifest-tree.txt
       - name: Publish verified APK with a clean filename
-        if: steps.compile.outcome == 'success'
+        if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -497,13 +600,13 @@ jobs:
           du -h dist/nabdhgram.apk >> "$GITHUB_STEP_SUMMARY"
 
       - name: Collect APK paths
-        if: always()
+        if: ${{ always() && !inputs.source_preflight_only }}
         shell: bash
         run: |
           find Telegram-upstream -type f -name '*.apk' -print > apk-paths.txt || true
           cat apk-paths.txt
       - name: Upload APK when available
-        if: always()
+        if: ${{ always() && !inputs.source_preflight_only }}
         uses: actions/upload-artifact@v4
         with:
           name: nabdhgram-identity-debug-apk
@@ -511,7 +614,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload diagnostics
-        if: always()
+        if: ${{ always() && !inputs.source_preflight_only }}
         uses: actions/upload-artifact@v4
         with:
           name: nabdhgram-identity-build-log
@@ -527,7 +630,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Report status
-        if: always()
+        if: ${{ always() && !inputs.source_preflight_only }}
         shell: bash
         run: |
           {
@@ -540,7 +643,7 @@ jobs:
             echo "Do not distribute this experimental APK."
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Fail on build error or missing APK
-        if: always()
+        if: ${{ always() && !inputs.source_preflight_only }}
         shell: bash
         env:
           BUILD_RESULT: ${{ steps.compile.outcome }}
