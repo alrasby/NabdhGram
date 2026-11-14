@@ -93,13 +93,13 @@ page = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"
 # Exactly one route: featureId 602 = Appearance > Glass Themes. Both the
 # Appearance index (0) and Fonts (601) must remain free of preset controls.
 glass_route = re.findall(
-    r"if\\s*\\(\\s*featureId\\s*==\\s*602\\s*\\)\\s*\\{\\s*addNabdhGlassPresets\\(context, content\\);\\s*\\}",
+    r"if\s*\(\s*featureId\s*==\s*602\s*\)\s*\{\s*addNabdhGlassPresets\(context, content\);\s*\}",
     page)
 check(len(glass_route) == 1
       and page.count("addNabdhGlassPresets(context, content);") == 1
       and not re.search(
-          r"if\\s*\\(\\s*titleRes\\s*==\\s*R\\.string\\.NabdhAppearanceTitle\\s*\\)"
-          r"\\s*\\{\\s*addNabdhGlassPresets\\(",
+          r"if\s*\(\s*titleRes\s*==\s*R\.string\.NabdhAppearanceTitle\s*\)"
+          r"\s*\{\s*addNabdhGlassPresets\(",
           page),
       "Glass presets must appear only under Appearance > Glass Themes, not index/fonts")
 check("if (featureId == 601)" in page and "addNabdhFeatureMenu(context, content);" in page,
