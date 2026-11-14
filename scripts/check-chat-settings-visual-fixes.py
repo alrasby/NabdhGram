@@ -49,8 +49,9 @@ textcheck2 = load("Cells/TextCheckCell2.java")
 check("Gravity.LEFT | Gravity.CENTER_VERTICAL, 22, 0, 22, 0" in textcheck2
       and "LayoutHelper.createFrame(76, LayoutHelper.MATCH_PARENT, Gravity.LEFT)" in textcheck2,
       "expandable switch or its hit target is mirrored")
-check("Gravity.CENTER_VERTICAL | Gravity.RIGHT" in textcheck2,
-      "disclosure control overlaps physical left switch")
+check("collapseViewContainer.setTranslationX(textView.getRight() + dp(8));" in textcheck2
+      and "collapseViewContainer.setTranslationX(textView.getLeft() - collapseViewContainer.getMeasuredWidth() - dp(8));" in textcheck2,
+      "upstream disclosure arrow translation must be preserved")
 
 notifications = load("Cells/NotificationsCheckCell.java")
 check("Gravity.LEFT | Gravity.CENTER_VERTICAL, 21, 0, 21, 0" in notifications
@@ -58,6 +59,14 @@ check("Gravity.LEFT | Gravity.CENTER_VERTICAL, 21, 0, 21, 0" in notifications
       "switch rows missing left gutter in notifications/settings")
 check("Gravity.RIGHT | Gravity.CENTER_VERTICAL, 8, 0, 8, 0" in notifications,
       "native with-image icon may overlap left switch")
+
+textcell = load("Cells/TextCell.java")
+check(textcell.count("Gravity.LEFT | Gravity.CENTER_VERTICAL, 22, 0, 22, 0") == 2
+      and "viewLeft = dp(22);" in textcell,
+      "TextCell smooth-transitions switch must be physically left in both locales")
+check("checkBox != null && checkBox.getVisibility() == VISIBLE ? 75" in textcell
+      and "imageView.getVisibility() == VISIBLE ? 56 : 0" in textcell,
+      "LTR TextCell title/icon clearance may overlap switch")
 
 lite = load("LiteModeSettingsActivity.java")
 check("Gravity.CENTER_VERTICAL | Gravity.LEFT, 19, 0, 19, 0" in lite,
