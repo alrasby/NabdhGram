@@ -22,7 +22,7 @@ This says nothing about new V1 tools until their APK is compiled and tested.
 | NabdhShield local signals | Opt-in pasted-link warnings; user-picked file header/extension check (first 16 bytes); local pasted-text OTP/urgency/payment/impersonation signals | Partial: no interception of Telegram file opening, malware scanning, known-bad database or live-message monitoring |
 | Message Workspace | User-chosen local draft notes with AndroidKeyStore AES-256-GCM, copy/delete | Partial: no links back to source Telegram messages |
 | Lens | Existing manual composer/context dialog extended with above local actions | Needs device checks |
-| Release | Full `assembleAfatRelease` pipeline, Firebase + owner certificate pinned; main-only manual | Prepared; no valid private signing inputs verified and no Release APK produced |
+| Release | Full `assembleAfatRelease` pipeline, Firebase + owner certificate pinned; main-only manual | Owner configured the six Actions Secrets and backed up the keystore; no production-signed Release APK or device notification test yet |
 
 ## Hierarchical settings integration (this branch; pending Android confirmation)
 
