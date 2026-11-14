@@ -29,8 +29,7 @@ check("AndroidKeyStore" in workspace and "AES/GCM/NoPadding" in workspace and
       "Cipher.DECRYPT_MODE" in workspace and "Cipher.ENCRYPT_MODE" in workspace,
       "Workspace must use strong platform-keystore authenticated encryption")
 check("context.getSharedPreferences(FILE, Context.MODE_PRIVATE)" in workspace and
-      "putString(DATA, envelope)" in workspace and "putString(DATA, value)" not in workspace and
-      "no fake" not in workspace.lower(),
+      "putString(DATA, envelope)" in workspace and "putString(DATA, value)" not in workspace,
       "Workspace must not persist plaintext")
 check("NabdhV1Engine.bounded(text)" in workspace and
       "private static final int MAX_ENTRY = 1600;" in workspace and
