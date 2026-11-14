@@ -13,9 +13,9 @@ lens = (ROOT / "overlay/java/NabdhContextLens.java").read_text(encoding="utf-8")
 overlay = (ROOT / "scripts/apply-nabdh-v1-signatures.py").read_text(encoding="utf-8")
 workflow = (ROOT / ".github/workflows/nabdhgram-identity-build.yml").read_text(encoding="utf-8")
 typography = (ROOT / "overlay/java/NabdhTypefaceManager.java").read_text(encoding="utf-8")
-chat_typefaces = (ROOT / "scripts/apply-glass-chat-typefaces.py").read_text(encoding="utf-8")
+chat_consistency = (ROOT / "scripts/apply-nabdh-chat-consistency.py").read_text(encoding="utf-8")
 voice_overlay = (ROOT / "scripts/apply-nabdh-voice-clarity.py").read_text(encoding="utf-8")
-font_settings = (ROOT / "scripts/apply-glass-settings.py").read_text(encoding="utf-8")
+
 
 
 def check(condition, why):
@@ -60,13 +60,14 @@ check("NabdhShieldTitle" in overlay and "NabdhProductivityTitle" in overlay and
       "NabdhWorkspace.show(" in overlay,
       "V1 tools lack real user-facing category actions")
 hierarchy = (ROOT / "scripts/apply-nabdh-v1-hierarchy.py").read_text(encoding="utf-8")
-check("NabdhTypefaceManager.applyChatPaints()" in chat_typefaces
-      and 'manager_target.write_text(' in chat_typefaces
-      and "NabdhTypefaceManager.applyChatPaints()" in font_settings
+check('"NabdhTypefaceManager.java"' in chat_consistency
+      and "NabdhTypefaceManager.applyChatPaints();" in chat_consistency
+      and "Theme chat-paint lifecycle" in chat_consistency
+      and "explicit selected font refresh" in chat_consistency
       and "Theme.chat_msgTextCodePaint" in typography
       and "Theme.chat_audioTitlePaint" in typography
       and "Theme.chat_replyNamePaint" in typography,
-      "Central Arabic typography manager is not integrated on initial paint creation and font changes")
+      "Native Arabic typography manager must be installed once by chat-consistency overlay and reused on font changes")
 check("apply-nabdh-voice-clarity.py Telegram-upstream" in workflow
       and "messageObject.isVoice()" in voice_overlay
       and "onAudioSessionIdChanged(int audioSessionId)" in voice_overlay

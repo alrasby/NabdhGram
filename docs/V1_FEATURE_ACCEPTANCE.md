@@ -58,14 +58,12 @@ The first public build remains blocked on signed Release and phone QA.
 
 ### Arabic Typography Architecture integration (requires phone QA)
 
-The existing `overlay/java/NabdhTypefaceManager.java` is now copied to
-Telegram native Components. Telegram Theme.createCommonChatResources calls
-it once after its real TextPaint instances are initialized, including chat,
-reply, forward, media metadata, timestamps and labels. The existing font
-settings refresh calls the same manager after font preference changes.
-Code/monospace and emoji paints remain native. This is more complete than
-updating TextView alone; visual RTL/bidi, chat layout remeasure and device
-regression still require QA.
+Existing `scripts/apply-nabdh-chat-consistency.py` already installs
+`NabdhTypefaceManager.java` at the correct late overlay stage and hooks
+Telegram Theme.createCommonChatResources as well as explicit font refresh.
+This batch preserves that single owner instead of adding a second installer.
+The regression contracts now verify one central installation and exclude
+monospace/emoji paints. Device RTL/bidi and layout remeasure still need QA.
 
 ### Voice Clarity integration (requires phone QA)
 

@@ -321,10 +321,12 @@ s = s.replace(anchor, anchor + """
                         if (paint != null) paint.setTypeface(regular);
                     }
                 }
-                // All canvas-drawn chat, reply, forward, media and time labels
-                // are owned by the shared typography manager (not four ad-hoc
-                // overrides). Preserve code monospace and emoji paint.
-                org.telegram.ui.Components.NabdhTypefaceManager.applyChatPaints();
+                // These chat messages are canvas TextPaint, not TextViews.
+                // Keep their existing point sizes and emoji fallback behavior.
+                if (Theme.chat_msgTextPaint != null) Theme.chat_msgTextPaint.setTypeface(regular);
+                if (Theme.chat_replyTextPaint != null) Theme.chat_replyTextPaint.setTypeface(regular);
+                if (Theme.chat_quoteTextPaint != null) Theme.chat_quoteTextPaint.setTypeface(regular);
+                if (Theme.chat_explanationTextPaint != null) Theme.chat_explanationTextPaint.setTypeface(regular);
                 org.telegram.messenger.NotificationCenter.getGlobalInstance().postNotificationName(
                         org.telegram.messenger.NotificationCenter.didSetNewTheme, false, false);
             };
