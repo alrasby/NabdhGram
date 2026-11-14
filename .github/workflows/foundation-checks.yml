@@ -52,6 +52,16 @@ jobs:
         run: python3 scripts/check-glass-design-contract.py
       - name: Verify fixed-left ON thumb and native state invariants
         run: python3 scripts/apply-fixed-left-toggle-thumb.py --self-test
+      - name: Test release signing guard and offline V1 engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/configure-release-signing.py --self-test
+          python3 scripts/verify-release-apk.py --self-test
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          javac -encoding UTF-8 -d "$tmpdir" overlay/java/NabdhV1Engine.java tests/java/org/telegram/ui/Components/NabdhV1EngineSmokeTest.java
+          java -cp "$tmpdir" org.telegram.ui.Components.NabdhV1EngineSmokeTest
       - name: Ensure no Android APK is misrepresented
         run: |
           test -f docs/BUILD_SETUP.md
