@@ -10,6 +10,46 @@
 - Production APK is built only by a **manual dispatch on main** of [NabdhGram owner-signed Release APK](../.github/workflows/nabdhgram-signed-release.yml). There is no automatic push-to-public release or Play Store action.
 - The release flow applies the same pinned source overlays/compatibility checks and final day/night logo checks used by Debug. Firebase must be configured for the exact package.
 
+## Practical setup on your own computer
+
+**The owner generates the permanent key; GitHub and Telegram cannot provide it.**
+Never paste keystore/passwords into ChatGPT or commit them to Git.
+Install Java JDK 17+, Python 3 and [GitHub CLI](https://cli.github.com/);
+run `gh auth login` locally. In [Firebase Console](https://console.firebase.google.com/),
+register the exact Android package `net.nabdhserv.nabdhgram` and download
+`google-services.json`.
+
+After cloning the V1 branch on your computer, execute:
+
+Windows PowerShell:
+```powershell
+gh auth login
+py -3 tools/setup-release-secrets.py --create "$HOME\NabdhGramPrivate\nabdhgram-release.jks" --firebase-json "$HOME\Downloads\google-services.json"
+```
+
+Linux / macOS:
+```bash
+gh auth login
+python3 tools/setup-release-secrets.py --create "$HOME/NabdhGramPrivate/nabdhgram-release.jks" --firebase-json "$HOME/Downloads/google-services.json"
+```
+
+This prompts for a new owner password, generates a long-lived 4096-bit RSA PKCS12
+keystore, checks the certificate fingerprint and Firebase package and submits
+the six expected GitHub Actions secrets via authenticated CLI standard input.
+It does NOT print private values or write passwords to files. The .jks stays
+on your own machine; **back it up offline** for every future upgrade.
+
+Already have a real owner release signing key? Use `--existing PATH_TO_JKS`
+instead of `--create` to avoid breaking update signing continuity. `--dry-run`
+validates locally without changing GitHub. Firebase setup can be completed
+later by rerunning `--existing`, but owner-signed Release cannot build until
+all required inputs exist. Your existing Telegram API secrets are untouched.
+
+**Important:** this signed-release workflow becomes eligible for manual
+dispatch on `main` only after the feature PR passes tests and is merged.
+A new Release certificate cannot update an installed differently signed Debug
+APK with the same package name.
+
 ## Private GitHub Actions secrets required
 
 Create these **outside the repository**, at Settings → Secrets and variables → Actions:

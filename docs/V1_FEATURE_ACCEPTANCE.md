@@ -26,8 +26,7 @@ This says nothing about new V1 tools until their APK is compiled and tested.
 
 ## Not yet integrated as complete V1
 
-- **Smart Chat Preview** modal browsing without unintended read acknowledgments
-  and explicit mark-as-read following Telegram. Do not fake no-read guarantees.
+- **Smart Chat Preview:** the official Telegram-native modal preview is ALREADY visible in the owner's installed screenshot; pinned DialogsActivity.showChatPreview opens ChatActivity through presentFragmentAsPreviewWithMenu and provides a separate explicit markAsRead(dialogId) action. Preserve the existing preview; do not duplicate it or claim custom implementation. Verify unread count AND server read acknowledgements stay unchanged from preview until the user marks read or opens chat normally.
 - **Voice Clarity:** tested DSP / playback-quality and level processing, not just
   relabeling native speed controls.
 - **Network Intelligence:** actual intelligent and persistent Wi-Fi/mobile
