@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parent.parent
 engine = (ROOT / "overlay/java/NabdhV1Engine.java").read_text(encoding="utf-8")
 workspace = (ROOT / "overlay/java/NabdhWorkspace.java").read_text(encoding="utf-8")
+fileguard = (ROOT / "overlay/java/NabdhFileGuard.java").read_text(encoding="utf-8")
 lens = (ROOT / "overlay/java/NabdhContextLens.java").read_text(encoding="utf-8")
 overlay = (ROOT / "scripts/apply-nabdh-v1-signatures.py").read_text(encoding="utf-8")
 workflow = (ROOT / ".github/workflows/nabdhgram-identity-build.yml").read_text(encoding="utf-8")
@@ -31,6 +32,13 @@ check("AndroidKeyStore" in workspace and "AES/GCM/NoPadding" in workspace and
 check("context.getSharedPreferences(FILE, Context.MODE_PRIVATE)" in workspace and
       "putString(DATA, envelope)" in workspace and "putString(DATA, value)" not in workspace,
       "Workspace must not persist plaintext")
+check("public static String scam(CharSequence input, boolean ar)" in engine
+      and "NabdhV1Engine.scam(value, arabic)" in overlay,
+      "local opt-in scam indicators not connected to native V1 actions")
+check("public static String inspect(" in fileguard
+      and "byte[] header" in fileguard
+      and "No known mismatch found" in fileguard,
+      "manual file guard lacks bounded file-header check and safety disclaimer")
 check("NabdhV1Engine.bounded(text)" in workspace and
       "private static final int MAX_ENTRY = 1600;" in workspace and
       "private static final int LIMIT = 40;" in workspace,
@@ -53,7 +61,9 @@ for contract in ("featureId == 0", "nabdhFeatureRow", "NabdhHShieldOverview",
                  "NabdhHAppearanceOverview", "featureId == 601",
                  "featureId == 201", "featureId == 301", "featureId == 302",
                  "featureId == 303", "featureId == 501", "featureId == 502",
-                 "featureId == 503", "NabdhGlassRowDecoration.newCardBackground()"):
+                 "featureId == 503", "NabdhGlassRowDecoration.newCardBackground()",
+                 "ACTION_OPEN_DOCUMENT", "NabdhFileGuard.inspect",
+                 "NabdhHChooseFile", "featureId == 103"):
     check(contract in hierarchy, "missing hierarchy / retained-control contract: " + contract)
 
 check("apply-nabdh-v1-signatures.py Telegram-upstream" in workflow and
@@ -66,7 +76,7 @@ if len(sys.argv) != 2:
     raise SystemExit("Usage: check-nabdh-v1-integration.py --self-test | TELEGRAM_SOURCE")
 target = Path(sys.argv[1])
 ui = target / "TMessagesProj/src/main/java/org/telegram/ui"
-for name in ("NabdhV1Engine", "NabdhWorkspace"):
+for name in ("NabdhV1Engine", "NabdhWorkspace", "NabdhFileGuard"):
     f = ui / "Components" / (name + ".java")
     check(f.is_file(), "Missing generated " + name)
     check(f.read_text(encoding="utf-8") == (ROOT / "overlay/java" / (name + ".java")).read_text(encoding="utf-8"),
@@ -95,7 +105,8 @@ for contract in ("private final int featureId;", "addNabdhFeatureMenu(context, c
                  "if (featureId == 601)", "if (featureId == 201)",
                  "if (featureId == 302)", "if (featureId == 303)",
                  "if (featureId == 501)", "if (featureId == 502)",
-                 "if (featureId == 503)"):
+                 "if (featureId == 503)", "featureId == 103",
+                 "NabdhFileGuard.inspect"):
     check(contract in page, "generated hierarchy missing: " + contract)
 for locale in ("values", "values-ar"):
     resource = target / "TMessagesProj/src/main/res" / locale / "nabdh_v1_hierarchy.xml"
@@ -105,7 +116,8 @@ for locale in ("values", "values-ar"):
     check(len(keys) == len(set(keys)), "duplicate hierarchy resource: " + locale)
     for key in ("NabdhHLinks", "NabdhHFiles", "NabdhHScam", "NabdhHPreview",
                 "NabdhHWorkspace", "NabdhHVoice", "NabdhHData",
-                "NabdhHFonts", "NabdhHThemes", "NabdhHStatusPending"):
+                "NabdhHFonts", "NabdhHThemes", "NabdhHStatusPending",
+                "NabdhHChooseFile", "NabdhHFileError"):
         check(key in keys, "missing " + locale + " label: " + key)
 check("if (titleRes == R.string.NabdhShieldTitle) {" not in page.split("private void addNabdhV1Tools",1)[1].split("private int nabdhCategoryDescription",1)[0],
       "shield actions must route by selected feature, not parent category")
