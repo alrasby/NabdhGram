@@ -42,6 +42,8 @@ check(not any(term in (engine + workspace) for term in (
 check("MAX_INPUT = 8000" in engine and "No basic signals detected; this does NOT mean safe." in engine,
       "input bound or URL safety disclaimer missing")
 check("NabdhShieldTitle" in overlay and "NabdhProductivityTitle" in overlay and
+      "NabdhNetworkTitle" in overlay and "new DataSettingsActivity()" in overlay and
+      "new CacheControlActivity()" in overlay and "new ProxyListActivity()" in overlay and
       "NabdhWorkspace.show(" in overlay,
       "V1 tools lack real user-facing category actions")
 check("apply-nabdh-v1-signatures.py Telegram-upstream" in workflow and
@@ -60,7 +62,7 @@ for name in ("NabdhV1Engine", "NabdhWorkspace"):
     check(f.read_text(encoding="utf-8") == (ROOT / "overlay/java" / (name + ".java")).read_text(encoding="utf-8"),
           name + " differs from pinned template")
 page = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
-for symbol in ("addNabdhV1Tools", "NabdhShieldTitle", "NabdhProductivityTitle",
+for symbol in ("addNabdhV1Tools", "addNabdhNetworkTools", "NabdhShieldTitle", "NabdhProductivityTitle", "NabdhNetworkTitle",
                "NabdhV1Engine.focus", "NabdhV1Engine.catchUp",
                "NabdhV1Engine.shield", "NabdhWorkspace.saveWithFeedback"):
     check(symbol in page, "Missing native UI action: " + symbol)
