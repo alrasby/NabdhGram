@@ -46,6 +46,16 @@ check("NabdhShieldTitle" in overlay and "NabdhProductivityTitle" in overlay and
       "new CacheControlActivity()" in overlay and "new ProxyListActivity()" in overlay and
       "NabdhWorkspace.show(" in overlay,
       "V1 tools lack real user-facing category actions")
+hierarchy = (ROOT / "scripts/apply-nabdh-v1-hierarchy.py").read_text(encoding="utf-8")
+check("apply-nabdh-v1-hierarchy.py Telegram-upstream" in workflow,
+      "hierarchical feature routing overlay not installed")
+for contract in ("featureId == 0", "nabdhFeatureRow", "NabdhHShieldOverview",
+                 "NabdhHAppearanceOverview", "featureId == 601",
+                 "featureId == 201", "featureId == 301", "featureId == 302",
+                 "featureId == 303", "featureId == 501", "featureId == 502",
+                 "featureId == 503", "NabdhGlassRowDecoration.newCardBackground()"):
+    check(contract in hierarchy, "missing hierarchy / retained-control contract: " + contract)
+
 check("apply-nabdh-v1-signatures.py Telegram-upstream" in workflow and
       "check-nabdh-v1-integration.py Telegram-upstream" in workflow,
       "Native v1 overlay not installed/checked before building")
@@ -75,4 +85,29 @@ for locale in ("values", "values-ar"):
     for key in ("NabdhV1Focus", "NabdhV1CatchUp", "NabdhV1Shield", "NabdhV1Save",
                 "NabdhV1OpenWorkspace", "NabdhV1ManualDisclosure", "NabdhV1Empty"):
         check(key in names, "Missing translated Android resource: " + key)
+for contract in ("private final int featureId;", "addNabdhFeatureMenu(context, content);",
+                 "nabdhFeatureRow(context, content, 101);",
+                 "nabdhFeatureRow(context, content, 201);",
+                 "nabdhFeatureRow(context, content, 301);",
+                 "nabdhFeatureRow(context, content, 401);",
+                 "nabdhFeatureRow(context, content, 501);",
+                 "nabdhFeatureRow(context, content, 601);",
+                 "if (featureId == 601)", "if (featureId == 201)",
+                 "if (featureId == 302)", "if (featureId == 303)",
+                 "if (featureId == 501)", "if (featureId == 502)",
+                 "if (featureId == 503)"):
+    check(contract in page, "generated hierarchy missing: " + contract)
+for locale in ("values", "values-ar"):
+    resource = target / "TMessagesProj/src/main/res" / locale / "nabdh_v1_hierarchy.xml"
+    check(resource.is_file(), "hierarchy translations missing: " + locale)
+    nodes = ET.parse(resource).getroot()
+    keys = [n.attrib.get("name") for n in nodes]
+    check(len(keys) == len(set(keys)), "duplicate hierarchy resource: " + locale)
+    for key in ("NabdhHLinks", "NabdhHFiles", "NabdhHScam", "NabdhHPreview",
+                "NabdhHWorkspace", "NabdhHVoice", "NabdhHData",
+                "NabdhHFonts", "NabdhHThemes", "NabdhHStatusPending"):
+        check(key in keys, "missing " + locale + " label: " + key)
+check("if (titleRes == R.string.NabdhShieldTitle) {" not in page.split("private void addNabdhV1Tools",1)[1],
+      "shield actions must route by selected feature, not parent category")
+
 print("PASS: generated native local tools, opt-in UI controls and AR/EN resources")
