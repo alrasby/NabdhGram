@@ -50,6 +50,8 @@ jobs:
         run: python3 scripts/check-nabdh-chat-consistency.py --self-test
       - name: Verify integrated Glass design contract
         run: python3 scripts/check-glass-design-contract.py
+      - name: Verify fixed-left ON thumb and native state invariants
+        run: python3 scripts/apply-fixed-left-toggle-thumb.py --self-test
       - name: Ensure no Android APK is misrepresented
         run: |
           test -f docs/BUILD_SETUP.md
