@@ -53,6 +53,11 @@ styles = (res / "values-v31/styles.xml").read_text(encoding="utf-8")
 assert '<item name="android:windowSplashScreenAnimatedIcon">@drawable/nabdhgram_launcher_foreground</item>' in styles, "Native Android 12 splash still references Telegram logo"
 assert '<item name="android:windowSplashScreenAnimatedIcon">@drawable/tg_splash_320</item>' not in styles, "Official Telegram launch splash must not return"
 assert '<item name="android:windowSplashScreenBackground">#04252A</item>' in styles, "Native Android 12 splash background mismatches NabdhGram brand"
+night = (res / "values-night/styles.xml").read_text(encoding="utf-8")
+assert '<item name="android:windowSplashScreenAnimatedIcon">@drawable/nabdhgram_launcher_foreground</item>' in night, "Native night startup still renders official Telegram mark"
+assert '<item name="android:windowSplashScreenAnimatedIcon">@drawable/tg_splash_320</item>' not in night, "Unbranded Telegram startup persists in night qualifier"
+assert '<item name="android:windowSplashScreenBackground">#04252A</item>' in night, "Night splash background differs from approved palette"
+
 native_splash = res / "drawable-nodpi/nabdhgram_launcher_foreground.png"
 app_splash = root / "TMessagesProj_App/src/main/res/drawable-nodpi/nabdhgram_launcher_foreground.png"
 assert native_splash.is_file() and app_splash.is_file(), "Approved splash foreground missing from native or app module"

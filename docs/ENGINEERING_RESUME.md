@@ -97,3 +97,20 @@ original height minima (bounded maximum). Add generated Java invariants.
 Must pass real pinned Telegram overlay preflight and merged APK build,
 then demonstrate a real Arabic screenshot with no white group slabs or
 clipped subtitles. Existing `main` remains unchanged.
+
+## 2026-11-14 — Android #572 night splash and Profile bio P0
+
+Confirmed by real packaged APK #572 resource table (not only source):
+`Theme.TMessages.Start` day-v31 = NabdhGram foreground, night-v29 =
+`tg_splash_320`. The missing night-style patch is added on
+`fix/night-splash-bio-and-upgrade-gate`. A mandatory APK binary
+resources.arsc verification now checks every day/night style variant.
+User screenshot shows 12dp white line under Profile bio, sourced from
+`AboutLinkCell.bottomShadow` manual draw; new scoped Glass flag removes
+this overlay without altering links or general cells.
+
+Required next: Foundation + pinned Telegram preflight on the new branch;
+merge only to draft PR #63 after green checks; full Gradle APK then
+inspect final resource configurations and UI on an Android device.
+Never claim final device reliability from source/compiled tests only.
+`main` still unchanged.

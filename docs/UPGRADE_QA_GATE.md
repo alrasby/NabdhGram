@@ -194,3 +194,46 @@ Round Video and Voice Recorder. Check all three Processing/Debug rows
 have correctly placed icons and scrolling/taps still work. This is a
 visual acceptance criterion and needs a new APK; source checks alone
 cannot certify device appearance.
+
+## Release blocking: native dark-mode splash and Profile biography shadow
+
+**Android #572 APK inspection (2026-11-14):** after unpacking its real
+`resources.arsc`, we found two compiled configurations for
+`Theme.TMessages.Start`. The **day-v31** style correctly selected
+`@drawable/nabdhgram_launcher_foreground`; the **night-v29** style still
+selected `@drawable/tg_splash_320`. Night resource qualifiers can outrank
+the source `values-v31` variant on Android 12+. This explains the
+reproducible official Telegram blue airplane on cold start even though
+source-only preflight and Gradle succeeded.
+
+The branding overlay now modifies **both** pinned
+`values-v31/styles.xml` and `values-night/styles.xml`. A new
+`check-packaged-splash.py` reads the **final APK's compiled resource table**
+and requires *all* relevant launch theme configurations to resolve to
+the approved NabdhGram foreground and its `#04252A` background, in day
+AND night modes, and confirms the manifest uses that theme. The checker
+was run against #572's real APK and correctly **failed on night-v29**
+before this fix; an isolated patched binary test passed with both
+configurations branded. An upgrade MUST fail if the upstream creates
+another competing launch theme.
+
+The profile's visible white strip came from Telegram's
+`Cells/AboutLinkCell.java`, which manually draws a
+`gradient_bottom` 12dp white shadow **over** our Glass profile bio card.
+`apply-nabdh-profile-bio-glass.py` opts in only the AboutLinkCell
+constructed by `ProfileActivity` and suppresses only that manual white
+overlay. Text, URLs, accessibility, collapse, touch and other native
+cells are preserved. Generated-Java smoke tests enforce this.
+
+**Mandatory physical verification:** Android 12+ cold start through the
+launcher with both light/dark system appearance and after a launcher icon
+switch; the user's own profile and a channel profile must not show a
+white horizontal strip under biography; RTL and long/mixed-script bio,
+bio links, scrolling and dark/imported themes must still work.
+
+**Never treat green Gradle alone as visual release approval.** Future
+upgrades must pass pinned upstream Java preservation, full generated
+UI contracts, the compiled resource variants check, Android smoke,
+and human-approved sanitized screenshots before merging into `main`.
+A source comparison cannot guarantee every future Telegram UI change
+is harmless; unknown anchors or resource configurations block release.
