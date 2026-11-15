@@ -59,6 +59,8 @@ public final class NabdhChannelFeedActivity extends Activity {
         setTitle(local("Channel Feed", "موجز القنوات"));
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
+        screen.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
+                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         int pad = (int) (12 * getResources().getDisplayMetrics().density);
         screen.setPadding(pad, pad, pad, pad);
         screen.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
