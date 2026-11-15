@@ -410,6 +410,7 @@ jobs:
           python3 nabdhgram/scripts/apply-nabdh-v1-hierarchy.py Telegram-upstream
           python3 nabdhgram/scripts/apply-nabdh-voice-clarity.py Telegram-upstream
           python3 nabdhgram/scripts/apply-nabdh-settings-order.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-v1-user-features.py Telegram-upstream
 
       - name: Unify chat bubble palette and native Arabic TextPaint refresh
         shell: bash
@@ -455,6 +456,8 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-v1-integration.py Telegram-upstream
           python3 nabdhgram/scripts/apply-nabdh-settings-order.py --verify Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-v1-user-features.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-v1-user-features.py nabdhgram/scripts/check-nabdh-v1-user-features.py
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-v1-hierarchy.py nabdhgram/scripts/apply-nabdh-voice-clarity.py nabdhgram/scripts/apply-nabdh-notification-typography.py nabdhgram/scripts/check-nabdh-notification-typography.py
           python3 nabdhgram/scripts/check-nabdh-chat-consistency.py Telegram-upstream
           python3 nabdhgram/scripts/check-chat-settings-visual-fixes.py Telegram-upstream

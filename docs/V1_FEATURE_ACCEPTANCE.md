@@ -86,6 +86,31 @@ typeface, and rebuilds their layouts on font changes. New source preflight
 verifies all these invariants. Confirm long Arabic descriptions, mixed digits,
 RTL and LTR, selected fonts and UI scale on the device.
 
+### Explicit privacy and settings convenience batch — implementation pending device QA
+
+The NabdhAI category now has **manual, opt-in** preference controls:
+no background chat reading, behavior tracking, calls, login or recording hooks.
+Manual Focus/Catch result language follows the explicitly chosen value.
+The consent-independent output language and optional feedback setting are
+stored only in NabdhGram's isolated preferences, with one-tap clearing.
+AICore, Gemini Nano, Gemma and real language-model inference are **NOT**
+connected by this batch. Do not label these controls an operational AI model.
+
+Appearance > Glass Themes offers **Android 12+ optional Monet-derived accents**
+for NabdhGram Settings headings/icons, with a contrast-based fallback; it does
+not overwrite imported Telegram themes or imply full app-wide Monet.
+
+Appearance > Settings Backup offers user-invoked Storage Access Framework
+JSON export/import, limited to an explicit preference allowlist. Validation,
+size caps and confirmation occur before writing any imported settings.
+No Telegram sessions, account data, chats, model approvals or secrets exported.
+Reopen Settings for updates; confirm visual color/font behavior on a device.
+
+Source checks validate output languages, explicit consent gates, and that
+secret files/Telegram session keys are not in the backup schema.
+Physical-device export/import, rotation, RTL, theme contrast, Android
+12/13/14/15 and permission-picker tests still required.
+
 ## Not yet integrated as complete V1
 
 - **Smart Chat Preview:** the official Telegram-native modal preview is ALREADY visible in the owner's installed screenshot; pinned DialogsActivity.showChatPreview opens ChatActivity through presentFragmentAsPreviewWithMenu and provides a separate explicit markAsRead(dialogId) action. Preserve the existing preview; do not duplicate it or claim custom implementation. Verify unread count AND server read acknowledgements stay unchanged from preview until the user marks read or opens chat normally.
