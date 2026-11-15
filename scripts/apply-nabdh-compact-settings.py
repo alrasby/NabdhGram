@@ -57,7 +57,7 @@ def replace_method(text, signature, body, label):
 
 main = java / "NabdhGramSettingsActivity.java"
 source = main.read_text(encoding="utf-8")
-assert "section(context, compactGrid ?" in source, "keep existing feature order / mobile list"
+assert source.count("section(context, content, R.string.") == 7, "preserve all seven native-ordered categories"
 section = r'''    private void section(Context context, LinearLayout parent, int titleRes, int descriptionRes) {
         final int accent = org.telegram.ui.Components.NabdhDynamicAccent.accent(
                 context, Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
@@ -66,6 +66,7 @@ section = r'''    private void section(Context context, LinearLayout parent, int
                 : titleRes == R.string.NabdhProductivityTitle ? R.drawable.settings_folders
                 : titleRes == R.string.NabdhLanguageTitle ? R.drawable.settings_language
                 : titleRes == R.string.NabdhNetworkTitle ? R.drawable.settings_data
+                : titleRes == R.string.NabdhIntelligenceTitle ? R.drawable.settings_features
                 : R.drawable.settings_chat;
         int summaryRes = R.string.NabdhCompactAppearance;
         if (titleRes == R.string.NabdhShieldTitle) summaryRes = R.string.NabdhCompactShield;
@@ -73,6 +74,7 @@ section = r'''    private void section(Context context, LinearLayout parent, int
         else if (titleRes == R.string.NabdhProductivityTitle) summaryRes = R.string.NabdhCompactProductivity;
         else if (titleRes == R.string.NabdhLanguageTitle) summaryRes = R.string.NabdhCompactLanguage;
         else if (titleRes == R.string.NabdhNetworkTitle) summaryRes = R.string.NabdhCompactNetwork;
+        else if (titleRes == R.string.NabdhIntelligenceTitle) summaryRes = R.string.NabdhCompactIntelligence;
         org.telegram.ui.Components.NabdhCompactSettings.row(context, parent,
                 NabdhStrings.get(context, titleRes),
                 NabdhStrings.get(context, summaryRes), icon, accent,
@@ -194,6 +196,7 @@ translations = {
         "Language": "Translation and voice playback",
         "Network": "Browser, camera, data and storage",
         "Appearance": "Fonts, themes and settings backup",
+        "Intelligence": "Optional private on-device AI tools",
     },
     "values-ar": {
         "Shield": "الروابط المشبوهة وفحص الملفات الاختياري",
@@ -202,6 +205,7 @@ translations = {
         "Language": "الترجمة وتشغيل الرسائل الصوتية",
         "Network": "المتصفح والكاميرا والبيانات والتخزين",
         "Appearance": "الخطوط والثيمات ونسخ الإعدادات",
+        "Intelligence": "أدوات ذكاء محلي اختيارية وخاصة",
     },
 }
 for lang, entries in translations.items():
