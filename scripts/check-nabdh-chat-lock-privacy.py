@@ -75,9 +75,11 @@ require("@Override protected void onPause()" in activity and
         "@Override protected void onResume()" in activity and
         "if (screen != null && !authorized && NabdhChatLock.configured(this))" in activity,
         "PIN manager must re-authenticate after losing foreground focus")
-require("org.telegram.messenger.LocaleController.getString(" in activity and
-        "Theme.key_windowBackgroundWhiteBlackText" in activity,
-        "PIN manager must respect selected locale and theme")
+require("org.telegram.ui.NabdhStrings.get(this," in activity and
+        "Theme.key_windowBackgroundWhiteBlackText" in activity and
+        "NabdhToolUi.styleInput(this, field)" in activity and
+        "NabdhToolUi.styleButton(this, button)" in activity,
+        "PIN manager must use selected Telegram locale and shared native form styling")
 require("DialogObject.isEncryptedDialog(dialog.id)" in activity,
         "native secret chats are not silently added to lock manager")
 require("MessagesController.markDialogAsRead(" not in locks and
