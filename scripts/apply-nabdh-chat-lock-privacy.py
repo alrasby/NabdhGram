@@ -163,6 +163,26 @@ for index, call in enumerate(calls):
     s = once(s, call, "if (" + read_guard + ") {\n            " + call + "\n        }", "read confirmation " + str(index+1))
 chat.write_text(s, encoding="utf-8")
 
+# A PIN gate is not private if Telegram's main dialog list still previews
+# the last message, thumbnail, sender or typing text for that protected chat.
+# Replace only the rendered strings, never the real messages or read state.
+cell = ui / "Cells/DialogCell.java"
+cell_src = cell.read_text(encoding="utf-8")
+cell_anchor = """            Layout.Alignment align = isForum && LocaleController.isRTL ? Layout.Alignment.ALIGN_OPPOSITE : Layout.Alignment.ALIGN_NORMAL;"""
+cell_body = """            if (getContext() != null && currentDialogId != 0 && !isFolderCell() &&
+                    org.telegram.ui.Components.NabdhChatLock.isLocked(
+                            getContext().getApplicationContext(), currentAccount, currentDialogId)) {
+                messageStringFinal = LocaleController.isRTL
+                        ? "🔒 محادثة مقفلة" : "🔒 Locked chat";
+                messageNameString = null;
+                messageNameLayout = null;
+                typingLayout = null;
+                thumbsCount = 0;
+            }
+            Layout.Alignment align = isForum && LocaleController.isRTL ? Layout.Alignment.ALIGN_OPPOSITE : Layout.Alignment.ALIGN_NORMAL;"""
+cell_src = once(cell_src, cell_anchor, cell_body, "chat-list message preview")
+cell.write_text(cell_src, encoding="utf-8")
+
 lock = ui / "Components/NabdhChatLock.java"
 s = lock.read_text(encoding="utf-8")
 head = """        save(context, info);
@@ -170,6 +190,8 @@ head = """        save(context, info);
     }"""
 replace = """        save(context, info);
         UNLOCKED.remove(id(account, dialog));
+        org.telegram.messenger.NotificationCenter.getInstance(account)
+                .postNotificationName(org.telegram.messenger.NotificationCenter.dialogsNeedReload);
         if (enabled) {
             // Dismiss existing notifications using Telegram's own local queue.
             // Does not issue a Telegram server read receipt.
