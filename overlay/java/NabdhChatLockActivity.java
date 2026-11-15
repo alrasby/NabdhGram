@@ -26,15 +26,18 @@ public final class NabdhChatLockActivity extends Activity {
         return org.telegram.messenger.LocaleController.isRTL ? ar : en;
     }
 
-    @Override protected void onStop() {
-        // Authorization must never outlive the foreground PIN management UI.
+    @Override protected void onPause() {
+        // PIN manager authorization lasts only while this Activity has focus.
+        // A translucent overlay or multitasking can call onPause without onStop.
         authorized = false;
-        super.onStop();
+        super.onPause();
     }
 
-    @Override protected void onRestart() {
-        super.onRestart();
-        if (screen != null) render();
+    @Override protected void onResume() {
+        super.onResume();
+        if (screen != null && !authorized && NabdhChatLock.configured(this)) {
+            render();
+        }
     }
 
     @Override public void onCreate(Bundle state) {
