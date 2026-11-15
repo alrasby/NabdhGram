@@ -81,12 +81,12 @@ jobs:
           for name in NABDH_RELEASE_KEYSTORE_B64 NABDH_RELEASE_STORE_PASSWORD NABDH_RELEASE_KEY_ALIAS NABDH_RELEASE_KEY_PASSWORD NABDH_RELEASE_CERT_SHA256 NABDH_FIREBASE_CONFIG_B64; do
             if [[ -z "${!name:-}" ]]; then echo "::error::Missing project-owned release secret: $name"; exit 1; fi
           done
-      - name: Configure Java 17
+      - name: Configure Java 21 for Java 21 MediaPipe AI library
         if: ${{ !inputs.source_preflight_only }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - name: Restore Gradle dependency and build caches
         if: ${{ !inputs.source_preflight_only }}
         uses: gradle/actions/setup-gradle@v4
