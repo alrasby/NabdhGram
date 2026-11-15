@@ -62,8 +62,8 @@ main = java / "NabdhGramSettingsActivity.java"
 source = main.read_text(encoding="utf-8")
 assert source.count("section(context, content, R.string.") == 7, "preserve all seven native-ordered categories"
 section = r'''    private void section(Context context, LinearLayout parent, int titleRes, int descriptionRes) {
-        final int accent = org.telegram.ui.Components.NabdhDynamicAccent.accent(
-                context, Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        final int accent = org.telegram.ui.Components.NabdhDynamicAccent.accent(context,
+                Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         final int icon = titleRes == R.string.NabdhShieldTitle ? R.drawable.settings_privacy
                 : titleRes == R.string.NabdhPrivacyTitle ? R.drawable.settings_devices
                 : titleRes == R.string.NabdhProductivityTitle ? R.drawable.settings_folders
