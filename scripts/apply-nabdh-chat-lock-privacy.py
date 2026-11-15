@@ -228,11 +228,11 @@ for index, call in enumerate(calls):
     s = once(s, call, "if (" + read_guard + ") {\n            " + call + "\n        }", "read confirmation " + str(index+1))
 # The final native read acknowledgement on pause runs BEFORE revocation.
 # Returning from background must not silently reuse an old PIN authorization.
-pause_ack = ("if (" + read_guard + ") {\\n            " +
+pause_ack = ("if (" + read_guard + ") {\n            " +
              "getMessagesController().markDialogAsReadNow(dialog_id, replyId);" +
-             "\\n        }")
+             "\n        }")
 s = once(s, pause_ack,
-         pause_ack + "\\n        org.telegram.ui.Components.NabdhChatLock.revoke(currentAccount, dialog_id);",
+         pause_ack + "\n        org.telegram.ui.Components.NabdhChatLock.revoke(currentAccount, dialog_id);",
          "revoke local PIN session only after native final read acknowledgement")
 chat.write_text(s, encoding="utf-8")
 
