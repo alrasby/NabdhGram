@@ -157,6 +157,32 @@ source = replace_once(source,
             explanation.setEllipsize(android.text.TextUtils.TruncateAt.END);
         }
         content.addView(explanation);""", "compact category summary")
+# Previously the Fonts detail displayed eight radios above both sliders,
+# extending far past one viewport. The selected font remains identical, but
+# the choice list is an explicit, collapsible native selector.
+source = replace_once(source, "            fontCard.addView(choices);", """            choices.setVisibility(View.GONE);
+            fontTitle.setText(NabdhStrings.get(context, R.string.NabdhFontTitle) +
+                    "  ·  " + NabdhStrings.get(context,
+                    names[Math.max(0, initialFontIndex)]));
+            fontTitle.setTextSize(15);
+            fontTitle.setPadding(nabdhDp(context, 8), nabdhDp(context, 12),
+                    nabdhDp(context, 8), nabdhDp(context, 12));
+            fontTitle.setClickable(true);
+            fontTitle.setFocusable(true);
+            fontTitle.setOnClickListener(v -> choices.setVisibility(
+                    choices.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
+            choices.setOnCheckedChangeListener((group, checkedId) -> {
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    View child = group.getChildAt(i);
+                    if (child.getId() == checkedId && child instanceof android.widget.RadioButton) {
+                        fontTitle.setText(NabdhStrings.get(context, R.string.NabdhFontTitle)
+                                + "  ·  " + ((android.widget.RadioButton) child).getText());
+                        choices.setVisibility(View.GONE);
+                        break;
+                    }
+                }
+            });
+            fontCard.addView(choices);""", "collapsible font choice without replacing its existing saved onClick behavior")
 page.write_text(source, encoding="utf-8")
 
 from xml.sax.saxutils import escape
