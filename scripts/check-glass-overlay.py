@@ -167,8 +167,10 @@ checks = {
             ("GradientDrawable glassCard =", "GradientDrawable infoCard =",
              "GradientDrawable fontGlass =", "RippleDrawable touchSurface =")),
     "NabdhGram settings categories use theme-aware shared drawable": all(
-        "NabdhGlassRowDecoration.newCardBackground()" in (ui / page).read_text(encoding="utf-8")
-        for page in ("NabdhGramSettingsActivity.java", "NabdhGramFeatureCategoryActivity.java")),
+        "NabdhCompactSettings.row(" in (ui / page).read_text(encoding="utf-8")
+        for page in ("NabdhGramSettingsActivity.java", "NabdhGramFeatureCategoryActivity.java"))
+        and "Theme.key_windowBackgroundWhite" in
+        (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "native Glass rows include specular highlight":
         "canvas.drawLine(rect.left + round" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
@@ -494,9 +496,11 @@ checks = {
         and '"serif".equals(family)' in typefaces,
     "appearance font preference persisted": 'getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
         and 'putString("font_family", family).commit()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
-    "settings card native ripple": "card.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in settings
-        and "extends android.graphics.drawable.RippleDrawable" in
-            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+    "settings card native ripple": "NabdhCompactSettings.row(context, parent" in settings
+        and "new RippleDrawable(" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+        and "group.setClipToOutline(true)" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
         and "makeRippleMask()" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
     "pinned decoration never draws a box across mixed chat rows":
