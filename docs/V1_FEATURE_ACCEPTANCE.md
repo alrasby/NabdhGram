@@ -154,7 +154,9 @@ the correct adjacency.
 The existing `apply-hide-proxy-promo.py` is enabled in Android builds. It
 detects only Telegram's `PROMO_TYPE_PROXY` and calls Telegram's native
 `MessagesController.hidePromoDialog()` on dialog resume and reload, with a
-15-second retry guard. This is client-side dismissal, **not forceful deletion
+15-second retry guard. Network > Proxy now exposes an explicit toggle
+(default ON) for this behavior, without changing the server state.
+This is client-side dismissal, **not forceful deletion
 on Telegram servers**, and no protection from all future reappearance has
 been proven. It must not affect ordinary channels, pinned chats, or service
 announcements. Validate reconnecting/changing MTProxy on an Android device.
