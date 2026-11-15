@@ -479,6 +479,8 @@ jobs:
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhBrowserActivity.java
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhCameraActivity.java
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhChannelFeedActivity.java
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-camera-browser.py
+          python3 nabdhgram/scripts/check-nabdh-camera-browser.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-ai-android-compat.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
