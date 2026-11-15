@@ -85,6 +85,13 @@ public final class NabdhChannelFeedActivity extends Activity {
         render();
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        // Refresh after a PIN-lock change in another screen; do not reuse
+        // already rendered cached post text from a newly protected channel.
+        if (items != null) render();
+    }
+
     private List<Post> cachedPosts() {
         ArrayList<Post> posts = new ArrayList<>();
         MessagesController controller = MessagesController.getInstance(account);
