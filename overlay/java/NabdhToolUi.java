@@ -1,6 +1,7 @@
 package org.telegram.ui.Components;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Color;
 import android.content.res.ColorStateList;
 import android.graphics.drawable.GradientDrawable;
@@ -25,7 +26,7 @@ import org.telegram.ui.ActionBar.Theme;
 public final class NabdhToolUi {
     private NabdhToolUi() {}
 
-    private static int dp(Activity activity, float n) {
+    private static int dp(Context activity, float n) {
         return (int) (n * activity.getResources().getDisplayMetrics().density + .5f);
     }
 
@@ -36,7 +37,7 @@ public final class NabdhToolUi {
                 (Color.blue(top) * percentTop + Color.blue(bottom) * q) / 100);
     }
 
-    private static GradientDrawable surface(Activity activity, int corner) {
+    private static GradientDrawable surface(Context activity, int corner) {
         int canvas = Theme.getColor(Theme.key_windowBackgroundGray);
         int paper = Theme.getColor(Theme.key_windowBackgroundWhite);
         int quiet = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
@@ -48,7 +49,7 @@ public final class NabdhToolUi {
         return result;
     }
 
-    public static void styleInput(Activity activity, EditText field) {
+    public static void styleInput(Context activity, EditText field) {
         int d = dp(activity, 14);
         field.setTextSize(15);
         field.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
@@ -60,7 +61,7 @@ public final class NabdhToolUi {
                 ? View.TEXT_DIRECTION_RTL : View.TEXT_DIRECTION_FIRST_STRONG);
     }
 
-    public static void styleButton(Activity activity, Button button) {
+    public static void styleButton(Context activity, Button button) {
         button.setAllCaps(false);
         button.setTextSize(14);
         button.setMinHeight(dp(activity, 48));
@@ -77,18 +78,20 @@ public final class NabdhToolUi {
                 dp(activity, 16), dp(activity, 10));
     }
 
-    public static void styleToggle(Activity activity, CompoundButton toggle) {
-        int on = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-        int off = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
+    public static void styleToggle(Context activity, CompoundButton toggle) {
+        int on = Theme.getColor(Theme.key_switchTrackBlueChecked);
+        int off = Theme.getColor(Theme.key_switchTrackBlue);
         ColorStateList states = new ColorStateList(
                 new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
                 new int[]{on, off});
         if (toggle instanceof Switch) {
-            ((Switch) toggle).setThumbTintList(states);
+            ((Switch) toggle).setThumbTintList(new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{Theme.getColor(Theme.key_switchTrackBlueThumbChecked),
+                            Theme.getColor(Theme.key_switchTrackBlueThumb)}));
             ((Switch) toggle).setTrackTintList(new ColorStateList(
                     new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                    new int[]{Color.argb(115, Color.red(on), Color.green(on), Color.blue(on)),
-                            Color.argb(55, Color.red(off), Color.green(off), Color.blue(off))}));
+                    new int[]{on, off}));
         } else {
             toggle.setButtonTintList(states);
         }
