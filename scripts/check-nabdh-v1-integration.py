@@ -133,7 +133,7 @@ for locale in ("values", "values-ar"):
 # Exactly one route: featureId 602 = Appearance > Glass Themes. Both the
 # Appearance index (0) and Fonts (601) must remain free of preset controls.
 glass_route = re.findall(
-    r"if\s*\(\s*featureId\s*==\s*602\s*\)\s*\{\s*addNabdhGlassPresets\(context, content\);\s*\}",
+    r"if\s*\(\s*featureId\s*==\s*602\s*\)\s*\{\s*addNabdhGlassPresets\(context, content\);\s*(?:addNabdhMonetControl\(context, content\);\s*)?\}",
     page)
 check(len(glass_route) == 1
       and page.count("addNabdhGlassPresets(context, content);") == 1
