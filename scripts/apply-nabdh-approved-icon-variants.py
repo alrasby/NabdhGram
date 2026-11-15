@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the six selected NabdhGram launcher variants from the user's artwork.
+"""Install the two selected NabdhGram launcher variants from the user's artwork.
 
 Six independently rendered backgrounds, masks, and frameless options are
 composed around the approved TRANSPARENT glyph, not cropped from a screenshot.
@@ -23,14 +23,17 @@ controller = root / "TMessagesProj/src/main/java/org/telegram/ui/LauncherIconCon
 if not source.is_file() or not manifest.is_file() or not controller.is_file():
     raise SystemExit("Approved icon atlas or pinned Telegram sources are missing")
 
+# Keep only the owner-selected square and dark circular icon choices.
+# Excluded: Samsung, translucent silver, light turquoise, turquoise frameless.
 VARIANTS = (
     ("original", "NabdhOriginalIcon", "NabdhIconOriginal", "iPhone Glass", "آيفون الزجاجية"),
-    ("dark", "NabdhDarkIcon", "NabdhIconDark", "Samsung Style", "أسلوب سامسونج"),
-    ("light", "NabdhLightIcon", "NabdhIconLight", "Light Turquoise", "التركوازية الفاتحة"),
-    ("teal", "NabdhTealIcon", "NabdhIconTeal", "Turquoise · No Frame", "التركوازية الشفافة"),
-    ("circular", "NabdhCircularIcon", "NabdhIconCircular", "Circular", "الدائرية"),
-    ("hexagonal", "NabdhHexIcon", "NabdhIconHex", "Silver · No Frame", "الفضية الشفافة"),
+    ("circular", "NabdhCircularIcon", "NabdhIconCircular", "Dark Circular", "الدائرية الداكنة"),
 )
+RETIRED = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon")
+USER_SOURCES = {
+    "original": repository / "branding/approved/nabdh-icon-iphone.png",
+    "circular": repository / "branding/approved/nabdh-icon-circular.png",
+}
 # Source is the identical glyph used for the app's welcome branding.
 # Only icon BACKGROUNDS and masks change. Never stretch or redraw the emblem.
 S = 512
@@ -64,6 +67,20 @@ def make_mask(shape):
     return mask.filter(ImageFilter.GaussianBlur(.45))
 
 def compose_icon(slug):
+    # When the two supplied icon files are present in branding/approved, use
+    # their actual artwork without any artificial background or glyph redraw.
+    selected = USER_SOURCES[slug]
+    if selected.is_file():
+        with Image.open(selected) as input_file:
+            image = input_file.convert("RGBA")
+            if image.width < 192 or image.height < 192:
+                raise SystemExit("Selected user icon is too small: " + str(selected))
+            resized = image.copy()
+            resized.thumbnail((S, S), Image.Resampling.LANCZOS)
+            canvas = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+            canvas.alpha_composite(resized, ((S-resized.width)//2, (S-resized.height)//2))
+            return canvas
+    print("NOTICE: Exact user icon absent; using original approved emblem until source is installed:", selected)
     image = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     palettes = {
         "original": ((1, 59, 72), (2, 112, 119), (1, 31, 49)),
@@ -120,10 +137,10 @@ for slug, _, _, _, _ in VARIANTS:
             directory / ("nabdh_icon_" + slug + ".png"),
             format="PNG", optimize=True)
 
-# Use the original Telegram launcher mechanism; six additional, FREE choices
+# Use the original Telegram launcher mechanism; two additional, FREE choices
 # are added without replacing DefaultIcon or the pre-existing variants.
 java = controller.read_text(encoding="utf-8")
-# Keep the approved default first, then immediately show all six NabdhGram
+# Keep the approved default first, then immediately show both NabdhGram
 # designs in the horizontal picker instead of burying them after Telegram's
 # optional premium icons where users would need to scroll to discover them.
 anchor = '        DEFAULT("DefaultIcon", R.drawable.icon_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconDefault),'
@@ -148,6 +165,54 @@ new_switch = """        // Preserve the original void method for every upstream 
 if java.count(old_switch) != 1:
     raise SystemExit("Pinned launcher component switching changed")
 java = java.replace(old_switch, new_switch, 1)
+# When the user upgrades from an old icon alias, keep that launcher entry
+# available long enough to enable DefaultIcon before retiring the old alias.
+recovery = "    public static void tryFixLauncherIconIfNeeded() {"
+if java.count(recovery) != 1:
+    raise SystemExit("Upstream launcher recovery method changed")
+migration = """
+    private static void nabdhRetireOldAliases() {
+        Context ctx = ApplicationLoader.applicationContext;
+        if (ctx == null) return;
+        PackageManager pm = ctx.getPackageManager();
+        String[] retired = {"NabdhDarkIcon", "NabdhLightIcon",
+                "NabdhTealIcon", "NabdhHexIcon"};
+        boolean needsMigration = false;
+        for (String alias : retired) {
+            ComponentName component = new ComponentName(ctx.getPackageName(),
+                    "org.telegram.messenger." + alias);
+            if (pm.getComponentEnabledSetting(component) ==
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
+                needsMigration = true;
+                break;
+            }
+        }
+        if (!needsMigration) return;
+        boolean validLauncher = false;
+        for (LauncherIcon icon : LauncherIcon.values()) {
+            if (isEnabled(icon)) {
+                validLauncher = true;
+                break;
+            }
+        }
+        if (!validLauncher) {
+            pm.setComponentEnabledSetting(LauncherIcon.DEFAULT.getComponentName(ctx),
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    PackageManager.DONT_KILL_APP);
+        }
+        for (String alias : retired) {
+            ComponentName component = new ComponentName(ctx.getPackageName(),
+                    "org.telegram.messenger." + alias);
+            pm.setComponentEnabledSetting(component,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP);
+        }
+    }
+
+"""
+java = java.replace(recovery,
+                    migration + recovery + """
+        nabdhRetireOldAliases();""", 1)
 # The selected alias is disabled in the manifest before its first use.
 # PackageManager.getActivityInfo(component, 0) excludes disabled aliases:
 # this formerly returned early without enabling the icon, while the picker
@@ -217,6 +282,16 @@ for slug, alias, _, _, _ in VARIANTS:
     replacement = replacement.replace("@mipmap/icon_6_launcher",
                                       "@mipmap/nabdh_icon_" + slug)
     new_aliases.append(replacement)
+# Compatibility-only aliases: hidden from picker, all branded with the
+# surviving iPhone icon. Retire enabled legacy choice at app startup.
+for legacy in RETIRED:
+    old_alias = template.replace("org.telegram.messenger.VintageIcon",
+                                 "org.telegram.messenger." + legacy)
+    old_alias = old_alias.replace("@mipmap/icon_6_launcher_round",
+                                  "@mipmap/nabdh_icon_original")
+    old_alias = old_alias.replace("@mipmap/icon_6_launcher",
+                                  "@mipmap/nabdh_icon_original")
+    new_aliases.append(old_alias)
 xml = xml[:end] + "\n\n" + "\n\n".join(new_aliases) + xml[end:]
 manifest.write_text(xml, encoding="utf-8")
 
@@ -242,7 +317,7 @@ for folder, label_index in (("values", 3), ("values-ar", 4)):
         "\n".join(lines) + "\n", encoding="utf-8")
 # AppIconsSelectorCell displays LOC_ERR:null for newly generated R.string IDs
 # when using Telegram's legacy LocaleController.getString(int) mapping.
-# Resolve those six names directly in the selected Telegram locale.
+# Resolve their localized names directly in the selected Telegram locale.
 selector = root / "TMessagesProj/src/main/java/org/telegram/ui/Cells/AppIconsSelectorCell.java"
 selector_src = selector.read_text(encoding="utf-8")
 def replace_selector(before, after, label):
@@ -287,8 +362,7 @@ replace_selector(
     "Transparent preview outline")
 replace_selector(
     "            iconView.setImageResource(icon.background);",
-    """            nabdhFrameless = "NabdhTealIcon".equals(icon.key)
-                    || "NabdhHexIcon".equals(icon.key);
+    """            nabdhFrameless = icon.key.startsWith("Nabdh");
             iconView.setOuterPadding(icon.key.startsWith("Nabdh") ? 0 : AndroidUtilities.dp(5));
             iconView.setImageResource(icon.background);""",
     "Native picker transparent drawing")
@@ -333,4 +407,4 @@ bulletin_src = bulletin_src.replace(bulletin_method,
 bulletin.write_text(bulletin_src, encoding="utf-8")
 
 
-print("PASS: six DISTINCT logo treatments with true transparent options and translated picker labels")
+print("PASS: two retained launcher choices, safe legacy-alias migration and localized picker labels")

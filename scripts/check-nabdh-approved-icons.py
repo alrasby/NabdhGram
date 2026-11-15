@@ -12,12 +12,14 @@ java = (root / "TMessagesProj/src/main/java/org/telegram/ui/LauncherIconControll
 manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 names = [
     ("original", "NabdhOriginalIcon", "NabdhIconOriginal"),
-    ("dark", "NabdhDarkIcon", "NabdhIconDark"),
-    ("light", "NabdhLightIcon", "NabdhIconLight"),
-    ("teal", "NabdhTealIcon", "NabdhIconTeal"),
     ("circular", "NabdhCircularIcon", "NabdhIconCircular"),
-    ("hexagonal", "NabdhHexIcon", "NabdhIconHex"),
 ]
+retired = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon")
+for legacy in retired:
+    assert ('android:name="org.telegram.messenger.' + legacy + '"') in manifest, "Legacy alias migration must preserve installed launchers"
+    assert ('"' + legacy + '"') not in java[java.index("public enum LauncherIcon"):], "Retired launcher must not remain selectable"
+assert "nabdhRetireOldAliases();" in java, "Missing old launcher alias recovery"
+
 for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias
     assert ('R.mipmap.nabdh_icon_' + slug) in java, "Missing picker image " + slug
@@ -43,9 +45,9 @@ assert 'context.getString(R.string.NabdhIconApplyFailed)' in selector, "Chooser 
 for locale in ("values", "values-ar"):
     localized = (res / locale / "nabdhgram_icon_variants.xml").read_text(encoding="utf-8")
     assert 'name="NabdhIconApplyFailed"' in localized, "Missing localized icon change failure"
-assert "NABDH_HEX" in java and "NOX" in java, "Native icon choices accidentally replaced"
+assert "NABDH_CIRCULAR" in java and "NOX" in java, "Native icon choices accidentally replaced"
 assert java.index('NABDH_ORIGINAL("NabdhOriginalIcon"') > java.index('DEFAULT("DefaultIcon"'), "Original choice should follow default"
-assert java.index('NABDH_HEXAGONAL("NabdhHexIcon"') < java.index('VINTAGE("VintageIcon"'), "Approved art must be visible before optional Telegram icons"
+assert java.index('NABDH_CIRCULAR("NabdhCircularIcon"') < java.index('VINTAGE("VintageIcon"'), "Approved art must be visible before optional Telegram icons"
 # The Android 12+ OS startup animation uses Theme.TMessages.Start from
 # TMessagesProj/res/values-v31/styles.xml, not a launcher alias. Keep it
 # branded even on cold start after the app icon picker changes alias.
@@ -74,4 +76,4 @@ manifest_start = 'android:theme="@style/Theme.TMessages.Start"'
 assert manifest_start in manifest, "Native Telegram launch theme no longer applied"
 app_style = (root / "TMessagesProj_App/src/main/res/values-v31/nabdhgram_splash.xml").read_text(encoding="utf-8")
 assert '@drawable/nabdhgram_launcher_foreground' in app_style, "App-level Android 12 style reverts startup icon"
-print("PASS: six selectable launcher aliases, resource labels and every Android density")
+print("PASS: two selectable launcher aliases, resource labels and every Android density")
