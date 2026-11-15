@@ -2,7 +2,8 @@
 """Fail before Gradle if the six approved launcher variants are incomplete."""
 from pathlib import Path
 import sys
-from PIL import Image
+from PIL import Image, ImageChops
+import hashlib
 
 if len(sys.argv) != 2:
     raise SystemExit("Usage: check-nabdh-approved-icons.py TELEGRAM_SOURCE")
@@ -19,6 +20,24 @@ for legacy in retired:
     assert ('android:name="org.telegram.messenger.' + legacy + '"') in manifest, "Legacy alias migration must preserve installed launchers"
     assert ('"' + legacy + '"') not in java[java.index("public enum LauncherIcon"):], "Retired launcher must not remain selectable"
 assert "nabdhRetireOldAliases();" in java, "Missing old launcher alias recovery"
+
+# Sources must come from the two images attached by the owner, not
+# regenerated from the older transparent emblem on each CI run.
+approved = {
+    "original": ("nabdh-icon-iphone.webp", "761ce91a05bfabde67b4e6d3548b1191236386b4a703e81fbf2bf6b3e0e92f54"),
+    "circular": ("nabdh-icon-circular.webp", "4825e302f7c4945503f4f6ec97ef8ae05d626aae839b4bc13c5d23b2d8c71b8c"),
+}
+for slug, (name, expected_hash) in approved.items():
+    source = Path(__file__).resolve().parents[1] / "branding/approved" / name
+    assert source.is_file(), "Missing uploaded icon " + name
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == expected_hash, "Icon source content changed " + name
+    with Image.open(source) as image:
+        image.load()
+        assert image.size == (192, 192) and image.format == "WEBP"
+        rgba = image.convert("RGBA")
+        assert rgba.getchannel("A").getextrema() == (0, 255), "Icon transparency lost: " + name
+        with Image.open(res / "mipmap-xxxhdpi" / ("nabdh_icon_" + slug + ".png")) as built:
+            assert ImageChops.difference(rgba, built.convert("RGBA")).getbbox() is None, "Android icon changed from supplied source: " + name
 
 for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias

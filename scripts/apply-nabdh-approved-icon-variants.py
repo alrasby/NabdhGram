@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
 """Install the two selected NabdhGram launcher variants from the user's artwork.
 
-Six independently rendered backgrounds, masks, and frameless options are
-composed around the approved TRANSPARENT glyph, not cropped from a screenshot.
+Exact user-supplied square and circular logos are resampled only at Android densities.
 Existing Telegram/approved default icons and launcher aliases are preserved.
 """
 from pathlib import Path
 import re
-import math
 import sys
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image
 
 if len(sys.argv) != 2:
     raise SystemExit("Usage: apply-nabdh-approved-icon-variants.py TELEGRAM_SOURCE")
 
 repository = Path(__file__).resolve().parents[1]
 root = Path(sys.argv[1]).resolve()
-source = repository / "branding/approved/nabdhgram-welcome-transparent.png"
 res = root / "TMessagesProj/src/main/res"
 manifest = root / "TMessagesProj/src/main/AndroidManifest.xml"
 controller = root / "TMessagesProj/src/main/java/org/telegram/ui/LauncherIconController.java"
-if not source.is_file() or not manifest.is_file() or not controller.is_file():
-    raise SystemExit("Approved icon atlas or pinned Telegram sources are missing")
+if not manifest.is_file() or not controller.is_file():
+    raise SystemExit("Pinned Telegram icon sources are missing")
 
 # Keep only the owner-selected square and dark circular icon choices.
 # Excluded: Samsung, translucent silver, light turquoise, turquoise frameless.
@@ -31,100 +28,23 @@ VARIANTS = (
 )
 RETIRED = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon")
 USER_SOURCES = {
-    "original": repository / "branding/approved/nabdh-icon-iphone.png",
-    "circular": repository / "branding/approved/nabdh-icon-circular.png",
+    "original": repository / "branding/approved/nabdh-icon-iphone.webp",
+    "circular": repository / "branding/approved/nabdh-icon-circular.webp",
 }
-# Source is the identical glyph used for the app's welcome branding.
-# Only icon BACKGROUNDS and masks change. Never stretch or redraw the emblem.
-S = 512
-with Image.open(source) as raw:
-    if raw.format != "PNG":
-        raise SystemExit("The original transparent emblem must be PNG")
-    rgba = raw.convert("RGBA")
-    if rgba.getchannel("A").getextrema()[0] >= 255:
-        raise SystemExit("Welcome emblem must have transparent background")
-    bbox = rgba.getchannel("A").point(lambda value: 255 if value >= 12 else 0).getbbox()
-    if bbox is None or bbox[2] - bbox[0] < 32:
-        raise SystemExit("Transparent emblem is empty or too small")
-    emblem = rgba.crop(bbox)
-
-def make_mask(shape):
-    mask = Image.new("L", (S, S), 0)
-    draw = ImageDraw.Draw(mask)
-    if shape == "circle":
-        draw.ellipse((25, 25, S - 25, S - 25), fill=255)
-    elif shape == "squircle":
-        points = []
-        for degrees in range(360):
-            angle = math.pi * degrees / 180
-            def curve(v):
-                return math.copysign(abs(v) ** (2.0 / 4.5), v)
-            points.append((S / 2 + 235 * curve(math.cos(angle)),
-                           S / 2 + 235 * curve(math.sin(angle))))
-        draw.polygon(points, fill=255)
-    else:
-        draw.rounded_rectangle((19, 19, S - 19, S - 19), radius=109, fill=255)
-    return mask.filter(ImageFilter.GaussianBlur(.45))
-
+# The two user-supplied logos are saved as compressed WebP artwork in
+# branding/approved. No synthesized fill, recoloring, masks or mark scaling.
+# The original 192 px files cover the maximum Android xxhdpi/xxxhdpi icon size.
 def compose_icon(slug):
-    # When the two supplied icon files are present in branding/approved, use
-    # their actual artwork without any artificial background or glyph redraw.
     selected = USER_SOURCES[slug]
-    if selected.is_file():
-        with Image.open(selected) as input_file:
-            image = input_file.convert("RGBA")
-            if image.width < 192 or image.height < 192:
-                raise SystemExit("Selected user icon is too small: " + str(selected))
-            resized = image.copy()
-            resized.thumbnail((S, S), Image.Resampling.LANCZOS)
-            canvas = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-            canvas.alpha_composite(resized, ((S-resized.width)//2, (S-resized.height)//2))
-            return canvas
-    print("NOTICE: Exact user icon absent; using original approved emblem until source is installed:", selected)
-    image = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    palettes = {
-        "original": ((1, 59, 72), (2, 112, 119), (1, 31, 49)),
-        "dark": ((2, 51, 65), (5, 122, 127), (0, 47, 59)),
-        "light": ((181, 255, 252), (87, 238, 229), (2, 169, 182)),
-        "circular": ((1, 66, 74), (3, 135, 133), (1, 42, 55))
-    }
-    if slug in palettes:
-        form = "circle" if slug == "circular" else (
-            "squircle" if slug in ("dark", "light") else "square")
-        background = Image.new("RGBA", (S, S))
-        draw = ImageDraw.Draw(background)
-        top, middle, bottom = palettes[slug]
-        for y in range(S):
-            t = y / float(S - 1)
-            a, b, p = (top, middle, t * 2) if t < .5 else (
-                middle, bottom, (t - .5) * 2)
-            rgb = tuple(round(a[k] * (1 - p) + b[k] * p) for k in range(3))
-            draw.line((0, y, S, y), fill=(*rgb, 255))
-        background.putalpha(make_mask(form))
-        image.alpha_composite(background)
-        # A restrained border only for iPhone-style and circular choices.
-        if slug in ("original", "circular"):
-            highlight = Image.new("RGBA", (S, S))
-            line = ImageDraw.Draw(highlight)
-            if slug == "circular":
-                line.ellipse((29, 29, S - 29, S - 29),
-                             outline=(110, 250, 242, 115), width=2)
-            else:
-                line.rounded_rectangle((22, 22, S - 22, S - 22),
-                    radius=106, outline=(104, 255, 245, 95), width=2)
-            image.alpha_composite(highlight)
-    mark = emblem.copy()
-    mark.thumbnail((412 if slug in ("teal", "hexagonal") else 395, 275),
-                   Image.Resampling.LANCZOS)
-    x, y = (S - mark.width) // 2, (S - mark.height) // 2
-    shadow = Image.new("RGBA", (S, S))
-    silhouette = Image.new("RGBA", mark.size, (1, 20, 28, 0))
-    strength = .16 if slug in ("teal", "hexagonal") else .45
-    silhouette.putalpha(mark.getchannel("A").point(
-        lambda value: round(value * strength)))
-    shadow.alpha_composite(silhouette, (x + 3, y + 11))
-    image.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(8)))
-    image.alpha_composite(mark, (x, y))
+    if not selected.is_file():
+        raise SystemExit("Missing user-supplied icon: " + str(selected))
+    with Image.open(selected) as icon:
+        icon.load()
+        if icon.format != "WEBP" or icon.width != 192 or icon.height != 192:
+            raise SystemExit("User-approved launcher source must be square WebP 192px")
+        image = icon.convert("RGBA")
+    if image.getchannel("A").getextrema() != (0, 255):
+        raise SystemExit("User icon must have fully transparent outer pixels")
     return image
 
 for slug, _, _, _, _ in VARIANTS:
