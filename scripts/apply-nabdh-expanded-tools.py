@@ -21,6 +21,11 @@ def exact(text, old, new, label):
         raise SystemExit(f"Expanded tools {label}: expected one anchor, found {count}")
     return text.replace(old, new, 1)
 
+tool_ui = ui / "Components/NabdhToolUi.java"
+if tool_ui.exists():
+    raise SystemExit("Expanded tools: refusing to replace shared UI: " + str(tool_ui))
+tool_ui.write_bytes((source / "NabdhToolUi.java").read_bytes())
+
 for name in ("NabdhBrowserActivity.java", "NabdhCameraActivity.java",
              "NabdhChannelFeedActivity.java"):
     target = ui / name
