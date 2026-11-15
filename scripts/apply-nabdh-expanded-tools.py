@@ -50,12 +50,32 @@ activities = """        <!-- NabdhGram user-launched tools; never exported or re
 m = exact(m, marker, marker + "\n" + activities, "private activity manifest")
 manifest.write_text(m, encoding="utf-8")
 
-hub = ui / "NabdhGramSettingsActivity.java"
-h = hub.read_text(encoding="utf-8")
-h = exact(h, "        fragmentView = scroll;",
-    """        nabdhExpandedTools(context, content);
-        fragmentView = scroll;""", "settings entry")
-method = """    private void nabdhExpandedTools(Context context, LinearLayout parent) {
+category = ui / "NabdhGramFeatureCategoryActivity.java"
+c = category.read_text(encoding="utf-8")
+c = exact(c, "        fragmentView = scroll;",
+    """        // Tools are routed through the existing NabdhGram categories.
+        if (featureId == 0 && titleRes == R.string.NabdhNetworkTitle) {
+            nabdhExpandedHeader(context, content);
+            nabdhExpandedButton(context, content, R.string.NabdhExpandedBrowser,
+                    () -> context.startActivity(new android.content.Intent(
+                            context, NabdhBrowserActivity.class)));
+            nabdhExpandedButton(context, content, R.string.NabdhExpandedCamera,
+                    () -> context.startActivity(new android.content.Intent(
+                            context, NabdhCameraActivity.class)));
+        }
+        if (featureId == 0 && titleRes == R.string.NabdhProductivityTitle) {
+            nabdhExpandedHeader(context, content);
+            nabdhExpandedButton(context, content, R.string.NabdhExpandedChannelFeed,
+                    () -> context.startActivity(new android.content.Intent(
+                            context, NabdhChannelFeedActivity.class)));
+        }
+        if (featureId == 0 && titleRes == R.string.NabdhPrivacyTitle) {
+            nabdhExpandedHeader(context, content);
+            nabdhExpandedButton(context, content, R.string.NabdhExpandedSwipes,
+                    () -> nabdhChooseChatSwipe(context));
+        }
+        fragmentView = scroll;""", "category-aware tools routing")
+method = """    private void nabdhExpandedHeader(Context context, LinearLayout parent) {
 
         TextView heading = new TextView(context);
         heading.setText(org.telegram.messenger.LocaleController.getString(R.string.NabdhExpandedTitle));
@@ -67,19 +87,6 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
                 ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
         heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         parent.addView(heading);
-        nabdhExpandedButton(context, parent, R.string.NabdhExpandedBrowser,
-                () -> context.startActivity(new android.content.Intent(
-                        context, NabdhBrowserActivity.class)));
-        nabdhExpandedButton(context, parent, R.string.NabdhExpandedCamera,
-                () -> context.startActivity(new android.content.Intent(
-                        context, NabdhCameraActivity.class)));
-        nabdhExpandedButton(context, parent, R.string.NabdhExpandedChannelFeed,
-                () -> context.startActivity(new android.content.Intent(
-                        context, NabdhChannelFeedActivity.class)));
-        // Reuse Telegram's persisted real chat-swipe implementation and settings,
-        // never recreate gesture dispatch or alter read receipts.
-        nabdhExpandedButton(context, parent, R.string.NabdhExpandedSwipes,
-                () -> nabdhChooseChatSwipe(context));
     }
 
     private void nabdhChooseChatSwipe(Context context) {
@@ -224,15 +231,15 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
     }
 
 """
-h = exact(h,
-    "    private void section(Context context, LinearLayout parent, int titleRes, int descriptionRes) {",
-    method + "    private void section(Context context, LinearLayout parent, int titleRes, int descriptionRes) {",
-    "tools methods")
-hub.write_text(h, encoding="utf-8")
+c = exact(c,
+    "    private int nabdhCategoryDescription() {",
+    method + "    private int nabdhCategoryDescription() {",
+    "category tools methods")
+category.write_text(c, encoding="utf-8")
 
 labels = {
     "values": {
-        "NabdhExpandedTitle": "Tools and privacy",
+        "NabdhExpandedTitle": "More tools",
         "NabdhExpandedBrowser": "Private browser",
         "NabdhExpandedBrowserInfo": "Website navigation and tracking controls",
         "NabdhExpandedCamera": "Advanced camera",
@@ -244,7 +251,7 @@ labels = {
         "NabdhExpandedLockInfo": "Local PIN and protected conversation previews",
     },
     "values-ar": {
-        "NabdhExpandedTitle": "الأدوات والخصوصية",
+        "NabdhExpandedTitle": "أدوات إضافية",
         "NabdhExpandedBrowser": "المتصفح الداخلي",
         "NabdhExpandedBrowserInfo": "تصفح المواقع والتحكم بحماية التتبع",
         "NabdhExpandedCamera": "الكاميرا المتقدمة",
