@@ -23,8 +23,15 @@ def verify(root):
         if symbol not in feature: raise ValueError("Visible proxy preference missing: " + symbol)
     if feature.count("addNabdhProxySponsorControl(context, content);") != 1:
         raise ValueError("Duplicate proxy sponsor toggle")
-    if "controller.deleteDialog" in dialogs:
-        raise ValueError("Unexpected ordinary chat deletion in proxy suppression")
+    # Restrict this check to the injected helper: native DialogsActivity
+    # legitimately contains ordinary delete-chat actions elsewhere.
+    helper_start = dialogs.find("private void nabdhHideProxySponsorIfPresent()")
+    helper_end = dialogs.find("    @Override\n    public void onResume()", helper_start)
+    if helper_start < 0 or helper_end <= helper_start:
+        raise ValueError("Cannot isolate native proxy sponsor helper")
+    helper = dialogs[helper_start:helper_end]
+    if "deleteDialog" in helper or "deleteMessages" in helper:
+        raise ValueError("Promo helper must not delete user chats or messages")
     for locale in ("values", "values-ar"):
         xml = root / "TMessagesProj/src/main/res" / locale / "nabdh_proxy_promo.xml"
         keys = {x.attrib.get("name") for x in ET.parse(xml).getroot()}
