@@ -34,6 +34,12 @@ require(notification.count("if (org.telegram.ui.Components.NabdhChatLock.isLocke
         "locked new and queued messages do not reach Android notifications")
 require(chat.count("NabdhChatLock.isUnlocked(currentAccount, dialog_id)") >= 4,
         "all four native ChatActivity direct read-ack paths require PIN")
+require("public static synchronized void revoke(int account, long dialog)" in locks and
+        chat.count("NabdhChatLock.revoke(currentAccount, dialog_id);") == 1,
+        "local PIN authorization ends on chat background")
+require(chat.index("getMessagesController().markDialogAsReadNow(dialog_id, replyId);") <
+        chat.index("NabdhChatLock.revoke(currentAccount, dialog_id);"),
+        "final legitimate read acknowledgement must precede PIN revocation")
 require("Keep FLAG_SECURE through system-recents snapshots" in chat,
         "privacy screenshot flag remains during background transitions")
 require("new org.telegram.messenger.FlagSecureReason(" in chat and
