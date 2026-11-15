@@ -91,7 +91,7 @@ public final class NabdhAiGemmaProvider {
         LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(model(context).getAbsolutePath())
                 .setMaxTokens(512)
-                .setMaxTopK(40)
+                .setTopK(40)
                 .build();
         LlmInference inference = null;
         try {
