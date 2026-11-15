@@ -54,7 +54,8 @@ public final class NabdhChatLockActivity extends Activity {
                 ? android.view.View.LAYOUT_DIRECTION_RTL
                 : android.view.View.LAYOUT_DIRECTION_LTR);
         scroll.addView(screen);
-        setContentView(scroll);
+        org.telegram.ui.Components.NabdhToolUi.install(this, scroll,
+                local("Chat locks", "قفل المحادثات"));
         render();
     }
 
