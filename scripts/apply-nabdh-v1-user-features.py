@@ -28,12 +28,10 @@ def patch_one(text, old, new, label):
 hub = ui / "NabdhGramSettingsActivity.java"
 h = hub.read_text(encoding="utf-8")
 # Theme colors are retained as fallbacks and only category accents change.
-h = patch_one(h, "heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));",
-    "heading.setTextColor(org.telegram.ui.Components.NabdhDynamicAccent.accent(context, Theme.getColor(Theme.key_windowBackgroundWhiteBlueText)));",
-    "hub title")
-h = patch_one(h, "categoryIcon.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));",
-    "categoryIcon.setColorFilter(org.telegram.ui.Components.NabdhDynamicAccent.accent(context, Theme.getColor(Theme.key_windowBackgroundWhiteBlueText)));",
-    "hub icon")
+h = patch_one(h,
+    "final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);",
+    "final int accent = org.telegram.ui.Components.NabdhDynamicAccent.accent(context, Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));",
+    "native final-settings shared accent for text, icons and card strokes")
 hub.write_text(h, encoding="utf-8")
 
 page = ui / "NabdhGramFeatureCategoryActivity.java"
