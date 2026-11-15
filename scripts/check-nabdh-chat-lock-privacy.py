@@ -40,8 +40,13 @@ require("!org.telegram.ui.Components.NabdhChatLock.isLocked(" in chat,
 require("Locked chat" in cell and "محادثة مقفلة" in cell and
         "messageNameLayout = null;" in cell and "thumbsCount = 0;" in cell,
         "chat-list message, sender and media preview are suppressed")
-require("removeNotificationsForDialog(dialog)" in locks,
-        "locking dismisses previously displayed notification locally")
+require("nabdhRefreshLockedNotifications()" in locks and
+        "public void nabdhRefreshLockedNotifications()" in notification,
+        "locking refreshes Android notifications on the native notification dispatcher")
+require("removeNotificationsForDialog(dialog)" not in locks,
+        "locking must not alter Telegram unread counters")
+require("showOrUpdateNotification(false);" in notification,
+        "queued protected notifications are re-evaluated on locking")
 require('android:exported="false"' in manifest and
         "org.telegram.ui.NabdhChatLockActivity" in manifest,
         "PIN management activity is private")
