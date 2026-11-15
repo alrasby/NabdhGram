@@ -37,6 +37,9 @@ check("if (titleRes == R.string.NabdhAppearanceTitle) return;" in hub and
       "Appearance and Language must share one visible category without losing fonts, themes or backup")
 check("nabdhExpandedButton(context, content, R.string.NabdhExpandedSwipes" not in page,
       "duplicate Swipe Actions option must not be shown in NabdhGram settings")
+check(page.count("NabdhToolUi.styleToggle(context, ") >= 6 and
+      "NabdhToolUi.styleInput(context, " in page,
+      "custom native switches and input fields must share Telegram theme")
 check("choices.setVisibility(View.GONE);" in page and
       "choices.setOnCheckedChangeListener(" in page and
       "fontTitle.setOnClickListener(" in page and
