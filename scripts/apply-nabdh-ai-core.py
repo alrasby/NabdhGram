@@ -39,11 +39,12 @@ for name in ("NabdhAiCoreService.java", "NabdhAiActivity.java"):
 manifest = root / "TMessagesProj/src/main/AndroidManifest.xml"
 xml = manifest.read_text(encoding="utf-8")
 # The base Telegram APK deliberately supports Android 23+. ML Kit GenAI
-# requires Android 26+; a narrowly scoped manifest override lets the *app*
-# retain Android 23 while the optional service is blocked below Android 26.
+# plus transitive GenAI Common require Android 26+; a narrowly scoped
+# override lets the *app* retain Android 23 while optional AI code is guarded
+# below Android 26. Hardware QA on API 23–25 remains a release requirement.
 # Never override an unrecognized library, and never start AICore on older OSes.
 legacy = '<uses-sdk tools:overrideLibrary="com.google.mlkit.vision.segmentation.subject"/>'
-approved = '<uses-sdk tools:overrideLibrary="com.google.mlkit.vision.segmentation.subject,com.google.mlkit.genai.prompt"/>'
+approved = '<uses-sdk tools:overrideLibrary="com.google.mlkit.vision.segmentation.subject,com.google.mlkit.genai.prompt,com.google.mlkit.genai.common"/>'
 xml = once(xml, legacy, approved, "Android 23 compatibility / ML Kit 26 guard")
 
 marker = '        <!-- NabdhGram user-launched tools; never exported or reachable by implicit intents -->'
