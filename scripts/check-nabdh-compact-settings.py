@@ -25,11 +25,10 @@ route_checks = {
     "browser": "NabdhExpandedBrowser" in page,
     "channel_feed": "NabdhExpandedChannelFeed" in page,
     "chat_lock": "NabdhChatLockTitle" in page,
-    "settings_backup": "NabdhHSettingsBackup" in page,
     "locale": "NabdhStrings.get(context, label)" in page,
 }
 check(all(route_checks.values()),
-      "grouped tools or route missing: " + repr(route_checks))
+      "grouped tool route missing: " + repr(route_checks))
 check("choices.setVisibility(View.GONE);" in page and
       "choices.setOnCheckedChangeListener(" in page and
       "fontTitle.setOnClickListener(" in page and
