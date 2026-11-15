@@ -63,7 +63,7 @@ public final class NabdhAiCoreService extends Service {
                     // No two model clients coexist: Nano closes before Gemma fallback.
                     String prompt = "Analyze only the user-supplied excerpt. "
                             + "List key points, tasks and dates when present. "
-                            + "Do not invent details or claim to have read any chat.\\n\\n"
+                            + "Do not invent details or claim to have read any chat.\n\n"
                             + input;
                     String output;
                     if (nano) {
