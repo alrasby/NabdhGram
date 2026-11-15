@@ -29,6 +29,11 @@ public final class NabdhAppearancePrefs {
                 .putBoolean("nabdh_notification", selected).apply();
     }
 
+    public static int notificationIcon(Context context) {
+        return useNabdhNotification(context)
+                ? R.drawable.nabdh_notification_symbol : R.drawable.notification;
+    }
+
     /** Actual drawable swaps only for the icons that NabdhGram owns. */
     public static int icon(Context context, int original) {
         if (!isDuotone(context)) return original;
