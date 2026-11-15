@@ -3,6 +3,16 @@
 > Product principle: **Power inside, simplicity outside** (قوة في الداخل، بساطة في الخارج).
 > Scope agreement: 2026-11-06. This is an approved product plan, **not** a claim that features have been implemented or tested.
 
+## 2026-11-15 extension to the approved roadmap
+
+The owner requested an ongoing optional on-device AI capability and additional
+customization, privacy and media features. This is an **expanded product scope**,
+not evidence of implementation, and must not silently weaken the existing
+v1 acceptance gates. See [NabdhAI and feature rollout](NABDH_AI_ROLLOUT_AR.md).
+NabdhGram's settings should follow the same **relative sequence** as the
+matching native Telegram categories, avoiding duplicate Telegram screens.
+The new AI integration is not shipped yet.
+
 ## Core principles
 - Deliver real everyday user value; do not duplicate features simply because other Telegram clients offer them.
 - Familiar, fast, uncluttered Telegram experience. Put features in contextual actions, not unnecessary tabs or buttons.
