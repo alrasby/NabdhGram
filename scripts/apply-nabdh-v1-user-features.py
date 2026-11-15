@@ -88,6 +88,50 @@ s = patch_one(s,
     """boolean arabic = org.telegram.ui.Components.NabdhAiPreferenceStore.outputArabic(
                 context, org.telegram.messenger.LocaleController.isRTL);""",
     "explicit output-language preference")
+# User ratings are an explicit action on manual Focus/Catch results, not
+# telemetry or automatic collection of the contents being summarized.
+s = patch_one(s,
+    """        new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
+            .setTitle(nabdhText(context, title))
+            .setMessage(output)
+            .setNegativeButton(nabdhText(context, R.string.NabdhV1Close), null)
+            .setPositiveButton(nabdhText(context, R.string.NabdhV1Copy), (d, which) -> {
+                android.content.ClipboardManager clipboard =
+                    (android.content.ClipboardManager) context.getSystemService(
+                        Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
+                            "Nabdh local result", output));
+                }
+            }).show();""",
+    """        org.telegram.ui.ActionBar.AlertDialog.Builder resultDialog =
+            new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
+            .setTitle(nabdhText(context, title))
+            .setMessage(output)
+            .setNegativeButton(nabdhText(context, R.string.NabdhV1Close), null)
+            .setPositiveButton(nabdhText(context, R.string.NabdhV1Copy), (d, which) -> {
+                android.content.ClipboardManager clipboard =
+                    (android.content.ClipboardManager) context.getSystemService(
+                        Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
+                            "Nabdh local result", output));
+                }
+            });
+        if (mode == 0 || mode == 1) {
+            resultDialog.setNeutralButton(nabdhText(context, R.string.NabdhAiUseful), (d, which) -> {
+                boolean enabled = org.telegram.ui.Components.NabdhAiPreferenceStore
+                        .rememberEnabled(context);
+                if (enabled) org.telegram.ui.Components.NabdhAiPreferenceStore
+                        .explicitlyHelpful(context, mode);
+                android.widget.Toast.makeText(context,
+                    nabdhText(context, enabled ? R.string.NabdhAiFeedbackSaved
+                                              : R.string.NabdhAiFeedbackDisabled),
+                    android.widget.Toast.LENGTH_SHORT).show();
+            });
+        }
+        resultDialog.show();""", "explicit manual feedback action")
+
 # Existing opt-in Lens source is preserved, not rebranded as an actual LLM.
 methods = r'''    private void addNabdhPrivacyControls(Context context, LinearLayout content) {
         android.widget.LinearLayout card = new android.widget.LinearLayout(context);
@@ -237,6 +281,9 @@ strings = {
         "NabdhAiLanguageArabic": "Arabic",
         "NabdhAiLanguageEnglish": "English",
         "NabdhAiClear": "Clear AI preferences and feedback",
+        "NabdhAiUseful": "This was useful",
+        "NabdhAiFeedbackSaved": "Feedback saved locally (no text stored)",
+        "NabdhAiFeedbackDisabled": "Enable explicit feedback in NabdhAI settings first",
         "NabdhMonetLabel": "Use Android wallpaper accent for NabdhGram Settings",
         "NabdhMonetUnsupported": "Android wallpaper color accents are available on Android 12+ only.",
         "NabdhMonetScope": "Optional accent for NabdhGram settings headings/icons; your Telegram themes and Glass presets are unchanged. Reopen settings to refresh accents.",
@@ -257,6 +304,9 @@ strings = {
         "NabdhAiLanguageArabic": "العربية",
         "NabdhAiLanguageEnglish": "الإنجليزية",
         "NabdhAiClear": "مسح تفضيلات وتقييمات الذكاء",
+        "NabdhAiUseful": "هذه النتيجة مفيدة",
+        "NabdhAiFeedbackSaved": "حُفظ التقييم محليًا دون حفظ النص",
+        "NabdhAiFeedbackDisabled": "فعّل حفظ التقييمات الصريحة من إعدادات NabdhAI أولًا",
         "NabdhMonetLabel": "استخدام ألوان خلفية Android في إعدادات نبض جرام",
         "NabdhMonetUnsupported": "ألوان النظام التفاعلية متاحة في Android 12 والأحدث فقط.",
         "NabdhMonetScope": "يغير لون عناوين وأيقونات إعدادات نبض جرام فقط؛ ثيمات Telegram وGlass لا تتأثر. أعد فتح الإعدادات لإظهار الألوان الجديدة.",
