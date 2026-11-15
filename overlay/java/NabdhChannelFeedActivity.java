@@ -33,6 +33,9 @@ import java.util.List;
  */
 public final class NabdhChannelFeedActivity extends Activity {
     private LinearLayout items;
+    private String local(String en, String ar) {
+        return org.telegram.messenger.LocaleController.isRTL ? ar : en;
+    }
     private final int account = UserConfig.selectedAccount;
     private static final class Post {
         final long dialog;
@@ -53,20 +56,25 @@ public final class NabdhChannelFeedActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        setTitle("Channel Feed");
+        setTitle(local("Channel Feed", "موجز القنوات"));
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
+        screen.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
+                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         int pad = (int) (12 * getResources().getDisplayMetrics().density);
         screen.setPadding(pad, pad, pad, pad);
-        screen.setBackgroundColor(Color.rgb(18, 29, 33));
+        screen.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
         TextView note = new TextView(this);
-        note.setText("Latest locally cached post from your channels · Read-only · No background scanning");
-        note.setTextColor(Color.LTGRAY);
+        note.setText(local("Latest locally cached post from your channels · Read-only · No background scanning",
+                "أحدث منشور محفوظ محليًا من قنواتك · للقراءة فقط · دون فحص في الخلفية"));
+        note.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
         note.setTextSize(13);
         note.setPadding(6, 4, 6, 12);
         screen.addView(note);
         Button reload = new Button(this);
-        reload.setText("Refresh channel posts");
+        reload.setText(local("Refresh channel posts", "تحديث منشورات القنوات"));
         reload.setAllCaps(false);
         reload.setOnClickListener(v -> render());
         screen.addView(reload);
@@ -79,6 +87,13 @@ public final class NabdhChannelFeedActivity extends Activity {
         render();
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        // Refresh after a PIN-lock change in another screen; do not reuse
+        // already rendered cached post text from a newly protected channel.
+        if (items != null) render();
+    }
+
     private List<Post> cachedPosts() {
         ArrayList<Post> posts = new ArrayList<>();
         MessagesController controller = MessagesController.getInstance(account);
@@ -86,6 +101,10 @@ public final class NabdhChannelFeedActivity extends Activity {
         for (int i = 0; i < controller.dialogs_dict.size(); i++) {
             TLRPC.Dialog dialog = controller.dialogs_dict.valueAt(i);
             if (dialog == null || dialog.id >= 0) continue;
+            // An opt-in locked channel must not leak cached post text through
+            // this independent feed, even when its ChatActivity PIN gate works.
+            if (org.telegram.ui.Components.NabdhChatLock.isLocked(
+                    getApplicationContext(), account, dialog.id)) continue;
             TLRPC.Chat chat = controller.getChat(-dialog.id);
             if (chat == null || !ChatObject.isChannel(chat) || chat.megagroup) continue;
             ArrayList<MessageObject> messages = controller.dialogMessage.get(dialog.id);
@@ -94,7 +113,7 @@ public final class NabdhChannelFeedActivity extends Activity {
             if (latest == null || latest.messageOwner == null) continue;
             String body = latest.messageText == null ? "" : latest.messageText.toString();
             if (body.length() > 360) body = body.substring(0, 360) + "…";
-            if (body.trim().isEmpty()) body = "[Media post]";
+            if (body.trim().isEmpty()) body = local("[Media post]", "[منشور وسائط]");
             posts.add(new Post(dialog.id, chat.title,
                     chat.username, latest.messageOwner.id,
                     latest.messageOwner.date, body));
@@ -113,13 +132,13 @@ public final class NabdhChannelFeedActivity extends Activity {
 
     private void copyPublicLink(Post post) {
         if (post.username == null || post.username.isEmpty() || post.messageId <= 0) {
-            Toast.makeText(this, "Private channel has no public post link", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, local("Private channel has no public post link", "هذه القناة خاصة ولا يتوفر رابط عام للمنشور"), Toast.LENGTH_SHORT).show();
             return;
         }
         String url = "https://t.me/" + post.username + "/" + post.messageId;
         ClipboardManager clip = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (clip != null) clip.setPrimaryClip(ClipData.newPlainText("Channel post", url));
-        Toast.makeText(this, "Post link copied", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, local("Post link copied", "تم نسخ رابط المنشور"), Toast.LENGTH_SHORT).show();
     }
 
     private void render() {
@@ -127,8 +146,10 @@ public final class NabdhChannelFeedActivity extends Activity {
         List<Post> posts = cachedPosts();
         if (posts.isEmpty()) {
             TextView empty = new TextView(this);
-            empty.setText("No cached channel posts yet. Open your channels in Telegram, then refresh.");
-            empty.setTextColor(Color.LTGRAY);
+            empty.setText(local("No cached channel posts yet. Open your channels in Telegram, then refresh.",
+                    "لا توجد منشورات محفوظة حاليًا. افتح قنواتك في Telegram ثم حدّث الموجز."));
+            empty.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                    org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
             items.addView(empty);
             return;
         }
@@ -137,31 +158,33 @@ public final class NabdhChannelFeedActivity extends Activity {
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
             card.setPadding(p, p, p, p);
-            android.graphics.drawable.GradientDrawable glass =
-                    new android.graphics.drawable.GradientDrawable();
-            glass.setColor(Color.rgb(28, 58, 64));
-            glass.setCornerRadius(p);
-            card.setBackground(glass);
+            card.setBackground(
+                    org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
             TextView title = new TextView(this);
             title.setText(post.title);
-            title.setTextColor(Color.WHITE);
+            title.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                    org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
             title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             title.setTextSize(17);
             card.addView(title);
             TextView date = new TextView(this);
             date.setText(android.text.format.DateFormat.format("yyyy-MM-dd HH:mm",
                     post.date * 1000L));
-            date.setTextColor(Color.LTGRAY);
+            date.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                    org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
             card.addView(date);
             TextView content = new TextView(this);
             content.setText(post.preview);
             content.setTextSize(15);
-            content.setTextColor(Color.WHITE);
+            content.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                    org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
             content.setPadding(0, p / 2, 0, p / 2);
             card.addView(content);
             TextView hint = new TextView(this);
-            hint.setText("Tap: open channel  •  Swipe left: copy public link");
-            hint.setTextColor(Color.LTGRAY);
+            hint.setText(local("Tap: open channel · Swipe left: copy public link",
+                    "اضغط لفتح القناة · اسحب لليسار لنسخ رابط المنشور"));
+            hint.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                    org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
             hint.setTextSize(11);
             card.addView(hint);
             card.setOnClickListener(v -> openChannel(post));
