@@ -1,10 +1,7 @@
 package org.telegram.ui.Components;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.RippleDrawable;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
@@ -19,9 +16,10 @@ import org.telegram.ui.ActionBar.Theme;
 /**
  * Single visual owner for NabdhGram settings rows, not a Telegram engine patch.
  *
- * Quiet, translucent grouped surfaces match native settings density: one
- * rounded group, inset separators, native text colors, and theme-aware touch
- * ripples. Never hides or changes the action bound to a row.
+ * Use the same live Glass row drawable as Telegram's main Settings page.
+ * The group only preserves logical ordering: each option has its own rounded
+ * surface and masked ripple. No opaque white parent or unbounded press circle.
+ * Never hides or changes the action bound to a row.
  */
 public final class NabdhCompactSettings {
     private static final String GROUP_TAG = "nabdh:compact-setting-group:v1";
@@ -51,22 +49,10 @@ public final class NabdhCompactSettings {
         group.setOrientation(LinearLayout.VERTICAL);
         group.setLayoutDirection(LocaleController.isRTL
                 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
-        final int paper = Theme.getColor(Theme.key_windowBackgroundWhite);
-        final int canvas = Theme.getColor(Theme.key_windowBackgroundGray);
-        final int tint = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
-        GradientDrawable surface = new GradientDrawable();
-        surface.setShape(GradientDrawable.RECTANGLE);
-        // Blend with the native page canvas; a nearly opaque white fill was
-        // visibly disconnected from Telegram's Glass settings surfaces.
-        int blended = Color.rgb(
-                (Color.red(canvas) * 55 + Color.red(paper) * 45) / 100,
-                (Color.green(canvas) * 55 + Color.green(paper) * 45) / 100,
-                (Color.blue(canvas) * 55 + Color.blue(paper) * 45) / 100);
-        surface.setColor(blended);
-        surface.setCornerRadius(dp(context, 16));
-        surface.setStroke(Math.max(1, dp(context, .75f)), translucent(tint, 29));
-        group.setBackground(surface);
-        group.setClipToOutline(true);
+        // No second white/slate parent panel behind Telegram's own Glass cards.
+        group.setBackground(null);
+        group.setClipChildren(false);
+        group.setClipToPadding(false);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
         params.bottomMargin = dp(context, 16);
@@ -100,15 +86,7 @@ public final class NabdhCompactSettings {
         final int primary = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);
         final int secondary = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
 
-        if (group.getChildCount() > 0) {
-            View divider = new View(context);
-            divider.setBackgroundColor(translucent(secondary, 35));
-            LinearLayout.LayoutParams separator =
-                    new LinearLayout.LayoutParams(-1, Math.max(1, dp(context, .6f)));
-            separator.setMarginStart(dp(context, icon == 0 ? 15 : 57));
-            separator.setMarginEnd(dp(context, 12));
-            group.addView(divider, separator);
-        }
+        // Individual rows draw their own stroke, spacing and masked press feedback.
 
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -121,8 +99,8 @@ public final class NabdhCompactSettings {
         row.setFocusable(true);
         row.setContentDescription(TextUtils.isEmpty(subtitle) ? title : title + ". " + subtitle);
         row.setOnClickListener(v -> action.run());
-        row.setBackground(new RippleDrawable(
-                ColorStateList.valueOf(translucent(accent, 24)), null, null));
+        row.setBackground(NabdhGlassRowDecoration.newCardBackground());
+        row.setClipToOutline(true);
 
         if (icon != 0) {
             ImageView image = new ImageView(context);
@@ -176,6 +154,8 @@ public final class NabdhCompactSettings {
                 new LinearLayout.LayoutParams(dp(context, 22), dp(context, 32));
         arrowParams.setMarginStart(dp(context, 8));
         row.addView(arrow, arrowParams);
-        group.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.bottomMargin = dp(context, 3);
+        group.addView(row, rowParams);
     }
 }

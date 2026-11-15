@@ -199,7 +199,10 @@ for locale, names in messages.items():
         raise SystemExit("Appearance resource already exists: " + str(resource))
     lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
     for name, value in names.items():
-        lines.append(f'    <string name="{name}">{escape(value)}</string>')
+        # AAPT parses apostrophes/backslashes after XML parsing; xml.sax.escape
+        # alone leaves Telegram's... invalid in Android string resources.
+        android_value = value.replace("\\", "\\\\").replace("'", "\\'").replace('"', '\\"')
+        lines.append(f'    <string name="{name}">{escape(android_value)}</string>')
     resource.write_text("\n".join(lines + ["</resources>", ""]), encoding="utf-8")
 
 notification = root / "TMessagesProj/src/main/java/org/telegram/messenger/NotificationsController.java"

@@ -74,6 +74,10 @@ for language in ("values","values-ar"):
     f = root / "res" / language / "nabdh_appearance_pack.xml"
     check(f.exists(), "appearance strings absent in " + language)
     labels = {node.get("name"): node.text for node in ET.parse(f).getroot()}
+    if language == "values":
+        raw = f.read_text(encoding="utf-8")
+        check("Telegram\\'s" in raw and "Telegram's" not in raw,
+              "Android AAPT requires escaped apostrophes in generated English strings")
     check(len(labels) == 14 and len(set(labels)) == 14 and
           all(value for value in labels.values()), "incomplete " + language + " label list")
 check("AlarmManager" not in picker and "READ_CONTACTS" not in picker and

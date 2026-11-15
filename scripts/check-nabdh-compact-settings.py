@@ -53,13 +53,17 @@ check("content.addView(explanation);" in page and
       "explanation.setTextSize(12);" in page,
       "category intro is still a large saturated card")
 check('GROUP_TAG = "nabdh:compact-setting-group:v1"' in renderer and
-      "group.setClipToOutline(true)" in renderer and
-      "new RippleDrawable(" in renderer and
-      "ColorStateList.valueOf(" in renderer and
+      "group.setBackground(null);" in renderer and
+      "group.setClipChildren(false);" in renderer and
+      "NabdhGlassRowDecoration.newCardBackground()" in renderer and
+      "row.setClipToOutline(true)" in renderer and
+      "rowParams.bottomMargin = dp(context, 3)" in renderer and
       "setMinimumHeight(dp(context" in renderer and
       "TextUtils.isEmpty(subtitle)" in renderer and
-      "LocaleController.isRTL" in renderer,
-      "surface must group, clip touch feedback, adapt, and keep legible touch targets")
+      "LocaleController.isRTL" in renderer and
+      "new RippleDrawable(" not in renderer and
+      "surface.setColor(blended)" not in renderer,
+      "each row must own a theme-live Glass surface and bounded ripple; no pale parent or giant press circle")
 check("getTypeface(\"fonts/rmedium.ttf\")" in renderer,
       "selected Telegram typography bridge lost")
 check("getCurrentLocale()" in (ui / "NabdhStrings.java").read_text(),
