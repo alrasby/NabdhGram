@@ -98,7 +98,7 @@ public final class NabdhChatLockActivity extends Activity {
             });
             return;
         }
-        line("Select conversations to lock. Opening a protected chat requires your PIN; the message contents are not copied. Notification previews must be managed separately in Telegram settings.");
+        line(getString(org.telegram.messenger.R.string.NabdhChatLockNotice));
         MessagesController controller = MessagesController.getInstance(account);
         if (controller == null || controller.dialogs_dict == null) {
             line("Chat list not loaded. Return to the main chat list and try again.");
