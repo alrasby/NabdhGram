@@ -20,11 +20,13 @@ check("NabdhCompactSettings.row(context, parent" in hub and
       "NabdhDynamicAccent.accent(" in hub and
       "NabdhStrings.get(context, titleRes)" in hub,
       "main settings lost native grouped cards / Monet / app language")
-check(page.count("NabdhCompactSettings.row(") >= 3 and
-      "NabdhStrings.get(context, label)" in page and
-      "NabdhStrings.get(context, subtitle)" in page and
-      "nabdhFeatureRow(context, content, 603);" in page,
-      "features, additional tools or backup were lost")
+check("NabdhCompactSettings.row(" in page and
+      "NabdhExpandedBrowser" in page and
+      "NabdhExpandedChannelFeed" in page and
+      "NabdhChatLockTitle" in page and
+      "NabdhHSettingsBackup" in page and
+      "NabdhStrings.get(context, label)" in page,
+      "grouped tools, chat lock, backup or in-app locale route was lost")
 check("choices.setVisibility(View.GONE);" in page and
       "choices.setOnCheckedChangeListener(" in page and
       "fontTitle.setOnClickListener(" in page and
