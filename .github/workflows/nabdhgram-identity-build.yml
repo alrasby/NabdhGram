@@ -454,6 +454,13 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-profile-bio-glass.py Telegram-upstream
 
+      - name: Render compact grouped native NabdhGram settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-compact-settings.py
+          python3 nabdhgram/scripts/apply-nabdh-compact-settings.py Telegram-upstream
+
       - name: Verify rounded Profile bio presses and unified chat input
         shell: bash
         run: |
@@ -484,6 +491,8 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-ai-android-compat.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-expanded-tools.py nabdhgram/scripts/apply-nabdh-chat-lock.py nabdhgram/scripts/check-nabdh-tool-settings-layout.py
           python3 nabdhgram/scripts/check-nabdh-tool-settings-layout.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-compact-settings.py
+          python3 nabdhgram/scripts/check-nabdh-compact-settings.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
