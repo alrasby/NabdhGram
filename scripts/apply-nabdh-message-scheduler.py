@@ -77,7 +77,7 @@ for locale, labels in translations.items():
 for locale, old, new in (
     ("values", "Use Telegram's native long-press Send menu to schedule messages.",
      "Choose a Telegram contact, date, time and message below. Telegram stores scheduled messages on its servers."),
-    ("values-ar", "استخدم قائمة Telegram الأصلية بالضغط المطول على الإرسال لجدولة الرسائل.",
+    ("values-ar", "استخدم الضغط المطوّل على زر الإرسال لجدولة الرسائل من Telegram الأصلي.",
      "اختر جهة اتصال في Telegram والتاريخ والوقت والرسالة أدناه. يحفظ Telegram الرسالة المجدولة على خوادمه."),
 ):
     resource = root / "TMessagesProj/src/main/res" / locale / "nabdh_v1_hierarchy.xml"
