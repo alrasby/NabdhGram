@@ -165,6 +165,12 @@ public final class NabdhAiActivity extends Activity {
 
     @Override protected void onStart() {
         super.onStart();
+        // Protect Telegram Android 23–25: neither optional AI SDK may load here.
+        // Gemini Nano requires API 26+; Gemma requires even newer hardware.
+        if (android.os.Build.VERSION.SDK_INT < 26) {
+            state.setText("On-device AI is unavailable on this Android version. Telegram remains fully usable.");
+            return;
+        }
         // Bind in this Activity lifecycle only. Never keep AI alive in Telegram background.
         bindingRequested = bindService(
                 new Intent(this, NabdhAiCoreService.class),
