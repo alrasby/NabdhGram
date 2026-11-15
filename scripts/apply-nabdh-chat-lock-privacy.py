@@ -69,6 +69,21 @@ updated = """    private void showOrUpdateNotification(boolean notifyAboutLast) 
         if (!getUserConfig().isClientActivated()"""
 code = once(code, head, updated, "old pending push cleanup")
 
+# Locking an unread conversation must NOT call Telegram's
+# removeNotificationsForDialog(): that method also marks its local unread count
+# as read. Instead let the notification dispatcher re-render its own queue,
+# filtering protected messages in showOrUpdateNotification above.
+refresh_anchor = """    private void showOrUpdateNotification(boolean notifyAboutLast) {"""
+refresh_method = """    public void nabdhRefreshLockedNotifications() {
+        notificationsQueue.postRunnable(() -> {
+            // Local notification UI refresh only: no read acknowledgements.
+            showOrUpdateNotification(false);
+        });
+    }
+
+    private void showOrUpdateNotification(boolean notifyAboutLast) {"""
+code = once(code, refresh_anchor, refresh_method, "unread-preserving notification refresh")
+
 # Extra notification stack must never recreate a protected child notification.
 head = """        for (int a = 0; a < pushMessages.size(); a++) {
             MessageObject messageObject = pushMessages.get(a);
@@ -202,12 +217,10 @@ replace = """        save(context, info);
         UNLOCKED.remove(id(account, dialog));
         org.telegram.messenger.NotificationCenter.getInstance(account)
                 .postNotificationName(org.telegram.messenger.NotificationCenter.dialogsNeedReload);
-        if (enabled) {
-            // Dismiss existing notifications using Telegram's own local queue.
-            // Does not issue a Telegram server read receipt.
-            org.telegram.messenger.NotificationsController.getInstance(account)
-                    .removeNotificationsForDialog(dialog);
-        }
+        // Rebuild Android notifications without Telegram's read-processing API.
+        // Keeping the unread badge intact is part of the local-lock contract.
+        org.telegram.messenger.NotificationsController.getInstance(account)
+                .nabdhRefreshLockedNotifications();
     }"""
 s = once(s, head, replace, "dismiss existing notifications on lock")
 lock.write_text(s, encoding="utf-8")
