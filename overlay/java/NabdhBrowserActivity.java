@@ -212,7 +212,8 @@ public final class NabdhBrowserActivity extends Activity {
             }
         });
         page.addView(web, new LinearLayout.LayoutParams(-1, 0, 1f));
-        setContentView(page);
+        org.telegram.ui.Components.NabdhToolUi.install(this, page,
+                local("Nabdh Browser", "متصفح نبض جرام"));
         String initial = getIntent().getStringExtra("url");
         visit(initial == null ? "https://nabdhserv.net" : initial);
     }
