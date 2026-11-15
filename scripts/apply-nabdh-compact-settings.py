@@ -42,7 +42,10 @@ def replace_method(text, signature, body, label):
             elif ch == "\\": escaped = True
             elif ch == quoted: quoted = None
             continue
-        if ch in ('"', "'"):
+        # Java comments routinely contain apostrophes (e.g. Telegram's).
+        # Treat only double-quoted Java string literals as bracket shielding;
+        # target UI methods have no brace-valued character literals.
+        if ch == '"':
             quoted = ch
         elif ch == "{":
             depth += 1
@@ -185,6 +188,10 @@ source = replace_once(source, "            fontCard.addView(choices);", """     
                 }
             });
             fontCard.addView(choices);""", "collapsible font choice without replacing its existing saved onClick behavior")
+for invariant in ("NabdhShieldTitle", "NabdhHSettingsBackup",
+                  "private void addNabdhFeatureMenu(", "private void addPrivacyControls("):
+    if invariant not in source:
+        raise SystemExit("Compact settings accidentally removed category logic: " + invariant)
 page.write_text(source, encoding="utf-8")
 
 from xml.sax.saxutils import escape
