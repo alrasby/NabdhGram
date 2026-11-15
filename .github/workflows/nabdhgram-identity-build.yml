@@ -461,6 +461,13 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-compact-settings.py
           python3 nabdhgram/scripts/apply-nabdh-compact-settings.py Telegram-upstream
 
+      - name: Install user-confirmed Telegram message scheduler
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-message-scheduler.py
+          python3 nabdhgram/scripts/apply-nabdh-message-scheduler.py Telegram-upstream
+
       - name: Verify rounded Profile bio presses and unified chat input
         shell: bash
         run: |
@@ -493,6 +500,8 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-tool-settings-layout.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-nabdh-compact-settings.py
           python3 nabdhgram/scripts/check-nabdh-compact-settings.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-message-scheduler.py
+          python3 nabdhgram/scripts/check-nabdh-message-scheduler.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream

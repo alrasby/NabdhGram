@@ -72,8 +72,7 @@ public final class NabdhAiActivity extends Activity {
         button.setTextSize(14);
         button.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
-        button.setBackground(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+        org.telegram.ui.Components.NabdhToolUi.styleButton(this, button);
         button.setOnClickListener(v -> onClick.run());
         return button;
     }
@@ -85,7 +84,7 @@ public final class NabdhAiActivity extends Activity {
         screen.setOrientation(LinearLayout.VERTICAL);
         screen.setPadding(20, 20, 20, 20);
         screen.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
-                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundGray));
         screen.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
                 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         scroll.addView(screen);
@@ -103,6 +102,7 @@ public final class NabdhAiActivity extends Activity {
         privacy.setTextSize(15);
         screen.addView(privacy);
         textInput = new EditText(this);
+        org.telegram.ui.Components.NabdhToolUi.styleInput(this, textInput);
         textInput.setHint(local("Paste only the text you want to analyze",
                 "الصق فقط النص الذي ترغب في تحليله"));
         textInput.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
@@ -139,6 +139,7 @@ public final class NabdhAiActivity extends Activity {
         gemma.setTextSize(13);
         screen.addView(gemma);
         checksum = new EditText(this);
+        org.telegram.ui.Components.NabdhToolUi.styleInput(this, checksum);
         checksum.setSingleLine(true);
         checksum.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));

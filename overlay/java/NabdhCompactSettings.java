@@ -52,10 +52,17 @@ public final class NabdhCompactSettings {
         group.setLayoutDirection(LocaleController.isRTL
                 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         final int paper = Theme.getColor(Theme.key_windowBackgroundWhite);
+        final int canvas = Theme.getColor(Theme.key_windowBackgroundGray);
         final int tint = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
         GradientDrawable surface = new GradientDrawable();
         surface.setShape(GradientDrawable.RECTANGLE);
-        surface.setColor(translucent(paper, 242));
+        // Blend with the native page canvas; a nearly opaque white fill was
+        // visibly disconnected from Telegram's Glass settings surfaces.
+        int blended = Color.rgb(
+                (Color.red(canvas) * 55 + Color.red(paper) * 45) / 100,
+                (Color.green(canvas) * 55 + Color.green(paper) * 45) / 100,
+                (Color.blue(canvas) * 55 + Color.blue(paper) * 45) / 100);
+        surface.setColor(blended);
         surface.setCornerRadius(dp(context, 16));
         surface.setStroke(Math.max(1, dp(context, .75f)), translucent(tint, 29));
         group.setBackground(surface);

@@ -33,13 +33,14 @@ for section, label in (
     ("NabdhNetworkTitle", "NabdhExpandedBrowser"),
     ("NabdhNetworkTitle", "NabdhExpandedCamera"),
     ("NabdhProductivityTitle", "NabdhExpandedChannelFeed"),
-    ("NabdhPrivacyTitle", "NabdhExpandedSwipes"),
     ("NabdhPrivacyTitle", "NabdhChatLockTitle"),
 ):
     require(f"titleRes == R.string.{section}" in category and
             f"R.string.{label}" in category,
             f"native {section} must link {label}")
 
+require("nabdhExpandedButton(context, content, R.string.NabdhExpandedSwipes" not in category,
+        "redundant Swipe Actions entry must not appear")
 require("new org.telegram.ui.ActionBar.AlertDialog.Builder(context)" in category and
         "SharedConfig.updateChatListSwipeSetting(chosen)" in category,
         "swipe dialog must use Telegram theme without changing the native action")

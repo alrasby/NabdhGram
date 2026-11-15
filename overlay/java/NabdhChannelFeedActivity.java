@@ -64,7 +64,7 @@ public final class NabdhChannelFeedActivity extends Activity {
         int pad = (int) (12 * getResources().getDisplayMetrics().density);
         screen.setPadding(pad, pad, pad, pad);
         screen.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
-                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundGray));
         TextView note = new TextView(this);
         note.setText(local("Latest locally cached post from your channels · Read-only · No background scanning",
                 "أحدث منشور محفوظ محليًا من قنواتك · للقراءة فقط · دون فحص في الخلفية"));

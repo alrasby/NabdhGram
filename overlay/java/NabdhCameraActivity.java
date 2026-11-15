@@ -82,8 +82,7 @@ public final class NabdhCameraActivity extends Activity {
         result.setMinHeight((int) (48 * getResources().getDisplayMetrics().density + .5f));
         result.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
-        result.setBackground(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+        org.telegram.ui.Components.NabdhToolUi.styleButton(this, result);
         result.setOnClickListener(v -> action.run());
         return result;
     }
@@ -94,7 +93,7 @@ public final class NabdhCameraActivity extends Activity {
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
-                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundGray));
         page.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
                 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         preview = new TextureView(this);

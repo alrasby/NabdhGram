@@ -72,8 +72,7 @@ public final class NabdhBrowserActivity extends Activity {
         result.setMinHeight((int) (46 * getResources().getDisplayMetrics().density + .5f));
         result.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
-        result.setBackground(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+        org.telegram.ui.Components.NabdhToolUi.styleButton(this, result);
         result.setOnClickListener(v -> click.run());
         return result;
     }
@@ -102,7 +101,7 @@ public final class NabdhBrowserActivity extends Activity {
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
-                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundGray));
         page.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
                 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         int dp = (int) (getResources().getDisplayMetrics().density + .5f);
@@ -111,6 +110,7 @@ public final class NabdhBrowserActivity extends Activity {
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.setPadding(8 * dp, 4 * dp, 8 * dp, 4 * dp);
         address = new EditText(this);
+        org.telegram.ui.Components.NabdhToolUi.styleInput(this, address);
         address.setSingleLine(true);
         address.setTextSize(13);
         address.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
