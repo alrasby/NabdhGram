@@ -64,6 +64,13 @@ require('android:exported="false"' in manifest and
         "PIN management activity is private")
 require("NabdhChatLock.verify(this, entered)" in activity,
         "editing locked chat settings requires the PIN")
+require("@Override protected void onStop()" in activity and
+        "authorized = false;" in activity and
+        "@Override protected void onRestart()" in activity,
+        "PIN manager must re-authenticate after backgrounding")
+require("org.telegram.messenger.LocaleController.getString(" in activity and
+        "Theme.key_windowBackgroundWhiteBlackText" in activity,
+        "PIN manager must respect selected locale and theme")
 require("DialogObject.isEncryptedDialog(dialog.id)" in activity,
         "native secret chats are not silently added to lock manager")
 require("MessagesController.markDialogAsRead(" not in locks and
