@@ -22,6 +22,8 @@ def require(test, message):
     if not test:
         raise SystemExit("FAIL: " + message)
 
+require("storyPushMessagesDict.remove(old.dialogId);" in notification,
+        "cached protected-chat story notifications are also suppressed")
 require(notification.count("NabdhChatLock.isLocked(") >= 5,
         "notifications, child notifications and popup replies are gated")
 require("private String getStringForMessage(" in notification and
