@@ -66,6 +66,33 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
         nabdhExpandedButton(context, parent, R.string.NabdhExpandedChannelFeed,
                 () -> context.startActivity(new android.content.Intent(
                         context, NabdhChannelFeedActivity.class)));
+        // Reuse Telegram's persisted real chat-swipe implementation and settings,
+        // never recreate gesture dispatch or alter read receipts.
+        nabdhExpandedButton(context, parent, R.string.NabdhExpandedSwipes,
+                () -> nabdhChooseChatSwipe(context));
+    }
+
+    private void nabdhChooseChatSwipe(Context context) {
+        final String[] options = {
+            org.telegram.messenger.LocaleController.getString(R.string.SwipeSettingsPin),
+            org.telegram.messenger.LocaleController.getString(R.string.SwipeSettingsRead),
+            org.telegram.messenger.LocaleController.getString(R.string.SwipeSettingsArchive),
+            org.telegram.messenger.LocaleController.getString(R.string.SwipeSettingsMute),
+            org.telegram.messenger.LocaleController.getString(R.string.SwipeSettingsDelete),
+            org.telegram.messenger.LocaleController.getString(R.string.SwipeSettingsFolders)
+        };
+        int selected = org.telegram.messenger.SharedConfig.getChatSwipeAction(
+                org.telegram.messenger.UserConfig.selectedAccount);
+        new android.app.AlertDialog.Builder(context)
+                .setTitle(context.getString(R.string.NabdhExpandedSwipes))
+                .setSingleChoiceItems(options, selected, (dialog, chosen) -> {
+                    if (chosen >= 0 && chosen < options.length) {
+                        org.telegram.messenger.SharedConfig.updateChatListSwipeSetting(chosen);
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private void nabdhExpandedButton(Context context, LinearLayout parent,
@@ -98,12 +125,14 @@ labels = {
         "NabdhExpandedBrowser": "Internal browser · tracking protection",
         "NabdhExpandedCamera": "Advanced Camera2 · photo controls",
         "NabdhExpandedChannelFeed": "Channel Feed · recent cached posts / swipe",
+        "NabdhExpandedSwipes": "Swipe Actions · Telegram-native chat gestures",
     },
     "values-ar": {
         "NabdhExpandedTitle": "أدوات نبض جرام",
         "NabdhExpandedBrowser": "المتصفح الداخلي وحماية التتبع",
         "NabdhExpandedCamera": "كاميرا Camera2 المتقدمة",
         "NabdhExpandedChannelFeed": "منشورات القنوات والسحب",
+        "NabdhExpandedSwipes": "إجراءات السحب للمحادثات",
     },
 }
 for locale, pairs in labels.items():
