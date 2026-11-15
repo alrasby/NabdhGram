@@ -61,6 +61,7 @@ jobs:
           python3 scripts/verify-release-apk.py --self-test
           python3 scripts/check-nabdh-v1-integration.py --self-test
           python3 scripts/apply-nabdh-settings-order.py --self-test
+          python3 scripts/check-nabdh-settings-entry.py --self-test
           tmpdir="$(mktemp -d)"
           trap 'rm -rf "$tmpdir"' EXIT
           javac -encoding UTF-8 -d "$tmpdir" overlay/java/NabdhV1Engine.java overlay/java/NabdhFileGuard.java tests/java/org/telegram/ui/Components/NabdhV1EngineSmokeTest.java tests/java/org/telegram/ui/Components/NabdhShieldVerificationTest.java

@@ -143,6 +143,22 @@ Physical-device export/import, rotation, RTL, theme contrast, Android
 - Release checks: exact package, non-debuggable, signature SHA-256 match,
   native ABI list, Firebase notifications, Android launch, Play/license/privacy.
 
+### Main Telegram Settings entry and MTProxy promotion policy (device QA pending)
+
+The **single** NabdhGram Settings row (ID 80) is now placed directly after
+Telegram's native Language row (ID 10), before the existing section separator,
+not under Help. The original click route, Telegram Settings rows and their
+relative order are preserved. Source and workflow checks require one row and
+the correct adjacency.
+
+The existing `apply-hide-proxy-promo.py` is enabled in Android builds. It
+detects only Telegram's `PROMO_TYPE_PROXY` and calls Telegram's native
+`MessagesController.hidePromoDialog()` on dialog resume and reload, with a
+15-second retry guard. This is client-side dismissal, **not forceful deletion
+on Telegram servers**, and no protection from all future reappearance has
+been proven. It must not affect ordinary channels, pinned chats, or service
+announcements. Validate reconnecting/changing MTProxy on an Android device.
+
 ## Merge requirements
 
 1. Foundation, pinned source overlay and Android Debug compile on this **branch**.
