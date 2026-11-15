@@ -51,11 +51,15 @@ h = exact(h, "        fragmentView = scroll;",
     """        nabdhExpandedTools(context, content);
         fragmentView = scroll;""", "settings entry")
 method = """    private void nabdhExpandedTools(Context context, LinearLayout parent) {
+        int dp = (int) (context.getResources().getDisplayMetrics().density + 0.5f);
         TextView heading = new TextView(context);
         heading.setText(org.telegram.messenger.LocaleController.getString(R.string.NabdhExpandedTitle));
-        heading.setTextSize(18);
-        heading.setPadding(0, 18, 0, 12);
-        heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        heading.setTextSize(16);
+        heading.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        heading.setPadding(12 * dp, 20 * dp, 12 * dp, 8 * dp);
+        heading.setGravity(org.telegram.messenger.LocaleController.isRTL
+                ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
+        heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         parent.addView(heading);
         nabdhExpandedButton(context, parent, R.string.NabdhExpandedBrowser,
                 () -> context.startActivity(new android.content.Intent(
@@ -97,19 +101,109 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
 
     private void nabdhExpandedButton(Context context, LinearLayout parent,
                                      int label, Runnable action) {
-        TextView card = new TextView(context);
-        card.setText(org.telegram.messenger.LocaleController.getString(label));
-        card.setTextSize(16);
-        card.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        int d = (int) (16 * context.getResources().getDisplayMetrics().density);
-        card.setPadding(d, d, d, d);
+        int subtitle;
+        int icon;
+        if (label == R.string.NabdhExpandedBrowser) {
+            subtitle = R.string.NabdhExpandedBrowserInfo;
+            icon = R.drawable.nabdh_tool_browser;
+        } else if (label == R.string.NabdhExpandedCamera) {
+            subtitle = R.string.NabdhExpandedCameraInfo;
+            icon = R.drawable.nabdh_tool_camera;
+        } else if (label == R.string.NabdhExpandedChannelFeed) {
+            subtitle = R.string.NabdhExpandedChannelFeedInfo;
+            icon = R.drawable.nabdh_tool_feed;
+        } else if (label == R.string.NabdhChatLockTitle) {
+            subtitle = R.string.NabdhExpandedLockInfo;
+            icon = R.drawable.nabdh_tool_lock;
+        } else {
+            subtitle = R.string.NabdhExpandedSwipesInfo;
+            icon = R.drawable.nabdh_tool_swipe;
+        }
+
+        final int d = (int) (context.getResources().getDisplayMetrics().density + 0.5f);
+        final boolean rtl = org.telegram.messenger.LocaleController.isRTL;
+        final int primary = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);
+        final int secondary = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
+        final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        final String name = org.telegram.messenger.LocaleController.getString(label);
+        final String description = org.telegram.messenger.LocaleController.getString(subtitle);
+
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        // Keep icon on the left and disclosure on the right, while the text
+        // itself respects Telegram's selected in-app language.
+        card.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        card.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        card.setMinimumHeight(76 * d);
+        card.setPadding(14 * d, 12 * d, 14 * d, 12 * d);
         card.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         card.setClickable(true);
         card.setFocusable(true);
-        card.setOnClickListener(view -> action.run());
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.bottomMargin = d / 2;
-        parent.addView(card, params);
+        card.setContentDescription(name + ". " + description);
+        card.setOnClickListener(v -> action.run());
+
+        android.widget.FrameLayout iconBox = new android.widget.FrameLayout(context);
+        android.graphics.drawable.GradientDrawable soft =
+                new android.graphics.drawable.GradientDrawable();
+        soft.setCornerRadius(13 * d);
+        soft.setColor(android.graphics.Color.argb(
+                26, android.graphics.Color.red(accent),
+                android.graphics.Color.green(accent),
+                android.graphics.Color.blue(accent)));
+        iconBox.setBackground(soft);
+        android.widget.ImageView image = new android.widget.ImageView(context);
+        image.setImageResource(icon);
+        image.setColorFilter(accent);
+        android.widget.FrameLayout.LayoutParams imageParams =
+                new android.widget.FrameLayout.LayoutParams(
+                        23 * d, 23 * d, android.view.Gravity.CENTER);
+        iconBox.addView(image, imageParams);
+        LinearLayout.LayoutParams iconParams =
+                new LinearLayout.LayoutParams(44 * d, 44 * d);
+        card.addView(iconBox, iconParams);
+
+        LinearLayout labels = new LinearLayout(context);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        labels.setLayoutDirection(rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        labels.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams labelParams =
+                new LinearLayout.LayoutParams(0, -2, 1);
+        labelParams.leftMargin = 12 * d;
+        labelParams.rightMargin = 8 * d;
+        card.addView(labels, labelParams);
+        TextView title = new TextView(context);
+        title.setText(name);
+        title.setTextSize(15);
+        title.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        title.setTextColor(primary);
+        title.setGravity(rtl ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
+        title.setMaxLines(2);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        labels.addView(title, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView details = new TextView(context);
+        details.setText(description);
+        details.setTextSize(12);
+        details.setTextColor(secondary);
+        details.setGravity(rtl ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
+        details.setMaxLines(2);
+        details.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams detailParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        detailParams.topMargin = 4 * d;
+        labels.addView(details, detailParams);
+
+        TextView chevron = new TextView(context);
+        chevron.setText(rtl ? "‹" : "›");
+        chevron.setTextColor(accent);
+        chevron.setTextSize(25);
+        chevron.setGravity(android.view.Gravity.CENTER);
+        card.addView(chevron, new LinearLayout.LayoutParams(20 * d, 42 * d));
+
+        LinearLayout.LayoutParams cardParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        cardParams.bottomMargin = 8 * d;
+        parent.addView(card, cardParams);
     }
 
 """
@@ -121,18 +215,28 @@ hub.write_text(h, encoding="utf-8")
 
 labels = {
     "values": {
-        "NabdhExpandedTitle": "NabdhGram tools",
-        "NabdhExpandedBrowser": "Internal browser · tracking protection",
-        "NabdhExpandedCamera": "Advanced Camera2 · photo controls",
-        "NabdhExpandedChannelFeed": "Channel Feed · recent cached posts / swipe",
-        "NabdhExpandedSwipes": "Swipe Actions · Telegram-native chat gestures",
+        "NabdhExpandedTitle": "Tools and privacy",
+        "NabdhExpandedBrowser": "Private browser",
+        "NabdhExpandedBrowserInfo": "Website navigation and tracking controls",
+        "NabdhExpandedCamera": "Advanced camera",
+        "NabdhExpandedCameraInfo": "Camera2 capture and photo sharing",
+        "NabdhExpandedChannelFeed": "Channel feed",
+        "NabdhExpandedChannelFeedInfo": "Recent cached channel posts",
+        "NabdhExpandedSwipes": "Swipe actions",
+        "NabdhExpandedSwipesInfo": "Choose your chat-list swipe action",
+        "NabdhExpandedLockInfo": "Local PIN and protected conversation previews",
     },
     "values-ar": {
-        "NabdhExpandedTitle": "أدوات نبض جرام",
-        "NabdhExpandedBrowser": "المتصفح الداخلي وحماية التتبع",
-        "NabdhExpandedCamera": "كاميرا Camera2 المتقدمة",
-        "NabdhExpandedChannelFeed": "منشورات القنوات والسحب",
-        "NabdhExpandedSwipes": "إجراءات السحب للمحادثات",
+        "NabdhExpandedTitle": "الأدوات والخصوصية",
+        "NabdhExpandedBrowser": "المتصفح الداخلي",
+        "NabdhExpandedBrowserInfo": "تصفح المواقع والتحكم بحماية التتبع",
+        "NabdhExpandedCamera": "الكاميرا المتقدمة",
+        "NabdhExpandedCameraInfo": "تصوير Camera2 ومشاركة الصور",
+        "NabdhExpandedChannelFeed": "موجز القنوات",
+        "NabdhExpandedChannelFeedInfo": "أحدث منشورات القنوات المحفوظة",
+        "NabdhExpandedSwipes": "إجراءات السحب",
+        "NabdhExpandedSwipesInfo": "تخصيص السحب في قائمة المحادثات",
+        "NabdhExpandedLockInfo": "رمز محلي وحماية معاينات المحادثات",
     },
 }
 for locale, pairs in labels.items():
@@ -145,5 +249,35 @@ for locale, pairs in labels.items():
                     escape(value).replace("'", "\\'") + '</string>')
     rows.append('</resources>')
     dest.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+# Compact, tintable Material vector glyphs shared by the settings cards.
+icons = {
+    "browser": ("M3,12 A9,9 0,1 1,21 12 A9,9 0,1 1,3 12", "M12,3 L12,21 M3,12 L21,12 M5,7 L19,7 M5,17 L19,17"),
+    "camera": ("M3,7 L7,7 L9,4 L15,4 L17,7 L21,7 L21,20 L3,20 Z", "M8,13 A4,4 0,1 1,16 13 A4,4 0,1 1,8 13"),
+    "feed": ("M5,3 L19,3 L19,21 L5,21 Z", "M8,7 L16,7 M8,11 L16,11 M8,15 L16,15 M8,18 L13,18"),
+    "lock": ("M5,11 L19,11 L19,21 L5,21 Z", "M8,11 L8,8 A4,4 0,0 1,16 8 L16,11 M12,15 L12,17"),
+    "swipe": ("M3,8 L19,8 M15,4 L19,8 L15,12", "M21,16 L5,16 M9,12 L5,16 L9,20"),
+}
+drawable = root / "TMessagesProj/src/main/res/drawable"
+for key, (outline, details) in icons.items():
+    dest = drawable / ("nabdh_tool_" + key + ".xml")
+    if dest.exists():
+        raise SystemExit("Expanded tools icon collision: " + str(dest))
+    dest.write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android" '
+        'android:width="24dp" android:height="24dp" '
+        'android:viewportWidth="24" android:viewportHeight="24">\n'
+        '  <path android:pathData="' + outline + '" '
+        'android:fillColor="@android:color/transparent" '
+        'android:strokeColor="#FFFFFFFF" android:strokeWidth="1.6" '
+        'android:strokeLineCap="round" android:strokeLineJoin="round"/>\n'
+        '  <path android:pathData="' + details + '" '
+        'android:fillColor="@android:color/transparent" '
+        'android:strokeColor="#FFFFFFFF" android:strokeWidth="1.6" '
+        'android:strokeLineCap="round" android:strokeLineJoin="round"/>\n'
+        '</vector>\n',
+        encoding="utf-8")
 
 print("PASS: private Camera2/Browser/ChannelFeed activities and working Settings launchers")
