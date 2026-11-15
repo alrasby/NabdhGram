@@ -56,7 +56,7 @@ public final class NabdhBrowserActivity extends Activity {
         if (uri == null || uri.getHost() == null ||
             (!"https".equalsIgnoreCase(uri.getScheme()) &&
              !"http".equalsIgnoreCase(uri.getScheme())) ||
-             uri.getUserInfo() != null) return null;
+             (uri.getEncodedAuthority() != null && uri.getEncodedAuthority().contains("@"))) return null;
         return uri;
     }
 
