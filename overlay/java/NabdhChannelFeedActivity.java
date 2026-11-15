@@ -86,6 +86,10 @@ public final class NabdhChannelFeedActivity extends Activity {
         for (int i = 0; i < controller.dialogs_dict.size(); i++) {
             TLRPC.Dialog dialog = controller.dialogs_dict.valueAt(i);
             if (dialog == null || dialog.id >= 0) continue;
+            // An opt-in locked channel must not leak cached post text through
+            // this independent feed, even when its ChatActivity PIN gate works.
+            if (org.telegram.ui.Components.NabdhChatLock.isLocked(
+                    getApplicationContext(), account, dialog.id)) continue;
             TLRPC.Chat chat = controller.getChat(-dialog.id);
             if (chat == null || !ChatObject.isChannel(chat) || chat.megagroup) continue;
             ArrayList<MessageObject> messages = controller.dialogMessage.get(dialog.id);
