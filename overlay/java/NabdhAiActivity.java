@@ -178,7 +178,8 @@ public final class NabdhAiActivity extends Activity {
         state.setText(local("Checking supported local models...",
                 "جارٍ فحص النماذج المحلية المدعومة..."));
         screen.addView(state);
-        setContentView(scroll);
+        org.telegram.ui.Components.NabdhToolUi.install(this, scroll,
+                local("NabdhAI Core", "محرك نبض للذكاء الاصطناعي"));
     }
 
     private void request(int code, String content) {
