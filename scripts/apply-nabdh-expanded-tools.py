@@ -52,7 +52,7 @@ h = exact(h, "        fragmentView = scroll;",
         fragmentView = scroll;""", "settings entry")
 method = """    private void nabdhExpandedTools(Context context, LinearLayout parent) {
         TextView heading = new TextView(context);
-        heading.setText(context.getString(R.string.NabdhExpandedTitle));
+        heading.setText(org.telegram.messenger.LocaleController.getString(R.string.NabdhExpandedTitle));
         heading.setTextSize(18);
         heading.setPadding(0, 18, 0, 12);
         heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
@@ -84,7 +84,7 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
         int selected = org.telegram.messenger.SharedConfig.getChatSwipeAction(
                 org.telegram.messenger.UserConfig.selectedAccount);
         new android.app.AlertDialog.Builder(context)
-                .setTitle(context.getString(R.string.NabdhExpandedSwipes))
+                .setTitle(org.telegram.messenger.LocaleController.getString(R.string.NabdhExpandedSwipes))
                 .setSingleChoiceItems(options, selected, (dialog, chosen) -> {
                     if (chosen >= 0 && chosen < options.length) {
                         org.telegram.messenger.SharedConfig.updateChatListSwipeSetting(chosen);
@@ -98,7 +98,7 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
     private void nabdhExpandedButton(Context context, LinearLayout parent,
                                      int label, Runnable action) {
         TextView card = new TextView(context);
-        card.setText(context.getString(label));
+        card.setText(org.telegram.messenger.LocaleController.getString(label));
         card.setTextSize(16);
         card.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         int d = (int) (16 * context.getResources().getDisplayMetrics().density);
