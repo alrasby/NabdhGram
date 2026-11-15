@@ -32,6 +32,7 @@ public final class NabdhAiActivity extends Activity {
     private final ExecutorService copies = Executors.newSingleThreadExecutor();
     private Messenger remote;
     private boolean bound;
+    private boolean bindingRequested;
     private EditText textInput;
     private EditText checksum;
     private TextView state;
@@ -164,11 +165,19 @@ public final class NabdhAiActivity extends Activity {
 
     @Override protected void onStart() {
         super.onStart();
-        bindService(new Intent(this, NabdhAiCoreService.class), connection,
-                Context.BIND_AUTO_CREATE);
+        // Bind in this Activity lifecycle only. Never keep AI alive in Telegram background.
+        bindingRequested = bindService(
+                new Intent(this, NabdhAiCoreService.class),
+                connection, Context.BIND_AUTO_CREATE);
+        if (!bindingRequested && state != null) state.setText("Local AI service unavailable");
     }
     @Override protected void onStop() {
-        if (bound) { unbindService(connection); bound = false; remote = null; }
+        if (bindingRequested) {
+            unbindService(connection);
+            bindingRequested = false;
+        }
+        bound = false;
+        remote = null;
         super.onStop();
     }
     @Override protected void onDestroy() {
