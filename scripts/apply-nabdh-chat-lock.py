@@ -34,16 +34,15 @@ m = once(m, anchor, anchor + """
          "private manager activity")
 manifest.write_text(m, encoding="utf-8")
 
-hub = ui / "NabdhGramSettingsActivity.java"
-h = hub.read_text(encoding="utf-8")
-anchor = """        nabdhExpandedButton(context, parent, R.string.NabdhExpandedChannelFeed,
-                () -> context.startActivity(new android.content.Intent(
-                        context, NabdhChannelFeedActivity.class)));"""
-h = once(h, anchor, anchor + """
-        nabdhExpandedButton(context, parent, R.string.NabdhChatLockTitle,
-                () -> context.startActivity(new android.content.Intent(
-                        context, NabdhChatLockActivity.class)));""", "manager entry")
-hub.write_text(h, encoding="utf-8")
+category = ui / "NabdhGramFeatureCategoryActivity.java"
+c = category.read_text(encoding="utf-8")
+anchor = """            nabdhExpandedButton(context, content, R.string.NabdhExpandedSwipes,
+                    () -> nabdhChooseChatSwipe(context));"""
+c = once(c, anchor, anchor + """
+            nabdhExpandedButton(context, content, R.string.NabdhChatLockTitle,
+                    () -> context.startActivity(new android.content.Intent(
+                            context, NabdhChatLockActivity.class)));""", "privacy category PIN entry")
+category.write_text(c, encoding="utf-8")
 
 chat = ui / "ChatActivity.java"
 s = chat.read_text(encoding="utf-8")

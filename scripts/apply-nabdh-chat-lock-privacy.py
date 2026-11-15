@@ -146,8 +146,10 @@ notifications.write_text(code, encoding="utf-8")
 
 chat = ui / "ChatActivity.java"
 s = chat.read_text(encoding="utf-8")
-# Do not remove global FLAG_SECURE during onPause: system recents snapshot
-# may happen after onPause. Unlocked chats clear it upon their own resume.
+# Use Telegram's shared FlagSecureReason reference counter, NOT raw
+# Window.clearFlags: native Telegram PIN can independently require FLAG_SECURE.
+# Keep this chat's reason attached until fragment destruction so system-recents
+# snapshots remain protected, including after onPause.
 head = """    public void onPause() {
         super.onPause();
         if (getParentActivity() != null &&
@@ -163,14 +165,52 @@ s = once(s, head, """    public void onPause() {
         scrolling = false;""", "secure recents lifecycle")
 head = """        checkShowBlur(false);
         activityResumeTime = System.currentTimeMillis();"""
-s = once(s, head, """        if (getParentActivity() != null &&
-            !org.telegram.ui.Components.NabdhChatLock.isLocked(
-                    getParentActivity(), currentAccount, dialog_id)) {
-            getParentActivity().getWindow().clearFlags(
-                    android.view.WindowManager.LayoutParams.FLAG_SECURE);
+s = once(s, head, """        checkShowBlur(false);
+        activityResumeTime = System.currentTimeMillis();""", "leave Telegram native secure screenshot state untouched")
+
+# Replace raw FLAG_SECURE changes with a native reference-counted reason;
+# this respects Telegram's own app passcode/screenshot policy.
+direct_add = """            lockActivity.getWindow().addFlags(
+                    android.view.WindowManager.LayoutParams.FLAG_SECURE);"""
+s = once(s, direct_add,
+         "            nabdhAttachChatLockSecureReason(lockActivity);",
+         "reference-counted FLAG_SECURE owner")
+
+method_anchor = """    private void createSearchHashtagViewsIfNeeded() {"""
+method_block = """    private org.telegram.messenger.FlagSecureReason nabdhChatLockSecureReason;
+    private android.view.Window nabdhChatLockSecureWindow;
+
+    private void nabdhAttachChatLockSecureReason(android.app.Activity activity) {
+        if (activity == null) return;
+        android.view.Window currentWindow = activity.getWindow();
+        if (nabdhChatLockSecureReason == null ||
+                nabdhChatLockSecureWindow != currentWindow) {
+            if (nabdhChatLockSecureReason != null) {
+                nabdhChatLockSecureReason.detach();
+            }
+            nabdhChatLockSecureWindow = currentWindow;
+            nabdhChatLockSecureReason = new org.telegram.messenger.FlagSecureReason(
+                    currentWindow,
+                    () -> org.telegram.ui.Components.NabdhChatLock.isLocked(
+                            activity, currentAccount, dialog_id));
         }
-        checkShowBlur(false);
-        activityResumeTime = System.currentTimeMillis();""", "unlock normal chat screenshot lifecycle")
+        nabdhChatLockSecureReason.attach();
+        nabdhChatLockSecureReason.invalidate();
+    }
+
+    private void createSearchHashtagViewsIfNeeded() {"""
+s = once(s, method_anchor, method_block, "per-chat secure reason")
+
+destroy_anchor = """    public void onFragmentDestroy() {
+        super.onFragmentDestroy();"""
+destroy_replacement = """    public void onFragmentDestroy() {
+        if (nabdhChatLockSecureReason != null) {
+            nabdhChatLockSecureReason.detach();
+            nabdhChatLockSecureReason = null;
+            nabdhChatLockSecureWindow = null;
+        }
+        super.onFragmentDestroy();"""
+s = once(s, destroy_anchor, destroy_replacement, "native secure reason lifecycle")
 
 # Prevent reads just because the protected fragment is constructed, resumed
 # or cancelled before PIN authorization.
@@ -186,6 +226,14 @@ calls = [
 ]
 for index, call in enumerate(calls):
     s = once(s, call, "if (" + read_guard + ") {\n            " + call + "\n        }", "read confirmation " + str(index+1))
+# The final native read acknowledgement on pause runs BEFORE revocation.
+# Returning from background must not silently reuse an old PIN authorization.
+pause_ack = ("if (" + read_guard + ") {\n            " +
+             "getMessagesController().markDialogAsReadNow(dialog_id, replyId);" +
+             "\n        }")
+s = once(s, pause_ack,
+         pause_ack + "\n        org.telegram.ui.Components.NabdhChatLock.revoke(currentAccount, dialog_id);",
+         "revoke local PIN session only after native final read acknowledgement")
 chat.write_text(s, encoding="utf-8")
 
 # A PIN gate is not private if Telegram's main dialog list still previews

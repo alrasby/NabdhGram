@@ -34,10 +34,21 @@ require(notification.count("if (org.telegram.ui.Components.NabdhChatLock.isLocke
         "locked new and queued messages do not reach Android notifications")
 require(chat.count("NabdhChatLock.isUnlocked(currentAccount, dialog_id)") >= 4,
         "all four native ChatActivity direct read-ack paths require PIN")
+require("public static synchronized void revoke(int account, long dialog)" in locks and
+        chat.count("NabdhChatLock.revoke(currentAccount, dialog_id);") == 1,
+        "local PIN authorization ends on chat background")
+require(chat.index("getMessagesController().markDialogAsReadNow(dialog_id, replyId);") <
+        chat.index("NabdhChatLock.revoke(currentAccount, dialog_id);"),
+        "final legitimate read acknowledgement must precede PIN revocation")
 require("Keep FLAG_SECURE through system-recents snapshots" in chat,
         "privacy screenshot flag remains during background transitions")
-require("!org.telegram.ui.Components.NabdhChatLock.isLocked(" in chat,
-        "normal chats can clear FLAG_SECURE")
+require("new org.telegram.messenger.FlagSecureReason(" in chat and
+        "nabdhAttachChatLockSecureReason(lockActivity);" in chat and
+        "nabdhChatLockSecureReason.detach();" in chat,
+        "local PIN must use Telegram's native secure-window reference counter")
+require("lockActivity.getWindow().addFlags(" not in chat and
+        "getParentActivity().getWindow().clearFlags(" not in chat,
+        "local PIN must never override Telegram's existing FLAG_SECURE ownership")
 require("NabdhChatLock.isLocked(" in feed and
         "getApplicationContext(), account, dialog.id" in feed,
         "cached Channel Feed cannot expose posts from a PIN-locked channel")
@@ -59,6 +70,14 @@ require('android:exported="false"' in manifest and
         "PIN management activity is private")
 require("NabdhChatLock.verify(this, entered)" in activity,
         "editing locked chat settings requires the PIN")
+require("@Override protected void onPause()" in activity and
+        "authorized = false;" in activity and
+        "@Override protected void onResume()" in activity and
+        "if (screen != null && !authorized && NabdhChatLock.configured(this))" in activity,
+        "PIN manager must re-authenticate after losing foreground focus")
+require("org.telegram.messenger.LocaleController.getString(" in activity and
+        "Theme.key_windowBackgroundWhiteBlackText" in activity,
+        "PIN manager must respect selected locale and theme")
 require("DialogObject.isEncryptedDialog(dialog.id)" in activity,
         "native secret chats are not silently added to lock manager")
 require("MessagesController.markDialogAsRead(" not in locks and

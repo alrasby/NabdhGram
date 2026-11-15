@@ -37,6 +37,10 @@ public final class NabdhBrowserActivity extends Activity {
     private EditText address;
     private boolean blocking = true;
     private boolean scripts = false;
+    private String local(String en, String ar) {
+        return org.telegram.messenger.LocaleController.isRTL ? ar : en;
+    }
+
     private static final String[] TRACKERS = {
         "doubleclick.net", "googlesyndication.com", "google-analytics.com",
         "googletagmanager.com", "facebook.net", "connect.facebook.net",
@@ -65,6 +69,11 @@ public final class NabdhBrowserActivity extends Activity {
         result.setText(label);
         result.setAllCaps(false);
         result.setTextSize(12);
+        result.setMinHeight((int) (46 * getResources().getDisplayMetrics().density + .5f));
+        result.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        result.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         result.setOnClickListener(v -> click.run());
         return result;
     }
@@ -89,47 +98,67 @@ public final class NabdhBrowserActivity extends Activity {
 
     @Override public void onCreate(Bundle savedState) {
         super.onCreate(savedState);
-        setTitle("Nabdh Browser");
+        setTitle(local("Nabdh Browser", "متصفح نبض جرام"));
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setBackgroundColor(Color.rgb(18, 29, 33));
+        page.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+        page.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
+                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        int dp = (int) (getResources().getDisplayMetrics().density + .5f);
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
+        toolbar.setGravity(Gravity.CENTER_VERTICAL);
+        toolbar.setPadding(8 * dp, 4 * dp, 8 * dp, 4 * dp);
         address = new EditText(this);
         address.setSingleLine(true);
         address.setTextSize(13);
-        address.setTextColor(Color.WHITE);
-        address.setHintTextColor(Color.LTGRAY);
+        address.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        address.setHintTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
         address.setHint("https://");
         address.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
                              android.text.InputType.TYPE_TEXT_VARIATION_URI);
         toolbar.addView(address, new LinearLayout.LayoutParams(0, -2, 1f));
-        toolbar.addView(button("Go", () -> visit(address.getText().toString())));
+        toolbar.addView(button(local("Go", "فتح"), () -> visit(address.getText().toString())));
         page.addView(toolbar);
         LinearLayout controls = new LinearLayout(this);
         controls.setGravity(Gravity.CENTER_VERTICAL);
         controls.addView(button("‹", () -> { if (web.canGoBack()) web.goBack(); }));
         controls.addView(button("›", () -> { if (web.canGoForward()) web.goForward(); }));
         controls.addView(button("⟳", () -> web.reload()));
-        Button protection = button("Shield: ON", () -> {
+        Button protection = button(local("Shield: ON", "الحماية: مفعّلة"), () -> {
             blocking = !blocking;
             // The setting is intentionally session-scoped.
         });
         protection.setOnClickListener(v -> {
             blocking = !blocking;
-            protection.setText(blocking ? "Shield: ON" : "Shield: OFF");
+            protection.setText(blocking
+                    ? local("Shield: ON", "الحماية: مفعّلة")
+                    : local("Shield: OFF", "الحماية: معطّلة"));
             web.reload();
         });
-        controls.addView(protection, new LinearLayout.LayoutParams(0, -2, 1f));
-        Button javascript = button("JS: OFF", () -> {});
+        LinearLayout security = new LinearLayout(this);
+        security.setOrientation(LinearLayout.HORIZONTAL);
+        security.setPadding(8 * dp, 0, 8 * dp, 4 * dp);
+        security.addView(protection, new LinearLayout.LayoutParams(0, 48 * dp, 1f));
+        Button javascript = button(local("JS: OFF", "جافاسكربت: معطّل"), () -> {});
         javascript.setOnClickListener(v -> {
             scripts = !scripts;
             web.getSettings().setJavaScriptEnabled(scripts);
-            javascript.setText(scripts ? "JS: ON" : "JS: OFF");
+            javascript.setText(scripts
+                    ? local("JS: ON", "جافاسكربت: مفعّل")
+                    : local("JS: OFF", "جافاسكربت: معطّل"));
             web.reload();
         });
-        controls.addView(javascript, new LinearLayout.LayoutParams(0, -2, 1f));
-        page.addView(controls);
+        security.addView(javascript, new LinearLayout.LayoutParams(0, 48 * dp, 1f));
+        LinearLayout.LayoutParams navParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        navParams.leftMargin = 8 * dp;
+        navParams.rightMargin = 8 * dp;
+        page.addView(controls, navParams);
+        page.addView(security);
         web = new WebView(this);
         WebSettings cfg = web.getSettings();
         cfg.setJavaScriptEnabled(false);
@@ -145,10 +174,23 @@ public final class NabdhBrowserActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 26) cfg.setSafeBrowsingEnabled(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
         web.setWebViewClient(new WebViewClient() {
+            // Android 23 dispatches through the deprecated String overload.
+            // Both overloads must enforce the same scheme/authority allowlist.
+            @Override @SuppressWarnings("deprecation")
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (safe(Uri.parse(url)) == null) {
+                    Toast.makeText(NabdhBrowserActivity.this,
+                        local("External or unsafe link blocked", "تم منع رابط خارجي أو غير آمن"),
+                        Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return false;
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (safe(request.getUrl()) == null) {
                     Toast.makeText(NabdhBrowserActivity.this,
-                        "External or unsafe link blocked", Toast.LENGTH_SHORT).show();
+                        local("External or unsafe link blocked", "تم منع رابط خارجي أو غير آمن"),
+                            Toast.LENGTH_SHORT).show();
                     return true;
                 }
                 return false;
@@ -167,7 +209,8 @@ public final class NabdhBrowserActivity extends Activity {
         web.setDownloadListener((url, agent, disposition, mimeType, length) -> {
             Uri target = safe(Uri.parse(url));
             if (target == null) {
-                Toast.makeText(this, "Download blocked", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, local("Download blocked", "تم منع التنزيل"),
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
             try {
@@ -180,11 +223,13 @@ public final class NabdhBrowserActivity extends Activity {
                 DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
                 if (manager != null) manager.enqueue(request);
             } catch (Exception failure) {
-                Toast.makeText(this, "Download unavailable", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, local("Download unavailable", "التنزيل غير متاح"),
+                        Toast.LENGTH_SHORT).show();
             }
         });
         page.addView(web, new LinearLayout.LayoutParams(-1, 0, 1f));
-        setContentView(page);
+        org.telegram.ui.Components.NabdhToolUi.install(this, page,
+                local("Nabdh Browser", "متصفح نبض جرام"));
         String initial = getIntent().getStringExtra("url");
         visit(initial == null ? "https://nabdhserv.net" : initial);
     }

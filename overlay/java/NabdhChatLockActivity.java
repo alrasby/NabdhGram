@@ -22,24 +22,48 @@ public final class NabdhChatLockActivity extends Activity {
     private int account;
     private boolean authorized;
 
+    private String local(String en, String ar) {
+        return org.telegram.messenger.LocaleController.isRTL ? ar : en;
+    }
+
+    @Override protected void onPause() {
+        // PIN manager authorization lasts only while this Activity has focus.
+        // A translucent overlay or multitasking can call onPause without onStop.
+        authorized = false;
+        super.onPause();
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (screen != null && !authorized && NabdhChatLock.configured(this)) {
+            render();
+        }
+    }
+
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         account = UserConfig.selectedAccount;
-        setTitle("Chat locks");
+        setTitle(local("Chat locks", "قفل المحادثات"));
         ScrollView scroll = new ScrollView(this);
         screen = new LinearLayout(this);
         screen.setPadding(24, 24, 24, 24);
         screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setBackgroundColor(Color.rgb(18, 29, 33));
+        screen.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+        screen.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
+                ? android.view.View.LAYOUT_DIRECTION_RTL
+                : android.view.View.LAYOUT_DIRECTION_LTR);
         scroll.addView(screen);
-        setContentView(scroll);
+        org.telegram.ui.Components.NabdhToolUi.install(this, scroll,
+                local("Chat locks", "قفل المحادثات"));
         render();
     }
 
     private TextView line(String text) {
         TextView value = new TextView(this);
         value.setText(text);
-        value.setTextColor(Color.WHITE);
+        value.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
         value.setTextSize(16);
         value.setPadding(10, 12, 10, 12);
         screen.addView(value);
@@ -47,8 +71,10 @@ public final class NabdhChatLockActivity extends Activity {
     }
     private EditText secretField(String hint) {
         EditText field = new EditText(this);
-        field.setTextColor(Color.WHITE);
-        field.setHintTextColor(Color.LTGRAY);
+        field.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        field.setHintTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
         field.setHint(hint);
         field.setSingleLine(true);
         field.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
@@ -59,49 +85,67 @@ public final class NabdhChatLockActivity extends Activity {
         Button button = new Button(this);
         button.setText(text);
         button.setAllCaps(false);
+        button.setTextSize(15);
+        button.setMinHeight((int) (52 * getResources().getDisplayMetrics().density + .5f));
+        button.setGravity(org.telegram.messenger.LocaleController.isRTL
+                ? android.view.Gravity.RIGHT | android.view.Gravity.CENTER_VERTICAL
+                : android.view.Gravity.LEFT | android.view.Gravity.CENTER_VERTICAL);
+        button.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        button.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         button.setOnClickListener(v -> callback.run());
-        screen.addView(button);
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = (int) (8 * getResources().getDisplayMetrics().density);
+        screen.addView(button, params);
     }
 
     private void render() {
         screen.removeAllViews();
         if (!NabdhChatLock.configured(this)) {
-            line("Set a 6–12 digit local PIN. This does not change Telegram login or passcode.");
-            EditText pin = secretField("New PIN");
-            EditText confirm = secretField("Confirm PIN");
-            action("Set chat-lock PIN", () -> {
+            line(local("Set a 6–12 digit local PIN. This does not change Telegram login or passcode.",
+                    "أنشئ رمز PIN محليًا من 6 إلى 12 رقمًا. لا يؤثر على رمز دخول Telegram."));
+            EditText pin = secretField(local("New PIN", "رمز PIN الجديد"));
+            EditText confirm = secretField(local("Confirm PIN", "تأكيد رمز PIN"));
+            action(local("Set chat-lock PIN", "تفعيل رمز قفل المحادثات"), () -> {
                 String first = pin.getText().toString();
                 String again = confirm.getText().toString();
                 pin.getText().clear();
                 confirm.getText().clear();
-                if (!first.equals(again)) { notice("PINs do not match"); return; }
+                if (!first.equals(again)) { notice(local("PINs do not match", "رمزا PIN غير متطابقين")); return; }
                 try {
                     NabdhChatLock.setPin(this, first);
                     authorized = true;
                     render();
                 } catch (Exception failure) {
-                    notice("PIN not accepted: use 6–12 digits");
+                    notice(local("PIN not accepted: use 6–12 digits",
+                            "تعذر اعتماد الرمز، استخدم 6 إلى 12 رقمًا"));
                 }
             });
             return;
         }
         if (!authorized) {
-            line("Enter your local PIN before editing protected conversations.");
+            line(local("Enter your local PIN before editing protected conversations.",
+                    "أدخل رمز PIN المحلي لتعديل المحادثات المحمية."));
             EditText pin = secretField("PIN");
-            action("Manage locked chats", () -> {
+            action(local("Manage locked chats", "إدارة المحادثات المقفلة"), () -> {
                 String entered = pin.getText().toString();
                 pin.getText().clear();
                 if (NabdhChatLock.verify(this, entered)) {
                     authorized = true;
                     render();
-                } else notice("Incorrect PIN or temporarily blocked");
+                } else notice(local("Incorrect PIN or temporarily blocked",
+                            "رمز PIN غير صحيح أو المحاولات محظورة مؤقتًا"));
             });
             return;
         }
-        line(getString(org.telegram.messenger.R.string.NabdhChatLockNotice));
+        line(org.telegram.messenger.LocaleController.getString(
+                org.telegram.messenger.R.string.NabdhChatLockNotice));
         MessagesController controller = MessagesController.getInstance(account);
         if (controller == null || controller.dialogs_dict == null) {
-            line("Chat list not loaded. Return to the main chat list and try again.");
+            line(local("Chat list not loaded. Return to the main chat list and try again.",
+                        "لم تُحمّل قائمة المحادثات. عد للرئيسية ثم حاول مجددًا."));
             return;
         }
         int shown = 0;
@@ -130,11 +174,11 @@ public final class NabdhChatLockActivity extends Activity {
                     NabdhChatLock.setLocked(this, account, dialogId, !locked);
                     render();
                 } catch (Exception failure) {
-                    notice("Could not update lock");
+                    notice(local("Could not update lock", "تعذر تحديث القفل"));
                 }
             });
         }
-        if (shown == 0) line("No regular conversations loaded.");
+        if (shown == 0) line(local("No regular conversations loaded.", "لم تُحمّل محادثات عادية بعد."));
     }
     private void notice(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();

@@ -4,6 +4,8 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
+import android.content.ClipData;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
@@ -30,6 +32,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
+import androidx.core.content.FileProvider;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -64,21 +67,36 @@ public final class NabdhCameraActivity extends Activity {
     private int sensorOrientation;
     private volatile boolean active;
     private volatile boolean takingPhoto;
+    private volatile Uri lastPhotoUri;
+    private Button sharePhoto;
+
+    private String local(String en, String ar) {
+        return org.telegram.messenger.LocaleController.isRTL ? ar : en;
+    }
 
     private Button control(String title, Runnable action) {
         Button result = new Button(this);
         result.setAllCaps(false);
         result.setText(title);
         result.setTextSize(12);
+        result.setMinHeight((int) (48 * getResources().getDisplayMetrics().density + .5f));
+        result.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        result.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         result.setOnClickListener(v -> action.run());
         return result;
     }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        setTitle("Nabdh Camera2");
+        setTitle(local("Nabdh Camera2", "كاميرا نبض جرام"));
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
+        page.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+        page.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
+                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         preview = new TextureView(this);
         page.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1f));
         LinearLayout commands = new LinearLayout(this);
@@ -98,13 +116,18 @@ public final class NabdhCameraActivity extends Activity {
             zoom = Math.min(zoomMax, zoom * 1.3f);
             refreshRepeating();
         }));
-        commands.addView(control("Flash", () -> {
+        commands.addView(control(local("Flash", "الفلاش"), () -> {
             torch = !torch;
             refreshRepeating();
         }));
         commands.addView(control("●", this::takePhoto));
         page.addView(commands, new LinearLayout.LayoutParams(-1, -2));
-        setContentView(page);
+        sharePhoto = control(local("Share captured photo in NabdhGram",
+                "إرسال الصورة الملتقطة في نبض جرام"), this::shareLastPhoto);
+        sharePhoto.setEnabled(false);
+        page.addView(sharePhoto, new LinearLayout.LayoutParams(-1, -2));
+        org.telegram.ui.Components.NabdhToolUi.install(this, page,
+                local("Nabdh Camera2", "كاميرا نبض جرام"));
         manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         preview.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override public void onSurfaceTextureAvailable(SurfaceTexture s, int w, int h) {
@@ -194,7 +217,11 @@ public final class NabdhCameraActivity extends Activity {
                     ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                     byte[] bytes = new byte[buffer.remaining()];
                     buffer.get(bytes);
-                    savePhoto(bytes);
+                    final Uri saved = savePhoto(bytes);
+                    runOnUiThread(() -> {
+                        lastPhotoUri = saved;
+                        if (sharePhoto != null) sharePhoto.setEnabled(saved != null);
+                    });
                 } catch (Exception error) {
                     notifyUser("Photo could not be saved");
                 } finally { takingPhoto = false; }
@@ -297,7 +324,7 @@ public final class NabdhCameraActivity extends Activity {
         }
     }
 
-    private void savePhoto(byte[] bytes) throws Exception {
+    private Uri savePhoto(byte[] bytes) throws Exception {
         String name = "NabdhCamera_" + System.currentTimeMillis() + ".jpg";
         if (Build.VERSION.SDK_INT >= 29) {
             ContentValues values = new ContentValues();
@@ -319,14 +346,45 @@ public final class NabdhCameraActivity extends Activity {
             ContentValues completed = new ContentValues();
             completed.put(MediaStore.Images.Media.IS_PENDING, 0);
             getContentResolver().update(uri, completed, null, null);
+            notifyUser("Saved: " + name);
+            return uri;
         } else {
             File folder = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "NabdhGram");
             if (!folder.exists() && !folder.mkdirs()) throw new java.io.IOException("Directory");
-            try (OutputStream stream = new FileOutputStream(new File(folder, name))) {
+            File photo = new File(folder, name);
+            try (OutputStream stream = new FileOutputStream(photo)) {
                 stream.write(bytes);
             }
+            // Telegram's existing manifest declares its own FileProvider.
+            // Never expose file:// paths on Android 24+.
+            Uri shared = FileProvider.getUriForFile(this,
+                    getPackageName() + ".provider", photo);
+            notifyUser("Saved: " + name);
+            return shared;
         }
-        notifyUser("Saved: " + name);
+    }
+
+    private void shareLastPhoto() {
+        Uri uri = lastPhotoUri;
+        if (uri == null) {
+            notifyUser(local("Capture a photo first", "التقط صورة أولًا"));
+            return;
+        }
+        try {
+            // Same-app ACTION_SEND enters Telegram's native send/media flow.
+            // Do not bypass Telegram's existing recipient and upload logic.
+            Intent intent = new Intent(this, LaunchActivity.class);
+            intent.setAction(Intent.ACTION_SEND);
+            intent.setType("image/jpeg");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.setClipData(ClipData.newUri(getContentResolver(),
+                    "NabdhGram photo", uri));
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(intent);
+        } catch (RuntimeException error) {
+            notifyUser(local("Could not open NabdhGram photo sharing",
+                    "تعذّر فتح مشاركة الصورة في نبض جرام"));
+        }
     }
 
     private void notifyUser(String message) {

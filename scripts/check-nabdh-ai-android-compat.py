@@ -37,4 +37,9 @@ if "genai-prompt:1.0.0-beta4" not in gradle or "tasks-genai:0.10.27" not in grad
     raise SystemExit("FAIL: expected pinned AI dependency missing")
 if ".setTopK(" in gemma:
     raise SystemExit("FAIL: unsupported MediaPipe topK setter restored")
+if "محرك نبض للذكاء الاصطناعي" not in activity or (
+        "org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground()" not in activity):
+    raise SystemExit("FAIL: opt-in AI UI lost Arabic or theme-aware Glass")
+if "الذكاء المحلي غير متاح لهذا الإصدار" not in activity:
+    raise SystemExit("FAIL: old Android devices must show local AI unavailability")
 print("PASS: ML Kit prompt/common manifest allowlist; Android 23-25 service guard; pinned providers")
