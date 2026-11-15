@@ -70,20 +70,30 @@ public final class NabdhCameraActivity extends Activity {
     private volatile Uri lastPhotoUri;
     private Button sharePhoto;
 
+    private String local(String en, String ar) {
+        return org.telegram.messenger.LocaleController.isRTL ? ar : en;
+    }
+
     private Button control(String title, Runnable action) {
         Button result = new Button(this);
         result.setAllCaps(false);
         result.setText(title);
         result.setTextSize(12);
+        result.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
         result.setOnClickListener(v -> action.run());
         return result;
     }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        setTitle("Nabdh Camera2");
+        setTitle(local("Nabdh Camera2", "كاميرا نبض جرام"));
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
+        page.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+        page.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
+                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         preview = new TextureView(this);
         page.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1f));
         LinearLayout commands = new LinearLayout(this);
@@ -103,13 +113,14 @@ public final class NabdhCameraActivity extends Activity {
             zoom = Math.min(zoomMax, zoom * 1.3f);
             refreshRepeating();
         }));
-        commands.addView(control("Flash", () -> {
+        commands.addView(control(local("Flash", "الفلاش"), () -> {
             torch = !torch;
             refreshRepeating();
         }));
         commands.addView(control("●", this::takePhoto));
         page.addView(commands, new LinearLayout.LayoutParams(-1, -2));
-        sharePhoto = control("Share captured photo in NabdhGram", this::shareLastPhoto);
+        sharePhoto = control(local("Share captured photo in NabdhGram",
+                "إرسال الصورة الملتقطة في نبض جرام"), this::shareLastPhoto);
         sharePhoto.setEnabled(false);
         page.addView(sharePhoto, new LinearLayout.LayoutParams(-1, -2));
         setContentView(page);
@@ -352,7 +363,7 @@ public final class NabdhCameraActivity extends Activity {
     private void shareLastPhoto() {
         Uri uri = lastPhotoUri;
         if (uri == null) {
-            notifyUser("Capture a photo first");
+            notifyUser(local("Capture a photo first", "التقط صورة أولًا"));
             return;
         }
         try {
@@ -367,7 +378,8 @@ public final class NabdhCameraActivity extends Activity {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(intent);
         } catch (RuntimeException error) {
-            notifyUser("Could not open NabdhGram photo sharing");
+            notifyUser(local("Could not open NabdhGram photo sharing",
+                    "تعذّر فتح مشاركة الصورة في نبض جرام"));
         }
     }
 
