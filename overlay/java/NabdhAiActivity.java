@@ -59,7 +59,8 @@ public final class NabdhAiActivity extends Activity {
         @Override public void onServiceDisconnected(ComponentName name) {
             remote = null;
             bound = false;
-            if (state != null) state.setText("Local AI process exited; Telegram is unaffected");
+            if (state != null) state.setText(local("Local AI process exited; Telegram is unaffected",
+                    "توقفت عملية الذكاء المحلي، وTelegram يعمل بصورة طبيعية"));
         }
     };
 
@@ -67,6 +68,10 @@ public final class NabdhAiActivity extends Activity {
         Button button = new Button(this);
         button.setText(text);
         button.setAllCaps(false);
+        button.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        button.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         button.setOnClickListener(v -> onClick.run());
         return button;
     }
@@ -178,7 +183,7 @@ public final class NabdhAiActivity extends Activity {
 
     private void request(int code, String content) {
         if (!bound || remote == null) {
-            if (state != null) state.setText("Local AI service unavailable");
+            if (state != null) state.setText(local("Local AI service unavailable", "خدمة الذكاء المحلي غير متاحة"));
             return;
         }
         Message message = Message.obtain(null, code);
@@ -188,7 +193,8 @@ public final class NabdhAiActivity extends Activity {
         message.replyTo = responses;
         try { remote.send(message); }
         catch (RemoteException failure) {
-            state.setText("Local AI disconnected; Telegram remains available");
+            state.setText(local("Local AI disconnected; Telegram remains available",
+                    "انقطع الاتصال بمحرك الذكاء المحلي، وTelegram يعمل طبيعيًا"));
         }
     }
 
@@ -197,14 +203,16 @@ public final class NabdhAiActivity extends Activity {
         // Protect Telegram Android 23–25: neither optional AI SDK may load here.
         // Gemini Nano requires API 26+; Gemma requires even newer hardware.
         if (android.os.Build.VERSION.SDK_INT < 26) {
-            state.setText("On-device AI is unavailable on this Android version. Telegram remains fully usable.");
+            state.setText(local(
+                "On-device AI is unavailable on this Android version. Telegram remains fully usable.",
+                "الذكاء المحلي غير متاح لهذا الإصدار من Android، وستبقى وظائف Telegram متاحة."));
             return;
         }
         // Bind in this Activity lifecycle only. Never keep AI alive in Telegram background.
         bindingRequested = bindService(
                 new Intent(this, NabdhAiCoreService.class),
                 connection, Context.BIND_AUTO_CREATE);
-        if (!bindingRequested && state != null) state.setText("Local AI service unavailable");
+        if (!bindingRequested && state != null) state.setText(local("Local AI service unavailable", "خدمة الذكاء المحلي غير متاحة"));
     }
     @Override protected void onStop() {
         if (bindingRequested) {
@@ -228,15 +236,18 @@ public final class NabdhAiActivity extends Activity {
         final String sha = approvedHash;
         approvedHash = "";
         checksum.setText("");
-        state.setText("Verifying model SHA-256 and importing to private storage...");
+        state.setText(local("Verifying model SHA-256 and importing to private storage...",
+                "جارٍ التحقق من بصمة النموذج واستيراده إلى التخزين الخاص..."));
         copies.execute(() -> {
             try {
                 String actual = NabdhAiGemmaProvider.install(this, source, sha);
                 runOnUiThread(() ->
-                    state.setText("Verified Gemma imported (SHA-256: " + actual + ")"));
+                    state.setText(local("Verified Gemma imported (SHA-256: ",
+                            "تم استيراد نموذج Gemma الموثّق (SHA-256: ") + actual + ")"));
             } catch (Exception failure) {
                 runOnUiThread(() -> state.setText(
-                    "Gemma import rejected. Check model version, free space and published SHA-256."));
+                    local("Gemma import rejected. Check model version, free space and published SHA-256.",
+                    "رُفض استيراد Gemma. تحقق من إصدار النموذج والمساحة وبصمة SHA-256 المنشورة.")));
             }
         });
     }
