@@ -24,7 +24,10 @@ for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias
     assert ('R.mipmap.nabdh_icon_' + slug) in java, "Missing picker image " + slug
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
-    assert manifest.count('android:icon="@mipmap/nabdh_icon_' + slug + '"') == 1, "Alias icon mismatch " + slug
+    # Four removed legacy aliases temporarily use the surviving iPhone
+    # artwork to recover launchers on existing installations during upgrade.
+    expected = 1 + len(retired) if slug == "original" else 1
+    assert manifest.count('android:icon="@mipmap/nabdh_icon_' + slug + '"') == expected, "Alias icon count mismatch " + slug
     for density, pixels in (("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)):
         p = res / ("mipmap-" + density) / ("nabdh_icon_" + slug + ".png")
         with Image.open(p) as image:
