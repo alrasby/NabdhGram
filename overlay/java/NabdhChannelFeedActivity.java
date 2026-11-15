@@ -83,7 +83,8 @@ public final class NabdhChannelFeedActivity extends Activity {
         items.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(items);
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
-        setContentView(screen);
+        org.telegram.ui.Components.NabdhToolUi.install(this, screen,
+                local("Channel Feed", "موجز القنوات"));
         render();
     }
 
