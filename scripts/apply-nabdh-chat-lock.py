@@ -96,13 +96,17 @@ s = once(s, pause, """    public void onPause() {
         scrolling = false;""", "recents privacy lifecycle")
 chat.write_text(s, encoding="utf-8")
 
-for locale, title in (("values", "Chat locks (local PIN)"),
-                      ("values-ar", "قفل المحادثات برمز محلي")):
+for locale, title, note in (("values", "Chat locks (local PIN)",
+                               "Select conversations to lock. Opening a protected chat requires your local PIN. While locked, NabdhGram suppresses notifications, quick replies, message snippets and media previews for that conversation. Other devices and calls are unaffected."),
+                        ("values-ar", "قفل المحادثات برمز محلي",
+                               "اختر المحادثات المراد قفلها. يتطلب فتح المحادثة رمز PIN المحلي. أثناء القفل يمنع نبض جرام إشعاراتها والردود السريعة ومعاينات النصوص والوسائط. لا يتأثر عمل الأجهزة الأخرى والمكالمات.")):
     path = root / "TMessagesProj/src/main/res" / locale / "nabdh_chat_lock.xml"
     if path.exists():
         raise SystemExit("Chat lock resource collision")
     path.write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
                     '    <string name="NabdhChatLockTitle">' +
-                    escape(title) + '</string>\n</resources>\n', encoding="utf-8")
+                    escape(title) + '</string>\n' +
+                    '    <string name="NabdhChatLockNotice">' +
+                    escape(note) + '</string>\n</resources>\n', encoding="utf-8")
 
 print("PASS: opt-in chat PIN manager, pre-render gate and FLAG_SECURE lifecycle installed")
