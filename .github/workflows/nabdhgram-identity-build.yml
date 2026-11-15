@@ -144,7 +144,7 @@ jobs:
             exit 1
           fi
 
-      - name: Install six approved NabdhGram icon variants
+      - name: Install three approved circular NabdhGram icon variants
         run: |
           python3 nabdhgram/scripts/apply-nabdh-approved-icon-variants.py Telegram-upstream
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Install the two selected NabdhGram launcher variants from the user's artwork.
+"""Install exactly three owner-selected circular launcher variants.
 
-Exact user-supplied square and circular logos are resampled only at Android densities.
-Existing Telegram/approved default icons and launcher aliases are preserved.
+Only the outside of the original circular disks is transparency-masked;
+the internal NabdhGram monogram and artwork are never repainted or recolored.
+Old launcher aliases remain for safe upgrades but are hidden from the picker.
 """
 from pathlib import Path
 import re
@@ -20,20 +21,21 @@ controller = root / "TMessagesProj/src/main/java/org/telegram/ui/LauncherIconCon
 if not manifest.is_file() or not controller.is_file():
     raise SystemExit("Pinned Telegram icon sources are missing")
 
-# Keep only the owner-selected square and dark circular icon choices.
-# Excluded: Samsung, translucent silver, light turquoise, turquoise frameless.
+# All three circles were provided by the owner: 44.png, 55.png, 33.png.
+# Older Samsung/translucent/square/turquoise choices are retired, not offered.
 VARIANTS = (
-    ("original", "NabdhOriginalIcon", "NabdhIconOriginal", "iPhone Glass", "آيفون الزجاجية"),
-    ("circular", "NabdhCircularIcon", "NabdhIconCircular", "Dark Circular", "الدائرية الداكنة"),
+    ("silver", "NabdhSilverCircleIcon", "NabdhIconSilverCircle", "Silver Circle", "الدائرية الفضية"),
+    ("dark", "NabdhDarkCircleIcon", "NabdhIconDarkCircle", "Dark Circle", "الدائرية الداكنة"),
+    ("glass", "NabdhGlassCircleIcon", "NabdhIconGlassCircle", "Glass Circle", "الدائرية الزجاجية"),
 )
-RETIRED = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon")
+RETIRED = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon",
+           "NabdhOriginalIcon", "NabdhCircularIcon")
 USER_SOURCES = {
-    "original": repository / "branding/approved/nabdh-icon-iphone.webp",
-    "circular": repository / "branding/approved/nabdh-icon-circular.webp",
+    "silver": repository / "branding/approved/nabdh-icon-silver-circle.webp",
+    "dark": repository / "branding/approved/nabdh-icon-dark-circle.webp",
+    "glass": repository / "branding/approved/nabdh-icon-glass-circle.webp",
 }
-# The two user-supplied logos are saved as compressed WebP artwork in
-# branding/approved. No synthesized fill, recoloring, masks or mark scaling.
-# The original 192 px files cover the maximum Android xxhdpi/xxxhdpi icon size.
+# These WebP sources are 192px owner artwork with transparent exterior only.
 def compose_icon(slug):
     selected = USER_SOURCES[slug]
     if not selected.is_file():
@@ -57,7 +59,7 @@ for slug, _, _, _, _ in VARIANTS:
             directory / ("nabdh_icon_" + slug + ".png"),
             format="PNG", optimize=True)
 
-# Use the original Telegram launcher mechanism; two additional, FREE choices
+# Use the original Telegram launcher mechanism; three additional, FREE choices
 # are added without replacing DefaultIcon or the pre-existing variants.
 java = controller.read_text(encoding="utf-8")
 # Keep the approved default first, then immediately show both NabdhGram
@@ -96,7 +98,8 @@ migration = """
         if (ctx == null) return;
         PackageManager pm = ctx.getPackageManager();
         String[] retired = {"NabdhDarkIcon", "NabdhLightIcon",
-                "NabdhTealIcon", "NabdhHexIcon"};
+                "NabdhTealIcon", "NabdhHexIcon",
+                "NabdhOriginalIcon", "NabdhCircularIcon"};
         boolean needsMigration = false;
         for (String alias : retired) {
             ComponentName component = new ComponentName(ctx.getPackageName(),
@@ -202,15 +205,15 @@ for slug, alias, _, _, _ in VARIANTS:
     replacement = replacement.replace("@mipmap/icon_6_launcher",
                                       "@mipmap/nabdh_icon_" + slug)
     new_aliases.append(replacement)
-# Compatibility-only aliases: hidden from picker, all branded with the
-# surviving iPhone icon. Retire enabled legacy choice at app startup.
+# Compatibility-only aliases: hidden from picker, all branded using
+# the surviving silver circle. Retire enabled legacy choice at startup.
 for legacy in RETIRED:
     old_alias = template.replace("org.telegram.messenger.VintageIcon",
                                  "org.telegram.messenger." + legacy)
     old_alias = old_alias.replace("@mipmap/icon_6_launcher_round",
-                                  "@mipmap/nabdh_icon_original")
+                                  "@mipmap/nabdh_icon_silver")
     old_alias = old_alias.replace("@mipmap/icon_6_launcher",
-                                  "@mipmap/nabdh_icon_original")
+                                  "@mipmap/nabdh_icon_silver")
     new_aliases.append(old_alias)
 xml = xml[:end] + "\n\n" + "\n\n".join(new_aliases) + xml[end:]
 manifest.write_text(xml, encoding="utf-8")
@@ -327,4 +330,4 @@ bulletin_src = bulletin_src.replace(bulletin_method,
 bulletin.write_text(bulletin_src, encoding="utf-8")
 
 
-print("PASS: two retained launcher choices, safe legacy-alias migration and localized picker labels")
+print("PASS: three circular owner icons, safe deprecated-alias migration and localized labels")

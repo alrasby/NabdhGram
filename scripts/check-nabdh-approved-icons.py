@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail before Gradle if the six approved launcher variants are incomplete."""
+"""Fail before Gradle unless all three owner-supplied circular icons are exact."""
 from pathlib import Path
 import sys
 from PIL import Image, ImageChops
@@ -12,20 +12,22 @@ res = root / "TMessagesProj/src/main/res"
 java = (root / "TMessagesProj/src/main/java/org/telegram/ui/LauncherIconController.java").read_text(encoding="utf-8")
 manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 names = [
-    ("original", "NabdhOriginalIcon", "NabdhIconOriginal"),
-    ("circular", "NabdhCircularIcon", "NabdhIconCircular"),
+    ("silver", "NabdhSilverCircleIcon", "NabdhIconSilverCircle"),
+    ("dark", "NabdhDarkCircleIcon", "NabdhIconDarkCircle"),
+    ("glass", "NabdhGlassCircleIcon", "NabdhIconGlassCircle"),
 ]
-retired = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon")
+retired = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon",
+           "NabdhOriginalIcon", "NabdhCircularIcon")
 for legacy in retired:
     assert ('android:name="org.telegram.messenger.' + legacy + '"') in manifest, "Legacy alias migration must preserve installed launchers"
     assert ('"' + legacy + '"') not in java[java.index("public enum LauncherIcon"):], "Retired launcher must not remain selectable"
 assert "nabdhRetireOldAliases();" in java, "Missing old launcher alias recovery"
 
-# Sources must come from the two images attached by the owner, not
-# regenerated from the older transparent emblem on each CI run.
+# Source hashes prevent future builds silently replacing the user's logos.
 approved = {
-    "original": ("nabdh-icon-iphone.webp", "761ce91a05bfabde67b4e6d3548b1191236386b4a703e81fbf2bf6b3e0e92f54"),
-    "circular": ("nabdh-icon-circular.webp", "4825e302f7c4945503f4f6ec97ef8ae05d626aae839b4bc13c5d23b2d8c71b8c"),
+    "silver": ("nabdh-icon-silver-circle.webp", "f0092210e0197f166ed5c63d9afdab52e63f2aadd074b59a432b5572da88d78b"),
+    "dark": ("nabdh-icon-dark-circle.webp", "dff202b15e3c1ebebf793a9bfd780aee2c11e09a4e58929b9d4f975ae0271295"),
+    "glass": ("nabdh-icon-glass-circle.webp", "56b17a8681c68f2f1941c929baeff085505ba5544cb304ed287ee7e4ea8c2657"),
 }
 for slug, (name, expected_hash) in approved.items():
     source = Path(__file__).resolve().parents[1] / "branding/approved" / name
@@ -43,9 +45,8 @@ for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias
     assert ('R.mipmap.nabdh_icon_' + slug) in java, "Missing picker image " + slug
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
-    # Four removed legacy aliases temporarily use the surviving iPhone
-    # artwork to recover launchers on existing installations during upgrade.
-    expected = 1 + len(retired) if slug == "original" else 1
+    # Six retired aliases reference surviving silver artwork for safe migration.
+    expected = 1 + len(retired) if slug == "silver" else 1
     assert manifest.count('android:icon="@mipmap/nabdh_icon_' + slug + '"') == expected, "Alias icon count mismatch " + slug
     for density, pixels in (("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)):
         p = res / ("mipmap-" + density) / ("nabdh_icon_" + slug + ".png")
@@ -67,9 +68,9 @@ assert 'context.getString(R.string.NabdhIconApplyFailed)' in selector, "Chooser 
 for locale in ("values", "values-ar"):
     localized = (res / locale / "nabdhgram_icon_variants.xml").read_text(encoding="utf-8")
     assert 'name="NabdhIconApplyFailed"' in localized, "Missing localized icon change failure"
-assert "NABDH_CIRCULAR" in java and "NOX" in java, "Native icon choices accidentally replaced"
-assert java.index('NABDH_ORIGINAL("NabdhOriginalIcon"') > java.index('DEFAULT("DefaultIcon"'), "Original choice should follow default"
-assert java.index('NABDH_CIRCULAR("NabdhCircularIcon"') < java.index('VINTAGE("VintageIcon"'), "Approved art must be visible before optional Telegram icons"
+assert all(("NABDH_" + slug.upper()) in java for slug in ("silver", "dark", "glass")) and "NOX" in java, "Three owner choices and Telegram originals must remain"
+assert java.index('NABDH_SILVER("NabdhSilverCircleIcon"') > java.index('DEFAULT("DefaultIcon"'), "First circular choice should follow default"
+assert java.index('NABDH_GLASS("NabdhGlassCircleIcon"') < java.index('VINTAGE("VintageIcon"'), "Three circular choices must be visible before Telegram icons"
 # The Android 12+ OS startup animation uses Theme.TMessages.Start from
 # TMessagesProj/res/values-v31/styles.xml, not a launcher alias. Keep it
 # branded even on cold start after the app icon picker changes alias.
@@ -98,4 +99,4 @@ manifest_start = 'android:theme="@style/Theme.TMessages.Start"'
 assert manifest_start in manifest, "Native Telegram launch theme no longer applied"
 app_style = (root / "TMessagesProj_App/src/main/res/values-v31/nabdhgram_splash.xml").read_text(encoding="utf-8")
 assert '@drawable/nabdhgram_launcher_foreground' in app_style, "App-level Android 12 style reverts startup icon"
-print("PASS: two selectable launcher aliases, resource labels and every Android density")
+print("PASS: three circular launcher aliases, exact owner imagery, Android densities and safe upgrade aliases")

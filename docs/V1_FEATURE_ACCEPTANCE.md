@@ -161,6 +161,20 @@ on Telegram servers**, and no protection from all future reappearance has
 been proven. It must not affect ordinary channels, pinned chats, or service
 announcements. Validate reconnecting/changing MTProxy on an Android device.
 
+### Launcher icons: approved owner images 44/55/33 (device QA pending)
+
+Only three new **circular** source images are selectable in the NabdhGram
+icon chooser: the silver rim from 44.png, dark turquoise from 55.png and
+Glass turquoise from 33.png. The logo itself is pixel-preserved. Only
+the outside corners of each circle have been alpha-matted, and the source
+images are downsampled to Android's 192px maximum density. The Samsung,
+iPhone/square, translucent, and old turquoise variants are retired.
+Their Android activity aliases remain nonselectable for safe migration of
+users who selected them previously. DefaultIcon and native Telegram
+chooser/animation remain intact; no icon switch reports success until
+PackageManager confirms the target is enabled. Source hashes are pinned.
+On-device launcher caching and switch behavior still require testing.
+
 ## Merge requirements
 
 1. Foundation, pinned source overlay and Android Debug compile on this **branch**.
