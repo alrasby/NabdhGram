@@ -46,6 +46,16 @@ code = once(code, anchor, replacement, "new-message push source")
 head = """    private void showOrUpdateNotification(boolean notifyAboutLast) {
         if (!getUserConfig().isClientActivated()"""
 updated = """    private void showOrUpdateNotification(boolean notifyAboutLast) {
+        // Existing story pushes can survive a lock toggle or process reload.
+        for (int i = storyPushMessages.size() - 1; i >= 0; i--) {
+            StoryNotification old = storyPushMessages.get(i);
+            if (org.telegram.ui.Components.NabdhChatLock.isLocked(
+                    ApplicationLoader.applicationContext, currentAccount,
+                    old.dialogId)) {
+                storyPushMessages.remove(i);
+                storyPushMessagesDict.remove(old.dialogId);
+            }
+        }
         for (int i = pushMessages.size() - 1; i >= 0; i--) {
             MessageObject pending = pushMessages.get(i);
             if (pending != null &&
