@@ -123,7 +123,8 @@ public final class NabdhCameraActivity extends Activity {
                 "إرسال الصورة الملتقطة في نبض جرام"), this::shareLastPhoto);
         sharePhoto.setEnabled(false);
         page.addView(sharePhoto, new LinearLayout.LayoutParams(-1, -2));
-        setContentView(page);
+        org.telegram.ui.Components.NabdhToolUi.install(this, page,
+                local("Nabdh Camera2", "كاميرا نبض جرام"));
         manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         preview.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override public void onSurfaceTextureAvailable(SurfaceTexture s, int w, int h) {
