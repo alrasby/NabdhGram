@@ -296,8 +296,9 @@ checks = {
     "finished NabdhGram settings use one accessible column":
         'section(context, content, R.string.NabdhShieldTitle' in settings
         and "compactGrid" not in settings
-        and 'card.setOnClickListener(v -> presentFragment(' in settings
-        and 'description.setMaxLines(2);' in settings,
+        and 'NabdhCompactSettings.row(context, parent' in settings
+        and 'parent.addView(group, params);' in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "contacts card uses shared rounded Glass background":
         "cell.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in
             (ui / "Adapters/ContactsAdapter.java").read_text(encoding="utf-8"),
@@ -316,8 +317,10 @@ checks = {
         and "nabdhLastProxyPromoId" not in dialogs
         and "viewPages[0].updateList(true);" in dialogs,
     "compact Glass card text and height":
-        "card.setMinimumHeight((int) (78 * density + .5f))" in settings
-        and "descLp.topMargin = (int) (3 * density + .5f);" in settings,
+        "row.setMinimumHeight(dp(context, TextUtils.isEmpty(subtitle) ? 54 : 66))" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+        and "summary.setTextSize(11);" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "device default font preserves native weights, custom fonts keep headings": all(
         part in typefaces for part in (
             'getString("font_family", "system-default")',
@@ -355,18 +358,17 @@ checks = {
         'localeFilters += ["zz", "ar"]' in
         (root / "TMessagesProj_App/build.gradle").read_text(encoding="utf-8")
         and "<string name=\"NabdhGramSettingsTitle\">إعدادات نبض جرام</string>" in appearance_ar,
-    "NabdhGram settings spacing compacted": all(
-        token in settings for token in (
-            "cardLp.bottomMargin = (int) (8 * density + .5f);",
-            "labelsLp.setMarginStart((int) (11 * density + .5f));",
-            "int pad = (int) (12 * context.getResources().getDisplayMetrics().density);",
-        )
-    ),
+    "NabdhGram settings spacing compacted":
+        "int pad = (int) (12 * context.getResources().getDisplayMetrics().density);" in settings
+        and "row.setPadding(dp(context, 14), dp(context, 9)," in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+        and 'params.bottomMargin = dp(context, 16);' in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "settings and nested page headings localized": all(
         item in settings for item in (
             "actionBar.setTitle(NabdhStrings.get(context, R.string.NabdhGramSettingsTitle));",
-            "heading.setText(NabdhStrings.get(context, titleRes));",
-            "description.setText(NabdhStrings.get(context, summaryRes));",
+            "NabdhStrings.get(context, titleRes)",
+            "NabdhStrings.get(context, summaryRes)",
         )
     ) and (
         ("actionBar.setTitle(NabdhStrings.get(context, titleRes));" in feature
@@ -590,7 +592,10 @@ checks["global font renderer respects secondary explanatory labels"] = (
     (ui / "LaunchActivity.java").read_text(encoding="utf-8")
 )
 checks["NabdhGram settings descriptions opt into readable body weight"] = (
-    'description.setTag("nabdh:secondary-text");' in settings
+    'summary.setTextColor(secondary);' in
+        (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+    and 'summary.setTextSize(11);' in
+        (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
 )
 checks["feature category explanations opt into readable body weight"] = (
     'explanation.setTag("nabdh:secondary-text");' in feature
