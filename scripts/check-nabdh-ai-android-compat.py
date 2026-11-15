@@ -38,7 +38,8 @@ if "genai-prompt:1.0.0-beta4" not in gradle or "tasks-genai:0.10.27" not in grad
 if ".setTopK(" in gemma:
     raise SystemExit("FAIL: unsupported MediaPipe topK setter restored")
 if "محرك نبض للذكاء الاصطناعي" not in activity or (
-        "org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground()" not in activity):
+        "org.telegram.ui.Components.NabdhToolUi.styleButton(this, button)" not in activity
+        or "org.telegram.ui.Components.NabdhToolUi.styleInput(this, textInput)" not in activity):
     raise SystemExit("FAIL: opt-in AI UI lost Arabic or theme-aware Glass")
 if "الذكاء المحلي غير متاح لهذا الإصدار" not in activity:
     raise SystemExit("FAIL: old Android devices must show local AI unavailability")
