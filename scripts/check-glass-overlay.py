@@ -505,9 +505,11 @@ checks = {
     "appearance font preference persisted": 'getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
         and 'putString("font_family", family).commit()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
     "settings card native ripple": "NabdhCompactSettings.row(context, parent" in settings
-        and "new RippleDrawable(" in
+        and "NabdhGlassRowDecoration.newCardBackground()" in
             (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
-        and "group.setClipToOutline(true)" in
+        and "row.setClipToOutline(true)" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+        and "group.setBackground(null)" in
             (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
         and "makeRippleMask()" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
