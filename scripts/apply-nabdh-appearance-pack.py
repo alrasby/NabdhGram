@@ -80,10 +80,15 @@ status.write_text(
     '<vector xmlns:android="http://schemas.android.com/apk/res/android" '
     'android:width="24dp" android:height="24dp" '
     'android:viewportWidth="24" android:viewportHeight="24">\n'
-    '  <path android:pathData="M3,5 L21,5 L21,17 L15,17 L12,21 L9,17 L3,17 Z" '
-    'android:fillColor="#FFFFFFFF"/>\n'
-    '  <path android:pathData="M7,14 L7,8 L10,8 L14,12 L14,8 L17,8 L17,14 L14,14 '
-    'L10,10 L10,14 Z" android:fillColor="#00000000"/>\n'
+    '  <path android:pathData="M3,5 L21,5 L21,16 L16,16 L12,21 L8,16 L3,16 Z" '
+    'android:fillColor="@android:color/transparent" '
+    'android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" '
+    'android:strokeLineJoin="round"/>\n'
+    '  <path android:pathData="M7,13 L7,8 L10,13 L10,8 '
+    'M17,9 C15,7 13,9 13,11 C13,14 17,14 17,11 L15,11" '
+    'android:fillColor="@android:color/transparent" '
+    'android:strokeColor="#FFFFFFFF" android:strokeWidth="1.7" '
+    'android:strokeLineCap="round" android:strokeLineJoin="round"/>\n'
     '</vector>\n', encoding="utf-8")
 
 page = ui / "NabdhGramFeatureCategoryActivity.java"
