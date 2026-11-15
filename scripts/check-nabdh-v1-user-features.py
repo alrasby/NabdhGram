@@ -28,10 +28,11 @@ for snippet in (
 ):
     assert snippet in page, "missing generated privacy/user UX: " + snippet
 assert hub.count("NabdhDynamicAccent.accent(context,") == 1, "missing native shared accent fallback"
-assert "heading.setTextColor(accent);" in hub and "icon.setColorFilter(accent);" in hub, "native accent not shared by text and icons"
+compact = (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+assert "icon, accent," in hub and "image.setColorFilter(accent);" in compact and "heading.setTextColor(primary);" in compact, "native Monet accent lost on icons or theme contrast lost on headings"
 assert page.count("addNabdhMonetControl(context, content);") == 1, "Monet must have one UI owner"
 assert "NabdhAiPrivacyDisclosure" in page, "no explicit local-AI limitation disclosure"
-assert "card.setMinimumHeight((int) (78 * density + .5f));" in hub and "compactGrid" not in hub, "NabdhGram final UI must be Telegram-style full-width rows"
+assert "row.setMinimumHeight(dp(context, TextUtils.isEmpty(subtitle) ? 54 : 66))" in compact and "compactGrid" not in hub, "NabdhGram final UI must preserve full-width accessible native rows"
 storage = (ui / "Components/NabdhSettingsBackup.java").read_text(encoding="utf-8")
 for banned in ("auth_key", "session_id", "password", "token", "userconfing",
                "TelegramUser", "getMessagesController", "getMessagesStorage",
