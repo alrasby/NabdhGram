@@ -74,6 +74,19 @@ public final class NabdhCompactSettings {
         return group;
     }
 
+    /** A header naturally breaks one rounded group from the next. */
+    public static void header(Context context, LinearLayout parent, String heading) {
+        TextView title = new TextView(context);
+        title.setText(heading);
+        title.setTextSize(13);
+        title.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        title.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        title.setPadding(dp(context, 10), dp(context, 16),
+                dp(context, 10), dp(context, 8));
+        parent.addView(title, new LinearLayout.LayoutParams(-1, -2));
+    }
+
     public static void row(Context context, LinearLayout parent, String title,
                            String subtitle, int icon, Runnable action) {
         row(context, parent, title, subtitle, icon,
@@ -113,7 +126,7 @@ public final class NabdhCompactSettings {
 
         if (icon != 0) {
             ImageView image = new ImageView(context);
-            image.setImageResource(icon);
+            image.setImageResource(NabdhAppearancePrefs.icon(context, icon));
             image.setColorFilter(accent);
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
             LinearLayout.LayoutParams imageParams =
