@@ -25,6 +25,11 @@ check(page.count("NabdhCompactSettings.row(") >= 3 and
       "NabdhStrings.get(context, subtitle)" in page and
       "nabdhFeatureRow(context, content, 603);" in page,
       "features, additional tools or backup were lost")
+check("choices.setVisibility(View.GONE);" in page and
+      "choices.setOnCheckedChangeListener(" in page and
+      "fontTitle.setOnClickListener(" in page and
+      'prefs.edit().putString("font_family", family).commit();' in page,
+      "font selector must collapse without losing the existing persisted option action")
 check("LocaleController.getString(R.string.NabdhExpandedTitle)" not in page and
       "LocaleController.getString(label)" not in page,
       "custom Android resources must not go through Telegram's string registry")
