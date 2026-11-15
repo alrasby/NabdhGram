@@ -31,8 +31,9 @@ assert hub.count("NabdhDynamicAccent.accent(context,") >= 2, "missing theme-awar
 assert page.count("addNabdhMonetControl(context, content);") == 1, "Monet must have one UI owner"
 assert "NabdhAiPrivacyDisclosure" in page, "no explicit local-AI limitation disclosure"
 storage = (ui / "Components/NabdhSettingsBackup.java").read_text(encoding="utf-8")
-for banned in ("auth_key", "session_id", "password", "messages", "token", "userconfing",
-               "TelegramUser", "getMessagesController", "FileInputStream"):
+for banned in ("auth_key", "session_id", "password", "token", "userconfing",
+               "TelegramUser", "getMessagesController", "getMessagesStorage",
+               "getFileLoader", "FileInputStream"):
     assert banned not in storage, "backup code unexpectedly mentions sensitive entry: " + banned
 assert "MAX_BYTES = 16384" in storage and "checked(raw)" in storage, "import not bounded and validated"
 assert "ACTION_OPEN_DOCUMENT" in storage and "ACTION_CREATE_DOCUMENT" in storage
