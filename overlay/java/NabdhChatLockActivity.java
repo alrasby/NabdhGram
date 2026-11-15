@@ -21,6 +21,7 @@ public final class NabdhChatLockActivity extends Activity {
     private LinearLayout screen;
     private int account;
     private boolean authorized;
+    private int dp(float v) { return (int) (v * getResources().getDisplayMetrics().density + .5f); }
 
     private String local(String en, String ar) {
         return org.telegram.messenger.LocaleController.isRTL ? ar : en;
@@ -46,10 +47,10 @@ public final class NabdhChatLockActivity extends Activity {
         setTitle(local("Chat locks", "قفل المحادثات"));
         ScrollView scroll = new ScrollView(this);
         screen = new LinearLayout(this);
-        screen.setPadding(24, 24, 24, 24);
+        screen.setPadding(dp(16), dp(14), dp(16), dp(24));
         screen.setOrientation(LinearLayout.VERTICAL);
         screen.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
-                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundGray));
         screen.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
                 ? android.view.View.LAYOUT_DIRECTION_RTL
                 : android.view.View.LAYOUT_DIRECTION_LTR);
@@ -64,8 +65,8 @@ public final class NabdhChatLockActivity extends Activity {
         value.setText(text);
         value.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
-        value.setTextSize(16);
-        value.setPadding(10, 12, 10, 12);
+        value.setTextSize(13);
+        value.setPadding(dp(4), dp(4), dp(4), dp(12));
         screen.addView(value);
         return value;
     }
@@ -77,13 +78,17 @@ public final class NabdhChatLockActivity extends Activity {
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
         field.setHint(hint);
         field.setSingleLine(true);
+        org.telegram.ui.Components.NabdhToolUi.styleInput(this, field);
         field.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        screen.addView(field);
+        LinearLayout.LayoutParams fieldParams = new LinearLayout.LayoutParams(-1, -2);
+        fieldParams.bottomMargin = dp(10);
+        screen.addView(field, fieldParams);
         return field;
     }
     private void action(String text, Runnable callback) {
         Button button = new Button(this);
         button.setText(text);
+        org.telegram.ui.Components.NabdhToolUi.styleButton(this, button);
         button.setAllCaps(false);
         button.setTextSize(15);
         button.setMinHeight((int) (52 * getResources().getDisplayMetrics().density + .5f));
@@ -92,12 +97,12 @@ public final class NabdhChatLockActivity extends Activity {
                 : android.view.Gravity.LEFT | android.view.Gravity.CENTER_VERTICAL);
         button.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
-        button.setBackground(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+        // Shared native input/action styling owns the background and press mask.
         button.setOnClickListener(v -> callback.run());
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(-1, -2);
-        params.bottomMargin = (int) (8 * getResources().getDisplayMetrics().density);
+        params.topMargin = dp(6);
+        params.bottomMargin = dp(8);
         screen.addView(button, params);
     }
 
@@ -140,7 +145,7 @@ public final class NabdhChatLockActivity extends Activity {
             });
             return;
         }
-        line(org.telegram.messenger.LocaleController.getString(
+        line(org.telegram.ui.NabdhStrings.get(this,
                 org.telegram.messenger.R.string.NabdhChatLockNotice));
         MessagesController controller = MessagesController.getInstance(account);
         if (controller == null || controller.dialogs_dict == null) {
