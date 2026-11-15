@@ -79,8 +79,11 @@ public final class NabdhCameraActivity extends Activity {
         result.setAllCaps(false);
         result.setText(title);
         result.setTextSize(12);
+        result.setMinHeight((int) (48 * getResources().getDisplayMetrics().density + .5f));
         result.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        result.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         result.setOnClickListener(v -> action.run());
         return result;
     }
