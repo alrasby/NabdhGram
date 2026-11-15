@@ -14,8 +14,8 @@ renderer = (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf
 def check(ok, reason):
     if not ok: raise SystemExit("FAIL: compact UI " + reason)
 
-check(hub.count("section(context, compactGrid ?") == 6,
-      "category order or destinations changed")
+check(hub.count("section(context, content, R.string.") == 7,
+      "seven category destinations or native order changed")
 check("NabdhCompactSettings.row(context, parent" in hub and
       "NabdhDynamicAccent.accent(" in hub and
       "NabdhStrings.get(context, titleRes)" in hub,
@@ -54,11 +54,11 @@ for lang in ("values", "values-ar"):
     check(res.is_file(), "missing " + lang + " summaries")
     nodes = list(ET.parse(res).getroot())
     keys = [n.get("name") for n in nodes]
-    check(len(keys) == 6 and len(set(keys)) == 6 and
+    check(len(keys) == 7 and len(set(keys)) == 7 and
           all((n.text or "").strip() for n in nodes),
           "incomplete " + lang + " summaries")
 check("markDialogAsRead(" not in renderer and
       "MessagesController" not in renderer and
       "NabdhAiCoreService" not in renderer,
       "renderer must not touch Telegram or AI logic")
-print("PASS: grouped translucent settings, 6 categories, 3 tool routes, in-app Arabic, RTL and existing feature actions")
+print("PASS: grouped translucent settings, 7 categories, tool routes, in-app Arabic, RTL and existing feature actions")
