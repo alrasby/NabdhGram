@@ -472,13 +472,14 @@ jobs:
           set -euo pipefail
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-qr-login.py nabdhgram/scripts/apply-glass-remaining-settings.py nabdhgram/scripts/apply-nabdh-empty-state.py nabdhgram/scripts/apply-glass-login-finish.py nabdhgram/scripts/apply-glass-v1-finishing.py nabdhgram/scripts/apply-glass-final-screens.py nabdhgram/scripts/apply-glass-chat-typefaces.py nabdhgram/scripts/apply-nabdh-arabic-resources.py nabdhgram/scripts/apply-hide-proxy-promo.py nabdhgram/scripts/apply-glass-diagnostic-icons.py nabdhgram/scripts/apply-glass-login.py nabdhgram/scripts/apply-glass-dialog-typography.py nabdhgram/scripts/apply-glass-document-layout.py nabdhgram/scripts/apply-glass-locale-polish.py nabdhgram/scripts/apply-glass-badge-centering.py nabdhgram/scripts/apply-glass-header-insets.py nabdhgram/scripts/install-open-fonts.py nabdhgram/scripts/apply-glass-global-textviews.py nabdhgram/scripts/apply-glass-bubble-outline.py nabdhgram/scripts/apply-glass-bubble-radius.py nabdhgram/scripts/apply-glass-native-settings-profile.py nabdhgram/scripts/apply-glass-contacts.py nabdhgram/scripts/apply-glass-chat-composer.py nabdhgram/scripts/apply-glass-selector.py nabdhgram/scripts/apply-glass-global-font.py nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-dialog-sections.py nabdhgram/scripts/check-glass-overlay.py nabdhgram/scripts/apply-contacts-permission-policy.py nabdhgram/scripts/apply-nabdh-approved-icon-variants.py nabdhgram/scripts/check-nabdh-approved-icons.py
           python3 nabdhgram/scripts/check-glass-design-contract.py
-          python3 -m py_compile nabdhgram/scripts/apply-nabdh-expanded-tools.py nabdhgram/scripts/package-nabdh-android-icons.py nabdhgram/scripts/apply-nabdh-chat-lock.py nabdhgram/scripts/apply-nabdh-ai-core.py nabdhgram/scripts/apply-nabdh-chat-lock-privacy.py nabdhgram/scripts/check-nabdh-chat-lock-privacy.py
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-expanded-tools.py nabdhgram/scripts/package-nabdh-android-icons.py nabdhgram/scripts/apply-nabdh-chat-lock.py nabdhgram/scripts/apply-nabdh-ai-core.py nabdhgram/scripts/apply-nabdh-chat-lock-privacy.py nabdhgram/scripts/check-nabdh-chat-lock-privacy.py nabdhgram/scripts/check-nabdh-ai-android-compat.py
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhAiCoreService.java
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhAiNanoProvider.java
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhAiGemmaProvider.java
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhBrowserActivity.java
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhCameraActivity.java
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhChannelFeedActivity.java
+          python3 nabdhgram/scripts/check-nabdh-ai-android-compat.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
@@ -604,6 +605,24 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/configure-release-signing.py Telegram-upstream
+      - name: Validate final APK manifest merge before expensive compilation
+        if: ${{ !inputs.source_preflight_only }}
+        working-directory: Telegram-upstream
+        shell: bash
+        env:
+          RELEASE_MODE: ${{ inputs.release_mode }}
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          if [[ "$RELEASE_MODE" == "true" ]]; then
+            task=":TMessagesProj_App:processAfatReleaseMainManifest"
+          else
+            task=":TMessagesProj_App:processAfatDebugMainManifest"
+          fi
+          # Resolve transitive AAR manifests before running the expensive
+          # native/Java/APK assembly; fail fast with an actionable log.
+          ./gradlew "$task" --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-manifest-check.log
+          echo "PASS: merged Android manifest for $task"
       - name: Build branded Android APK
         if: ${{ !inputs.source_preflight_only }}
         id: compile
@@ -735,6 +754,7 @@ jobs:
           name: nabdhgram-identity-build-log
           path: |
             nabdhgram-build.log
+            nabdhgram-manifest-check.log
             identity-patch.log
             apk-paths.txt
             apk-badging.txt
