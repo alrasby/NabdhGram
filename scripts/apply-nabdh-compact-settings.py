@@ -39,7 +39,7 @@ def replace_method(text, signature, body, label):
         ch = text[i]
         if quoted:
             if escaped: escaped = False
-            elif ch == "\\\\": escaped = True
+            elif ch == "\\": escaped = True
             elif ch == quoted: quoted = None
             continue
         if ch in ('"', "'"):
@@ -185,6 +185,6 @@ for lang, entries in translations.items():
     rows = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
     for key, value in entries.items():
         rows.append(f'    <string name="NabdhCompact{key}">{escape(value)}</string>')
-    path.write_text("\\n".join(rows + ["</resources>", ""]), encoding="utf-8")
+    path.write_text("\n".join(rows + ["</resources>", ""]), encoding="utf-8")
 
 print("PASS: grouped NabdhGram categories, native short rows, safe custom localization")
