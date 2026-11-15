@@ -226,7 +226,7 @@ for widget in ("toggle", "remember", "monet", "boldOption"):
     creation = "android.widget.Switch " + widget + " = new android.widget.Switch(context);"
     if source.count(creation) == 1:
         source = source.replace(creation, creation +
-            "\\n        org.telegram.ui.Components.NabdhToolUi.styleToggle(context, " +
+            "\n        org.telegram.ui.Components.NabdhToolUi.styleToggle(context, " +
             widget + ");", 1)
     elif source.count(creation) > 1:
         raise SystemExit("Multiple generated Switch declarations: " + widget)
@@ -236,7 +236,7 @@ for field in ("input",):
     creation = "android.widget.EditText " + field + " = new android.widget.EditText(context);"
     if source.count(creation) == 1:
         source = source.replace(creation, creation +
-            "\\n        org.telegram.ui.Components.NabdhToolUi.styleInput(context, " +
+            "\n        org.telegram.ui.Components.NabdhToolUi.styleInput(context, " +
             field + ");", 1)
 
 page.write_text(source, encoding="utf-8")
