@@ -56,12 +56,13 @@ h = exact(h, "        fragmentView = scroll;",
     """        nabdhExpandedTools(context, content);
         fragmentView = scroll;""", "settings entry")
 method = """    private void nabdhExpandedTools(Context context, LinearLayout parent) {
-        int dp = (int) (context.getResources().getDisplayMetrics().density + 0.5f);
+
         TextView heading = new TextView(context);
         heading.setText(org.telegram.messenger.LocaleController.getString(R.string.NabdhExpandedTitle));
         heading.setTextSize(16);
         heading.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
-        heading.setPadding(12 * dp, 20 * dp, 12 * dp, 8 * dp);
+        heading.setPadding(nabdhToolDp(context, 12), nabdhToolDp(context, 20),
+                nabdhToolDp(context, 12), nabdhToolDp(context, 8));
         heading.setGravity(org.telegram.messenger.LocaleController.isRTL
                 ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
         heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
@@ -92,16 +93,28 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
         };
         int selected = org.telegram.messenger.SharedConfig.getChatSwipeAction(
                 org.telegram.messenger.UserConfig.selectedAccount);
-        new android.app.AlertDialog.Builder(context)
-                .setTitle(org.telegram.messenger.LocaleController.getString(R.string.NabdhExpandedSwipes))
-                .setSingleChoiceItems(options, selected, (dialog, chosen) -> {
+        // Telegram's native theme-aware settings dialog instead of an
+        // unrelated stock Material alert with an English mixed-script header.
+        String[] entries = new String[options.length];
+        for (int i = 0; i < entries.length; i++) {
+            entries[i] = (i == selected ? "✓  " : "    ") + options[i];
+        }
+        new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
+                .setTitle(org.telegram.messenger.LocaleController.getString(
+                        R.string.NabdhExpandedSwipes))
+                .setItems(entries, (dialog, chosen) -> {
                     if (chosen >= 0 && chosen < options.length) {
                         org.telegram.messenger.SharedConfig.updateChatListSwipeSetting(chosen);
                     }
                     dialog.dismiss();
                 })
-                .setNegativeButton(android.R.string.cancel, null)
+                .setNegativeButton(org.telegram.messenger.LocaleController.getString(
+                        R.string.Cancel), null)
                 .show();
+    }
+
+    private int nabdhToolDp(Context context, int n) {
+        return (int) (n * context.getResources().getDisplayMetrics().density + .5f);
     }
 
     private void nabdhExpandedButton(Context context, LinearLayout parent,
@@ -125,7 +138,6 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
             icon = R.drawable.nabdh_tool_swipe;
         }
 
-        final int d = (int) (context.getResources().getDisplayMetrics().density + 0.5f);
         final boolean rtl = org.telegram.messenger.LocaleController.isRTL;
         final int primary = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);
         final int secondary = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
@@ -139,8 +151,8 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
         // itself respects Telegram's selected in-app language.
         card.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         card.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        card.setMinimumHeight(76 * d);
-        card.setPadding(14 * d, 12 * d, 14 * d, 12 * d);
+        card.setMinimumHeight(nabdhToolDp(context, 76));
+        card.setPadding(nabdhToolDp(context, 14), nabdhToolDp(context, 12), nabdhToolDp(context, 14), nabdhToolDp(context, 12));
         card.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         card.setClickable(true);
         card.setFocusable(true);
@@ -150,7 +162,7 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
         android.widget.FrameLayout iconBox = new android.widget.FrameLayout(context);
         android.graphics.drawable.GradientDrawable soft =
                 new android.graphics.drawable.GradientDrawable();
-        soft.setCornerRadius(13 * d);
+        soft.setCornerRadius(nabdhToolDp(context, 13));
         soft.setColor(android.graphics.Color.argb(
                 26, android.graphics.Color.red(accent),
                 android.graphics.Color.green(accent),
@@ -161,10 +173,10 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
         image.setColorFilter(accent);
         android.widget.FrameLayout.LayoutParams imageParams =
                 new android.widget.FrameLayout.LayoutParams(
-                        23 * d, 23 * d, android.view.Gravity.CENTER);
+                        nabdhToolDp(context, 23), nabdhToolDp(context, 23), android.view.Gravity.CENTER);
         iconBox.addView(image, imageParams);
         LinearLayout.LayoutParams iconParams =
-                new LinearLayout.LayoutParams(44 * d, 44 * d);
+                new LinearLayout.LayoutParams(nabdhToolDp(context, 44), nabdhToolDp(context, 44));
         card.addView(iconBox, iconParams);
 
         LinearLayout labels = new LinearLayout(context);
@@ -173,8 +185,8 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
         labels.setGravity(android.view.Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams labelParams =
                 new LinearLayout.LayoutParams(0, -2, 1);
-        labelParams.leftMargin = 12 * d;
-        labelParams.rightMargin = 8 * d;
+        labelParams.leftMargin = nabdhToolDp(context, 12);
+        labelParams.rightMargin = nabdhToolDp(context, 8);
         card.addView(labels, labelParams);
         TextView title = new TextView(context);
         title.setText(name);
@@ -195,7 +207,7 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
         details.setEllipsize(android.text.TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams detailParams =
                 new LinearLayout.LayoutParams(-1, -2);
-        detailParams.topMargin = 4 * d;
+        detailParams.topMargin = nabdhToolDp(context, 4);
         labels.addView(details, detailParams);
 
         TextView chevron = new TextView(context);
@@ -203,11 +215,11 @@ method = """    private void nabdhExpandedTools(Context context, LinearLayout pa
         chevron.setTextColor(accent);
         chevron.setTextSize(25);
         chevron.setGravity(android.view.Gravity.CENTER);
-        card.addView(chevron, new LinearLayout.LayoutParams(20 * d, 42 * d));
+        card.addView(chevron, new LinearLayout.LayoutParams(nabdhToolDp(context, 20), nabdhToolDp(context, 42)));
 
         LinearLayout.LayoutParams cardParams =
                 new LinearLayout.LayoutParams(-1, -2);
-        cardParams.bottomMargin = 8 * d;
+        cardParams.bottomMargin = nabdhToolDp(context, 8);
         parent.addView(card, cardParams);
     }
 
