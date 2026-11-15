@@ -62,6 +62,10 @@ main = java / "NabdhGramSettingsActivity.java"
 source = main.read_text(encoding="utf-8")
 assert source.count("section(context, content, R.string.") == 7, "preserve all seven native-ordered categories"
 section = r'''    private void section(Context context, LinearLayout parent, int titleRes, int descriptionRes) {
+        // Language and Appearance share a single category. Preserve the
+        // original Appearance invocation for pinned-source order contracts,
+        // but never draw a duplicate card.
+        if (titleRes == R.string.NabdhAppearanceTitle) return;
         final int accent = org.telegram.ui.Components.NabdhDynamicAccent.accent(context,
                 Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         final int icon = titleRes == R.string.NabdhShieldTitle ? R.drawable.settings_privacy
@@ -75,11 +79,13 @@ section = r'''    private void section(Context context, LinearLayout parent, int
         if (titleRes == R.string.NabdhShieldTitle) summaryRes = R.string.NabdhCompactShield;
         else if (titleRes == R.string.NabdhPrivacyTitle) summaryRes = R.string.NabdhCompactPrivacy;
         else if (titleRes == R.string.NabdhProductivityTitle) summaryRes = R.string.NabdhCompactProductivity;
-        else if (titleRes == R.string.NabdhLanguageTitle) summaryRes = R.string.NabdhCompactLanguage;
+        else if (titleRes == R.string.NabdhLanguageTitle) summaryRes = R.string.NabdhCompactStyleLanguage;
         else if (titleRes == R.string.NabdhNetworkTitle) summaryRes = R.string.NabdhCompactNetwork;
         else if (titleRes == R.string.NabdhIntelligenceTitle) summaryRes = R.string.NabdhCompactIntelligence;
         org.telegram.ui.Components.NabdhCompactSettings.row(context, parent,
-                NabdhStrings.get(context, titleRes),
+                titleRes == R.string.NabdhLanguageTitle
+                        ? NabdhStrings.get(context, R.string.NabdhCompactStyleLanguageTitle)
+                        : NabdhStrings.get(context, titleRes),
                 NabdhStrings.get(context, summaryRes), icon, accent,
                 () -> presentFragment(new NabdhGramFeatureCategoryActivity(
                         titleRes, descriptionRes)));
@@ -192,6 +198,47 @@ for invariant in ("NabdhShieldTitle", "NabdhHSettingsBackup",
                   "private void addNabdhFeatureMenu(", "private void addPrivacyControls("):
     if invariant not in source:
         raise SystemExit("Compact settings accidentally removed category logic: " + invariant)
+# Language and Appearance become ONE visible category, with original
+# feature IDs and detail routes unchanged. Swipe Actions already exists in
+# Telegram Chats settings; remove our redundant custom navigation row.
+source = replace_once(source,
+    "            nabdhFeatureRow(context, content, 402);",
+    """            nabdhFeatureRow(context, content, 402);
+            nabdhFeatureRow(context, content, 601);
+            nabdhFeatureRow(context, content, 602);
+            nabdhFeatureRow(context, content, 603);""",
+    "merged Language/Appearance nested destinations")
+source = replace_once(source,
+    """            nabdhExpandedButton(context, content, R.string.NabdhExpandedSwipes,
+                    () -> nabdhChooseChatSwipe(context));""",
+    "            // Swipe preferences remain in Telegram's native Chats settings.",
+    "remove duplicate Swipe Actions control")
+source = replace_once(source,
+    "actionBar.setTitle(NabdhStrings.get(context, featureId == 0 ? titleRes : nabdhDetailTitle(featureId)));",
+    """actionBar.setTitle(NabdhStrings.get(context,
+                featureId == 0 && titleRes == R.string.NabdhLanguageTitle
+                        ? R.string.NabdhCompactStyleLanguageTitle
+                        : (featureId == 0 ? titleRes : nabdhDetailTitle(featureId))));""",
+    "combined category toolbar title")
+# Harmonize the boolean controls with Telegram's own checked/unchecked switch
+# colors, keeping their existing preference callbacks untouched.
+for widget in ("toggle", "remember", "monet", "boldOption"):
+    creation = "android.widget.Switch " + widget + " = new android.widget.Switch(context);"
+    if source.count(creation) == 1:
+        source = source.replace(creation, creation +
+            "\\n        org.telegram.ui.Components.NabdhToolUi.styleToggle(context, " +
+            widget + ");", 1)
+    elif source.count(creation) > 1:
+        raise SystemExit("Multiple generated Switch declarations: " + widget)
+# Inputs on every category detail share the same adaptive, non-underlined
+# component as the custom PIN and on-device AI screens.
+for field in ("input",):
+    creation = "android.widget.EditText " + field + " = new android.widget.EditText(context);"
+    if source.count(creation) == 1:
+        source = source.replace(creation, creation +
+            "\\n        org.telegram.ui.Components.NabdhToolUi.styleInput(context, " +
+            field + ");", 1)
+
 page.write_text(source, encoding="utf-8")
 
 from xml.sax.saxutils import escape
@@ -203,6 +250,8 @@ translations = {
         "Language": "Translation and voice playback",
         "Network": "Browser, camera, data and storage",
         "Appearance": "Fonts, themes and settings backup",
+        "StyleLanguageTitle": "Appearance and language",
+        "StyleLanguage": "Fonts, themes, translation and voice",
         "Intelligence": "Optional private on-device AI tools",
     },
     "values-ar": {
@@ -212,6 +261,8 @@ translations = {
         "Language": "الترجمة وتشغيل الرسائل الصوتية",
         "Network": "المتصفح والكاميرا والبيانات والتخزين",
         "Appearance": "الخطوط والثيمات ونسخ الإعدادات",
+        "StyleLanguageTitle": "المظهر واللغة",
+        "StyleLanguage": "الخطوط والثيمات والترجمة والصوت",
         "Intelligence": "أدوات ذكاء محلي اختيارية وخاصة",
     },
 }
