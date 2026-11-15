@@ -33,7 +33,8 @@ check('android:name="androidx.core.content.FileProvider"' in manifest and
       'android:resource="@xml/provider_paths"' in manifest and
       'name="external_files" path="/storage/"' in provider,
       "existing Telegram FileProvider covers older camera file storage")
-check(camera.count("Nabdh Camera2") == 1 and "كاميرا نبض جرام" in camera,
+check("Nabdh Camera2" in camera and "كاميرا نبض جرام" in camera and
+      "NabdhToolUi.install(this, page" in camera,
       "camera Arabic locale provided")
 check("public boolean shouldOverrideUrlLoading(WebView view, String url)" in browser and
       "shouldOverrideUrlLoading(WebView view, WebResourceRequest request)" in browser,
