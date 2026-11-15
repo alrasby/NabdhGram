@@ -225,12 +225,12 @@ source = replace_once(source,
 # font bold controls, AI preferences and Lens; no callback is replaced.
 import re
 widget_rx = re.compile(
-    r'(?m)^(?P<indent>[ \\t]+)android\\.widget\\.(?P<kind>Switch|CheckBox|RadioButton|EditText) '
-    r'(?P<name>[A-Za-z_]\\w*) = new android\\.widget\\.(?P=kind)\\(context\\);$')
+    r'(?m)^(?P<indent>[ \t]+)android\.widget\.(?P<kind>Switch|CheckBox|RadioButton|EditText) '
+    r'(?P<name>[A-Za-z_]\w*) = new android\.widget\.(?P=kind)\(context\);$')
 def theme_native_widget(match):
     indent, kind, name = match.group("indent", "kind", "name")
     styler = "styleInput" if kind == "EditText" else "styleToggle"
-    return match.group(0) + "\\n" + indent + (
+    return match.group(0) + "\n" + indent + (
         f"org.telegram.ui.Components.NabdhToolUi.{styler}(context, {name});")
 source, count_styled = widget_rx.subn(theme_native_widget, source)
 if count_styled < 7:
