@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Regression contract for chat-lock confidentiality and read side effects.
+
+Source checks are NOT a substitute for physical-device notification tests.
+"""
+from pathlib import Path
+import sys
+
+if len(sys.argv) != 2:
+    raise SystemExit("Usage: check-nabdh-chat-lock-privacy.py TELEGRAM_SOURCE")
+
+root = Path(sys.argv[1]).resolve()
+ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
+chat = (ui / "ChatActivity.java").read_text(encoding="utf-8")
+notification = (ui.parent / "messenger/NotificationsController.java").read_text(encoding="utf-8")
+locks = (ui / "Components/NabdhChatLock.java").read_text(encoding="utf-8")
+activity = (ui / "NabdhChatLockActivity.java").read_text(encoding="utf-8")
+manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+
+def require(test, message):
+    if not test:
+        raise SystemExit("FAIL: " + message)
+
+require(notification.count("NabdhChatLock.isLocked(") >= 5,
+        "notifications, child notifications and popup replies are gated")
+require("private String getStringForMessage(" in notification and
+        "return LocaleController.getString(R.string.YouHaveNewMessage);" in notification,
+        "locked message body cannot be formatted into notification details")
+require(notification.count("if (org.telegram.ui.Components.NabdhChatLock.isLocked(") >= 2,
+        "locked new and queued messages do not reach Android notifications")
+require(chat.count("NabdhChatLock.isUnlocked(currentAccount, dialog_id)") >= 4,
+        "all four native ChatActivity direct read-ack paths require PIN")
+require("Keep FLAG_SECURE through system-recents snapshots" in chat,
+        "privacy screenshot flag remains during background transitions")
+require("!org.telegram.ui.Components.NabdhChatLock.isLocked(" in chat,
+        "normal chats can clear FLAG_SECURE")
+require("removeNotificationsForDialog(dialog)" in locks,
+        "locking dismisses previously displayed notification locally")
+require('android:exported="false"' in manifest and
+        "org.telegram.ui.NabdhChatLockActivity" in manifest,
+        "PIN management activity is private")
+require("NabdhChatLock.verify(this, entered)" in activity,
+        "editing locked chat settings requires the PIN")
+require("DialogObject.isEncryptedDialog(dialog.id)" in activity,
+        "native secret chats are not silently added to lock manager")
+require("MessagesController.markDialogAsRead(" not in locks and
+        "MessagesController.markDialogAsReadNow(" not in locks,
+        "PIN manager never acknowledges Telegram messages")
+print("PASS: source contract for PIN gating, notification redaction, popup, recents and no-read")
