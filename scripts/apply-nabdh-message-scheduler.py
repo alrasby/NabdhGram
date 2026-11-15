@@ -82,7 +82,7 @@ for locale, old, new in (
 ):
     resource = root / "TMessagesProj/src/main/res" / locale / "nabdh_v1_hierarchy.xml"
     raw = resource.read_text(encoding="utf-8")
-    old_label = '<string name="NabdhHScheduledDescription">' + old + '</string>'
+    old_label = '<string name="NabdhHScheduledDescription">' + escape(old).replace(chr(39), chr(92) + chr(39)) + '</string>'
     new_label = '<string name="NabdhHScheduledDescription">' + new + '</string>'
     if raw.count(old_label) != 1:
         raise SystemExit("Scheduled explanation resource changed: " + locale)
