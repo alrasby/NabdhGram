@@ -174,8 +174,10 @@ calls = [
 first = f"        section(context, content, R.string.{calls[0][0]}, R.string.{calls[0][1]});"
 if s.count(first) != 1:
     raise SystemExit("NabdhGram first category entry changed")
-grid_setup = """        boolean compactGrid = context.getResources().getConfiguration().screenWidthDp >= 360
-                && context.getResources().getConfiguration().fontScale <= 1.15f;
+grid_setup = """        // Telegram-style single-column settings rows on phones AND tablets.
+        // Avoid the old two-column dashboard layout and preserve readable RTL,
+        // text enlargement and a full-width touch target for each category.
+        boolean compactGrid = false;
         LinearLayout[] nabdhRows = null;
         if (compactGrid) {
             nabdhRows = new LinearLayout[3];
