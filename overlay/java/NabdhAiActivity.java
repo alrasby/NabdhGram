@@ -68,6 +68,8 @@ public final class NabdhAiActivity extends Activity {
         Button button = new Button(this);
         button.setText(text);
         button.setAllCaps(false);
+        button.setMinHeight((int) (52 * getResources().getDisplayMetrics().density + .5f));
+        button.setTextSize(14);
         button.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
         button.setBackground(
