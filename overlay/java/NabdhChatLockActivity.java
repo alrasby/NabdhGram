@@ -85,6 +85,11 @@ public final class NabdhChatLockActivity extends Activity {
         Button button = new Button(this);
         button.setText(text);
         button.setAllCaps(false);
+        button.setTextSize(15);
+        button.setMinHeight((int) (52 * getResources().getDisplayMetrics().density + .5f));
+        button.setGravity(org.telegram.messenger.LocaleController.isRTL
+                ? android.view.Gravity.RIGHT | android.view.Gravity.CENTER_VERTICAL
+                : android.view.Gravity.LEFT | android.view.Gravity.CENTER_VERTICAL);
         button.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
         button.setBackground(
