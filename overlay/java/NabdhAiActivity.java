@@ -37,6 +37,9 @@ public final class NabdhAiActivity extends Activity {
     private EditText checksum;
     private TextView state;
     private String approvedHash = "";
+    private String local(String en, String ar) {
+        return org.telegram.messenger.LocaleController.isRTL ? ar : en;
+    }
     private final Messenger responses = new Messenger(new Handler(Looper.getMainLooper()) {
         @Override public void handleMessage(Message message) {
             if (message.what != NabdhAiCoreService.RESPONSE) return;
@@ -69,59 +72,81 @@ public final class NabdhAiActivity extends Activity {
     }
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
-        setTitle("NabdhAI Core");
+        setTitle(local("NabdhAI Core", "محرك نبض للذكاء الاصطناعي"));
         ScrollView scroll = new ScrollView(this);
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
         screen.setPadding(20, 20, 20, 20);
-        screen.setBackgroundColor(Color.rgb(18, 29, 33));
+        screen.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+        screen.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
+                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         scroll.addView(screen);
         TextView privacy = new TextView(this);
-        privacy.setText("On-device, only when you tap Analyze. "
+        privacy.setText(local("On-device, only when you tap Analyze. "
                 + "No automatic chat reading, calls, recording, login access, "
                 + "cloud upload, or passive learning. "
                 + "Gemini Nano is preferred when AICore has it ready; "
-                + "verified Gemma is the fallback on compatible devices.");
-        privacy.setTextColor(Color.WHITE);
+                + "verified Gemma is the fallback on compatible devices.",
+                "استنتاج محلي فقط بعد الضغط على تحليل. لا قراءة تلقائية للمحادثات أو "
+                + "وصول للمكالمات والتسجيل وتسجيل الدخول، ولا رفع سحابي أو تعلّم خفي. "
+                + "يُفضّل Gemini Nano عند توفره، وإلا يُستخدم Gemma الموثّق على الأجهزة المتوافقة."));
+        privacy.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
         privacy.setTextSize(15);
         screen.addView(privacy);
         textInput = new EditText(this);
-        textInput.setHint("Paste only the text you want to analyze");
-        textInput.setTextColor(Color.WHITE);
-        textInput.setHintTextColor(Color.LTGRAY);
+        textInput.setHint(local("Paste only the text you want to analyze",
+                "الصق فقط النص الذي ترغب في تحليله"));
+        textInput.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        textInput.setHintTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
         textInput.setMinLines(4);
         textInput.setMaxLines(10);
         screen.addView(textInput);
-        screen.addView(action("Analyze selected text with available local model", () -> {
+        screen.addView(action(local("Analyze selected text with available local model",
+                "تحليل النص بالنموذج المحلي المتاح"), () -> {
             String text = textInput.getText().toString().trim();
             if (text.length() < 1 || text.length() > 4000) {
-                state.setText("Provide 1–4000 characters"); return;
+                state.setText(local("Provide 1–4000 characters",
+                        "أدخل نصًا بين حرف واحد و4000 حرف")); return;
             }
-            state.setText("Running local inference...");
+            state.setText(local("Running local inference...", "جارٍ تنفيذ الاستنتاج المحلي..."));
             request(NabdhAiCoreService.INFER, text);
         }));
-        screen.addView(action("Check automatically selected engine", () -> {
-            state.setText("Checking models...");
+        screen.addView(action(local("Check automatically selected engine",
+                "فحص المحرك المحدد تلقائيًا"), () -> {
+            state.setText(local("Checking models...", "جارٍ فحص النماذج..."));
             request(NabdhAiCoreService.STATUS, "");
         }));
         TextView gemma = new TextView(this);
-        gemma.setText("Gemma: import a licensed MediaPipe-compatible .task model from a trusted source. "
+        gemma.setText(local("Gemma: import a licensed MediaPipe-compatible .task model from a trusted source. "
                 + "Enter its official SHA-256 below. Models are not included in the APK. "
-                + "Models are stored only on this device and can be deleted.");
-        gemma.setTextColor(Color.LTGRAY);
+                + "Models are stored only on this device and can be deleted.",
+                "Gemma: استورد نموذج .task مرخّصًا ومتوافقًا مع MediaPipe من مصدر موثوق، "
+                + "ثم أدخل بصمته SHA-256 الرسمية. النماذج غير مضمّنة بالتطبيق، "
+                + "وتُحفظ محليًا ويمكن حذفها."));
+        gemma.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
         gemma.setTextSize(13);
         screen.addView(gemma);
         checksum = new EditText(this);
         checksum.setSingleLine(true);
-        checksum.setTextColor(Color.WHITE);
-        checksum.setHintTextColor(Color.LTGRAY);
-        checksum.setHint("Official 64-character model SHA-256");
+        checksum.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        checksum.setHintTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
+        checksum.setHint(local("Official 64-character model SHA-256",
+                "بصمة SHA-256 الرسمية للنموذج (64 خانة)"));
         checksum.setInputType(InputType.TYPE_CLASS_TEXT);
         screen.addView(checksum);
-        screen.addView(action("Import verified Gemma model", () -> {
+        screen.addView(action(local("Import verified Gemma model",
+                "استيراد نموذج Gemma موثّق"), () -> {
             approvedHash = checksum.getText().toString().trim();
             if (!approvedHash.matches("(?i)[a-f0-9]{64}")) {
-                state.setText("Supply the published SHA-256 of a trusted model");
+                state.setText(local("Supply the published SHA-256 of a trusted model",
+                        "أدخل بصمة SHA-256 المنشورة لنموذج موثوق"));
                 return;
             }
             Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -129,20 +154,24 @@ public final class NabdhAiActivity extends Activity {
             picker.addCategory(Intent.CATEGORY_OPENABLE);
             startActivityForResult(picker, PICK_GEMMA);
         }));
-        screen.addView(action("Delete local Gemma model", () ->
+        screen.addView(action(local("Delete local Gemma model", "حذف نموذج Gemma المحلي"), () ->
             new AlertDialog.Builder(this)
-                .setTitle("Delete imported Gemma model?")
-                .setMessage("Local model files will be removed. Your Telegram chats are unaffected.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Delete", (dialog, which) -> {
+                .setTitle(local("Delete imported Gemma model?",
+                        "هل تريد حذف نموذج Gemma المستورد؟"))
+                .setMessage(local("Local model files will be removed. Your Telegram chats are unaffected.",
+                        "سيُحذف النموذج المحلي فقط، ولن تتأثر محادثات Telegram."))
+                .setNegativeButton(local("Cancel", "إلغاء"), null)
+                .setPositiveButton(local("Delete", "حذف"), (dialog, which) -> {
                     NabdhAiGemmaProvider.remove(this);
-                    state.setText("Gemma model deleted");
+                    state.setText(local("Gemma model deleted", "حُذف نموذج Gemma المحلي"));
                 }).show()));
         state = new TextView(this);
-        state.setTextColor(Color.WHITE);
+        state.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
         state.setTextSize(15);
         state.setPadding(8, 20, 8, 20);
-        state.setText("Checking supported local models...");
+        state.setText(local("Checking supported local models...",
+                "جارٍ فحص النماذج المحلية المدعومة..."));
         screen.addView(state);
         setContentView(scroll);
     }
