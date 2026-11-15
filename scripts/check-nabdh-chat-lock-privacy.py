@@ -41,6 +41,9 @@ require("!org.telegram.ui.Components.NabdhChatLock.isLocked(" in chat,
 require("NabdhChatLock.isLocked(" in feed and
         "getApplicationContext(), account, dialog.id" in feed,
         "cached Channel Feed cannot expose posts from a PIN-locked channel")
+require("@Override protected void onResume()" in feed and
+        "if (items != null) render();" in feed,
+        "Channel Feed must hide newly locked channel previews on resume")
 require("Locked chat" in cell and "محادثة مقفلة" in cell and
         "messageNameLayout = null;" in cell and "thumbsCount = 0;" in cell,
         "chat-list message, sender and media preview are suppressed")
