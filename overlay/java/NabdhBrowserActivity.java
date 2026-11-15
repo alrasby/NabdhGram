@@ -69,6 +69,11 @@ public final class NabdhBrowserActivity extends Activity {
         result.setText(label);
         result.setAllCaps(false);
         result.setTextSize(12);
+        result.setMinHeight((int) (46 * getResources().getDisplayMetrics().density + .5f));
+        result.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        result.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
         result.setOnClickListener(v -> click.run());
         return result;
     }
