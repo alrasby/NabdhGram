@@ -20,7 +20,6 @@ def once(text, before, after, what):
         raise SystemExit(f"Chat-lock privacy {what}: expected 1 anchor, found {occurrences}")
     return text.replace(before, after, 1)
 
-notifications = ui / "NotificationsControllerDOESNOTEXIST.java"
 notifications = ui.parent / "messenger/NotificationsController.java"
 code = notifications.read_text(encoding="utf-8")
 
@@ -156,7 +155,7 @@ read_guard = """!org.telegram.ui.Components.NabdhChatLock.isLocked(
             org.telegram.ui.Components.NabdhChatLock.isUnlocked(currentAccount, dialog_id)"""
 calls = [
   "getMessagesController().markDialogAsReadNow(dialog_id, replyId);",
-  "getMessagesController().markDialogAsRead(dialog_id, maxPositiveUnreadId, maxNegativeUnreadId, maxUnreadDate, false, threadId, counterDecrement, maxPositiveUnreadId == minMessageId[0] || maxNegativeUnreadId == minMessageId[1], scheduledRead);",
+  "getMessagesController().markDialogAsRead(dialog_id, maxPositiveUnreadId, maxNegativeUnreadId, maxUnreadDate, false, threadId, counterDecrement, maxPositiveUnreadId == minMessageId[0] || maxNegativeUnreadId == minMessageId[0], scheduledRead);",
   "getMessagesController().markDialogAsRead(dialog_id, minMessageId[0], minMessageId[0], maxDate[0], false, threadId, 0, true, scheduledRead);",
   "getMessagesController().markDialogAsRead(dialog_id, messageObject.getId(), messageObject.getId(), messageObject.messageOwner.date, false, 0, 0, true, 0);",
 ]
