@@ -69,11 +69,16 @@ public final class NabdhCompactSettings {
 
     public static void row(Context context, LinearLayout parent, String title,
                            String subtitle, int icon, Runnable action) {
+        row(context, parent, title, subtitle, icon,
+                Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), action);
+    }
+
+    public static void row(Context context, LinearLayout parent, String title,
+                           String subtitle, int icon, int accent, Runnable action) {
         LinearLayout group = ensureGroup(context, parent);
         final boolean rtl = LocaleController.isRTL;
         final int primary = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);
         final int secondary = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
-        final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
 
         if (group.getChildCount() > 0) {
             View divider = new View(context);
