@@ -180,6 +180,11 @@ public final class NabdhChatLock {
         UNLOCKED.put(id(account, dialog), SystemClock.elapsedRealtime() + SESSION_MS);
     }
 
+    /** Each background/navigation pause ends the local unlock session. */
+    public static synchronized void revoke(int account, long dialog) {
+        UNLOCKED.remove(id(account, dialog));
+    }
+
     public static void authenticate(Activity activity, int account, long dialog,
                                     Runnable allowed, Runnable cancelled) {
         if (activity == null || activity.isFinishing()) { cancelled.run(); return; }
