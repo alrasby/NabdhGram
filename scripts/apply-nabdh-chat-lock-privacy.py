@@ -46,6 +46,16 @@ code = once(code, anchor, replacement, "new-message push source")
 head = """    private void showOrUpdateNotification(boolean notifyAboutLast) {
         if (!getUserConfig().isClientActivated()"""
 updated = """    private void showOrUpdateNotification(boolean notifyAboutLast) {
+        // Existing story pushes can survive a lock toggle or process reload.
+        for (int i = storyPushMessages.size() - 1; i >= 0; i--) {
+            StoryNotification old = storyPushMessages.get(i);
+            if (org.telegram.ui.Components.NabdhChatLock.isLocked(
+                    ApplicationLoader.applicationContext, currentAccount,
+                    old.dialogId)) {
+                storyPushMessages.remove(i);
+                storyPushMessagesDict.remove(old.dialogId);
+            }
+        }
         for (int i = pushMessages.size() - 1; i >= 0; i--) {
             MessageObject pending = pushMessages.get(i);
             if (pending != null &&
@@ -58,6 +68,21 @@ updated = """    private void showOrUpdateNotification(boolean notifyAboutLast) 
         }
         if (!getUserConfig().isClientActivated()"""
 code = once(code, head, updated, "old pending push cleanup")
+
+# Locking an unread conversation must NOT call Telegram's
+# removeNotificationsForDialog(): that method also marks its local unread count
+# as read. Instead let the notification dispatcher re-render its own queue,
+# filtering protected messages in showOrUpdateNotification above.
+refresh_anchor = """    private void showOrUpdateNotification(boolean notifyAboutLast) {"""
+refresh_method = """    public void nabdhRefreshLockedNotifications() {
+        notificationsQueue.postRunnable(() -> {
+            // Local notification UI refresh only: no read acknowledgements.
+            showOrUpdateNotification(false);
+        });
+    }
+
+    private void showOrUpdateNotification(boolean notifyAboutLast) {"""
+code = once(code, refresh_anchor, refresh_method, "unread-preserving notification refresh")
 
 # Extra notification stack must never recreate a protected child notification.
 head = """        for (int a = 0; a < pushMessages.size(); a++) {
@@ -163,6 +188,26 @@ for index, call in enumerate(calls):
     s = once(s, call, "if (" + read_guard + ") {\n            " + call + "\n        }", "read confirmation " + str(index+1))
 chat.write_text(s, encoding="utf-8")
 
+# A PIN gate is not private if Telegram's main dialog list still previews
+# the last message, thumbnail, sender or typing text for that protected chat.
+# Replace only the rendered strings, never the real messages or read state.
+cell = ui / "Cells/DialogCell.java"
+cell_src = cell.read_text(encoding="utf-8")
+cell_anchor = """            Layout.Alignment align = isForum && LocaleController.isRTL ? Layout.Alignment.ALIGN_OPPOSITE : Layout.Alignment.ALIGN_NORMAL;"""
+cell_body = """            if (getContext() != null && currentDialogId != 0 && !isFolderCell() &&
+                    org.telegram.ui.Components.NabdhChatLock.isLocked(
+                            getContext().getApplicationContext(), currentAccount, currentDialogId)) {
+                messageStringFinal = LocaleController.isRTL
+                        ? "🔒 محادثة مقفلة" : "🔒 Locked chat";
+                messageNameString = null;
+                messageNameLayout = null;
+                typingLayout = null;
+                thumbsCount = 0;
+            }
+            Layout.Alignment align = isForum && LocaleController.isRTL ? Layout.Alignment.ALIGN_OPPOSITE : Layout.Alignment.ALIGN_NORMAL;"""
+cell_src = once(cell_src, cell_anchor, cell_body, "chat-list message preview")
+cell.write_text(cell_src, encoding="utf-8")
+
 lock = ui / "Components/NabdhChatLock.java"
 s = lock.read_text(encoding="utf-8")
 head = """        save(context, info);
@@ -170,12 +215,12 @@ head = """        save(context, info);
     }"""
 replace = """        save(context, info);
         UNLOCKED.remove(id(account, dialog));
-        if (enabled) {
-            // Dismiss existing notifications using Telegram's own local queue.
-            // Does not issue a Telegram server read receipt.
-            org.telegram.messenger.NotificationsController.getInstance(account)
-                    .removeNotificationsForDialog(dialog);
-        }
+        org.telegram.messenger.NotificationCenter.getInstance(account)
+                .postNotificationName(org.telegram.messenger.NotificationCenter.dialogsNeedReload);
+        // Rebuild Android notifications without Telegram's read-processing API.
+        // Keeping the unread badge intact is part of the local-lock contract.
+        org.telegram.messenger.NotificationsController.getInstance(account)
+                .nabdhRefreshLockedNotifications();
     }"""
 s = once(s, head, replace, "dismiss existing notifications on lock")
 lock.write_text(s, encoding="utf-8")

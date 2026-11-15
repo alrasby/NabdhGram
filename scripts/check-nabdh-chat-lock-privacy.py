@@ -13,6 +13,7 @@ root = Path(sys.argv[1]).resolve()
 ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
 chat = (ui / "ChatActivity.java").read_text(encoding="utf-8")
 notification = (ui.parent / "messenger/NotificationsController.java").read_text(encoding="utf-8")
+cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
 locks = (ui / "Components/NabdhChatLock.java").read_text(encoding="utf-8")
 activity = (ui / "NabdhChatLockActivity.java").read_text(encoding="utf-8")
 manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
@@ -21,6 +22,8 @@ def require(test, message):
     if not test:
         raise SystemExit("FAIL: " + message)
 
+require("storyPushMessagesDict.remove(old.dialogId);" in notification,
+        "cached protected-chat story notifications are also suppressed")
 require(notification.count("NabdhChatLock.isLocked(") >= 5,
         "notifications, child notifications and popup replies are gated")
 require("private String getStringForMessage(" in notification and
@@ -34,8 +37,16 @@ require("Keep FLAG_SECURE through system-recents snapshots" in chat,
         "privacy screenshot flag remains during background transitions")
 require("!org.telegram.ui.Components.NabdhChatLock.isLocked(" in chat,
         "normal chats can clear FLAG_SECURE")
-require("removeNotificationsForDialog(dialog)" in locks,
-        "locking dismisses previously displayed notification locally")
+require("Locked chat" in cell and "محادثة مقفلة" in cell and
+        "messageNameLayout = null;" in cell and "thumbsCount = 0;" in cell,
+        "chat-list message, sender and media preview are suppressed")
+require("nabdhRefreshLockedNotifications()" in locks and
+        "public void nabdhRefreshLockedNotifications()" in notification,
+        "locking refreshes Android notifications on the native notification dispatcher")
+require("removeNotificationsForDialog(dialog)" not in locks,
+        "locking must not alter Telegram unread counters")
+require("showOrUpdateNotification(false);" in notification,
+        "queued protected notifications are re-evaluated on locking")
 require('android:exported="false"' in manifest and
         "org.telegram.ui.NabdhChatLockActivity" in manifest,
         "PIN management activity is private")

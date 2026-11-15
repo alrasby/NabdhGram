@@ -60,13 +60,26 @@ public final class NabdhAiCoreService extends Service {
                                 "Gemini Nano unavailable; import a verified compatible Gemma model");
                         return;
                     }
-                    // Exactly one provider is instantiated per request.
+                    // No two model clients coexist: Nano closes before Gemma fallback.
                     String prompt = "Analyze only the user-supplied excerpt. "
                             + "List key points, tasks and dates when present. "
                             + "Do not invent details or claim to have read any chat.\n\n"
                             + input;
-                    String output = nano ? NabdhAiNanoProvider.infer(prompt)
-                            : NabdhAiGemmaProvider.infer(NabdhAiCoreService.this, prompt);
+                    String output;
+                    if (nano) {
+                        try {
+                            output = NabdhAiNanoProvider.infer(prompt);
+                        } catch (Exception | LinkageError nanoFailed) {
+                            // AICore may be reported ready but then fail. Only
+                            // attempt Gemma after Nano releases its model.
+                            if (!NabdhAiGemmaProvider.available(NabdhAiCoreService.this))
+                                throw nanoFailed;
+                            selected = "Gemma";
+                            output = NabdhAiGemmaProvider.infer(NabdhAiCoreService.this, prompt);
+                        }
+                    } else {
+                        output = NabdhAiGemmaProvider.infer(NabdhAiCoreService.this, prompt);
+                    }
                     send(response, output, selected, "");
                 } catch (Throwable failure) {
                     // No user input or full exception trace enters Telegram logs.
