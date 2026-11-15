@@ -43,16 +43,13 @@ for section, label in (
 require("new org.telegram.ui.ActionBar.AlertDialog.Builder(context)" in category and
         "SharedConfig.updateChatListSwipeSetting(chosen)" in category,
         "swipe dialog must use Telegram theme without changing the native action")
-require("NabdhGlassRowDecoration.newCardBackground()" in category and
-        "heading.setText(org.telegram.messenger.LocaleController.getString(" in category and
-        "title.setText(name)" in category and "details.setText(description)" in category,
-        "rows must be themed, translated and have concise title plus subtitle")
-require("card.setMinimumHeight(nabdhToolDp(context, 76))" in category and
-        "card.setContentDescription(name" in category and
-        "card.setFocusable(true)" in category,
-        "tool rows need readable touch targets and accessibility text")
-require("AndroidUtilities.getTypeface(\"fonts/rmedium.ttf\")" in category,
-        "native tool rows must use current Telegram typography family")
+require("NabdhCompactSettings.row(" in category and
+        "NabdhStrings.get(context, label)" in category and
+        "NabdhStrings.get(context, subtitle)" in category,
+        "tool destinations must use compact grouped native rows and app-localized labels")
+require("nabdhExpandedHeader(context, content);" in category and
+        "NabdhStrings.get(context, R.string.NabdhExpandedTitle)" in category,
+        "grouped extras retain compact translated section heading")
 
 for name in ("browser", "camera", "feed", "lock", "swipe"):
     file = root / "res/drawable" / ("nabdh_tool_" + name + ".xml")
