@@ -15,7 +15,7 @@ def check(ok, reason):
     if not ok: raise SystemExit("FAIL: compact UI " + reason)
 
 check(hub.count("section(context, content, R.string.") == 7,
-      "seven category destinations or native order changed")
+      "native seven category source routes were lost")
 check("NabdhCompactSettings.row(context, parent" in hub and
       "NabdhDynamicAccent.accent(" in hub and
       "NabdhStrings.get(context, titleRes)" in hub,
@@ -29,6 +29,14 @@ route_checks = {
 }
 check(all(route_checks.values()),
       "grouped tool route missing: " + repr(route_checks))
+check("if (titleRes == R.string.NabdhAppearanceTitle) return;" in hub and
+      "R.string.NabdhCompactStyleLanguageTitle" in hub and
+      "nabdhFeatureRow(context, content, 601);" in page and
+      "nabdhFeatureRow(context, content, 602);" in page and
+      "nabdhFeatureRow(context, content, 603);" in page,
+      "Appearance and Language must share one visible category without losing fonts, themes or backup")
+check("nabdhExpandedButton(context, content, R.string.NabdhExpandedSwipes" not in page,
+      "duplicate Swipe Actions option must not be shown in NabdhGram settings")
 check("choices.setVisibility(View.GONE);" in page and
       "choices.setOnCheckedChangeListener(" in page and
       "fontTitle.setOnClickListener(" in page and
@@ -58,11 +66,11 @@ for lang in ("values", "values-ar"):
     check(res.is_file(), "missing " + lang + " summaries")
     nodes = list(ET.parse(res).getroot())
     keys = [n.get("name") for n in nodes]
-    check(len(keys) == 7 and len(set(keys)) == 7 and
+    check(len(keys) == 9 and len(set(keys)) == 9 and
           all((n.text or "").strip() for n in nodes),
           "incomplete " + lang + " summaries")
 check("markDialogAsRead(" not in renderer and
       "MessagesController" not in renderer and
       "NabdhAiCoreService" not in renderer,
       "renderer must not touch Telegram or AI logic")
-print("PASS: grouped translucent settings, 7 categories, tool routes, in-app Arabic, RTL and existing feature actions")
+print("PASS: six visible grouped settings categories with merged Appearance/Language, original tool routes, no duplicate Swipe Actions")
