@@ -16,6 +16,7 @@ notification = (ui.parent / "messenger/NotificationsController.java").read_text(
 cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
 locks = (ui / "Components/NabdhChatLock.java").read_text(encoding="utf-8")
 activity = (ui / "NabdhChatLockActivity.java").read_text(encoding="utf-8")
+feed = (ui / "NabdhChannelFeedActivity.java").read_text(encoding="utf-8")
 manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 
 def require(test, message):
@@ -37,6 +38,9 @@ require("Keep FLAG_SECURE through system-recents snapshots" in chat,
         "privacy screenshot flag remains during background transitions")
 require("!org.telegram.ui.Components.NabdhChatLock.isLocked(" in chat,
         "normal chats can clear FLAG_SECURE")
+require("NabdhChatLock.isLocked(" in feed and
+        "getApplicationContext(), account, dialog.id" in feed,
+        "cached Channel Feed cannot expose posts from a PIN-locked channel")
 require("Locked chat" in cell and "محادثة مقفلة" in cell and
         "messageNameLayout = null;" in cell and "thumbsCount = 0;" in cell,
         "chat-list message, sender and media preview are suppressed")
