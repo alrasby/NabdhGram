@@ -100,8 +100,11 @@ public final class NabdhBrowserActivity extends Activity {
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
         page.setLayoutDirection(org.telegram.messenger.LocaleController.isRTL
                 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        int dp = (int) (getResources().getDisplayMetrics().density + .5f);
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
+        toolbar.setGravity(Gravity.CENTER_VERTICAL);
+        toolbar.setPadding(8 * dp, 4 * dp, 8 * dp, 4 * dp);
         address = new EditText(this);
         address.setSingleLine(true);
         address.setTextSize(13);
@@ -131,7 +134,10 @@ public final class NabdhBrowserActivity extends Activity {
                     : local("Shield: OFF", "الحماية: معطّلة"));
             web.reload();
         });
-        controls.addView(protection, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout security = new LinearLayout(this);
+        security.setOrientation(LinearLayout.HORIZONTAL);
+        security.setPadding(8 * dp, 0, 8 * dp, 4 * dp);
+        security.addView(protection, new LinearLayout.LayoutParams(0, 48 * dp, 1f));
         Button javascript = button(local("JS: OFF", "جافاسكربت: معطّل"), () -> {});
         javascript.setOnClickListener(v -> {
             scripts = !scripts;
@@ -141,8 +147,13 @@ public final class NabdhBrowserActivity extends Activity {
                     : local("JS: OFF", "جافاسكربت: معطّل"));
             web.reload();
         });
-        controls.addView(javascript, new LinearLayout.LayoutParams(0, -2, 1f));
-        page.addView(controls);
+        security.addView(javascript, new LinearLayout.LayoutParams(0, 48 * dp, 1f));
+        LinearLayout.LayoutParams navParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        navParams.leftMargin = 8 * dp;
+        navParams.rightMargin = 8 * dp;
+        page.addView(controls, navParams);
+        page.addView(security);
         web = new WebView(this);
         WebSettings cfg = web.getSettings();
         cfg.setJavaScriptEnabled(false);
