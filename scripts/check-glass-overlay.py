@@ -378,6 +378,12 @@ checks = {
             and "explanation.setText(NabdhStrings.get(context, featureId == 0 ? nabdhCategoryDescription() : nabdhDetailDescription(featureId)));" in feature
             and "addNabdhFeatureMenu(context, content);" in feature
         )
+        or (
+            "featureId == 0 && titleRes == R.string.NabdhLanguageTitle" in feature
+            and "R.string.NabdhCompactStyleLanguageTitle" in feature
+            and "explanation.setText(NabdhStrings.get(context, featureId == 0 ? nabdhCategoryDescription() : nabdhDetailDescription(featureId)));" in feature
+            and "addNabdhFeatureMenu(context, content);" in feature
+        )
     ),
     "appearance settings describe working Glass and fonts": "Choose the application font below." in appearance_en
         and "اختر خط التطبيق أدناه." in appearance_ar
