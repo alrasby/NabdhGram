@@ -44,11 +44,24 @@ public final class NabdhChatLock {
         return new AtomicFile(new File(context.getNoBackupFilesDir(), FILE));
     }
     private static JSONObject read(Context context) {
+        File primary = new File(context.getNoBackupFilesDir(), FILE);
+        File backup = new File(context.getNoBackupFilesDir(), FILE + ".bak");
+        if (!primary.exists() && !backup.exists()) return new JSONObject();
         try (FileInputStream input = location(context).openRead()) {
             byte[] raw = new byte[(int) Math.min(65_536, input.available())];
             int size = input.read(raw);
-            return new JSONObject(new String(raw, 0, Math.max(0, size), StandardCharsets.UTF_8));
-        } catch (Exception ignored) { return new JSONObject(); }
+            if (size <= 0) throw new java.io.IOException("Empty chat-lock state");
+            JSONObject decoded = new JSONObject(
+                    new String(raw, 0, size, StandardCharsets.UTF_8));
+            if (!decoded.has("pin") || !decoded.has("dialogs"))
+                throw new java.io.IOException("Malformed chat-lock state");
+            return decoded;
+        } catch (Exception unreadable) {
+            // Never treat a damaged lock file as "no locks". Fail closed.
+            JSONObject blocked = new JSONObject();
+            try { blocked.put("_unreadable", true); } catch (Exception ignored) {}
+            return blocked;
+        }
     }
     private static void save(Context context, JSONObject json) throws Exception {
         AtomicFile file = location(context);
@@ -95,7 +108,9 @@ public final class NabdhChatLock {
     }
 
     public static synchronized boolean configured(Context context) {
-        return read(context).optString("pin", "").length() == 64;
+        JSONObject state = read(context);
+        return state.optBoolean("_unreadable") ||
+               state.optString("pin", "").length() == 64;
     }
     public static synchronized void setPin(Context context, String pin) throws Exception {
         if (configured(context)) throw new IllegalStateException("PIN already configured");
@@ -109,7 +124,8 @@ public final class NabdhChatLock {
     public static synchronized boolean verify(Context context, String pin) {
         JSONObject info = read(context);
         long now = System.currentTimeMillis();
-        if (now < info.optLong("blockedUntil", 0)) return false;
+        if (info.optBoolean("_unreadable") ||
+                now < info.optLong("blockedUntil", 0)) return false;
         boolean match = false;
         try {
             match = MessageDigest.isEqual(decode(info.optString("pin")), mac(pin));
@@ -128,6 +144,7 @@ public final class NabdhChatLock {
     public static synchronized boolean isLocked(Context context, int account, long dialog) {
         if (dialog == 0) return false;
         JSONObject state = read(context);
+        if (state.optBoolean("_unreadable")) return true;
         if (state.optString("pin", "").length() != 64) return false;
         JSONArray list = state.optJSONArray("dialogs");
         if (list == null) return false;
