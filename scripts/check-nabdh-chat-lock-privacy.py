@@ -13,6 +13,7 @@ root = Path(sys.argv[1]).resolve()
 ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
 chat = (ui / "ChatActivity.java").read_text(encoding="utf-8")
 notification = (ui.parent / "messenger/NotificationsController.java").read_text(encoding="utf-8")
+cell = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
 locks = (ui / "Components/NabdhChatLock.java").read_text(encoding="utf-8")
 activity = (ui / "NabdhChatLockActivity.java").read_text(encoding="utf-8")
 manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
@@ -34,6 +35,9 @@ require("Keep FLAG_SECURE through system-recents snapshots" in chat,
         "privacy screenshot flag remains during background transitions")
 require("!org.telegram.ui.Components.NabdhChatLock.isLocked(" in chat,
         "normal chats can clear FLAG_SECURE")
+require("Locked chat" in cell and "محادثة مقفلة" in cell and
+        "messageNameLayout = null;" in cell and "thumbsCount = 0;" in cell,
+        "chat-list message, sender and media preview are suppressed")
 require("removeNotificationsForDialog(dialog)" in locks,
         "locking dismisses previously displayed notification locally")
 require('android:exported="false"' in manifest and
