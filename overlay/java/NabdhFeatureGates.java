@@ -8,6 +8,9 @@ import android.content.Context;
  */
 public final class NabdhFeatureGates {
     private static final String FILE = "nabdhgram_release_feature_gates";
+    // V1 does not ship a verified language model. Deliberately fail closed:
+    // a stored success flag alone must never publish an unaccepted feature.
+    private static final boolean PUBLIC_AI_RELEASE_ACCEPTED = false;
     private NabdhFeatureGates() {}
 
     public static boolean visible(int id) {
@@ -16,8 +19,13 @@ public final class NabdhFeatureGates {
         // Native Telegram preview/translation features are NOT disabled.
         return id != 203 && id != 401;
     }
+    /** Show public NabdhAI surfaces only after a real inference AND release QA. */
+    public static boolean publicAiEnabled(Context context) {
+        return verifiedAiChat(context);
+    }
+
     public static boolean verifiedAiChat(Context context) {
-        return context != null && context.getSharedPreferences(
+        return PUBLIC_AI_RELEASE_ACCEPTED && context != null && context.getSharedPreferences(
                 FILE, Context.MODE_PRIVATE).getBoolean("tested_ai_inference", false);
     }
     /** Called only after a real, non-status local inference result is delivered. */
