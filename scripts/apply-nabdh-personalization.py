@@ -158,18 +158,17 @@ d = once(d,
     "native folder titles")
 d = once(d,
     '''    public void onResume() {
-        super.onResume();
-        if (dialogStoriesCell != null) {''',
+        super.onResume();''',
     '''    public void onResume() {
         super.onResume();
+        // Only the native main chat list owns these presentation controls.
         if (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect && folderId == 0 && communityId == 0) {
             ''' + prefix + '''.applyTitle(actionBar, getContext());
             updateStoriesVisibility(false);
             updateFloatingButtonVisibility(false);
             updateFilterTabs(true, false);
             checkUi_searchFieldVisibility();
-        }
-        if (dialogStoriesCell != null) {''',
+        }''',
     "native home restoration")
 dialogs.write_text(d, encoding="utf-8")
 
