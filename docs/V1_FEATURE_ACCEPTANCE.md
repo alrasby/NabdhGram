@@ -1,5 +1,15 @@
 # NabdhGram V1 — implementation and acceptance checkpoint
 
+> **تحديث 16 نوفمبر 2026:** هذا الملف نقطة مرجعية تاريخية من 14 نوفمبر؛
+> الحالة الأحدث والأدلة/اختبارات الأجهزة غير المكتملة موثقة في
+> [بوابة قبول الإصدار الأول](V1_RELEASE_QA_2026-11-16_AR.md).
+> نجح Debug #687 وFoundation #1149 وSource #205 بعد تركيب Camera2 وجدولة
+> المستلمين وحزم Noto/Twemoji/OpenMoji واستدعاء AICore/Gemma الاختياري.
+> الفقرات القديمة أدناه التي تقول إن موفري الذكاء المحلي «غير موصولين»
+> لا تصف الشيفرة الحالية، لكن **استدلال نموذج ناجح على جهاز مدعوم
+> وإصدار Release موقّع وQA وظيفي لم يُثبت بعد**.
+
+
 **Date:** 2026-11-14. **Branch:** `release/v1-feature-integration-and-signing`.
 The **verified upstream stable source** is `main` at Telegram 13.2.2 (7303);
 this feature batch must not be publicly released before its own build and QA.

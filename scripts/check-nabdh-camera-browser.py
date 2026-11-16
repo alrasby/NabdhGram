@@ -41,6 +41,16 @@ check('shutter.setContentDescription(local("Capture photo", "التقاط صور
       "captureBar.addView(shutter" in camera and
       "new LinearLayout.LayoutParams(0, dp(48), 1f)" in camera,
       "camera requires accessible shutter plus bounded controls")
+check("cameraGeneration++;" in camera and
+      "generation != cameraGeneration" in camera and
+      "openingCamera" in camera and
+      "onOpened(CameraDevice opened)" in camera and
+      "previewSurface.release();" in camera,
+      "camera switching and pause must release old surfaces and reject late callbacks")
+check("onCaptureFailed(CameraCaptureSession current," in camera and
+      "onCaptureSequenceAborted(CameraCaptureSession current," in camera and
+      "takingPhoto = false;" in camera,
+      "asynchronous capture failure must re-enable camera shutter")
 check("public boolean shouldOverrideUrlLoading(WebView view, String url)" in browser and
       "shouldOverrideUrlLoading(WebView view, WebResourceRequest request)" in browser,
       "old and new Android WebView redirects have URL allowlist")

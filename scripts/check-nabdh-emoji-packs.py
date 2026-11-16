@@ -28,7 +28,7 @@ for name in ("NOTO", "TWEMOJI", "OPENMOJI", "TELEGRAM", "SYSTEM"):
             "picker entry missing working renderer " + name)
 for attr in ("2D/png/72/", "assets/72x72/", "color/72x72/",
              "MAX_IMAGE_BYTES", "MAX_DISK_BYTES", "LruCache",
-             "HttpURLConnection", "newFixedThreadPool(2)",
+             "HttpURLConnection", "ThreadPoolExecutor(", "ArrayBlockingQueue<>(64)",
              "getCacheDir()", "Character.codePointAt",
              "setConnectTimeout", "setReadTimeout",
              "SharedConfig.useSystemEmoji = SYSTEM.equals(pack)",
@@ -44,6 +44,13 @@ require("NotificationCenter.didSetNewTheme" in pack
 require('if (TELEGRAM.equals(pack) || SYSTEM.equals(pack)) return;' in pack
         and "NabdhEmojiPacks.choose(this, pack)" in picker,
         "no background requests unless user chooses external art")
+require(all(k in pack for k in ("TEMPORARY_RETRY_MS", "MISSING_GLYPH_RETRY_MS",
+        "RETRY_AFTER", "SystemClock.elapsedRealtime()", "HTTP_NOT_FOUND",
+        "FileNotFoundException", "RejectedExecutionException", "pack.equals(selected())",
+        "if (PENDING.contains(id)", "return size() > 1024;")),
+        "offline CDN failures must retry with bounded backoff; missing PNGs must not loop")
+require("private static final Set<String> NOT_FOUND" not in pack,
+        "do not permanently suppress an emoji glyph after a transient offline error")
 require("Build.MANUFACTURER" not in picker and "AutoCompleteTextView" not in scheduler,
         "no placebo OEM label or native dropdown")
 require("ArrayList<TLRPC.TL_contact> telegramContacts" in scheduler

@@ -14,6 +14,7 @@ import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
+import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
@@ -56,7 +57,10 @@ public final class NabdhCameraActivity extends Activity {
     private Handler cameraHandler;
     private CameraDevice device;
     private CameraCaptureSession session;
+    private Surface previewSurface;
     private ImageReader reader;
+    private volatile boolean openingCamera;
+    private volatile long cameraGeneration;
     private CaptureRequest.Builder repeating;
     private String cameraId;
     private int facing = CameraCharacteristics.LENS_FACING_BACK;
@@ -217,7 +221,7 @@ public final class NabdhCameraActivity extends Activity {
     }
 
     private void startCamera() {
-        if (!active || manager == null || device != null || cameraHandler == null) return;
+        if (!active || manager == null || device != null || openingCamera || cameraHandler == null) return;
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION);
             return;
@@ -272,20 +276,28 @@ public final class NabdhCameraActivity extends Activity {
                     notifyUser("Photo could not be saved");
                 } finally { takingPhoto = false; }
             }, cameraHandler);
+            openingCamera = true;
+            final long generation = cameraGeneration;
             manager.openCamera(cameraId, new CameraDevice.StateCallback() {
                 @Override public void onOpened(CameraDevice opened) {
-                    if (!active) { opened.close(); return; }
+                    if (!active || generation != cameraGeneration) { opened.close(); return; }
+                    openingCamera = false;
                     device = opened;
-                    createPreview();
+                    createPreview(generation);
                 }
                 @Override public void onDisconnected(CameraDevice opened) {
                     opened.close();
+                    if (generation != cameraGeneration) return;
+                    openingCamera = false;
                     if (device == opened) device = null;
+                    notifyUser(local("Camera disconnected", "انقطع اتصال الكاميرا"));
                 }
                 @Override public void onError(CameraDevice opened, int error) {
                     opened.close();
+                    if (generation != cameraGeneration) return;
+                    openingCamera = false;
                     if (device == opened) device = null;
-                    notifyUser("Camera unavailable (" + error + ")");
+                    notifyUser(local("Camera unavailable", "الكاميرا غير متاحة") + " (" + error + ")");
                 }
             }, cameraHandler);
         } catch (Exception problem) {
@@ -294,13 +306,15 @@ public final class NabdhCameraActivity extends Activity {
         }
     }
 
-    private void createPreview() {
-        if (!active || device == null || reader == null || !preview.isAvailable()) return;
+    private void createPreview(long generation) {
+        if (!active || generation != cameraGeneration || device == null || reader == null
+                || !preview.isAvailable()) return;
         try {
             SurfaceTexture texture = preview.getSurfaceTexture();
             if (texture == null) return;
             texture.setDefaultBufferSize(1280, 720);
             Surface screen = new Surface(texture);
+            previewSurface = screen;
             repeating = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             repeating.addTarget(screen);
             repeating.set(CaptureRequest.CONTROL_AF_MODE,
@@ -308,7 +322,10 @@ public final class NabdhCameraActivity extends Activity {
             device.createCaptureSession(Arrays.asList(screen, reader.getSurface()),
                     new CameraCaptureSession.StateCallback() {
                         @Override public void onConfigured(CameraCaptureSession ready) {
-                            if (!active || device == null) { ready.close(); return; }
+                            if (!active || generation != cameraGeneration || device == null) {
+                                ready.close();
+                                return;
+                            }
                             session = ready;
                             refreshRepeating();
                         }
@@ -367,7 +384,17 @@ public final class NabdhCameraActivity extends Activity {
                     facing == CameraCharacteristics.LENS_FACING_FRONT
                             ? (sensorOrientation + degrees) % 360
                             : (sensorOrientation - degrees + 360) % 360);
-            session.capture(capture.build(), null, cameraHandler);
+            session.capture(capture.build(), new CameraCaptureSession.CaptureCallback() {
+                @Override public void onCaptureFailed(CameraCaptureSession current,
+                        CaptureRequest request, CaptureFailure failure) {
+                    takingPhoto = false;
+                    notifyUser(local("Capture failed; retry", "فشل الالتقاط؛ أعد المحاولة"));
+                }
+                @Override public void onCaptureSequenceAborted(CameraCaptureSession current,
+                        int sequenceId) {
+                    takingPhoto = false;
+                }
+            }, cameraHandler);
         } catch (Exception error) {
             takingPhoto = false;
             notifyUser("Capture failed");
@@ -442,9 +469,12 @@ public final class NabdhCameraActivity extends Activity {
     }
 
     private void closeCamera() {
+        cameraGeneration++;
+        openingCamera = false;
         if (session != null) { session.close(); session = null; }
         if (device != null) { device.close(); device = null; }
         if (reader != null) { reader.close(); reader = null; }
+        if (previewSurface != null) { previewSurface.release(); previewSurface = null; }
         repeating = null;
         takingPhoto = false;
     }

@@ -10,18 +10,24 @@ import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.util.LruCache;
+import android.os.SystemClock;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Actual independent PNG emoji rendering for Telegram text spans.
@@ -48,14 +54,23 @@ public final class NabdhEmojiPacks {
     private static final String PREFS = "nabdhgram_emoji_packs_v1";
     private static final int MAX_IMAGE_BYTES = 180 * 1024;
     private static final long MAX_DISK_BYTES = 20L * 1024L * 1024L;
-    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2);
+    // Bound pending downloads so a chat with many distinct emojis cannot grow
+    // an unbounded executor queue or consume unlimited memory.
+    private static final ThreadPoolExecutor EXECUTOR = new ThreadPoolExecutor(
+            2, 2, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(64));
     private static final LruCache<String, Bitmap> MEMORY = new LruCache<String, Bitmap>(6 * 1024 * 1024) {
         @Override protected int sizeOf(String key, Bitmap bitmap) {
             return bitmap.getByteCount();
         }
     };
     private static final Set<String> PENDING = new HashSet<>();
-    private static final Set<String> NOT_FOUND = new HashSet<>();
+    private static final long TEMPORARY_RETRY_MS = 90_000L;
+    private static final long MISSING_GLYPH_RETRY_MS = 24L * 60L * 60L * 1000L;
+    private static final Map<String, Long> RETRY_AFTER = new LinkedHashMap<String, Long>(128, .75f, true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<String, Long> eldest) {
+            return size() > 1024;
+        }
+    };
     private static final Paint PAINT = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private static volatile String selected;
 
@@ -90,7 +105,7 @@ public final class NabdhEmojiPacks {
                 .edit().putString("pack", pack).apply();
         selected = pack;
         synchronized (PENDING) {
-            NOT_FOUND.clear();
+            RETRY_AFTER.clear();
         }
         // Preserve native Telegram's setting for system vs custom spans.
         SharedConfig.useSystemEmoji = SYSTEM.equals(pack);
@@ -215,26 +230,46 @@ public final class NabdhEmojiPacks {
         String id = cacheKey(pack, code);
         if (id == null || getCached(id) != null) return;
         synchronized (PENDING) {
-            if (PENDING.contains(id) || NOT_FOUND.contains(id)) return;
+            Long retryAt = RETRY_AFTER.get(id);
+            if (PENDING.contains(id) || (retryAt != null &&
+                    SystemClock.elapsedRealtime() < retryAt)) return;
+            RETRY_AFTER.remove(id);
             PENDING.add(id);
         }
-        EXECUTOR.execute(() -> {
-            Bitmap bitmap = null;
-            try {
-                bitmap = loadBitmap(pack, id.substring(pack.length() + 1));
-            } catch (Exception ignored) {
-                // Display the original emoji if a network, image or disk error occurs.
-            } finally {
-                synchronized (PENDING) {
-                    PENDING.remove(id);
-                    if (bitmap == null) NOT_FOUND.add(id);
+        try {
+            EXECUTOR.execute(() -> {
+                Bitmap bitmap = null;
+                boolean absent = false;
+                try {
+                    // Switching to Telegram must not start queued CDN work.
+                    if (!pack.equals(selected())) return;
+                    bitmap = loadBitmap(pack, id.substring(pack.length() + 1));
+                } catch (FileNotFoundException missing) {
+                    absent = true;
+                } catch (Exception ignored) {
+                    // Temporary network/offline errors can retry after a cooldown.
+                } finally {
+                    synchronized (PENDING) {
+                        PENDING.remove(id);
+                        if (bitmap == null) {
+                            RETRY_AFTER.put(id, SystemClock.elapsedRealtime() +
+                                    (absent ? MISSING_GLYPH_RETRY_MS : TEMPORARY_RETRY_MS));
+                        } else {
+                            RETRY_AFTER.remove(id);
+                        }
+                    }
                 }
+                if (bitmap != null) {
+                    synchronized (MEMORY) { MEMORY.put(id, bitmap); }
+                    AndroidUtilities.runOnUIThread(Emoji.invalidateUiRunnable);
+                }
+            });
+        } catch (RejectedExecutionException busy) {
+            synchronized (PENDING) {
+                PENDING.remove(id);
+                RETRY_AFTER.put(id, SystemClock.elapsedRealtime() + 3000L);
             }
-            if (bitmap != null) {
-                synchronized (MEMORY) { MEMORY.put(id, bitmap); }
-                AndroidUtilities.runOnUIThread(Emoji.invalidateUiRunnable);
-            }
-        });
+        }
     }
 
     private static Bitmap loadBitmap(String pack, String key) throws Exception {
@@ -258,7 +293,10 @@ public final class NabdhEmojiPacks {
         connection.setReadTimeout(7000);
         connection.setRequestProperty("Accept", "image/png");
         try {
-            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
+            int status = connection.getResponseCode();
+            if (status == HttpURLConnection.HTTP_NOT_FOUND || status == HttpURLConnection.HTTP_GONE)
+                throw new FileNotFoundException("Emoji image unavailable");
+            if (status != HttpURLConnection.HTTP_OK) return null;
             if (connection.getContentLength() > MAX_IMAGE_BYTES) return null;
             ByteArrayOutputStream bytes = new ByteArrayOutputStream(8192);
             try (InputStream input = connection.getInputStream()) {
