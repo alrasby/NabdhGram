@@ -40,10 +40,13 @@ check("messageEditText.setBackgroundDrawable(null);" in composer
       and "nabdhInputGlass.setCornerRadius" not in composer
       and "nabdhComposerSurface" not in composer,
       "message editor has duplicate bright pill over native Telegram input panel")
-check("messageEditText.setPadding(dp(6), dp(9), dp(6), dp(10));" in composer
+check("messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
+      and "messageEditText.setPadding(dp(6)" not in composer
       and "messageEditText.setSupportRtlHint(true)" in composer
-      and "TEXT_DIRECTION_FIRST_STRONG" in composer,
-      "native composer small insets/RTL and mixed-script hint layout missing")
+      and "TEXT_DIRECTION_FIRST_STRONG" in composer
+      and "leftMargin = dp(12) + (botCommandsMenuButton" in composer
+      and "leftMargin = dp(66) + (botCommandsMenuButton" in composer,
+      "native bot menu spacing, zero horizontal padding and RTL hint layout missing")
 check("ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider)" in composer
       and "nabdhRefreshComposerFont();" in composer
       and "messageEditText.setTypeface(chosen, bold" in composer,
