@@ -34,6 +34,14 @@ m = once(m, '<uses-permission android:name="android.permission.READ_EXTERNAL_STO
 m = once(m, '<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="replace" />',
          '<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:node="replace" />',
          "legacy write storage scope")
+# The SMS Retriever broadcast is exported for Google Play Services, but
+# only an authenticated sender holding Google's signature permission may
+# provide an OTP. This is a RECEIVER permission, not a new app permission.
+m = once(m,
+         'android:name=".SmsReceiver"\n            android:exported="true">',
+         'android:name=".SmsReceiver"\n            android:exported="true"\n'
+         '            android:permission="com.google.android.gms.auth.api.phone.permission.SEND">',
+         "Google Play Services SMS Retriever sender authentication")
 # Only internal, explicitly started Telegram services with NO intent-filters.
 # Account/contacts sync, telecom, browser browsing and FCM remain exported.
 internal_services = (

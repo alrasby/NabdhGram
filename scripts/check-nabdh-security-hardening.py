@@ -72,6 +72,11 @@ for name in (".MusicBrowserService", ".ContactsSyncAdapterService",
     verify(components.get(name) is not None and
            components[name].get(ANDROID + "exported") == "true",
            "upstream framework integration broken: " + name)
+verify(components.get(".SmsReceiver") is not None
+       and components[".SmsReceiver"].get(ANDROID + "exported") == "true"
+       and components[".SmsReceiver"].get(ANDROID + "permission") ==
+           "com.google.android.gms.auth.api.phone.permission.SEND",
+       "SMS Retriever receiver must authenticate Google Play Services sender")
 verify(components.get("org.telegram.ui.NabdhAiCoreService").get(
            ANDROID + "process") == ":nabdh_ai",
        "AI inference process separation lost")
