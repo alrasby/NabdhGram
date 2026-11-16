@@ -30,7 +30,7 @@ for name in ("NabdhAiNanoProvider.java", "NabdhAiGemmaProvider.java"):
         raise SystemExit("NabdhAI component collision: " + name)
     dest.write_bytes((repo / "overlay/java" / name).read_bytes())
 
-for name in ("NabdhAiCoreService.java", "NabdhAiActivity.java"):
+for name in ("NabdhAiCoreService.java", "NabdhAiActivity.java", "NabdhAiChatActivity.java"):
     dest = ui / name
     if dest.exists():
         raise SystemExit("NabdhAI activity/service collision: " + name)
@@ -54,6 +54,9 @@ xml = once(xml, marker,
         <activity android:name="org.telegram.ui.NabdhAiActivity"
                   android:exported="false"
                   android:theme="@android:style/Theme.Material.NoActionBar" />
+        <activity android:name="org.telegram.ui.NabdhAiChatActivity"
+                  android:exported="false"
+                  android:theme="@android:style/Theme.Material.NoActionBar" />
         <service android:name="org.telegram.ui.NabdhAiCoreService"
                  android:exported="false"
                  android:process=":nabdh_ai" />''', "process manifest")
@@ -70,6 +73,9 @@ s = once(s, marker,
             nabdhV1Button(context, content, R.string.NabdhAiCoreLaunch,
                 () -> context.startActivity(new android.content.Intent(
                         context, NabdhAiActivity.class)));
+            nabdhV1Button(context, content, R.string.NabdhAiChatLaunch,
+                () -> context.startActivity(new android.content.Intent(
+                        context, NabdhAiChatActivity.class)));
         }''', "manual intelligence hub launch")
 category.write_text(s, encoding="utf-8")
 
@@ -101,6 +107,13 @@ for locale, (title, note) in labels.items():
         '    <string name="NabdhAiCoreLaunch">' + escape(title).replace("'", "\\'") + '</string>\n'
         '    <string name="NabdhAiCoreStatus">' + escape(note).replace("'", "\\'") + '</string>\n'
         '</resources>\n', encoding="utf-8")
+    # A real opt-in chat screen using the same isolated service and local model.
+    chatLabel = "AI Chat — private on-device assistant" if locale == "values" else "AI Chat — محادثة ذكاء محلي خاصة"
+    xml = dest.read_text(encoding="utf-8")
+    xml = once(xml, "</resources>",
+        '    <string name="NabdhAiChatLaunch">' + escape(chatLabel) + '</string>\\n</resources>',
+        "AI Chat localized launch label")
+    dest.write_text(xml, encoding="utf-8")
     # Existing AI preferences had accurately said "not connected" before this overlay.
     # They must not continue showing that statement when providers are now wired.
     prefs = root / "TMessagesProj/src/main/res" / locale / "nabdh_v1_user_features.xml"

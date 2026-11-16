@@ -9,6 +9,10 @@ import android.content.ClipData;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import androidx.exifinterface.media.ExifInterface;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -33,11 +37,14 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.SeekBar;
 import androidx.core.content.FileProvider;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -67,6 +74,8 @@ public final class NabdhCameraActivity extends Activity {
     private boolean torch;
     private float zoom = 1f;
     private float zoomMax = 1f;
+    private SeekBar zoomSlider;
+    private boolean oisAvailable;
     private Rect activeArray;
     private int sensorOrientation;
     private volatile boolean active;
@@ -98,6 +107,13 @@ public final class NabdhCameraActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         setTitle(local("Nabdh Camera2", "كاميرا نبض جرام"));
+        if (cameraOption("camera_remember")) {
+            facing = getSharedPreferences("nabdh_ui_personalization_v1", MODE_PRIVATE)
+                    .getInt("camera_last_facing", CameraCharacteristics.LENS_FACING_BACK);
+            if (facing != CameraCharacteristics.LENS_FACING_FRONT) {
+                facing = CameraCharacteristics.LENS_FACING_BACK;
+            }
+        }
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
@@ -115,6 +131,11 @@ public final class NabdhCameraActivity extends Activity {
                      ? CameraCharacteristics.LENS_FACING_FRONT
                      : CameraCharacteristics.LENS_FACING_BACK;
             zoom = 1f;
+            if (cameraOption("camera_remember")) {
+                getSharedPreferences("nabdh_ui_personalization_v1", MODE_PRIVATE)
+                        .edit().putInt("camera_last_facing", facing).apply();
+            }
+            if (zoomSlider != null) zoomSlider.setProgress(0);
             restartCamera();
         });
         switchCamera.setContentDescription(local("Switch camera", "تبديل الكاميرا"));
@@ -138,6 +159,20 @@ public final class NabdhCameraActivity extends Activity {
             commands.addView(item, lp);
         }
         page.addView(commands, new LinearLayout.LayoutParams(-1, dp(56)));
+        zoomSlider = new SeekBar(this);
+        zoomSlider.setMax(100);
+        zoomSlider.setContentDescription(local("Camera zoom", "تكبير الكاميرا"));
+        zoomSlider.setVisibility(cameraOption("camera_zoom_bar") ? View.VISIBLE : View.GONE);
+        zoomSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int progress, boolean user) {
+                if (!user) return;
+                zoom = 1f + (zoomMax - 1f) * progress / 100f;
+                refreshRepeating();
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        page.addView(zoomSlider, new LinearLayout.LayoutParams(-1, dp(40)));
 
         LinearLayout captureBar = new LinearLayout(this);
         captureBar.setGravity(Gravity.CENTER);
@@ -176,6 +211,11 @@ public final class NabdhCameraActivity extends Activity {
                 "إرسال الصورة الملتقطة في نبض جرام"), this::shareLastPhoto);
         sharePhoto.setEnabled(false);
         page.addView(sharePhoto, new LinearLayout.LayoutParams(-1, -2));
+        page.addView(control(local("Camera settings", "إعدادات الكاميرا"), () -> {
+            Intent options = new Intent(this, NabdhPersonalizeActivity.class);
+            options.putExtra(NabdhPersonalizeActivity.EXTRA_SECTION, NabdhPersonalizeActivity.CAMERA);
+            startActivity(options);
+        }), new LinearLayout.LayoutParams(-1, dp(48)));
         org.telegram.ui.Components.NabdhToolUi.install(this, page,
                 local("Nabdh Camera2", "كاميرا نبض جرام"));
         manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
@@ -198,6 +238,9 @@ public final class NabdhCameraActivity extends Activity {
         worker = new HandlerThread("NabdhCamera2");
         worker.start();
         cameraHandler = new Handler(worker.getLooper());
+        if (zoomSlider != null) {
+            zoomSlider.setVisibility(cameraOption("camera_zoom_bar") ? View.VISIBLE : View.GONE);
+        }
         if (preview.isAvailable()) startCamera();
     }
 
@@ -242,6 +285,17 @@ public final class NabdhCameraActivity extends Activity {
             activeArray = sensor;
             Float max = info.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
             zoomMax = max == null ? 1f : Math.max(1f, Math.min(8f, max));
+            if (zoomSlider != null) runOnUiThread(() ->
+                    zoomSlider.setProgress(Math.round(100f * (zoom - 1f) /
+                            Math.max(.01f, zoomMax - 1f))));
+            int[] oisModes = info.get(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION);
+            oisAvailable = false;
+            if (oisModes != null) for (int mode : oisModes) {
+                if (mode == CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON) {
+                    oisAvailable = true;
+                    break;
+                }
+            }
             Integer orientation = info.get(CameraCharacteristics.SENSOR_ORIENTATION);
             sensorOrientation = orientation == null ? 90 : orientation;
             StreamConfigurationMap formats = info.get(
@@ -259,6 +313,16 @@ public final class NabdhCameraActivity extends Activity {
                     area > (long) size.getWidth() * size.getHeight() / 8)
                     size = option;
             }
+            if (cameraOption("camera_quality")) {
+                for (Size option : output) {
+                    long pixels = (long) option.getWidth() * option.getHeight();
+                    long currentPixels = (long) size.getWidth() * size.getHeight();
+                    long safeLimit = facing == CameraCharacteristics.LENS_FACING_FRONT &&
+                            cameraOption("camera_mirror") ? 10_000_000L : 24_000_000L;
+                    if (pixels <= safeLimit &&
+                            (currentPixels > safeLimit || pixels > currentPixels)) size = option;
+                }
+            }
             reader = ImageReader.newInstance(size.getWidth(), size.getHeight(),
                     ImageFormat.JPEG, 2);
             reader.setOnImageAvailableListener(source -> {
@@ -267,7 +331,9 @@ public final class NabdhCameraActivity extends Activity {
                     ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                     byte[] bytes = new byte[buffer.remaining()];
                     buffer.get(bytes);
-                    final Uri saved = savePhoto(bytes);
+                    final Uri saved = savePhoto(
+                            facing == CameraCharacteristics.LENS_FACING_FRONT &&
+                            cameraOption("camera_mirror") ? mirroredSelfie(bytes) : bytes);
                     runOnUiThread(() -> {
                         lastPhotoUri = saved;
                         if (sharePhoto != null) sharePhoto.setEnabled(saved != null);
@@ -349,6 +415,10 @@ public final class NabdhCameraActivity extends Activity {
         } else if (activeArray != null) {
             builder.set(CaptureRequest.SCALER_CROP_REGION, activeArray);
         }
+        if (oisAvailable && cameraOption("camera_stabilize")) {
+            builder.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON);
+        }
         builder.set(CaptureRequest.FLASH_MODE, torch
                 ? CaptureRequest.FLASH_MODE_TORCH : CaptureRequest.FLASH_MODE_OFF);
     }
@@ -378,6 +448,9 @@ public final class NabdhCameraActivity extends Activity {
             capture.set(CaptureRequest.CONTROL_AF_MODE,
                     CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
             applySettings(capture);
+            if (cameraOption("camera_quality")) {
+                capture.set(CaptureRequest.JPEG_QUALITY, (byte) 100);
+            }
             int degrees = getWindowManager().getDefaultDisplay().getRotation() * 90;
             // Surface ROTATION_0..3 are quarter turns.
             capture.set(CaptureRequest.JPEG_ORIENTATION,
@@ -398,6 +471,51 @@ public final class NabdhCameraActivity extends Activity {
         } catch (Exception error) {
             takingPhoto = false;
             notifyUser("Capture failed");
+        }
+    }
+
+    private boolean cameraOption(String key) {
+        return org.telegram.ui.Components.NabdhHomePrefs.enabled(this, key);
+    }
+
+    /** Mirror only explicitly selected front-camera images, never chat media.
+     * Decode downsampled JPEGs to avoid multi-megapixel OOM on older devices. */
+    private byte[] mirroredSelfie(byte[] jpeg) throws Exception {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length, bounds);
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0)
+            throw new java.io.IOException("Invalid selfie JPEG");
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = 1;
+        while ((long) bounds.outWidth * bounds.outHeight /
+                (options.inSampleSize * options.inSampleSize) > 6_000_000L) {
+            options.inSampleSize *= 2;
+        }
+        Bitmap bitmap = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length, options);
+        if (bitmap == null) throw new java.io.IOException("Selfie decoding failed");
+        try {
+            ExifInterface exif = new ExifInterface(new ByteArrayInputStream(jpeg));
+            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL);
+            Matrix transform = new Matrix();
+            if (orientation == ExifInterface.ORIENTATION_ROTATE_90) transform.postRotate(90);
+            else if (orientation == ExifInterface.ORIENTATION_ROTATE_180) transform.postRotate(180);
+            else if (orientation == ExifInterface.ORIENTATION_ROTATE_270) transform.postRotate(270);
+            transform.postScale(-1, 1);
+            Bitmap flipped = Bitmap.createBitmap(bitmap, 0, 0,
+                    bitmap.getWidth(), bitmap.getHeight(), transform, true);
+            try {
+                ByteArrayOutputStream output = new ByteArrayOutputStream(jpeg.length);
+                if (!flipped.compress(Bitmap.CompressFormat.JPEG,
+                        cameraOption("camera_quality") ? 100 : 95, output))
+                    throw new java.io.IOException("Selfie JPEG encoding failed");
+                return output.toByteArray();
+            } finally {
+                if (flipped != bitmap) flipped.recycle();
+            }
+        } finally {
+            bitmap.recycle();
         }
     }
 

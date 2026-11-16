@@ -244,6 +244,9 @@ public final class NabdhAiActivity extends Activity {
                         "لا يوجد متصفح متاح لعرض الأجهزة المدعومة."));
             }
         }));
+        screen.addView(action(local("Open AI Chat (on-device)",
+                "فتح AI Chat — محادثة محلية"), () ->
+                startActivity(new Intent(this, NabdhAiChatActivity.class))));
         TextView gemma = new TextView(this);
         gemma.setText(local("Gemma: import a licensed MediaPipe-compatible .task model from a trusted source. "
                 + "Enter its official SHA-256 below. Models are not included in the APK. "
