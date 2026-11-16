@@ -82,6 +82,8 @@ g = once(g, anchor, anchor + '''
     // Only invoked in the private :nabdh_ai process after explicit user action.
     implementation 'com.google.mlkit:genai-prompt:1.0.0-beta4'
     implementation 'com.google.mediapipe:tasks-genai:0.10.27'
+    // ML Kit beta4 download() requires coroutines 1.11+ (Google known issue).
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
 '''.rstrip(), "pinned ML Kit/MediaPipe library dependencies")
 gradle.write_text(g, encoding="utf-8")
 

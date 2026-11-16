@@ -10,6 +10,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
+import com.google.mlkit.genai.common.FeatureStatus;
 import org.telegram.ui.Components.NabdhAiGemmaProvider;
 import org.telegram.ui.Components.NabdhAiNanoProvider;
 import java.util.concurrent.ExecutorService;
@@ -21,13 +22,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * A native model crash cannot take down Telegram's chat/call/login process.
  */
 public final class NabdhAiCoreService extends Service {
-    public static final int STATUS = 1, INFER = 2, RESPONSE = 3;
+    public static final int STATUS = 1, INFER = 2, RESPONSE = 3, DOWNLOAD_NANO = 4;
     public static final String TEXT = "text", PROVIDER = "provider", ERROR = "error";
     private final ExecutorService serial = Executors.newSingleThreadExecutor();
     private final AtomicBoolean busy = new AtomicBoolean(false);
     private final Messenger incoming = new Messenger(new Handler(Looper.getMainLooper()) {
         @Override public void handleMessage(Message request) {
-            if (request.what != STATUS && request.what != INFER) {
+            if (request.what != STATUS && request.what != INFER && request.what != DOWNLOAD_NANO) {
                 super.handleMessage(request);
                 return;
             }
@@ -45,19 +46,46 @@ public final class NabdhAiCoreService extends Service {
             }
             serial.execute(() -> {
                 try {
-                    final boolean nano = Build.VERSION.SDK_INT >= 26
-                            && NabdhAiNanoProvider.available();
+                    final int nanoStatus = Build.VERSION.SDK_INT >= 26
+                            ? NabdhAiNanoProvider.status() : FeatureStatus.UNAVAILABLE;
+                    final boolean nano = nanoStatus == FeatureStatus.AVAILABLE;
                     final boolean gemma = !nano && NabdhAiGemmaProvider.available(
                             NabdhAiCoreService.this);
                     String selected = nano ? "Gemini Nano" : gemma ? "Gemma" : "none";
                     if (request.what == STATUS) {
-                        send(response, nano || gemma ? "Ready" : "No compatible local model ready",
-                             selected, "");
+                        String report = nano || gemma ? "MODEL_READY" :
+                                nanoStatus == FeatureStatus.DOWNLOADABLE ? "NANO_DOWNLOADABLE" :
+                                nanoStatus == FeatureStatus.DOWNLOADING ? "NANO_DOWNLOADING" :
+                                "NO_MODEL";
+                        send(response, report, selected, "");
+                        return;
+                    }
+                    if (request.what == DOWNLOAD_NANO) {
+                        if (nanoStatus == FeatureStatus.UNAVAILABLE) {
+                            send(response, "", "none", "NANO_UNAVAILABLE");
+                            return;
+                        }
+                        if (nanoStatus == FeatureStatus.DOWNLOADING) {
+                            send(response, "NANO_DOWNLOADING", "Gemini Nano", "");
+                            return;
+                        }
+                        if (nano) {
+                            send(response, "MODEL_READY", "Gemini Nano", "");
+                            return;
+                        }
+                        try {
+                            int updated = NabdhAiNanoProvider.download(progress ->
+                                    send(response, progress, "Gemini Nano", ""));
+                            send(response, updated == FeatureStatus.AVAILABLE ? "MODEL_READY" :
+                                    updated == FeatureStatus.DOWNLOADING ? "NANO_DOWNLOADING" :
+                                    "NANO_DOWNLOAD_PENDING", "Gemini Nano", "");
+                        } catch (Exception | LinkageError downloadError) {
+                            send(response, "", "Gemini Nano", "NANO_DOWNLOAD_FAILED");
+                        }
                         return;
                     }
                     if (!nano && !gemma) {
-                        send(response, "", "none",
-                                "Gemini Nano unavailable; import a verified compatible Gemma model");
+                        send(response, "", "none", "NO_MODEL");
                         return;
                     }
                     // No two model clients coexist: Nano closes before Gemma fallback.

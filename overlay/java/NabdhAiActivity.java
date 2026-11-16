@@ -47,7 +47,8 @@ public final class NabdhAiActivity extends Activity {
             String error = payload.getString(NabdhAiCoreService.ERROR, "");
             String provider = payload.getString(NabdhAiCoreService.PROVIDER, "none");
             String result = payload.getString(NabdhAiCoreService.TEXT, "");
-            state.setText(error.isEmpty() ? provider + "\n" + result : error);
+            state.setText(!error.isEmpty() ? displayStatus(error, provider) :
+                    displayStatus(result, provider));
         }
     });
     private final ServiceConnection connection = new ServiceConnection() {
@@ -63,6 +64,70 @@ public final class NabdhAiActivity extends Activity {
                     "توقفت عملية الذكاء المحلي، وTelegram يعمل بصورة طبيعية"));
         }
     };
+
+    private String displayStatus(String code, String provider) {
+        if (code == null) return "";
+        if (code.startsWith("NANO_DOWNLOAD_PROGRESS:")) {
+            try {
+                long received = Long.parseLong(code.substring("NANO_DOWNLOAD_PROGRESS:".length()));
+                return local("Downloading Gemini Nano: ", "تنزيل Gemini Nano: ")
+                        + (received / (1024L * 1024L)) + " MB";
+            } catch (NumberFormatException ignored) {
+                return local("Downloading Gemini Nano", "جارٍ تنزيل Gemini Nano");
+            }
+        }
+        switch (code) {
+            case "MODEL_READY":
+                return local("Local model ready: ", "النموذج المحلي جاهز: ") + provider;
+            case "NO_MODEL":
+                return local("No compatible local AI model is installed. Gemini Nano requires "
+                        + "a supported AICore device, or you can import a compatible verified Gemma .task model.",
+                        "لا يوجد نموذج ذكاء محلي متوافق مثبت. يحتاج Gemini Nano إلى جهاز مدعوم "
+                        + "بنظام AICore، أو يمكنك استيراد نموذج Gemma بصيغة .task متوافقة وموثقة.");
+            case "NANO_DOWNLOADABLE":
+                return local("Gemini Nano is supported but not downloaded. "
+                        + "Tap Download Gemini Nano to request the official AICore model.",
+                        "جهازك يدعم Gemini Nano لكن النموذج لم يُنزّل. "
+                        + "اضغط تنزيل Gemini Nano لطلب النموذج الرسمي عبر AICore.");
+            case "NANO_DOWNLOADING":
+                return local("AICore reports that Gemini Nano is downloading. "
+                        + "Check again when the download completes.",
+                        "يشير AICore إلى أن Gemini Nano قيد التنزيل. "
+                        + "تحقق من الحالة بعد اكتمال التنزيل.");
+            case "NANO_UNAVAILABLE":
+                return local("Gemini Nano is not available on this device or its AICore setup. "
+                        + "No download was started. Use a compatible verified Gemma model instead.",
+                        "Gemini Nano غير متاح على هذا الجهاز أو إعداد AICore الحالي. "
+                        + "لم يبدأ أي تنزيل. يمكنك استخدام نموذج Gemma موثق ومتوافق.");
+            case "NANO_DOWNLOAD_STARTING":
+            case "NANO_DOWNLOAD_STARTED":
+                return local("AICore started the requested Gemini Nano download.",
+                        "بدأ AICore تنزيل Gemini Nano بناءً على طلبك.");
+            case "NANO_DOWNLOAD_COMPLETE":
+                return local("AICore download completed; verifying model readiness.",
+                        "اكتمل التنزيل عبر AICore؛ جارٍ فحص جاهزية النموذج.");
+            case "NANO_DOWNLOAD_PENDING":
+                return local("The download request returned, but the model is not yet ready. "
+                        + "Check status before trying inference.",
+                        "عاد طلب التنزيل لكن النموذج لم يصبح جاهزًا بعد. "
+                        + "افحص الحالة قبل الاستدلال.");
+            case "NANO_DOWNLOAD_FAILED":
+                return local("AICore could not download Gemini Nano. "
+                        + "Check device support, connectivity and available storage.",
+                        "تعذر تنزيل Gemini Nano عبر AICore. "
+                        + "تحقق من دعم الجهاز والاتصال والمساحة.");
+            case "Local inference failed; original Telegram remains available":
+                return local("Local inference failed. Your Telegram messages are unaffected.",
+                        "فشل الاستدلال المحلي؛ لم تتأثر رسائل Telegram.");
+            case "Another local request is running":
+                return local("A local AI operation is already running.",
+                        "هناك عملية ذكاء محلي قيد التنفيذ.");
+            case "Gemini Nano unavailable; import a verified compatible Gemma model":
+                return displayStatus("NO_MODEL", provider);
+            default:
+                return "none".equals(provider) || provider.isEmpty() ? code : provider + "\n" + code;
+        }
+    }
 
     private Button action(String text, Runnable onClick) {
         Button button = new Button(this);
@@ -127,6 +192,22 @@ public final class NabdhAiActivity extends Activity {
             state.setText(local("Checking models...", "جارٍ فحص النماذج..."));
             request(NabdhAiCoreService.STATUS, "");
         }));
+        screen.addView(action(local("Download Gemini Nano (supported devices)",
+                "تنزيل Gemini Nano (للأجهزة المدعومة)"), () ->
+            new AlertDialog.Builder(this)
+                .setTitle(local("Request official Gemini Nano download?",
+                        "هل تريد تنزيل Gemini Nano الرسمي؟"))
+                .setMessage(local("The model is managed by Google AICore and may require "
+                        + "significant storage and network data. It will be requested only "
+                        + "if AICore reports DOWNLOADABLE on this device.",
+                        "يدير Google AICore النموذج، وقد يتطلب مساحة وبيانات تنزيل كبيرة. "
+                        + "لن يبدأ الطلب إلا إذا أعلن AICore أن النموذج قابل للتنزيل على جهازك."))
+                .setNegativeButton(local("Cancel", "إلغاء"), null)
+                .setPositiveButton(local("Download", "تنزيل"), (dialog, which) -> {
+                    state.setText(local("Checking Google AICore support...",
+                            "جارٍ فحص دعم Google AICore..."));
+                    request(NabdhAiCoreService.DOWNLOAD_NANO, "");
+                }).show()));
         TextView gemma = new TextView(this);
         gemma.setText(local("Gemma: import a licensed MediaPipe-compatible .task model from a trusted source. "
                 + "Enter its official SHA-256 below. Models are not included in the APK. "

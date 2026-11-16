@@ -35,6 +35,25 @@ if "Build.VERSION.SDK_INT < 26" not in nano or "Build.VERSION.SDK_INT < 28" not 
     raise SystemExit("FAIL: AI runtime API guards missing")
 if "genai-prompt:1.0.0-beta4" not in gradle or "tasks-genai:0.10.27" not in gradle:
     raise SystemExit("FAIL: expected pinned AI dependency missing")
+service = (ui / "java/org/telegram/ui/NabdhAiCoreService.java").read_text()
+if not all(token in nano for token in (
+        "int status()", "FeatureStatus.DOWNLOADABLE", "FeatureStatus.DOWNLOADING",
+        "futures.download(new DownloadCallback()", "onDownloadFailed(GenAiException",
+        "new DownloadCallback()", "public static int download(")):
+    raise SystemExit("FAIL: Gemini Nano status and explicit official AICore download missing")
+if not all(token in service for token in (
+        "DOWNLOAD_NANO = 4", "NabdhAiNanoProvider.download(",
+        "NANO_DOWNLOADABLE", "NANO_DOWNLOADING", '"NO_MODEL"')):
+    raise SystemExit("FAIL: AI isolated service cannot report/download a supported model")
+if not all(token in activity for token in (
+        "NabdhAiCoreService.DOWNLOAD_NANO", '"تنزيل Gemini Nano (للأجهزة المدعومة)"',
+        '"NANO_UNAVAILABLE"', '"NANO_DOWNLOAD_FAILED"',
+        '"لا يوجد نموذج ذكاء محلي متوافق مثبت"')):
+    raise SystemExit("FAIL: user-approved AICore download or localized no-model state missing")
+if "kotlinx-coroutines-android:1.11.0" not in gradle:
+    raise SystemExit("FAIL: ML Kit beta4 download must pin compatible coroutines (Google known issue)")
+if "Download Gemini Nano" not in activity or ".setPositiveButton(local(" not in activity:
+    raise SystemExit("FAIL: model download must require explicit user confirmation")
 if ".setTopK(" in gemma:
     raise SystemExit("FAIL: unsupported MediaPipe topK setter restored")
 if "محرك نبض للذكاء الاصطناعي" not in activity or (
