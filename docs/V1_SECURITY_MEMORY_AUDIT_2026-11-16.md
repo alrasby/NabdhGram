@@ -26,6 +26,10 @@ Reviewed the actual upstream LaunchActivity, MusicPlayerService, MusicPlayerRece
 
 **DDoS/backdoors:** Neither DDoS immunity nor absence of backdoors can be certified by a single source scan. The AI service enforces one request at a time, optional emoji renderer uses a bounded queue, and external URLs need explicit safe-link review. No automatic chat/call extraction is wired by NabdhAI. A full supply-chain SBOM, CVE scan, network observation, IPC fuzzing, WebView inspection, TLS/proxy tests, OWASP MASVS/MSTG dynamic tests, and signed-APK assessment remain required.
 
+## Video resource hardening
+
+The Camera2/MediaRecorder video tool now has an explicit maximum duration of 10 minutes and a 512 MiB file-size cap. A single video-persist worker has at most 2 queued files; backlog rejection deletes the transient recording and informs the user instead of queuing arbitrary file copies in RAM/temporary storage. Hardware tests must check MediaRecorder callbacks when reaching those limits, no duplicate stop calls, storage-full behavior, and clean PiP termination. These are code-level safeguards, not proven energy or RAM results.
+
 ## Runtime profiling instructions
 
 With one authorized ARM64 phone and Android Platform Tools:

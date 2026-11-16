@@ -43,8 +43,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /** Explicit Camera2/MediaRecorder video recorder, isolated from Telegram calls. */
 public final class NabdhVideoActivity extends Activity {
@@ -59,7 +61,9 @@ public final class NabdhVideoActivity extends Activity {
     private MediaRecorder recorder;
     private File temp;
     private volatile Uri lastVideo;
-    private final ExecutorService disk = Executors.newSingleThreadExecutor();
+    // A bounded pending-recording queue prevents multi-GB storage backlogs.
+    private final ThreadPoolExecutor disk = new ThreadPoolExecutor(
+            1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(2));
     private boolean opening, recording, configuring, active, enteringPip;
     private long generation;
     private long sessionGeneration;
@@ -384,6 +388,18 @@ public final class NabdhVideoActivity extends Activity {
             recorder.setVideoEncodingBitRate(videoSize.getWidth() >= 1920 ? 7_000_000 : 4_000_000);
             recorder.setVideoFrameRate(frames);
             recorder.setVideoSize(videoSize.getWidth(), videoSize.getHeight());
+            // Fail safely after ten minutes or 512 MiB instead of filling
+            // available storage on a long or abandoned recording.
+            recorder.setMaxDuration(10 * 60 * 1000);
+            recorder.setMaxFileSize(512L * 1024 * 1024);
+            recorder.setOnInfoListener((mediaRecorder, what, extra) -> {
+                if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED
+                        || what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+                    runOnUiThread(() -> {
+                        if (recording) stopRecording();
+                    });
+                }
+            });
             int degrees = getWindowManager().getDefaultDisplay().getRotation() * 90;
             recorder.setOrientationHint(lens == CameraCharacteristics.LENS_FACING_FRONT ?
                     (sensorOrientation + degrees) % 360 :
@@ -423,7 +439,13 @@ public final class NabdhVideoActivity extends Activity {
             temp = null;
             if (captured != null) {
                 if (saved && captured.length() > 1024) {
-                    disk.execute(() -> persist(captured));
+                    try {
+                        disk.execute(() -> persist(captured));
+                    } catch (RejectedExecutionException backlog) {
+                        captured.delete();
+                        toast("Video storage is busy; retry later",
+                                "التخزين مشغول بحفظ فيديوهات سابقة؛ أعد المحاولة");
+                    }
                 } else captured.delete();
             }
         }

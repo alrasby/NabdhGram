@@ -40,6 +40,11 @@ for token in ("MediaRecorder", "CameraDevice.TEMPLATE_RECORD",
               "CONTROL_VIDEO_STABILIZATION_MODE_ON", "CONTROL_AE_TARGET_FPS_RANGE",
               "enterPictureInPictureMode(", "MediaStore.Video.Media", "Intent.ACTION_SEND"):
     check(token in video, "video option not backed by real recorder: " + token)
+check(all(key in video for key in (
+      "new ArrayBlockingQueue<>(2)", "setMaxDuration(10 * 60 * 1000)",
+      "setMaxFileSize(512L * 1024 * 1024)", "RejectedExecutionException",
+      "MEDIA_RECORDER_INFO_MAX_DURATION_REACHED")),
+      "video recorder needs bounded memory/storage and safe auto-stop")
 check("video_fps" in preferences and "setVideoFps" in preferences and
       "video_pip" in screen and "video_stabilize" in screen and
       "NabdhVideoActivity.class" in camera,
