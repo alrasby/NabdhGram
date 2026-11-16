@@ -41,4 +41,18 @@ withgate = """            if (org.telegram.ui.Components.NabdhFeatureGates.verif
             }"""
 change(chat, withgate, "AI Chat release gate")
 page.write_text(s, encoding="utf-8")
-print("PASS: hidden inactive V1 options; retained their source and future activation routes")
+
+# The NabdhAI category must not be promoted by mere model availability or
+# a stale inference preference. V1 intentionally has no QA-accepted LLM.
+# Apply after the compact grouped-settings overlay: keep the original seven
+# section calls and all private source components, but suppress the row.
+hub = ui / "NabdhGramSettingsActivity.java"
+h = hub.read_text(encoding="utf-8")
+old = "        if (titleRes == R.string.NabdhAppearanceTitle) return;"
+new = old + """
+        if (titleRes == R.string.NabdhIntelligenceTitle &&
+                !org.telegram.ui.Components.NabdhFeatureGates.publicAiEnabled(context)) return;"""
+if h.count(old) != 1:
+    raise SystemExit(f"Public NabdhAI row gate anchor changed ({h.count(old)})")
+hub.write_text(h.replace(old, new, 1), encoding="utf-8")
+print("PASS: hidden unaccepted public NabdhAI and inactive V1 options; source retained")
