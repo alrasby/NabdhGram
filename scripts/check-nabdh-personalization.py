@@ -70,7 +70,15 @@ check("BitmapRegionDecoder.newInstance" in editor
       and "keepOriginal.setChecked(true)" in editor
       and "AtomicFile(original)" in editor
       and "Math.floorMod(" not in editor
-      and "normalRotation(" in editor,
+      and "normalRotation(" in editor
+      and "normalRotation(userRotation + amount)" in editor
+      and "normalRotation(exif + userRotation)" in editor
+      and "normalRotation(exifRotation + userRotation)" in editor
+      and "normalRotation(angle)" in editor
+      and "normalRotation(userRotation + amount, 360)" not in editor
+      and "normalRotation(exif + userRotation, 360)" not in editor
+      and "normalRotation(exifRotation + userRotation, 360)" not in editor
+      and "normalRotation(angle, 360)" not in editor,
       "non-destructive crop/rotate editor missing")
 check("ExifInterface exif = new ExifInterface(file);" in gallery
       and "exif.getRotationDegrees()" in gallery
