@@ -501,6 +501,13 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --apply Telegram-upstream
 
+      - name: Constrain Android permissions and clean up media service lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-security-hardening.py
+          python3 nabdhgram/scripts/apply-nabdh-security-hardening.py Telegram-upstream
+
       - name: Verify NabdhGram Glass overlays before Gradle
         shell: bash
         run: |
@@ -524,6 +531,7 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/check-nabdh-appearance-pack.py
           python3 nabdhgram/scripts/check-nabdh-appearance-pack.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-personalization.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-security-hardening.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-nabdh-emoji-packs.py
           python3 nabdhgram/scripts/check-nabdh-emoji-packs.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-nabdh-message-scheduler.py
@@ -702,6 +710,9 @@ jobs:
           "$AAPT" dump badging "$APK" > apk-badging.txt
           "$AAPT" dump resources "$APK" > apk-resources.txt
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > apk-manifest-tree.txt
+          "$AAPT" dump permissions "$APK" > apk-permissions.txt
+          # Verify the actual APK permissions, not only the source manifest.
+          ! grep -E "uses-permission: name='android.permission.(READ_SMS|RECEIVE_SMS|QUERY_ALL_PACKAGES|BIND_ACCESSIBILITY_SERVICE)'" apk-permissions.txt
           "$APKSIGNER" verify --verbose "$APK" > apk-signature.txt
           sha256sum "$APK" > apk-sha256.txt
           echo "::group::Packaged APK identity and launcher"
@@ -810,6 +821,7 @@ jobs:
             apk-sha256.txt
             apk-resources.txt
             apk-manifest-tree.txt
+            apk-permissions.txt
           if-no-files-found: ignore
           retention-days: 14
       - name: Report status

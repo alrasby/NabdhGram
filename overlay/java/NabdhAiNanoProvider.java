@@ -17,6 +17,10 @@ public final class NabdhAiNanoProvider {
     // Separate an AICore connection/setup failure from a genuine unsupported
     // feature. The Activity must never claim "unsupported" for either case.
     public static final int STATUS_CHECK_FAILED = -100;
+    // A safe diagnostic category only: no model prompt, stack trace,
+    // AICore exception text or Telegram data is retained or logged.
+    private static volatile String lastDiagnostic = "NONE";
+    public static String diagnosticCode() { return lastDiagnostic; }
     private NabdhAiNanoProvider() {}
 
     private static void close(GenerativeModel model) {
@@ -30,11 +34,30 @@ public final class NabdhAiNanoProvider {
         GenerativeModel model = null;
         try {
             model = Generation.INSTANCE.getClient();
-            return GenerativeModelFutures.from(model)
+            int result = GenerativeModelFutures.from(model)
                     .checkStatus().get(8, TimeUnit.SECONDS);
+            lastDiagnostic = "NONE";
+            return result;
         } catch (Exception | LinkageError failure) {
-            // AICore might be updating, absent or unable to bind. Distinguish
-            // this from an actual Google UNAVAILABLE feature status.
+            // Preserve just the failure category; never expose exception
+            // message, provider internals or text from the user.
+            Throwable cause = failure instanceof java.util.concurrent.ExecutionException
+                    && failure.getCause() != null ? failure.getCause() : failure;
+            if (cause instanceof java.util.concurrent.TimeoutException)
+                lastDiagnostic = "TIMEOUT";
+            else if (cause instanceof SecurityException)
+                lastDiagnostic = "PERMISSION";
+            else if (cause instanceof LinkageError)
+                lastDiagnostic = "API_INCOMPATIBLE";
+            else if (cause instanceof java.util.concurrent.CancellationException)
+                lastDiagnostic = "CANCELLED";
+            else if (failure instanceof java.util.concurrent.ExecutionException)
+                lastDiagnostic = "CLIENT_EXECUTION";
+            else if (failure instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+                lastDiagnostic = "INTERRUPTED";
+            } else
+                lastDiagnostic = "SERVICE_UNAVAILABLE";
             return STATUS_CHECK_FAILED;
         } finally {
             close(model);

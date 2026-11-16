@@ -53,8 +53,15 @@ public final class NabdhAiActivity extends Activity {
             String error = payload.getString(NabdhAiCoreService.ERROR, "");
             String provider = payload.getString(NabdhAiCoreService.PROVIDER, "none");
             String result = payload.getString(NabdhAiCoreService.TEXT, "");
-            state.setText(!error.isEmpty() ? displayStatus(error, provider) :
-                    displayStatus(result, provider));
+            String summary = !error.isEmpty() ? displayStatus(error, provider) :
+                    displayStatus(result, provider);
+            // Show a harmless failure category for reliable user-side
+            // diagnostics without exposing model prompts or internal logs.
+            String diagnostic = payload.getString(NabdhAiCoreService.NANO_DIAGNOSTIC, "");
+            if (!diagnostic.isEmpty()) {
+                summary += "\\n" + local("AICore diagnostic: ", "تشخيص AICore: ") + diagnostic;
+            }
+            state.setText(summary);
             // Only AICore DOWNLOADABLE authorizes an actionable download.
             // A generic "Download" button on unsupported hardware is misleading.
             if (downloadNano != null) {

@@ -25,6 +25,7 @@ public final class NabdhAiCoreService extends Service {
     public static final int STATUS = 1, INFER = 2, RESPONSE = 3, DOWNLOAD_NANO = 4, CHAT = 5;
     public static final String TEXT = "text", PROVIDER = "provider", ERROR = "error";
     public static final String NANO_CAN_DOWNLOAD = "nano_can_download";
+    public static final String NANO_DIAGNOSTIC = "nano_diagnostic";
     private final ExecutorService serial = Executors.newSingleThreadExecutor();
     private final AtomicBoolean busy = new AtomicBoolean(false);
     private final Messenger incoming = new Messenger(new Handler(Looper.getMainLooper()) {
@@ -154,6 +155,9 @@ public final class NabdhAiCoreService extends Service {
         data.putString(TEXT, value);
         data.putString(PROVIDER, engine);
         data.putString(ERROR, error);
+        if (nanoStatus == NabdhAiNanoProvider.STATUS_CHECK_FAILED) {
+            data.putString(NANO_DIAGNOSTIC, NabdhAiNanoProvider.diagnosticCode());
+        }
         // Generic inference replies should not erase a confirmed availability.
         if (nanoStatus != Integer.MIN_VALUE) {
             data.putBoolean(NANO_CAN_DOWNLOAD, nanoStatus == FeatureStatus.DOWNLOADABLE);
