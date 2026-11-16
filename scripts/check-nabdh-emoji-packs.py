@@ -10,6 +10,7 @@ emoji = (ui / "messenger/Emoji.java").read_text(encoding="utf-8")
 pack = (ui / "messenger/NabdhEmojiPacks.java").read_text(encoding="utf-8")
 picker = (ui / "ui/NabdhAppearancePickerActivity.java").read_text(encoding="utf-8")
 scheduler = (ui / "ui/NabdhMessageSchedulerActivity.java").read_text(encoding="utf-8")
+emoji_view = (ui / "ui/Components/EmojiView.java").read_text(encoding="utf-8")
 
 def require(ok, desc):
     if not ok:
@@ -61,5 +62,12 @@ require("ArrayList<TLRPC.TL_contact> telegramContacts" in scheduler
 require(not any(x in pack for x in
                 ("getDialogMessage(", "READ_CONTACTS", "getChat(", "getMessageText(")),
         "emoji CDN must not receive message/contact content")
+require("recyclerView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE" in emoji_view
+        and "checkBottomTabScroll(dy);" in emoji_view,
+        "programmatic/idle emoji adapter scrolling must not flicker bottom tabs")
+require("Math.abs(bottomTabContainer.getTranslationY() -" in emoji_view
+        and "nextBottomTabTranslation) >= 0.5f" in emoji_view
+        and "bottomTabContainer.setTranslationY(nextBottomTabTranslation);" in emoji_view,
+        "bottom-tab translation must skip subpixel redundant redraws")
 print("PASS: live opt-in Noto/Twemoji/OpenMoji PNG draw, bounded cache, "
       "Telegram fallback, licenses, and #686 Java type shadows")
