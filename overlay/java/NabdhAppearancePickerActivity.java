@@ -10,6 +10,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.NabdhEmojiPacks;
+import org.telegram.messenger.Emoji;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.NotificationsController;
 import org.telegram.messenger.UserConfig;
@@ -129,27 +131,58 @@ public final class NabdhAppearancePickerActivity extends Activity {
                     () -> NabdhAppearancePrefs.setDuotone(this, true));
             previewIcons();
         } else if (EMOJI_SETS.equals(kind)) {
-            items.addView(note(local("Only supported emoji engines are offered. "
-                    + "Additional downloadable packs need verified licensed assets.",
-                    "تظهر محركات الإيموجي المدعومة فعليًا فقط. "
-                    + "الحزم القابلة للتنزيل تتطلب ملفات مرخّصة ومتحققًا منها.")));
+            items.addView(note(local(
+                    "Noto, Twemoji and OpenMoji use real independent PNG artwork. "
+                    + "After selecting one, NabdhGram fetches only visible emoji codepoints "
+                    + "from the public jsDelivr image CDN and caches images privately. "
+                    + "No message text or contact details are uploaded. "
+                    + "Missing/offline glyphs stay as Telegram emojis.",
+                    "حزم Noto وTwemoji وOpenMoji تستخدم صور إيموجي مستقلة فعلية. "
+                    + "عند اختيارها تُحمّل صور الرموز الظاهرة فقط من خادم الصور العام "
+                    + "jsDelivr وتُحفظ محليًا. لا تُرسل نصوص الرسائل أو جهات الاتصال. "
+                    + "الرموز غير المتوفرة أو عند انقطاع الاتصال تُعرض بإيموجي Telegram.")));
+            String chosen = NabdhEmojiPacks.selected();
             NabdhCompactSettings.header(this, items,
-                    local("Emoji rendering", "عرض الإيموجي"));
-            selection(local("Telegram", "Telegram"),
-                    local("Telegram's bundled emojis · 😀 😉 😌 😨",
-                            "الإيموجي المدمج في Telegram · 😀 😉 😌 😨"),
-                    R.drawable.settings_chat, !SharedConfig.useSystemEmoji,
-                    () -> applyEmoji(false));
-            String manufacturer = android.os.Build.MANUFACTURER == null ? ""
-                    : android.os.Build.MANUFACTURER.toLowerCase(java.util.Locale.ROOT);
-            String vendor = manufacturer.contains("samsung") ? "Samsung"
-                    : manufacturer.contains("google") ? "Google"
-                    : local("Device", "الجهاز");
-            selection(local("Android system · ", "نظام Android · ") + vendor,
-                    local("Uses the emoji font actually installed on this device · 😀 😉 😌 😨",
-                            "يستخدم خط الإيموجي المثبت فعليًا على الجهاز · 😀 😉 😌 😨"),
-                    R.drawable.settings_language, SharedConfig.useSystemEmoji,
-                    () -> applyEmoji(true));
+                    local("Emoji art packs", "حزم رسومات الإيموجي"));
+            selection("Telegram",
+                    local("Original bundled Telegram emoji (no download)",
+                            "إيموجي Telegram الأصلي المدمج دون تنزيل"),
+                    R.drawable.settings_chat, NabdhEmojiPacks.TELEGRAM.equals(chosen),
+                    () -> applyEmojiPack(NabdhEmojiPacks.TELEGRAM));
+            selection("Google Noto Emoji",
+                    local("Original Noto PNG artwork · Apache 2.0",
+                            "رسومات Noto الأصلية · ترخيص Apache 2.0"),
+                    R.drawable.settings_language, NabdhEmojiPacks.NOTO.equals(chosen),
+                    () -> applyEmojiPack(NabdhEmojiPacks.NOTO));
+            selection("Twemoji",
+                    local("Original Twemoji artwork · CC BY 4.0",
+                            "رسومات Twemoji الأصلية · ترخيص CC BY 4.0"),
+                    R.drawable.settings_chat, NabdhEmojiPacks.TWEMOJI.equals(chosen),
+                    () -> applyEmojiPack(NabdhEmojiPacks.TWEMOJI));
+            selection("OpenMoji",
+                    local("Original OpenMoji artwork · CC BY-SA 4.0",
+                            "رسومات OpenMoji الأصلية · ترخيص CC BY-SA 4.0"),
+                    R.drawable.settings_language, NabdhEmojiPacks.OPENMOJI.equals(chosen),
+                    () -> applyEmojiPack(NabdhEmojiPacks.OPENMOJI));
+            selection(local("Android system", "نظام Android"),
+                    local("Uses only the emoji font installed on this device",
+                            "يستخدم خط الإيموجي المثبت على هذا الجهاز فقط"),
+                    R.drawable.settings_language, NabdhEmojiPacks.SYSTEM.equals(chosen),
+                    () -> applyEmojiPack(NabdhEmojiPacks.SYSTEM));
+            TextView samples = new TextView(this);
+            samples.setTextSize(29);
+            samples.setGravity(Gravity.CENTER);
+            samples.setPadding(dp(6), dp(18), dp(6), dp(10));
+            samples.setText(Emoji.replaceEmoji("😀 😍 😂 ❤️ 👍 🇴🇲 🐱 🌷", 
+                    samples.getPaint().getFontMetricsInt(), true));
+            items.addView(samples);
+            items.addView(note(local(
+                    "Artwork credit: Google Noto Emoji (Apache 2.0); "
+                    + "Twemoji contributors (CC BY 4.0); OpenMoji / HfG Schwäbisch Gmünd "
+                    + "(CC BY-SA 4.0). The selected pack applies only inside NabdhGram.",
+                    "حقوق الرسومات: Google Noto Emoji ‏(Apache 2.0)، ومساهمو Twemoji "
+                    + "‏(CC BY 4.0)، ومشروع OpenMoji / HfG Schwäbisch Gmünd "
+                    + "‏(CC BY-SA 4.0). يقتصر تغيير العرض على نبض جرام.")));
         } else {
             items.addView(note(local(
                     "Status bar icons are monochrome. They are separate from the app launcher icon.",
@@ -169,12 +202,9 @@ public final class NabdhAppearancePickerActivity extends Activity {
         }
     }
 
-    private void applyEmoji(boolean system) {
-        if (SharedConfig.useSystemEmoji == system) return;
-        SharedConfig.useSystemEmoji = system;
-        SharedConfig.saveConfig();
-        org.telegram.messenger.NotificationCenter.getGlobalInstance().postNotificationName(
-                org.telegram.messenger.NotificationCenter.didSetNewTheme, false, false);
+    private void applyEmojiPack(String pack) {
+        if (NabdhEmojiPacks.selected().equals(pack)) return;
+        NabdhEmojiPacks.choose(this, pack);
     }
 
     private void applyNotification(boolean nabdh) {

@@ -475,6 +475,13 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-appearance-pack.py
           python3 nabdhgram/scripts/apply-nabdh-appearance-pack.py Telegram-upstream
 
+      - name: Install actual open-licensed Noto, Twemoji and OpenMoji PNG renderers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-emoji-packs.py
+          python3 nabdhgram/scripts/apply-nabdh-emoji-packs.py Telegram-upstream
+
       - name: Verify rounded Profile bio presses and unified chat input
         shell: bash
         run: |
@@ -509,6 +516,8 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-compact-settings.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-nabdh-appearance-pack.py
           python3 nabdhgram/scripts/check-nabdh-appearance-pack.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-emoji-packs.py
+          python3 nabdhgram/scripts/check-nabdh-emoji-packs.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-nabdh-message-scheduler.py
           python3 nabdhgram/scripts/check-nabdh-message-scheduler.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream

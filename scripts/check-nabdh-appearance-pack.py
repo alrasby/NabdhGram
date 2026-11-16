@@ -41,10 +41,15 @@ check("NabdhCompactSettings.header(context, content," in page and
       "NabdhAppearanceLanguageGroup" in page and
       "NabdhAppearanceBackupGroup" in page,
       "visual section grouping is incomplete")
-check("SharedConfig.useSystemEmoji = system;" in picker and
-      "SharedConfig.saveConfig();" in picker and
-      "if (SharedConfig.useSystemEmoji == system) return;" in picker,
-      "emoji selection must change Telegram's real persisted engine")
+check("NabdhEmojiPacks.choose(this, pack)" in picker and
+      "NabdhEmojiPacks.TELEGRAM.equals(chosen)" in picker and
+      "NabdhEmojiPacks.SYSTEM.equals(chosen)" in picker and
+      "NabdhEmojiPacks.NOTO.equals(chosen)" in picker and
+      "NabdhEmojiPacks.TWEMOJI.equals(chosen)" in picker and
+      "NabdhEmojiPacks.OPENMOJI.equals(chosen)" in picker and
+      "Emoji.replaceEmoji(" in picker and
+      "Build.MANUFACTURER" not in picker,
+      "show only real independent emoji renderers with live preview; no OEM-name placebo")
 check("NabdhAppearancePrefs.isDuotone(this)" in picker and
       "NabdhAppearancePrefs.setDuotone(this, true)" in picker and
       "NabdhAppearancePrefs.setDuotone(this, false)" in picker and
@@ -83,5 +88,5 @@ for language in ("values","values-ar"):
 check("AlarmManager" not in picker and "READ_CONTACTS" not in picker and
       "sendMessage(" not in picker,
       "appearance screen cannot monitor chats or trigger send operations")
-print("PASS: grouped native Appearance/Language, 2 real original icon styles, "
-      "Telegram/system emojis, existing launcher icons and dynamic status icons")
+print("PASS: Appearance/Language, actual Telegram/system/Noto/Twemoji/OpenMoji renderers, "
+      "two icon styles and native notification variants")

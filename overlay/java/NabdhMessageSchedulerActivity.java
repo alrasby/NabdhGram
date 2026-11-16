@@ -197,9 +197,9 @@ public final class NabdhMessageSchedulerActivity extends Activity {
     private void reloadContacts() {
         ArrayList<ContactChoice> choices = new ArrayList<>();
         MessagesController controller = MessagesController.getInstance(account);
-        ArrayList<TLRPC.TL_contact> contacts = ContactsController.getInstance(account).contacts;
-        if (contacts != null) {
-            for (TLRPC.TL_contact entry : new ArrayList<>(contacts)) {
+        ArrayList<TLRPC.TL_contact> telegramContacts = ContactsController.getInstance(account).contacts;
+        if (telegramContacts != null) {
+            for (TLRPC.TL_contact entry : new ArrayList<>(telegramContacts)) {
                 if (entry == null || entry.user_id <= 0
                         || entry.user_id == UserConfig.getInstance(account).getClientUserId()) continue;
                 TLRPC.User user = controller.getUser(entry.user_id);
@@ -317,18 +317,18 @@ public final class NabdhMessageSchedulerActivity extends Activity {
         NabdhToolUi.styleInput(this, query);
         sheet.addView(query, new LinearLayout.LayoutParams(-1, dp(52)));
 
-        TextView count = section("");
-        sheet.addView(count);
+        TextView countLabel = section("");
+        sheet.addView(countLabel);
         ScrollView scroll = new ScrollView(this);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list);
         sheet.addView(scroll, new LinearLayout.LayoutParams(-1, dp(340)));
-        renderChoices(list, pending, "", count);
+        renderChoices(list, pending, "", countLabel);
         query.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence v, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence v, int start, int before, int count) {
-                renderChoices(list, pending, v.toString(), count);
+                renderChoices(list, pending, v.toString(), countLabel);
             }
             @Override public void afterTextChanged(Editable v) {}
         });
