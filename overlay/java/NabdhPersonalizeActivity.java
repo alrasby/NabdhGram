@@ -113,6 +113,17 @@ public final class NabdhPersonalizeActivity extends Activity {
                     render();
                 });
     }
+    private void videoFpsChoice(int rate) {
+        int active = NabdhHomePrefs.videoFps(this);
+        NabdhCompactSettings.row(this, content,
+                (active == rate ? "✓  " : "") + rate + " FPS",
+                local("Recorder requests this value; unsupported hardware falls back.",
+                        "يطلب التسجيل هذا المعدل، ويستخدم المتاح إذا لم تدعمه الكاميرا."),
+                R.drawable.nabdh_tool_camera, () -> {
+                    NabdhHomePrefs.setVideoFps(this, rate);
+                    render();
+                });
+    }
     private void bubble(String en, String ar, int radius) {
         int current = NabdhHomePrefs.bubbleRadius(this);
         NabdhCompactSettings.row(this, content,
@@ -200,10 +211,22 @@ public final class NabdhPersonalizeActivity extends Activity {
             toggle("camera_zoom_bar", "Zoom slider", "شريط التكبير",
                     "Show a precise zoom slider below camera controls",
                     "إظهار شريط تكبير دقيق أسفل أزرار الكاميرا");
-            note("The existing Nabdh Camera2 captures photos. Video FPS, live video "
-                    + "stabilization, video-note mode and PiP are not claimed as supported.",
-                    "كاميرا نبض الحالية مخصصة للصور. لا تُعرض إعدادات FPS أو تثبيت الفيديو "
-                    + "أو الرسائل المصورة أو PiP قبل دعمها فعليًا.");
+            header("Camera2 video recorder", "مسجل الفيديو Camera2");
+            toggle("video_stabilize", "Video stabilization (EIS)", "تثبيت الفيديو الإلكتروني",
+                    "Use Camera2 EIS only if recording hardware advertises support",
+                    "يستخدم EIS فقط على العدسات الداعمة في Camera2");
+            toggle("video_pip", "Picture-in-picture while recording", "عرض PiP أثناء تسجيل الفيديو",
+                    "Keep video recording in a visible Android PiP window (Android 8+)",
+                    "متابعة التسجيل أثناء عرض نافذة Android العائمة (Android 8+)");
+            header("Recording frame rate", "معدل إطارات التسجيل");
+            videoFpsChoice(24);
+            videoFpsChoice(30);
+            videoFpsChoice(60);
+            note("FPS is negotiated with Camera2 hardware and the H.264 encoder. "
+                    + "Unsupported combinations fail safely; no FPS is invented. "
+                    + "Video messages/PiP calls are separate Telegram features.",
+                    "تُراجع قدرة Camera2 ومرمز H.264 قبل التسجيل. "
+                    + "لا يُفترض دعم FPS غير متاح؛ ورسائل الفيديو ومكالمات PiP ميزات مستقلة.");
         }
     }
 }

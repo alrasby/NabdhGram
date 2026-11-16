@@ -33,7 +33,7 @@ if "android.os.Build.VERSION.SDK_INT < 26" not in activity:
     raise SystemExit("FAIL: AI Activity must refuse startup on Android 23-25")
 if "Build.VERSION.SDK_INT < 26" not in nano or "Build.VERSION.SDK_INT < 28" not in gemma:
     raise SystemExit("FAIL: AI runtime API guards missing")
-if "genai-prompt:1.0.0-beta4" not in gradle or "tasks-genai:0.10.27" not in gradle:
+if "genai-prompt:1.0.0-beta5" not in gradle or "tasks-genai:0.10.27" not in gradle:
     raise SystemExit("FAIL: expected pinned AI dependency missing")
 service = (ui / "java/org/telegram/ui/NabdhAiCoreService.java").read_text()
 if not all(token in nano for token in (
@@ -53,7 +53,7 @@ if not all(token in activity for token in (
         'لا يوجد نموذج ذكاء محلي متوافق مثبت')):
     raise SystemExit("FAIL: user-approved AICore download or localized no-model state missing")
 if "kotlinx-coroutines-android:1.11.0" not in gradle:
-    raise SystemExit("FAIL: ML Kit beta4 download must pin compatible coroutines (Google known issue)")
+    raise SystemExit("FAIL: ML Kit prompt must include coroutine dependency for downloads")
 if "Download Gemini Nano" not in activity or ".setPositiveButton(local(" not in activity:
     raise SystemExit("FAIL: model download must require explicit user confirmation")
 # No placebo model download: the button is disabled until a real AICore
@@ -68,6 +68,13 @@ if "Uri.parse(\"https://developers.google.com/ml-kit/genai/#device-support\")" n
     raise SystemExit("FAIL: official compatibility guidance missing")
 if "Uri.parse(\"https://developers.google.com/edge/mediapipe/solutions/genai/llm_inference/android\")" not in activity:
     raise SystemExit("FAIL: verified MediaPipe Gemma import guidance missing")
+if "GEMMA_3_1B_INT4_SHA256" not in activity or (
+        "e3d981c01aeaaac69a84ffa0d4be13281b3176731063f1bea1c9fe6887bd9dee" not in activity):
+    raise SystemExit("FAIL: recommended Gemma int4 integrity hash missing")
+if not all(x in activity for x in ("Gemma3-1B-IT/blob/main/gemma3-1b-it-int4.task", "huggingface.co/litert-community/")):
+    raise SystemExit("FAIL: recommended Gemma file must open canonical license-gated page")
+if "NabdhAiCoreService.CHAT" not in (ui / "java/org/telegram/ui/NabdhAiChatActivity.java").read_text():
+    raise SystemExit("FAIL: AI Chat must use isolated real model inference service")
 if ".setTopK(" in gemma:
     raise SystemExit("FAIL: unsupported MediaPipe topK setter restored")
 if "محرك نبض للذكاء الاصطناعي" not in activity or (

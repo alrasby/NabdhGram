@@ -35,6 +35,15 @@ check("bubbleRadius = radius" in preferences and
 for key in ("camera_remember", "camera_mirror", "camera_stabilize",
             "camera_quality", "camera_zoom_bar"):
     check(key in screen and key in camera, "Camera2 option is not functional: " + key)
+video = (base / "overlay/java/NabdhVideoActivity.java").read_text(encoding="utf-8")
+for token in ("MediaRecorder", "CameraDevice.TEMPLATE_RECORD",
+              "CONTROL_VIDEO_STABILIZATION_MODE_ON", "CONTROL_AE_TARGET_FPS_RANGE",
+              "enterPictureInPictureMode(", "MediaStore.Video.Media", "Intent.ACTION_SEND"):
+    check(token in video, "video option not backed by real recorder: " + token)
+check("video_fps" in preferences and "setVideoFps" in preferences and
+      "video_pip" in screen and "video_stabilize" in screen and
+      "NabdhVideoActivity.class" in camera,
+      "video controls must be connected to native recorder")
 check("ExifInterface" in camera and "mirroredSelfie(bytes)" in camera and
       "LENS_OPTICAL_STABILIZATION_MODE_ON" in camera and
       "CaptureRequest.JPEG_QUALITY" in camera and
@@ -65,8 +74,16 @@ check("NabdhPersonalizeActivity.HOME" in settings and
       "NabdhPersonalizeActivity.BUBBLES" in settings and
       "NabdhPersonalizeActivity.CAMERA" in settings,
       "appearance settings missing actual actions")
-check("NabdhPersonalizeActivity" in manifest and "NabdhAiChatActivity" in manifest,
+check("NabdhPersonalizeActivity" in manifest and "NabdhAiChatActivity" in manifest
+      and "NabdhVideoActivity" in manifest and 'android:supportsPictureInPicture="true"' in manifest,
       "new activities must remain private")
+check("final boolean nabdhVisibleStories" in dialogs
+      and "nabdhVisibleStories" in dialogs.split(
+          "public void updateStoriesVisibility(boolean animated) {")[1],
+      "native stories animation must use immutable derived visibility")
+check("MediaRecorder" in get("NabdhVideoActivity.java")
+      and "NabdhVideoActivity" in manifest,
+      "video recorder must be installed as a private Android activity")
 check("mirroredSelfie(bytes)" in nativeCamera,
       "actual Camera2 mirror flow absent")
 check("NabdhAiChatActivity.class" in settings,

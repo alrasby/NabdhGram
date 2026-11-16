@@ -29,6 +29,11 @@ import java.util.concurrent.Executors;
 /** Explicit, no-history on-device AI tool. No chat listeners or telemetry. */
 public final class NabdhAiActivity extends Activity {
     private static final int PICK_GEMMA = 6734;
+    // SHA-256 published for the 555 MB gemma3-1b-it-int4.task file by
+    // multiple community mirrors. This is an integrity check for that exact
+    // file, not a grant of Gemma rights or proof of publisher provenance.
+    private static final String GEMMA_3_1B_INT4_SHA256 =
+            "e3d981c01aeaaac69a84ffa0d4be13281b3176731063f1bea1c9fe6887bd9dee";
     private final ExecutorService copies = Executors.newSingleThreadExecutor();
     private Messenger remote;
     private boolean bound;
@@ -278,6 +283,35 @@ public final class NabdhAiActivity extends Activity {
                 "بصمة SHA-256 الرسمية للنموذج (64 خانة)"));
         checksum.setInputType(InputType.TYPE_CLASS_TEXT);
         screen.addView(checksum);
+        screen.addView(action(local("Get Gemma 3 1B model (555 MB, separate download)",
+                "الحصول على Gemma 3 1B (تنزيل منفصل 555 MB)"), () ->
+            new AlertDialog.Builder(this)
+                .setTitle(local("Gemma model licence and download",
+                        "ترخيص وتنزيل نموذج Gemma"))
+                .setMessage(local("Gemma 3 1B requires acceptance of Google's Gemma terms "
+                        + "on Hugging Face. A large .task model is downloaded outside the APK. "
+                        + "The app will fill a SHA-256 value published for the matching "
+                        + "int4 model by third-party mirrors, then verify its actual bytes "
+                        + "on import. This hash alone does not prove the publisher's identity. "
+                        + "Import only after confirming the official file and licence.",
+                        "يتطلب Gemma 3 1B قبول ترخيص Google Gemma في Hugging Face. "
+                        + "يُنزّل ملف .task الكبير خارج APK. سنُدرج بصمة SHA-256 منشورة "
+                        + "لنفس ملف int4 في نسخ مجتمعية مستقلة، ثم نتحقق من بايتات "
+                        + "الملف عند الاستيراد. البصمة وحدها لا تثبت هوية الناشر. "
+                        + "تحقق من المصدر الرسمي والترخيص قبل الاستيراد."))
+                .setNegativeButton(local("Cancel", "إلغاء"), null)
+                .setPositiveButton(local("Review licence & model", "مراجعة الترخيص والنموذج"),
+                        (dialog, which) -> {
+                            checksum.setText(GEMMA_3_1B_INT4_SHA256);
+                            try {
+                                startActivity(new Intent(Intent.ACTION_VIEW,
+                                        Uri.parse("https://huggingface.co/litert-community/"
+                                                + "Gemma3-1B-IT/blob/main/gemma3-1b-it-int4.task")));
+                            } catch (RuntimeException missingBrowser) {
+                                state.setText(local("No browser to open the official model page",
+                                        "لا يوجد متصفح لفتح صفحة النموذج الرسمية"));
+                            }
+                        }).show()));
         screen.addView(action(local("Import verified Gemma model",
                 "استيراد نموذج Gemma موثّق"), () -> {
             approvedHash = checksum.getText().toString().trim();

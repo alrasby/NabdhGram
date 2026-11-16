@@ -211,6 +211,9 @@ public final class NabdhCameraActivity extends Activity {
                 "إرسال الصورة الملتقطة في نبض جرام"), this::shareLastPhoto);
         sharePhoto.setEnabled(false);
         page.addView(sharePhoto, new LinearLayout.LayoutParams(-1, -2));
+        page.addView(control(local("Record video with Nabdh Camera2", "تسجيل فيديو بكاميرا نبض"), () ->
+                startActivity(new Intent(this, NabdhVideoActivity.class))),
+                new LinearLayout.LayoutParams(-1, dp(48)));
         page.addView(control(local("Camera settings", "إعدادات الكاميرا"), () -> {
             Intent options = new Intent(this, NabdhPersonalizeActivity.class);
             options.putExtra(NabdhPersonalizeActivity.EXTRA_SECTION, NabdhPersonalizeActivity.CAMERA);

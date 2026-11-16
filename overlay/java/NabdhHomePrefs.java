@@ -55,6 +55,17 @@ public final class NabdhHomePrefs {
             title.setTranslationX(target - title.getX());
         });
     }
+    /** Requested recording rate; Camera2 chooses a hardware-supported range. */
+    public static int videoFps(Context c) {
+        int fps = c.getSharedPreferences(STORE, Context.MODE_PRIVATE)
+                .getInt("video_fps", 30);
+        return fps == 24 || fps == 60 ? fps : 30;
+    }
+    public static void setVideoFps(Context c, int fps) {
+        if (fps != 24 && fps != 30 && fps != 60)
+            throw new IllegalArgumentException("Video FPS");
+        prefs(c).edit().putInt("video_fps", fps).apply();
+    }
     public static int bubbleRadius(Context c) {
         return Math.max(10, Math.min(25, prefs(c).getInt("bubble_radius", 19)));
     }

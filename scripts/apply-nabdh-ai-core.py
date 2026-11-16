@@ -86,9 +86,9 @@ g = gradle.read_text(encoding="utf-8")
 anchor = "    implementation 'com.google.mlkit:language-id:17.0.6'"
 g = once(g, anchor, anchor + '''
     // Only invoked in the private :nabdh_ai process after explicit user action.
-    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta4'
+    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta5'
     implementation 'com.google.mediapipe:tasks-genai:0.10.27'
-    // ML Kit beta4 download() requires coroutines 1.11+ (Google known issue).
+    // Keep compatible coroutine support for ML Kit GenAI Futures/download.
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
 '''.rstrip(), "pinned ML Kit/MediaPipe library dependencies")
 gradle.write_text(g, encoding="utf-8")
