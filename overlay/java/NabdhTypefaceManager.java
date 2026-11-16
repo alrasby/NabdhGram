@@ -17,6 +17,90 @@ import org.telegram.ui.ActionBar.Theme;
 public final class NabdhTypefaceManager {
     private NabdhTypefaceManager() {}
 
+    // A new generation is emitted only after a deliberate font/weight/chat-size
+    // edit. Cached MessageObject layouts can detect the change cheaply.
+    private static volatile int fontGeneration;
+
+    public static int generation() {
+        return fontGeneration;
+    }
+
+    public static void invalidateMessageLayouts() {
+        fontGeneration++;
+    }
+
+    // Telegram draws its chat-list rows using canvas TextPaint, not TextView.
+    // Preserve original paint metrics across consecutive scale changes.
+    private static final java.util.WeakHashMap<TextPaint, Float> dialogBaseSizes =
+            new java.util.WeakHashMap<>();
+    private static final java.util.WeakHashMap<TextPaint, Float> dialogAppliedSizes =
+            new java.util.WeakHashMap<>();
+
+    private static synchronized void scaleDialogPaint(TextPaint paint, int percent) {
+        if (paint == null) return;
+        Float original = dialogBaseSizes.get(paint);
+        Float previous = dialogAppliedSizes.get(paint);
+        if (original == null || previous != null &&
+                Math.abs(previous - paint.getTextSize()) > 0.5f) {
+            // Telegram itself may replace the paint's native size after a
+            // theme/configuration change. Rebase rather than multiplying it.
+            original = paint.getTextSize();
+            dialogBaseSizes.put(paint, original);
+        }
+        float next = original * percent / 100f;
+        if (Math.abs(next - paint.getTextSize()) > 0.1f) paint.setTextSize(next);
+        dialogAppliedSizes.put(paint, next);
+    }
+
+    public static void applyDialogPaints() {
+        android.content.Context context =
+                org.telegram.messenger.ApplicationLoader.applicationContext;
+        if (context == null) return;
+        android.content.SharedPreferences prefs = context.getSharedPreferences(
+                "nabdhgram_appearance", android.content.Context.MODE_PRIVATE);
+        int percent = Math.max(85, Math.min(115,
+                prefs.getInt("ui_scale_percent", 100)));
+        Typeface regular = AndroidUtilities.getTypeface("fonts/rregular.ttf");
+        Typeface medium = AndroidUtilities.getTypeface("fonts/rmedium.ttf");
+        if (Theme.dialogs_namePaint != null) {
+            for (TextPaint paint : Theme.dialogs_namePaint) {
+                apply(paint, medium);
+                scaleDialogPaint(paint, percent);
+            }
+        }
+        if (Theme.dialogs_nameEncryptedPaint != null) {
+            for (TextPaint paint : Theme.dialogs_nameEncryptedPaint) {
+                apply(paint, medium);
+                scaleDialogPaint(paint, percent);
+            }
+        }
+        if (Theme.dialogs_messagePaint != null) {
+            for (TextPaint paint : Theme.dialogs_messagePaint) {
+                apply(paint, regular);
+                scaleDialogPaint(paint, percent);
+            }
+        }
+        if (Theme.dialogs_messagePrintingPaint != null) {
+            for (TextPaint paint : Theme.dialogs_messagePrintingPaint) {
+                apply(paint, regular);
+                scaleDialogPaint(paint, percent);
+            }
+        }
+        apply(Theme.dialogs_messageNamePaint, medium);
+        apply(Theme.dialogs_searchNamePaint, medium);
+        apply(Theme.dialogs_searchNameEncryptedPaint, medium);
+        scaleDialogPaint(Theme.dialogs_messageNamePaint, percent);
+        scaleDialogPaint(Theme.dialogs_searchNamePaint, percent);
+        scaleDialogPaint(Theme.dialogs_searchNameEncryptedPaint, percent);
+        scaleDialogPaint(Theme.dialogs_countTextPaint, percent);
+        scaleDialogPaint(Theme.dialogs_countTextPaint2, percent);
+        scaleDialogPaint(Theme.dialogs_timePaint, percent);
+        scaleDialogPaint(Theme.dialogs_timePaintBold, percent);
+        scaleDialogPaint(Theme.dialogs_timePaintBoldAccent, percent);
+        scaleDialogPaint(Theme.dialogs_archiveTextPaint, percent);
+        scaleDialogPaint(Theme.dialogs_archiveTextPaintSmall, percent);
+    }
+
     private static void apply(TextPaint paint, Typeface typeface) {
         if (paint != null && typeface != null && paint.getTypeface() != typeface) {
             paint.setTypeface(typeface);

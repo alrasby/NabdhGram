@@ -306,6 +306,7 @@ s = s.replace(anchor, anchor + """
                 // Rebuild native chat TextPaint sizes/metrics when switching
                 // between custom Arabic families, then reapply the selected
                 // font to every known canvas-drawn paint below.
+                org.telegram.ui.Components.NabdhTypefaceManager.invalidateMessageLayouts();
                 Theme.createChatResources(context, true);
                 // Telegram has cached TextPaint/StaticLayout for chat labels.
                 // Update known paints before the same notification it uses for
@@ -331,6 +332,20 @@ s = s.replace(anchor, anchor + """
                 if (Theme.chat_explanationTextPaint != null) Theme.chat_explanationTextPaint.setTypeface(regular);
                 org.telegram.messenger.NotificationCenter.getGlobalInstance().postNotificationName(
                         org.telegram.messenger.NotificationCenter.didSetNewTheme, false, false);
+            };
+            // Limit expensive view-tree rebinds while the user drags a slider.
+            final android.os.Handler typographyHandler =
+                    new android.os.Handler(android.os.Looper.getMainLooper());
+            final boolean[] uiRefreshQueued = {false};
+            final boolean[] chatRefreshQueued = {false};
+            final Runnable uiScaleRefresh = () -> {
+                uiRefreshQueued[0] = false;
+                refreshTypography.run();
+            };
+            final Runnable chatScaleRefresh = () -> {
+                chatRefreshQueued[0] = false;
+                refreshDrawnText.run();
+                refreshTypography.run();
             };
             // Keep every option in the same live family after selection.
             // Each RadioButton originally received a different explicit
@@ -363,6 +378,10 @@ s = s.replace(anchor, anchor + """
                         item.setChecked(optionIndex == java.util.Arrays.asList(families).indexOf(family));
                         item.setTypeface(selectedTypeface, android.graphics.Typeface.NORMAL);
                     }
+                    typographyHandler.removeCallbacks(uiScaleRefresh);
+                    typographyHandler.removeCallbacks(chatScaleRefresh);
+                    uiRefreshQueued[0] = false;
+                    chatRefreshQueued[0] = false;
                     org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
                     refreshDrawnText.run();
                     refreshTypography.run();
@@ -392,11 +411,16 @@ s = s.replace(anchor, anchor + """
                 @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
                     if (fromUser) {
                         prefs.edit().putInt("ui_scale_percent", progress + 85).apply();
-                        refreshTypography.run();
+                        if (!uiRefreshQueued[0]) {
+                            uiRefreshQueued[0] = true;
+                            typographyHandler.postDelayed(uiScaleRefresh, 70);
+                        }
                     }
                 }
                 @Override public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
                 @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                    typographyHandler.removeCallbacks(uiScaleRefresh);
+                    uiRefreshQueued[0] = false;
                     prefs.edit().putInt("ui_scale_percent", seekBar.getProgress() + 85).commit();
                     refreshTypography.run();
                 }
@@ -408,22 +432,40 @@ s = s.replace(anchor, anchor + """
             fontCard.addView(chatSizeTitle);
             android.widget.SeekBar chatScale = new android.widget.SeekBar(context);
             chatScale.setMax(8);
+            // Legacy builds incorrectly saved this size under "userconfing".
+            // Telegram reads its own persistent fons_size from "mainconfig".
+            android.content.SharedPreferences telegramFonts = context.getSharedPreferences(
+                    "mainconfig", Context.MODE_PRIVATE);
+            android.content.SharedPreferences legacyFonts = context.getSharedPreferences(
+                    "userconfing", Context.MODE_PRIVATE);
+            if (!telegramFonts.contains("fons_size") && legacyFonts.contains("fons_size")) {
+                int restored = Math.max(14, Math.min(22, legacyFonts.getInt("fons_size", 16)));
+                telegramFonts.edit().putInt("fons_size", restored).commit();
+                org.telegram.messenger.SharedConfig.fontSize = restored;
+                org.telegram.messenger.SharedConfig.fontSizeIsDefault = false;
+            }
             chatScale.setProgress(Math.max(0, Math.min(8, org.telegram.messenger.SharedConfig.fontSize - 14)));
             fontCard.addView(chatScale);
             chatScale.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
-                @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {}
+                @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                    if (!fromUser) return;
+                    org.telegram.messenger.SharedConfig.fontSize = progress + 14;
+                    org.telegram.messenger.SharedConfig.fontSizeIsDefault = false;
+                    if (!chatRefreshQueued[0]) {
+                        chatRefreshQueued[0] = true;
+                        typographyHandler.postDelayed(chatScaleRefresh, 70);
+                    }
+                }
                 @Override public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
                 @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                    typographyHandler.removeCallbacks(chatScaleRefresh);
+                    chatRefreshQueued[0] = false;
                     int size = seekBar.getProgress() + 14;
                     org.telegram.messenger.SharedConfig.fontSize = size;
                     org.telegram.messenger.SharedConfig.fontSizeIsDefault = false;
-                    // Chat messages are painted using cached static Paints.
-                    // Regenerate native geometry before refreshing rows.
-                    Theme.createChatResources(context, true);
-                    context.getSharedPreferences("userconfing", Context.MODE_PRIVATE)
-                            .edit().putInt("fons_size", size).commit();
-                    refreshDrawnText.run();
-                    refreshTypography.run();
+                    // Match Telegram's own font-size persistence and restore.
+                    telegramFonts.edit().putInt("fons_size", size).commit();
+                    chatScaleRefresh.run();
                 }
             });
             android.widget.Switch boldOption = new android.widget.Switch(context);
@@ -432,6 +474,10 @@ s = s.replace(anchor, anchor + """
             boldOption.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
             boldOption.setChecked(prefs.getBoolean("font_bold", false));
             boldOption.setOnCheckedChangeListener((button, checked) -> {
+                typographyHandler.removeCallbacks(uiScaleRefresh);
+                typographyHandler.removeCallbacks(chatScaleRefresh);
+                uiRefreshQueued[0] = false;
+                chatRefreshQueued[0] = false;
                 prefs.edit().putBoolean("font_bold", checked).commit();
                 org.telegram.messenger.AndroidUtilities.mediumTypeface = null;
                 refreshDrawnText.run();

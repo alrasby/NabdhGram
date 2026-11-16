@@ -43,6 +43,25 @@ verify("NabdhTypefaceManager.applyChatPaints();" in script
        and "Theme chat-paint lifecycle" in script
        and "explicit selected font refresh" in script,
        "chat paints not wired to creation and onChange")
+settingsInstaller = (repo / "scripts/apply-glass-settings.py").read_text(encoding="utf-8")
+labelsInstaller = (repo / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8")
+verify(all(token in settingsInstaller for token in (
+       'telegramFonts.edit().putInt("fons_size", size).commit();',
+       'context.getSharedPreferences(', '"mainconfig", Context.MODE_PRIVATE)',
+       'legacyFonts.contains("fons_size")',
+       'typographyHandler.postDelayed(uiScaleRefresh, 70)',
+       'typographyHandler.postDelayed(chatScaleRefresh, 70)',
+       'NabdhTypefaceManager.invalidateMessageLayouts();')),
+       "font changes must use native persistent mainconfig and live throttled refresh")
+verify("getMessageObject();" in labelsInstaller
+       and "messageObject.resetLayout();" in labelsInstaller
+       and "NabdhTypefaceManager.applyDialogPaints();" in labelsInstaller,
+       "visible message and chat-list layouts must rebuild immediately")
+verify("cached message typography generation" in script
+       and "native dialog paint typography" in script
+       and "public static void invalidateMessageLayouts()" in fonts
+       and "public static void applyDialogPaints()" in fonts,
+       "offscreen message/font changes must reflow through one generation")
 verify("apply-nabdh-chat-consistency.py Telegram-upstream" in workflow
        and "check-nabdh-chat-consistency.py Telegram-upstream" in workflow,
        "real upstream preflight must gate overlay")
@@ -89,4 +108,15 @@ verify("Theme.chat_docNamePaint" in nativeFonts
        "file/audio font coverage incomplete or monospace overwritten")
 verify("backgroundAlpha" in nativePalette and "edgeAlpha" in nativePalette,
        "generated palette class incomplete")
+messageObject = (root / "TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java").read_text(encoding="utf-8")
+verify("NabdhTypefaceManager.generation()" in messageObject
+       and "nabdhFontGeneration != generation" in messageObject
+       and "layoutCreated = false;" in messageObject,
+       "existing message models keep old StaticLayouts after family changes")
+verify("NabdhTypefaceManager.applyDialogPaints();" in theme,
+       "native theme paint recreation must apply saved UI scale")
+verify("NabdhTypefaceManager.applyDialogPaints();" in read("LaunchActivity.java"),
+       "main chat list must reflow before adapter rebinding")
+verify("telegramFonts.edit().putInt(\"fons_size\", size).commit();" in settings,
+       "native Telegram 13.2.2 font size persistence must use mainconfig")
 print("PASS: generated real Telegram Java chat bubble and font consistency")

@@ -51,6 +51,8 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
     // Appearance is a Telegram fragment; returning to it does not restart
     // LaunchActivity. Allow explicit refresh within the same Activity.
     public void nabdhRefreshAllFonts() {
+        // Chat-list rows use canvas paints instead of ordinary TextViews.
+        org.telegram.ui.Components.NabdhTypefaceManager.applyDialogPaints();
         // Source of the delayed settings font update: an adapter rebind may
         // restore Telegram's native paint after an earlier scan. Its weak
         // cache still records the SAME renderKey, so the restored label gets
@@ -74,6 +76,17 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                 pending.add(decor);
                 while (!pending.isEmpty()) {
                     android.view.View view = pending.removeFirst();
+                    // Recreate only attached message layouts after the
+                    // source font family, weight or size changes.
+                    if (view instanceof org.telegram.ui.Cells.ChatMessageCell) {
+                        org.telegram.ui.Cells.ChatMessageCell cell =
+                                (org.telegram.ui.Cells.ChatMessageCell) view;
+                        org.telegram.messenger.MessageObject messageObject = cell.getMessageObject();
+                        if (messageObject != null) {
+                            messageObject.resetLayout();
+                            cell.requestLayout();
+                        }
+                    }
                     if (view instanceof androidx.recyclerview.widget.RecyclerView) {
                         androidx.recyclerview.widget.RecyclerView list =
                                 (androidx.recyclerview.widget.RecyclerView) view;
