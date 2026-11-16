@@ -68,8 +68,14 @@ check("timerSeconds == 0 ? 3 : timerSeconds == 3 ? 10 : 0" in camera
       "3/10 second capture timer missing")
 check("BitmapRegionDecoder.newInstance" in editor
       and "keepOriginal.setChecked(true)" in editor
-      and "AtomicFile(original)" in editor,
+      and "AtomicFile(original)" in editor
+      and "Math.floorMod(" not in editor
+      and "normalRotation(" in editor,
       "non-destructive crop/rotate editor missing")
+check("ExifInterface exif = new ExifInterface(file);" in gallery
+      and "exif.getRotationDegrees()" in gallery
+      and "exif.isFlipped()" in gallery,
+      "private gallery previews must honor orientation and front-camera mirror")
 check("Segmentation.getClient(opts)" in ai_editor
       and "SelfieSegmenterOptions.SINGLE_IMAGE_MODE" in ai_editor
       and "portraitBlur(input, mask)" in ai_editor

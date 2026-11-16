@@ -6,6 +6,8 @@ import android.content.ClipData;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import androidx.exifinterface.media.ExifInterface;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -144,8 +146,25 @@ public final class NabdhCameraGalleryActivity extends Activity {
             options.inSampleSize = 1;
             while (Math.max(bounds.outWidth, bounds.outHeight) /
                     options.inSampleSize > target * 2) options.inSampleSize *= 2;
+            Bitmap raw;
             try (FileInputStream in = new FileInputStream(file)) {
-                return BitmapFactory.decodeStream(in, null, options);
+                raw = BitmapFactory.decodeStream(in, null, options);
+            }
+            if (raw == null) return null;
+            try {
+                ExifInterface exif = new ExifInterface(file);
+                int degrees = exif.getRotationDegrees();
+                boolean mirror = exif.isFlipped();
+                if (degrees == 0 && !mirror) return raw;
+                Matrix matrix = new Matrix();
+                matrix.postRotate(degrees);
+                if (mirror) matrix.postScale(-1f, 1f);
+                Bitmap corrected = Bitmap.createBitmap(raw, 0, 0,
+                        raw.getWidth(), raw.getHeight(), matrix, true);
+                if (corrected != raw) raw.recycle();
+                return corrected;
+            } catch (Exception | OutOfMemoryError error) {
+                return raw;
             }
         } catch (Exception | OutOfMemoryError ignored) {
             return null;

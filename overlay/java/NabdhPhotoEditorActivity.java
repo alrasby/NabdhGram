@@ -120,8 +120,13 @@ public final class NabdhPhotoEditorActivity extends Activity {
         NabdhToolUi.install(this, page, local("Nabdh Photo Editor", "محرر صور نبض"));
         loadPreview();
     }
+    /** Compatible with Android API 23; Math.floorMod requires API 24. */
+    private static int normalRotation(int degrees) {
+        int remainder = degrees % 360;
+        return remainder < 0 ? remainder + 360 : remainder;
+    }
     private void rotate(int amount) {
-        userRotation = Math.floorMod(userRotation + amount, 360);
+        userRotation = normalRotation(userRotation + amount, 360);
         loadPreview();
     }
     private void loadPreview() {
@@ -154,7 +159,7 @@ public final class NabdhPhotoEditorActivity extends Activity {
                     }
                     if (raw == null) throw new IOException("Preview decoder failed");
                     Matrix transform = new Matrix();
-                    transform.postRotate(Math.floorMod(exif + userRotation, 360));
+                    transform.postRotate(normalRotation(exif + userRotation, 360));
                     if (flip) transform.postScale(-1, 1);
                     bitmap = Bitmap.createBitmap(raw, 0, 0, raw.getWidth(),
                             raw.getHeight(), transform, true);
@@ -200,7 +205,7 @@ public final class NabdhPhotoEditorActivity extends Activity {
     }
     private void beginSave(boolean preserve) {
         RectF crop = preview.crop();
-        final int rotation = Math.floorMod(exifRotation + userRotation, 360);
+        final int rotation = normalRotation(exifRotation + userRotation, 360);
         final boolean flipped = exifFlipped;
         final int w = rawWidth, h = rawHeight;
         final int rotateByUser = userRotation;
@@ -299,7 +304,7 @@ public final class NabdhPhotoEditorActivity extends Activity {
         }
     }
     private static int orientationTag(int angle, boolean flip) {
-        switch (Math.floorMod(angle, 360)) {
+        switch (normalRotation(angle, 360)) {
             case 90: return flip ? ExifInterface.ORIENTATION_TRANSPOSE :
                     ExifInterface.ORIENTATION_ROTATE_90;
             case 180: return flip ? ExifInterface.ORIENTATION_FLIP_VERTICAL :
