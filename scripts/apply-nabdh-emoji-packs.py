@@ -31,4 +31,36 @@ after = """        EmojiDrawable ed = new SimpleEmojiDrawable(info, endsWithRigh
 if code.count(before) != 1:
     raise SystemExit(f"Emoji upstream API changed: {code.count(before)} drawable anchors")
 emoji.write_text(code.replace(before, after, 1), encoding="utf-8")
-print("PASS: independent opted-in PNG emoji packs hooked into native EmojiDrawable")
+
+# Telegram 13.2.2 calls onScrolled even after adapter/layout updates.
+# Those IDLE callbacks must not repeatedly show/hide the bottom emoji/GIF/
+# sticker tab strip; only user drag/fling should affect its scroll visibility.
+# Preserve native tab switching, gestures and animation for real scrolling.
+view = root / "ui/Components/EmojiView.java"
+native = view.read_text(encoding="utf-8")
+scroll_anchor = """            if (!smoothScrolling) {
+                checkBottomTabScroll(dy);
+            }"""
+scroll_fixed = """            if (!smoothScrolling &&
+                    recyclerView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE) {
+                checkBottomTabScroll(dy);
+            }"""
+if native.count(scroll_anchor) != 1:
+    raise SystemExit(f"EmojiView native idle-scroll anchor changed ({native.count(scroll_anchor)})")
+native = native.replace(scroll_anchor, scroll_fixed, 1)
+
+# updateBottomTabContainerPosition() runs from dispatchDraw() each frame.
+# Do not request a redundant translation/repaint for subpixel geometry noise.
+pos_anchor = "            bottomTabContainer.setTranslationY(bottomTabMainTranslation + bottomTabAdditionalTranslation);"
+pos_fixed = """            final float nextBottomTabTranslation =
+                    bottomTabMainTranslation + bottomTabAdditionalTranslation;
+            if (Math.abs(bottomTabContainer.getTranslationY() -
+                    nextBottomTabTranslation) >= 0.5f) {
+                bottomTabContainer.setTranslationY(nextBottomTabTranslation);
+            }"""
+if native.count(pos_anchor) != 1:
+    raise SystemExit(f"EmojiView bottom-tab position anchor changed ({native.count(pos_anchor)})")
+native = native.replace(pos_anchor, pos_fixed, 1)
+view.write_text(native, encoding="utf-8")
+
+print("PASS: emoji packs and stable native emoji tab scroll/translation")
