@@ -18,8 +18,8 @@ def check(condition, message):
 check("private Uri savePhoto(byte[] bytes)" in camera and
       "lastPhotoUri = saved;" in camera and "sharePhoto.setEnabled(saved != null);" in camera,
       "only saved camera files can be shared")
-check('intent.setAction(Intent.ACTION_SEND);' in camera and
-      'intent.setType("image/jpeg");' in camera and
+check('send.setAction(Intent.ACTION_SEND);' in camera and
+      'send.setType("image/jpeg");' in camera and
       "Intent.EXTRA_STREAM" in camera and
       "Intent.FLAG_GRANT_READ_URI_PERMISSION" in camera,
       "captured images handed to native Telegram send without bypassing recipient UI")
@@ -75,7 +75,7 @@ check("Nabdh Camera2" in camera and "كاميرا نبض جرام" in camera and
       "NabdhToolUi.install(this, page" in camera,
       "camera Arabic locale provided")
 check('shutter.setContentDescription(local("Capture photo", "التقاط صورة"));' in camera and
-      'shutter.setOnClickListener(v -> takePhoto());' in camera and
+      'shutter.setOnClickListener(v -> startTimedPhoto());' in camera and
       "captureBar.addView(shutter" in camera and
       "new LinearLayout.LayoutParams(0, dp(48), 1f)" in camera,
       "camera requires accessible shutter plus bounded controls")
