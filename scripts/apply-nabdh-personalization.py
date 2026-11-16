@@ -19,6 +19,7 @@ for file, destination in [
     ("NabdhHomePrefs.java", "Components/NabdhHomePrefs.java"),
     ("NabdhPersonalizeActivity.java", "NabdhPersonalizeActivity.java"),
     ("NabdhVideoActivity.java", "NabdhVideoActivity.java"),
+    ("NabdhCameraGalleryActivity.java", "NabdhCameraGalleryActivity.java"),
 ]:
     dest = ui / destination
     if dest.exists():
@@ -29,7 +30,10 @@ manifest = root / "TMessagesProj/src/main/AndroidManifest.xml"
 m = manifest.read_text(encoding="utf-8")
 # PiP is strictly opt-in and limited to a visible recording window.
 marker = '        <activity android:name="org.telegram.ui.NabdhAppearancePickerActivity"'
-m = once(m, marker, '''        <activity android:name="org.telegram.ui.NabdhVideoActivity"
+m = once(m, marker, '''        <activity android:name="org.telegram.ui.NabdhCameraGalleryActivity"
+                  android:exported="false"
+                  android:theme="@android:style/Theme.Material.NoActionBar" />
+        <activity android:name="org.telegram.ui.NabdhVideoActivity"
                   android:exported="false"
                   android:supportsPictureInPicture="true"
                   android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"

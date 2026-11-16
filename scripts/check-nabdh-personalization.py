@@ -33,7 +33,7 @@ check("bubbleRadius = radius" in preferences and
       "didSetNewTheme" in screen,
       "bubble shape needs real Telegram radius and repaint")
 for key in ("camera_remember", "camera_mirror", "camera_stabilize",
-            "camera_quality", "camera_zoom_bar"):
+            "camera_quality", "camera_zoom_bar", "camera_smart_processing"):
     check(key in screen and key in camera, "Camera2 option is not functional: " + key)
 video = (base / "overlay/java/NabdhVideoActivity.java").read_text(encoding="utf-8")
 for token in ("MediaRecorder", "CameraDevice.TEMPLATE_RECORD",
@@ -49,6 +49,30 @@ check("video_fps" in preferences and "setVideoFps" in preferences and
       "video_pip" in screen and "video_stabilize" in screen and
       "NabdhVideoActivity.class" in camera,
       "video controls must be connected to native recorder")
+gallery = (base / "overlay/java/NabdhCameraGalleryActivity.java").read_text(encoding="utf-8")
+check("NabdhCameraGalleryActivity.java" in appearance
+      and "NabdhCameraGalleryActivity.class" in camera
+      and "Nabdh Camera Gallery" in gallery
+      and "MediaStore.Images.Media.RELATIVE_PATH" in gallery
+      and "new ArrayBlockingQueue<>(70)" in gallery
+      and "loadThumbnail(uri" in gallery
+      and 'Intent.FLAG_GRANT_READ_URI_PERMISSION' in gallery,
+      "private, bounded camera album with thumbnails and native share missing")
+check("getHighResolutionOutputSizes(ImageFormat.JPEG)" in camera
+      and "Collections.max(Arrays.asList(output)" not in camera
+      and "resolutionFallback = true;" in camera
+      and "getBoolean(key, \"camera_quality\".equals(key))" in preferences,
+      "full Camera2 resolution and compatible fallback must be functional")
+check("exif.flipHorizontally();" in camera
+      and "exif.saveAttributes();" in camera
+      and "Bitmap.createBitmap(bitmap" not in camera,
+      "high-resolution selfies must not be downsampled for mirroring")
+check("CONTROL_SCENE_MODE_HDR" in camera
+      and "NOISE_REDUCTION_MODE_HIGH_QUALITY" in camera
+      and "EDGE_MODE_HIGH_QUALITY" in camera
+      and "Vendor Camera2 ISP processing" in camera
+      and "Not a generative AI model" in screen,
+      "camera processing must be hardware-gated and honestly named")
 check("ExifInterface" in camera and "mirroredSelfie(bytes)" in camera and
       "LENS_OPTICAL_STABILIZATION_MODE_ON" in camera and
       "CaptureRequest.JPEG_QUALITY" in camera and
@@ -79,7 +103,8 @@ check("NabdhPersonalizeActivity.HOME" in settings and
       "NabdhPersonalizeActivity.BUBBLES" in settings and
       "NabdhPersonalizeActivity.CAMERA" in settings,
       "appearance settings missing actual actions")
-check("NabdhPersonalizeActivity" in manifest and "NabdhAiChatActivity" in manifest
+check("NabdhCameraGalleryActivity" in manifest and
+      "NabdhPersonalizeActivity" in manifest and "NabdhAiChatActivity" in manifest
       and "NabdhVideoActivity" in manifest and 'android:supportsPictureInPicture="true"' in manifest,
       "new activities must remain private")
 check("final boolean nabdhVisibleStories" in dialogs
@@ -89,7 +114,8 @@ check("final boolean nabdhVisibleStories" in dialogs
 check("MediaRecorder" in get("NabdhVideoActivity.java")
       and "NabdhVideoActivity" in manifest,
       "video recorder must be installed as a private Android activity")
-check("mirroredSelfie(bytes)" in nativeCamera,
+check("mirroredSelfie(bytes)" in nativeCamera and
+      "NabdhCameraGalleryActivity.class" in nativeCamera,
       "actual Camera2 mirror flow absent")
 check("NabdhAiChatActivity.class" in settings,
       "AI Chat must appear under intelligence settings")

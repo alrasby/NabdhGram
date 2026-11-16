@@ -206,8 +206,16 @@ public final class NabdhPersonalizeActivity extends Activity {
                     "Enable only when the selected Camera2 lens supports OIS",
                     "يُفعّل فقط عندما تدعم العدسة تثبيت الصورة البصري OIS");
             toggle("camera_quality", "Prefer full-resolution photos", "تفضيل دقة الصور العالية",
-                    "Capture with a high-resolution JPEG size supported by the camera",
-                    "التقاط JPEG بأعلى دقة مناسبة تدعمها الكاميرا");
+                    "Use the largest compatible native Camera2 JPEG size (default on); "
+                    + "if a high-resolution session fails, safely retry with a fast size.",
+                    "استخدام أكبر دقة JPEG حقيقية متوافقة مع Camera2 (مفعلة افتراضيًا)، "
+                    + "والعودة لدقة سريعة عند عدم قبول جلسة التصوير.");
+            toggle("camera_smart_processing", "Adaptive hardware photo processing",
+                    "التحسين التلقائي للصور بواسطة عتاد الكاميرا",
+                    "Optional HDR scene, high-quality noise reduction and sharpening "
+                    + "only when Camera2 advertises support. Not a generative AI model.",
+                    "HDR وتقليل الضجيج وتحسين الحواف فقط عند دعم عتاد Camera2. "
+                    + "هذه معالجة تصوير وليست نموذج ذكاء اصطناعي توليدي.");
             toggle("camera_zoom_bar", "Zoom slider", "شريط التكبير",
                     "Show a precise zoom slider below camera controls",
                     "إظهار شريط تكبير دقيق أسفل أزرار الكاميرا");

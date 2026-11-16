@@ -482,6 +482,13 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-personalization.py
           python3 nabdhgram/scripts/apply-nabdh-personalization.py Telegram-upstream
 
+      - name: Hide unready V1 feature tiles without deleting future implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-feature-visibility.py
+          python3 nabdhgram/scripts/apply-nabdh-feature-visibility.py Telegram-upstream
+
       - name: Install actual open-licensed Noto, Twemoji and OpenMoji PNG renderers
         shell: bash
         run: |
@@ -531,6 +538,7 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/check-nabdh-appearance-pack.py
           python3 nabdhgram/scripts/check-nabdh-appearance-pack.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-personalization.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-v1-visibility.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-security-hardening.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-nabdh-emoji-packs.py
           python3 nabdhgram/scripts/check-nabdh-emoji-packs.py Telegram-upstream

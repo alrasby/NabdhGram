@@ -62,6 +62,15 @@ public final class NabdhAiActivity extends Activity {
                 summary += "\\n" + local("AICore diagnostic: ", "تشخيص AICore: ") + diagnostic;
             }
             state.setText(summary);
+            // A real local result (not checkStatus/download progress) is the
+            // release gate for revealing AI Chat in the main Settings page.
+            if (error.isEmpty() && !result.isEmpty() &&
+                    !payload.containsKey(NabdhAiCoreService.NANO_CAN_DOWNLOAD) &&
+                    !result.startsWith("NANO_") &&
+                    ("Gemini Nano".equals(provider) || "Gemma".equals(provider))) {
+                org.telegram.ui.Components.NabdhFeatureGates
+                        .noteVerifiedAiInference(NabdhAiActivity.this);
+            }
             // Only AICore DOWNLOADABLE authorizes an actionable download.
             // A generic "Download" button on unsupported hardware is misleading.
             if (downloadNano != null) {
@@ -256,9 +265,11 @@ public final class NabdhAiActivity extends Activity {
                         "لا يوجد متصفح متاح لعرض الأجهزة المدعومة."));
             }
         }));
-        screen.addView(action(local("Open AI Chat (on-device)",
-                "فتح AI Chat — محادثة محلية"), () ->
-                startActivity(new Intent(this, NabdhAiChatActivity.class))));
+        if (org.telegram.ui.Components.NabdhFeatureGates.verifiedAiChat(this)) {
+            screen.addView(action(local("Open AI Chat (on-device)",
+                    "فتح AI Chat — محادثة محلية"), () ->
+                    startActivity(new Intent(this, NabdhAiChatActivity.class))));
+        }
         TextView gemma = new TextView(this);
         gemma.setText(local("Gemma: import a licensed MediaPipe-compatible .task model from a trusted source. "
                 + "Enter its official SHA-256 below. Models are not included in the APK. "

@@ -12,7 +12,10 @@ public final class NabdhHomePrefs {
         return c.getSharedPreferences(STORE, Context.MODE_PRIVATE);
     }
     public static boolean enabled(Context c, String key) {
-        return c != null && prefs(c).getBoolean(key, false);
+        if (c == null) return false;
+        // New installs prefer the native maximum JPEG resolution. A user's
+        // explicit switch-off is still retained for faster 12 MP capture.
+        return prefs(c).getBoolean(key, "camera_quality".equals(key));
     }
     public static void set(Context c, String key, boolean value) {
         prefs(c).edit().putBoolean(key, value).apply();
