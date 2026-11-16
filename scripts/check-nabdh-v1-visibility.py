@@ -15,11 +15,16 @@ def check(ok, reason):
 
 check("id != 203 && id != 401" in flags
       and "verifiedAiChat(Context context)" in flags
-      and "noteVerifiedAiInference(Context context)" in flags,
+      and "noteVerifiedAiInference(Context context)" in flags
+      and "PUBLIC_AI_RELEASE_ACCEPTED = false" in flags
+      and "publicAiEnabled(Context context)" in flags,
       "deferred IDs and verified model gate must remain explicit")
 check("203, 401" in patch
       and "NabdhAiChatLaunch" in patch
-      and "NabdhFeatureGates.verifiedAiChat(context)" in patch,
+      and "NabdhFeatureGates.verifiedAiChat(context)" in patch
+      and "NabdhGramSettingsActivity.java" in patch
+      and "NabdhIntelligenceTitle" in patch
+      and "NabdhFeatureGates.publicAiEnabled(context)" in patch,
       "unimplemented pages or unverified AI Chat still visible")
 check("NabdhFeatureGates.verifiedAiChat(this)" in ai
       and "NabdhFeatureGates" in ai
@@ -37,6 +42,10 @@ if len(sys.argv) != 2:
 root = Path(sys.argv[1])
 ui = root / "TMessagesProj/src/main/java/org/telegram/ui"
 page = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
+hub = (ui / "NabdhGramSettingsActivity.java").read_text(encoding="utf-8")
+check("NabdhIntelligenceTitle" in hub and
+      "NabdhFeatureGates.publicAiEnabled(context)" in hub,
+      "unaccepted NabdhAI category is visible in the release hub")
 native_ai = (ui / "NabdhAiActivity.java").read_text(encoding="utf-8")
 native_gates = (ui / "Components/NabdhFeatureGates.java").read_text(encoding="utf-8")
 check(native_gates == flags, "generated feature gates differ from source")
@@ -49,5 +58,5 @@ check("NabdhFeatureGates.verifiedAiChat(context)" in page
       "AI Chat placeholder must remain hidden before real inference")
 check("NabdhAiCoreService.class" in page
       or "NabdhAiActivity.class" in page,
-      "model setup entry cannot be hidden: needed to activate local AI")
-print("PASS: V1 hides nonworking rows and AI Chat without deleting future feature engines")
+      "AI source and model setup must remain compiled for future releases")
+print("PASS: V1 suppresses unaccepted NabdhAI in root and feature menus; engines preserved")
