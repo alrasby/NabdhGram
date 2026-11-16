@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class NabdhAiCoreService extends Service {
     public static final int STATUS = 1, INFER = 2, RESPONSE = 3, DOWNLOAD_NANO = 4;
     public static final String TEXT = "text", PROVIDER = "provider", ERROR = "error";
+    public static final String NANO_CAN_DOWNLOAD = "nano_can_download";
     private final ExecutorService serial = Executors.newSingleThreadExecutor();
     private final AtomicBoolean busy = new AtomicBoolean(false);
     private final Messenger incoming = new Messenger(new Handler(Looper.getMainLooper()) {
@@ -56,36 +57,52 @@ public final class NabdhAiCoreService extends Service {
                         String report = nano || gemma ? "MODEL_READY" :
                                 nanoStatus == FeatureStatus.DOWNLOADABLE ? "NANO_DOWNLOADABLE" :
                                 nanoStatus == FeatureStatus.DOWNLOADING ? "NANO_DOWNLOADING" :
-                                "NO_MODEL";
-                        send(response, report, selected, "");
+                                nanoStatus == NabdhAiNanoProvider.STATUS_CHECK_FAILED ?
+                                        "AICORE_CHECK_FAILED" : "NANO_UNAVAILABLE";
+                        sendNano(response, report, selected, "", nanoStatus);
                         return;
                     }
                     if (request.what == DOWNLOAD_NANO) {
-                        if (nanoStatus == FeatureStatus.UNAVAILABLE) {
-                            send(response, "", "none", "NANO_UNAVAILABLE");
+                        if (nanoStatus == FeatureStatus.UNAVAILABLE ||
+                                nanoStatus == NabdhAiNanoProvider.STATUS_CHECK_FAILED) {
+                            sendNano(response, "", "none",
+                                    nanoStatus == FeatureStatus.UNAVAILABLE ?
+                                            "NANO_UNAVAILABLE" : "AICORE_CHECK_FAILED",
+                                    nanoStatus);
                             return;
                         }
                         if (nanoStatus == FeatureStatus.DOWNLOADING) {
-                            send(response, "NANO_DOWNLOADING", "Gemini Nano", "");
+                            sendNano(response, "NANO_DOWNLOADING", "Gemini Nano", "",
+                                    nanoStatus);
                             return;
                         }
                         if (nano) {
-                            send(response, "MODEL_READY", "Gemini Nano", "");
+                            sendNano(response, "MODEL_READY", "Gemini Nano", "",
+                                    nanoStatus);
                             return;
                         }
                         try {
                             int updated = NabdhAiNanoProvider.download(progress ->
                                     send(response, progress, "Gemini Nano", ""));
-                            send(response, updated == FeatureStatus.AVAILABLE ? "MODEL_READY" :
+                            sendNano(response, updated == FeatureStatus.AVAILABLE ? "MODEL_READY" :
                                     updated == FeatureStatus.DOWNLOADING ? "NANO_DOWNLOADING" :
-                                    "NANO_DOWNLOAD_PENDING", "Gemini Nano", "");
+                                    updated == FeatureStatus.UNAVAILABLE ? "NANO_UNAVAILABLE" :
+                                    "NANO_DOWNLOAD_PENDING", "Gemini Nano", "", updated);
                         } catch (Exception | LinkageError downloadError) {
-                            send(response, "", "Gemini Nano", "NANO_DOWNLOAD_FAILED");
+                            sendNano(response, "", "Gemini Nano", "NANO_DOWNLOAD_FAILED",
+                                    NabdhAiNanoProvider.STATUS_CHECK_FAILED);
                         }
                         return;
                     }
                     if (!nano && !gemma) {
-                        send(response, "", "none", "NO_MODEL");
+                        sendNano(response, "", "none",
+                                nanoStatus == NabdhAiNanoProvider.STATUS_CHECK_FAILED ?
+                                        "AICORE_CHECK_FAILED" :
+                                nanoStatus == FeatureStatus.DOWNLOADABLE ?
+                                        "NANO_DOWNLOADABLE" :
+                                nanoStatus == FeatureStatus.DOWNLOADING ?
+                                        "NANO_DOWNLOADING" : "NANO_UNAVAILABLE",
+                                nanoStatus);
                         return;
                     }
                     // No two model clients coexist: Nano closes before Gemma fallback.
@@ -119,11 +136,19 @@ public final class NabdhAiCoreService extends Service {
         }
     });
     private static void send(Messenger recipient, String value, String engine, String error) {
+        sendNano(recipient, value, engine, error, Integer.MIN_VALUE);
+    }
+    private static void sendNano(Messenger recipient, String value, String engine, String error,
+            int nanoStatus) {
         Message reply = Message.obtain(null, RESPONSE);
         Bundle data = new Bundle();
         data.putString(TEXT, value);
         data.putString(PROVIDER, engine);
         data.putString(ERROR, error);
+        // Generic inference replies should not erase a confirmed availability.
+        if (nanoStatus != Integer.MIN_VALUE) {
+            data.putBoolean(NANO_CAN_DOWNLOAD, nanoStatus == FeatureStatus.DOWNLOADABLE);
+        }
         reply.setData(data);
         try { recipient.send(reply); } catch (android.os.RemoteException ignored) { }
     }

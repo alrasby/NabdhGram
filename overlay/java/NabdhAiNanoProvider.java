@@ -14,6 +14,9 @@ import java.util.concurrent.TimeUnit;
 
 /** Gemini Nano through supported Android AICore; no model bundled with Telegram. */
 public final class NabdhAiNanoProvider {
+    // Separate an AICore connection/setup failure from a genuine unsupported
+    // feature. The Activity must never claim "unsupported" for either case.
+    public static final int STATUS_CHECK_FAILED = -100;
     private NabdhAiNanoProvider() {}
 
     private static void close(GenerativeModel model) {
@@ -29,9 +32,10 @@ public final class NabdhAiNanoProvider {
             model = Generation.INSTANCE.getClient();
             return GenerativeModelFutures.from(model)
                     .checkStatus().get(8, TimeUnit.SECONDS);
-        } catch (Exception | LinkageError unavailable) {
-            // AICore may be missing, out of date, or uninitialized.
-            return FeatureStatus.UNAVAILABLE;
+        } catch (Exception | LinkageError failure) {
+            // AICore might be updating, absent or unable to bind. Distinguish
+            // this from an actual Google UNAVAILABLE feature status.
+            return STATUS_CHECK_FAILED;
         } finally {
             close(model);
         }

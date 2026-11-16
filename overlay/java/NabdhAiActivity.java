@@ -36,6 +36,7 @@ public final class NabdhAiActivity extends Activity {
     private EditText textInput;
     private EditText checksum;
     private TextView state;
+    private Button downloadNano;
     private String approvedHash = "";
     private String local(String en, String ar) {
         return org.telegram.messenger.LocaleController.isRTL ? ar : en;
@@ -49,6 +50,14 @@ public final class NabdhAiActivity extends Activity {
             String result = payload.getString(NabdhAiCoreService.TEXT, "");
             state.setText(!error.isEmpty() ? displayStatus(error, provider) :
                     displayStatus(result, provider));
+            // Only AICore DOWNLOADABLE authorizes an actionable download.
+            // A generic "Download" button on unsupported hardware is misleading.
+            if (downloadNano != null) {
+                boolean downloadable = bound && payload.getBoolean(
+                        NabdhAiCoreService.NANO_CAN_DOWNLOAD, false);
+                downloadNano.setEnabled(downloadable);
+                downloadNano.setAlpha(downloadable ? 1f : 0.5f);
+            }
         }
     });
     private final ServiceConnection connection = new ServiceConnection() {
@@ -60,6 +69,7 @@ public final class NabdhAiActivity extends Activity {
         @Override public void onServiceDisconnected(ComponentName name) {
             remote = null;
             bound = false;
+            if (downloadNano != null) downloadNano.setEnabled(false);
             if (state != null) state.setText(local("Local AI process exited; Telegram is unaffected",
                     "توقفت عملية الذكاء المحلي، وTelegram يعمل بصورة طبيعية"));
         }
@@ -95,10 +105,23 @@ public final class NabdhAiActivity extends Activity {
                         "يشير AICore إلى أن Gemini Nano قيد التنزيل. "
                         + "تحقق من الحالة بعد اكتمال التنزيل.");
             case "NANO_UNAVAILABLE":
-                return local("Gemini Nano is not available on this device or its AICore setup. "
-                        + "No download was started. Use a compatible verified Gemma model instead.",
-                        "Gemini Nano غير متاح على هذا الجهاز أو إعداد AICore الحالي. "
-                        + "لم يبدأ أي تنزيل. يمكنك استخدام نموذج Gemma موثق ومتوافق.");
+                return local("Google AICore reports Gemini Nano UNAVAILABLE. The device may be "
+                        + "unsupported or its feature configuration may not be ready. "
+                        + "No model download has started. Check supported devices, update "
+                        + "AICore if available, or import a verified compatible Gemma model.",
+                        "Google AICore يُبلغ أن Gemini Nano غير متاح على هذا الجهاز حاليًا. "
+                        + "قد يكون الجهاز غير مدعوم أو لم يكتمل إعداد AICore. "
+                        + "لم يبدأ تنزيل نموذج. راجع الأجهزة المدعومة وتحديثات AICore، "
+                        + "أو استورد نموذج Gemma متوافقًا وموثّقًا.");
+            case "AICORE_CHECK_FAILED":
+                return local("Could not check Google AICore (service unavailable or not initialized). "
+                        + "Update AICore and Google Play system components if available, "
+                        + "connect to the internet and try Check Engine again. "
+                        + "This does not prove the device is unsupported.",
+                        "تعذّر الاتصال بخدمة Google AICore أو فحصها. "
+                        + "تحقق من تحديث AICore ومكوّنات Google Play إن توفرت، "
+                        + "واتصل بالإنترنت وأعد فحص المحرك. "
+                        + "هذا لا يثبت أن جهازك غير مدعوم.");
             case "NANO_DOWNLOAD_STARTING":
             case "NANO_DOWNLOAD_STARTED":
                 return local("AICore started the requested Gemini Nano download.",
@@ -192,8 +215,8 @@ public final class NabdhAiActivity extends Activity {
             state.setText(local("Checking models...", "جارٍ فحص النماذج..."));
             request(NabdhAiCoreService.STATUS, "");
         }));
-        screen.addView(action(local("Download Gemini Nano (supported devices)",
-                "تنزيل Gemini Nano (للأجهزة المدعومة)"), () ->
+        downloadNano = action(local("Download Gemini Nano (only when available)",
+                "تنزيل Gemini Nano عند توفره على الجهاز"), () ->
             new AlertDialog.Builder(this)
                 .setTitle(local("Request official Gemini Nano download?",
                         "هل تريد تنزيل Gemini Nano الرسمي؟"))
@@ -207,7 +230,20 @@ public final class NabdhAiActivity extends Activity {
                     state.setText(local("Checking Google AICore support...",
                             "جارٍ فحص دعم Google AICore..."));
                     request(NabdhAiCoreService.DOWNLOAD_NANO, "");
-                }).show()));
+                }).show());
+        // Disabled until the isolated service confirms DOWNLOADABLE.
+        downloadNano.setEnabled(false);
+        downloadNano.setAlpha(0.5f);
+        screen.addView(downloadNano);
+        screen.addView(action(local("Official Gemini Nano device support",
+                "الأجهزة المدعومة رسميًا من Google"), () -> {
+            Intent guide = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://developers.google.com/ml-kit/genai/#device-support"));
+            try { startActivity(guide); } catch (RuntimeException unsupported) {
+                state.setText(local("No browser available to open the device support page.",
+                        "لا يوجد متصفح متاح لعرض الأجهزة المدعومة."));
+            }
+        }));
         TextView gemma = new TextView(this);
         gemma.setText(local("Gemma: import a licensed MediaPipe-compatible .task model from a trusted source. "
                 + "Enter its official SHA-256 below. Models are not included in the APK. "
@@ -219,6 +255,15 @@ public final class NabdhAiActivity extends Activity {
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
         gemma.setTextSize(13);
         screen.addView(gemma);
+        screen.addView(action(local("How to obtain a compatible Gemma model",
+                "دليل الحصول على نموذج Gemma متوافق"), () -> {
+            Intent guide = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://developers.google.com/edge/mediapipe/solutions/genai/llm_inference/android"));
+            try { startActivity(guide); } catch (RuntimeException unsupported) {
+                state.setText(local("No browser available to open the model guide.",
+                        "لا يوجد متصفح متاح لعرض دليل النموذج."));
+            }
+        }));
         checksum = new EditText(this);
         org.telegram.ui.Components.NabdhToolUi.styleInput(this, checksum);
         checksum.setSingleLine(true);
@@ -261,7 +306,18 @@ public final class NabdhAiActivity extends Activity {
         state.setPadding(8, 20, 8, 20);
         state.setText(local("Checking supported local models...",
                 "جارٍ فحص النماذج المحلية المدعومة..."));
-        screen.addView(state);
+        // Make the actual model state visible immediately, without scrolling
+        // past all tools, upload controls and the optional Gemma instructions.
+        screen.addView(state, 1);
+        TextView deviceInfo = new TextView(this);
+        deviceInfo.setText(local("Device: ", "الجهاز: ")
+                + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL
+                + " · Android " + android.os.Build.VERSION.RELEASE);
+        deviceInfo.setTextSize(12);
+        deviceInfo.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
+        deviceInfo.setPadding(8, 0, 8, 12);
+        screen.addView(deviceInfo, 2);
         org.telegram.ui.Components.NabdhToolUi.install(this, scroll,
                 local("NabdhAI Core", "محرك نبض للذكاء الاصطناعي"));
     }
@@ -306,6 +362,7 @@ public final class NabdhAiActivity extends Activity {
         }
         bound = false;
         remote = null;
+        if (downloadNano != null) downloadNano.setEnabled(false);
         super.onStop();
     }
     @Override protected void onDestroy() {

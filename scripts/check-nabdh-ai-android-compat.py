@@ -43,17 +43,31 @@ if not all(token in nano for token in (
     raise SystemExit("FAIL: Gemini Nano status and explicit official AICore download missing")
 if not all(token in service for token in (
         "DOWNLOAD_NANO = 4", "NabdhAiNanoProvider.download(",
-        "NANO_DOWNLOADABLE", "NANO_DOWNLOADING", '"NO_MODEL"')):
+        "NANO_DOWNLOADABLE", "NANO_DOWNLOADING", '"NANO_UNAVAILABLE"',
+        '"AICORE_CHECK_FAILED"', "NANO_CAN_DOWNLOAD", "sendNano(")):
     raise SystemExit("FAIL: AI isolated service cannot report/download a supported model")
 if not all(token in activity for token in (
-        "NabdhAiCoreService.DOWNLOAD_NANO", '"تنزيل Gemini Nano (للأجهزة المدعومة)"',
+        "NabdhAiCoreService.DOWNLOAD_NANO", "downloadNano.setEnabled(downloadable)",
         '"NANO_UNAVAILABLE"', '"NANO_DOWNLOAD_FAILED"',
+        '"AICORE_CHECK_FAILED"', "screen.addView(state, 1)",
         'لا يوجد نموذج ذكاء محلي متوافق مثبت')):
     raise SystemExit("FAIL: user-approved AICore download or localized no-model state missing")
 if "kotlinx-coroutines-android:1.11.0" not in gradle:
     raise SystemExit("FAIL: ML Kit beta4 download must pin compatible coroutines (Google known issue)")
 if "Download Gemini Nano" not in activity or ".setPositiveButton(local(" not in activity:
     raise SystemExit("FAIL: model download must require explicit user confirmation")
+# No placebo model download: the button is disabled until a real AICore
+# DOWNLOADABLE check, and a failed check must not be called "unsupported".
+if "STATUS_CHECK_FAILED = -100" not in nano or "return STATUS_CHECK_FAILED;" not in nano:
+    raise SystemExit("FAIL: AICore service failures must differ from unsupported hardware")
+if "data.putBoolean(NANO_CAN_DOWNLOAD, nanoStatus == FeatureStatus.DOWNLOADABLE)" not in service:
+    raise SystemExit("FAIL: native model download must only be enabled for DOWNLOADABLE")
+if "downloadNano.setEnabled(false);" not in activity or "downloadNano.setAlpha(0.5f);" not in activity:
+    raise SystemExit("FAIL: Gemini download button should be disabled before status check")
+if "Uri.parse(\"https://developers.google.com/ml-kit/genai/#device-support\")" not in activity:
+    raise SystemExit("FAIL: official compatibility guidance missing")
+if "Uri.parse(\"https://developers.google.com/edge/mediapipe/solutions/genai/llm_inference/android\")" not in activity:
+    raise SystemExit("FAIL: verified MediaPipe Gemma import guidance missing")
 if ".setTopK(" in gemma:
     raise SystemExit("FAIL: unsupported MediaPipe topK setter restored")
 if "محرك نبض للذكاء الاصطناعي" not in activity or (
