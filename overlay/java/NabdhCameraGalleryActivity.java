@@ -3,121 +3,100 @@ package org.telegram.ui;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
-import android.content.ContentUris;
-import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.util.LruCache;
-import android.util.Size;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import androidx.core.content.FileProvider;
+import android.widget.Button;
 import org.telegram.ui.Components.NabdhToolUi;
 import java.io.File;
-import java.io.InputStream;
+import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-/** Gallery limited to photos explicitly captured by Nabdh Camera2.
- * Never scans unrelated albums; no READ_MEDIA_IMAGES permission is needed.
- */
+/** Nabdh Camera's app-private photo gallery. No public gallery permission. */
 public final class NabdhCameraGalleryActivity extends Activity {
-    private static final int MAX_ITEMS = 400;
-    private static final String PREFIX = "NabdhCamera_";
-    private final ArrayList<Uri> photos = new ArrayList<>();
-    private final LruCache<String, Bitmap> thumbnails = new LruCache<String, Bitmap>(8 * 1024 * 1024) {
-        @Override protected int sizeOf(String key, Bitmap bitmap) { return bitmap.getByteCount(); }
+    private final ArrayList<File> photos = new ArrayList<>();
+    private final LruCache<String, Bitmap> cache = new LruCache<String, Bitmap>(8 * 1024 * 1024) {
+        @Override protected int sizeOf(String k, Bitmap b) { return b.getByteCount(); }
     };
-    private final ThreadPoolExecutor thumbnailsWorker = new ThreadPoolExecutor(
-            2, 2, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(70));
+    private final ThreadPoolExecutor io = new ThreadPoolExecutor(
+            2, 2, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
     private GridView grid;
     private TextView count;
-    private boolean destroyed;
-    private int scanGeneration;
-    private int previewGeneration;
+    private volatile boolean destroyed;
+    private int scanGeneration, previewGeneration;
     private final BaseAdapter adapter = new BaseAdapter() {
         @Override public int getCount() { return photos.size(); }
         @Override public Object getItem(int pos) { return photos.get(pos); }
         @Override public long getItemId(int pos) { return pos; }
         @Override public View getView(int pos, View old, android.view.ViewGroup parent) {
-            ImageView image = old instanceof ImageView ? (ImageView) old :
+            ImageView view = old instanceof ImageView ? (ImageView) old :
                     new ImageView(NabdhCameraGalleryActivity.this);
-            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            image.setBackgroundColor(0x18000000);
-            image.setLayoutParams(new android.widget.AbsListView.LayoutParams(-1, dp(116)));
-            Uri uri = photos.get(pos);
-            String key = uri.toString();
-            image.setTag(key);
-            Bitmap cached = thumbnails.get(key);
-            image.setImageBitmap(cached);
-            if (cached == null) {
+            view.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            view.setLayoutParams(new android.widget.AbsListView.LayoutParams(-1, dp(116)));
+            File file = photos.get(pos);
+            String key = file.getName() + ":" + file.lastModified();
+            view.setTag(key);
+            Bitmap bitmap;
+            synchronized (cache) { bitmap = cache.get(key); }
+            view.setImageBitmap(bitmap);
+            if (bitmap == null) {
                 try {
-                    thumbnailsWorker.execute(() -> {
-                        Bitmap bitmap = decode(uri, 260);
-                        if (bitmap == null) return;
-                        synchronized (thumbnails) { thumbnails.put(key, bitmap); }
+                    io.execute(() -> {
+                        Bitmap loaded = decode(file, 260);
+                        if (loaded == null || destroyed) return;
+                        synchronized (cache) { cache.put(key, loaded); }
                         runOnUiThread(() -> {
-                            if (!destroyed && key.equals(image.getTag())) {
-                                image.setImageBitmap(bitmap);
-                            }
+                            if (!destroyed && key.equals(view.getTag())) view.setImageBitmap(loaded);
                         });
                     });
-                } catch (RejectedExecutionException busy) {
-                    // On fast scrolling let RecyclerView/GridView rebind later.
-                }
+                } catch (RejectedExecutionException ignored) { }
             }
-            return image;
+            return view;
         }
     };
-
-    private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+    private int dp(int d) { return Math.round(d * getResources().getDisplayMetrics().density); }
     private String local(String en, String ar) {
         return org.telegram.messenger.LocaleController.isRTL ? ar : en;
     }
-    private Button button(String en, String ar, Runnable action) {
+    private Button action(String en, String ar, Runnable click) {
         Button b = new Button(this);
         b.setAllCaps(false);
         b.setText(local(en, ar));
         NabdhToolUi.styleButton(this, b);
-        b.setOnClickListener(v -> action.run());
+        b.setOnClickListener(v -> click.run());
         return b;
     }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(dp(10), dp(6), dp(10), dp(6));
         page.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundGray));
-        page.setPadding(dp(10), dp(6), dp(10), dp(6));
         count = new TextView(this);
         count.setTextSize(14);
         count.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
-        count.setText(local("Loading Nabdh photos…", "جارٍ تحميل صور كاميرا نبض…"));
         count.setGravity(Gravity.CENTER);
+        count.setText(local("Loading private photos", "جارٍ تحميل الصور الخاصة"));
         page.addView(count, new LinearLayout.LayoutParams(-1, dp(44)));
-        page.addView(button("Refresh gallery", "تحديث المعرض", this::refresh),
-                new LinearLayout.LayoutParams(-1, dp(48)));
+        page.addView(action("Refresh", "تحديث", this::refresh));
         grid = new GridView(this);
         grid.setNumColumns(3);
         grid.setHorizontalSpacing(dp(5));
@@ -125,88 +104,48 @@ public final class NabdhCameraGalleryActivity extends Activity {
         grid.setAdapter(adapter);
         grid.setOnItemClickListener((parent, view, pos, id) -> showPhoto(pos));
         page.addView(grid, new LinearLayout.LayoutParams(-1, 0, 1));
-        NabdhToolUi.install(this, page, local("Nabdh Camera Gallery", "معرض صور كاميرا نبض"));
+        NabdhToolUi.install(this, page, local("Private Nabdh Camera Gallery",
+                "معرض كاميرا نبض الخاص"));
     }
-    @Override protected void onResume() { super.onResume(); refresh(); }
+    @Override protected void onResume() {
+        super.onResume();
+        refresh();
+    }
     private void refresh() {
-        final int generation = ++scanGeneration;
-        count.setText(local("Loading Nabdh photos…", "جارٍ تحميل صور كاميرا نبض…"));
+        final int version = ++scanGeneration;
         try {
-            thumbnailsWorker.execute(() -> {
-                ArrayList<Uri> found = findOwnPhotos();
+            io.execute(() -> {
+                File[] files;
+                try { files = NabdhCameraFiles.recent(this); }
+                catch (Exception e) { files = new File[0]; }
+                final File[] result = files;
                 runOnUiThread(() -> {
-                    if (destroyed || generation != scanGeneration) return;
+                    if (destroyed || version != scanGeneration) return;
                     photos.clear();
-                    photos.addAll(found);
+                    photos.addAll(Arrays.asList(result));
                     adapter.notifyDataSetChanged();
-                    count.setText(local("Nabdh Camera photos: ", "صور كاميرا نبض: ") + photos.size()
-                            + (photos.size() == MAX_ITEMS ? local(" (most recent)", " (الأحدث)") : ""));
+                    count.setText(local("Private Nabdh photos: ", "صور نبض الخاصة: ") + photos.size());
                 });
             });
         } catch (RejectedExecutionException busy) {
-            count.setText(local("Gallery is busy. Try refresh again.", "المعرض مشغول، أعد التحديث."));
+            count.setText(local("Gallery is busy. Try again.", "المعرض مشغول، أعد المحاولة."));
         }
     }
-    private ArrayList<Uri> findOwnPhotos() {
-        ArrayList<Uri> found = new ArrayList<>();
-        if (Build.VERSION.SDK_INT >= 29) {
-            Uri collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-            String[] fields = {MediaStore.Images.Media._ID};
-            String where = MediaStore.Images.Media.RELATIVE_PATH + "=? AND "
-                    + MediaStore.Images.Media.DISPLAY_NAME + " LIKE ? AND "
-                    + MediaStore.Images.Media.IS_PENDING + "=0";
-            String[] args = {Environment.DIRECTORY_PICTURES + "/NabdhGram/",
-                    PREFIX + "%.jpg"};
-            try (Cursor c = getContentResolver().query(collection, fields, where, args,
-                    MediaStore.Images.Media.DATE_ADDED + " DESC")) {
-                if (c != null) {
-                    while (c.moveToNext() && found.size() < MAX_ITEMS) {
-                        found.add(ContentUris.withAppendedId(collection, c.getLong(0)));
-                    }
-                }
-            } catch (RuntimeException inaccessible) {
-                // Never request broad gallery access for a private camera album.
-            }
-        } else {
-            File root = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-            File folder = root == null ? null : new File(root, "NabdhGram");
-            File[] files = folder == null ? null : folder.listFiles();
-            if (files != null) {
-                Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
-                for (File file : files) {
-                    if (found.size() >= MAX_ITEMS) break;
-                    if (file.isFile() && file.getName().startsWith(PREFIX)
-                            && file.getName().endsWith(".jpg")) {
-                        try {
-                            found.add(FileProvider.getUriForFile(this,
-                                    getPackageName() + ".provider", file));
-                        } catch (IllegalArgumentException invalid) { /* skip invalid */ }
-                    }
-                }
-            }
-        }
-        return found;
-    }
-    private Bitmap decode(Uri uri, int target) {
+    private Bitmap decode(File file, int target) {
         try {
-            if (Build.VERSION.SDK_INT >= 29 && target <= 300) {
-                return getContentResolver().loadThumbnail(uri, new Size(target, target), null);
-            }
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
-            try (InputStream in = getContentResolver().openInputStream(uri)) {
-                if (in == null) return null;
+            try (FileInputStream in = new FileInputStream(file)) {
                 BitmapFactory.decodeStream(in, null, bounds);
             }
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inPreferredConfig = Bitmap.Config.RGB_565;
             options.inSampleSize = 1;
-            while (Math.max(bounds.outWidth, bounds.outHeight) / options.inSampleSize > target * 2) {
-                options.inSampleSize *= 2;
-            }
-            try (InputStream in = getContentResolver().openInputStream(uri)) {
-                return in == null ? null : BitmapFactory.decodeStream(in, null, options);
+            while (Math.max(bounds.outWidth, bounds.outHeight) /
+                    options.inSampleSize > target * 2) options.inSampleSize *= 2;
+            try (FileInputStream in = new FileInputStream(file)) {
+                return BitmapFactory.decodeStream(in, null, options);
             }
         } catch (Exception | OutOfMemoryError ignored) {
             return null;
@@ -214,69 +153,98 @@ public final class NabdhCameraGalleryActivity extends Activity {
     }
     private void showPhoto(int position) {
         if (position < 0 || position >= photos.size()) return;
-        final int[] index = {position};
-        final ImageView image = new ImageView(this);
+        final int[] current = {position};
+        ImageView image = new ImageView(this);
         image.setScaleType(ImageView.ScaleType.FIT_CENTER);
         image.setBackgroundColor(Color.BLACK);
-        LinearLayout panel = new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(8), dp(8), dp(8), dp(8));
-        panel.addView(image, new LinearLayout.LayoutParams(-1,
-                (int) (getResources().getDisplayMetrics().heightPixels * .60f)));
-        LinearLayout nav = new LinearLayout(this);
-        nav.setOrientation(LinearLayout.HORIZONTAL);
-        Button prev = button("Previous", "السابقة", () -> {
-            index[0] = (index[0] - 1 + photos.size()) % photos.size();
-            loadPreview(photos.get(index[0]), image);
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.addView(image, new LinearLayout.LayoutParams(-1,
+                (int) (getResources().getDisplayMetrics().heightPixels * .58f)));
+        LinearLayout navigation = new LinearLayout(this);
+        Button prev = action("Previous", "السابقة", () -> {
+            current[0] = (current[0] - 1 + photos.size()) % photos.size();
+            loadPreview(photos.get(current[0]), image);
         });
-        Button next = button("Next", "التالية", () -> {
-            index[0] = (index[0] + 1) % photos.size();
-            loadPreview(photos.get(index[0]), image);
+        Button next = action("Next", "التالية", () -> {
+            current[0] = (current[0] + 1) % photos.size();
+            loadPreview(photos.get(current[0]), image);
         });
-        nav.addView(prev, new LinearLayout.LayoutParams(0, dp(48), 1));
-        nav.addView(next, new LinearLayout.LayoutParams(0, dp(48), 1));
-        panel.addView(nav);
-        panel.addView(button("Share original photo in NabdhGram", "مشاركة الصورة الأصلية في نبض جرام",
-                () -> share(photos.get(index[0]))));
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setView(panel).setNegativeButton(local("Close", "إغلاق"), null).create();
-        dialog.setOnDismissListener(x -> previewGeneration++);
+        navigation.addView(prev, new LinearLayout.LayoutParams(0, dp(46), 1));
+        navigation.addView(next, new LinearLayout.LayoutParams(0, dp(46), 1));
+        page.addView(navigation);
+        page.addView(action("Crop / rotate (save separate copy)",
+                "اقتصاص / تدوير (حفظ نسخة منفصلة)", () -> {
+            Intent editor = new Intent(this, NabdhPhotoEditorActivity.class);
+            editor.putExtra(NabdhPhotoEditorActivity.EXTRA_NAME,
+                    photos.get(current[0]).getName());
+            startActivity(editor);
+        }));
+        page.addView(action("AI portrait editor — on-device person detection",
+                "محرر صور AI — عزل الشخص محليًا", () -> {
+            Intent ai = new Intent(this, NabdhAiPhotoEditorActivity.class);
+            ai.putExtra(NabdhAiPhotoEditorActivity.EXTRA_NAME,
+                    photos.get(current[0]).getName());
+            startActivity(ai);
+        }));
+        page.addView(action("Share without location metadata",
+                "مشاركة دون بيانات الموقع", () -> share(photos.get(current[0]))));
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(page)
+                .setNegativeButton(local("Close", "إغلاق"), null).create();
+        dialog.setOnDismissListener(x -> ++previewGeneration);
         dialog.show();
         loadPreview(photos.get(position), image);
     }
-    private void loadPreview(Uri uri, ImageView display) {
-        int generation = ++previewGeneration;
-        display.setImageDrawable(null);
+    private void loadPreview(File file, ImageView image) {
+        final int version = ++previewGeneration;
+        image.setImageDrawable(null);
         try {
-            thumbnailsWorker.execute(() -> {
-                Bitmap bitmap = decode(uri, 1800);
+            io.execute(() -> {
+                Bitmap b = decode(file, 1700);
                 runOnUiThread(() -> {
-                    if (!destroyed && generation == previewGeneration && bitmap != null) {
-                        display.setImageBitmap(bitmap);
-                    }
+                    if (!destroyed && version == previewGeneration) image.setImageBitmap(b);
                 });
             });
-        } catch (RejectedExecutionException busy) { /* retry via navigation */ }
+        } catch (RejectedExecutionException busy) { }
     }
-    private void share(Uri uri) {
+    private void share(File file) {
+        count.setText(local("Removing location metadata…", "جارٍ حذف بيانات الموقع من نسخة المشاركة…"));
         try {
-            Intent send = new Intent(this, LaunchActivity.class);
-            send.setAction(Intent.ACTION_SEND);
-            send.setType("image/jpeg");
-            send.putExtra(Intent.EXTRA_STREAM, uri);
-            send.setClipData(ClipData.newUri(getContentResolver(), "NabdhGram photo", uri));
-            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(send);
-        } catch (RuntimeException inaccessible) {
-            count.setText(local("Could not share this image", "تعذرت مشاركة الصورة"));
+            io.execute(() -> {
+                try {
+                    Uri safe = NabdhCameraFiles.sanitizedShare(this, file);
+                    runOnUiThread(() -> {
+                        if (destroyed) return;
+                        try {
+                            Intent send = new Intent(this, LaunchActivity.class);
+                            send.setAction(Intent.ACTION_SEND);
+                            send.setType("image/jpeg");
+                            send.putExtra(Intent.EXTRA_STREAM, safe);
+                            send.setClipData(ClipData.newUri(getContentResolver(), "Nabdh photo", safe));
+                            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            startActivity(send);
+                        } catch (RuntimeException fail) {
+                            count.setText(local("Sharing failed", "تعذرت المشاركة"));
+                        }
+                    });
+                } catch (Exception failure) {
+                    runOnUiThread(() -> {
+                        if (!destroyed) count.setText(local(
+                                "Could not scrub metadata; original NOT shared",
+                                "تعذر تنظيف البيانات؛ لم تُشارك الصورة الأصلية"));
+                    });
+                }
+            });
+        } catch (RejectedExecutionException busy) {
+            count.setText(local("Image processor busy", "معالج الصور مشغول"));
         }
     }
     @Override protected void onDestroy() {
         destroyed = true;
-        ++scanGeneration;
         ++previewGeneration;
-        thumbnailsWorker.shutdownNow();
-        thumbnails.evictAll();
+        ++scanGeneration;
+        io.shutdownNow();
+        synchronized (cache) { cache.evictAll(); }
         super.onDestroy();
     }
 }

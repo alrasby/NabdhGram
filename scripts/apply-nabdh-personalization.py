@@ -20,6 +20,9 @@ for file, destination in [
     ("NabdhPersonalizeActivity.java", "NabdhPersonalizeActivity.java"),
     ("NabdhVideoActivity.java", "NabdhVideoActivity.java"),
     ("NabdhCameraGalleryActivity.java", "NabdhCameraGalleryActivity.java"),
+    ("NabdhCameraFiles.java", "NabdhCameraFiles.java"),
+    ("NabdhPhotoEditorActivity.java", "NabdhPhotoEditorActivity.java"),
+    ("NabdhAiPhotoEditorActivity.java", "NabdhAiPhotoEditorActivity.java"),
 ]:
     dest = ui / destination
     if dest.exists():
@@ -30,7 +33,13 @@ manifest = root / "TMessagesProj/src/main/AndroidManifest.xml"
 m = manifest.read_text(encoding="utf-8")
 # PiP is strictly opt-in and limited to a visible recording window.
 marker = '        <activity android:name="org.telegram.ui.NabdhAppearancePickerActivity"'
-m = once(m, marker, '''        <activity android:name="org.telegram.ui.NabdhCameraGalleryActivity"
+m = once(m, marker, '''        <activity android:name="org.telegram.ui.NabdhPhotoEditorActivity"
+                  android:exported="false"
+                  android:theme="@android:style/Theme.Material.NoActionBar" />
+        <activity android:name="org.telegram.ui.NabdhAiPhotoEditorActivity"
+                  android:exported="false"
+                  android:theme="@android:style/Theme.Material.NoActionBar" />
+        <activity android:name="org.telegram.ui.NabdhCameraGalleryActivity"
                   android:exported="false"
                   android:theme="@android:style/Theme.Material.NoActionBar" />
         <activity android:name="org.telegram.ui.NabdhVideoActivity"
@@ -43,6 +52,27 @@ m = once(m, marker, '''        <activity android:name="org.telegram.ui.NabdhCame
                   android:theme="@android:style/Theme.Material.NoActionBar" />
 ''' + marker, "private settings Activity")
 manifest.write_text(m, encoding="utf-8")
+
+# A strictly scoped FileProvider mount: private files and temporary
+# sanitized share copies only. No access to public MediaStore is introduced.
+paths = root / "TMessagesProj/src/main/res/xml/provider_paths.xml"
+xml = paths.read_text(encoding="utf-8")
+if "nabdh_private_camera" in xml or "nabdh_camera/" in xml:
+    raise SystemExit("Private Camera provider path collision")
+xml = once(xml, "</paths>",
+    '    <files-path name="nabdh_private_camera" path="nabdh_camera/" />\n'
+    '    <cache-path name="nabdh_private_share" path="nabdh_private_share/" />\n'
+    "</paths>", "FileProvider narrowly scoped directories")
+paths.write_text(xml, encoding="utf-8")
+
+# Bundled Android API 23+ model used for genuinely on-device selfie
+# segmentation in the opt-in portrait editor, no Gemini Nano dependency.
+build = root / "TMessagesProj/build.gradle"
+gradle = build.read_text(encoding="utf-8")
+gradle = once(gradle, "dependencies {",
+    "dependencies {\n    implementation 'com.google.mlkit:segmentation-selfie:16.0.0-beta6'",
+    "bundled local portrait ML Kit model")
+build.write_text(gradle, encoding="utf-8")
 
 page = ui / "NabdhGramFeatureCategoryActivity.java"
 p = page.read_text(encoding="utf-8")

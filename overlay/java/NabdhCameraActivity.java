@@ -30,6 +30,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Size;
 import android.view.Gravity;
@@ -52,6 +53,10 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Independent Camera2 still-image tool. All camera resources are closed on
@@ -86,7 +91,16 @@ public final class NabdhCameraActivity extends Activity {
     private volatile boolean active;
     private volatile boolean takingPhoto;
     private volatile Uri lastPhotoUri;
+    private volatile File lastPhotoFile;
     private Button sharePhoto;
+    private Button shutterButton;
+    private Button timerButton;
+    private int timerSeconds;
+    private int countdown;
+    private final Handler timerHandler = new Handler(Looper.getMainLooper());
+    private Runnable timerCallback;
+    private final ThreadPoolExecutor photoShareWorker = new ThreadPoolExecutor(
+            1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(2));
 
     private int dp(float value) {
         return (int) (getResources().getDisplayMetrics().density * value + .5f);
@@ -132,6 +146,7 @@ public final class NabdhCameraActivity extends Activity {
         commands.setGravity(Gravity.CENTER);
         commands.setPadding(dp(6), dp(4), dp(6), dp(4));
         Button switchCamera = control("↻", () -> {
+            cancelCountdown();
             facing = facing == CameraCharacteristics.LENS_FACING_BACK
                      ? CameraCharacteristics.LENS_FACING_FRONT
                      : CameraCharacteristics.LENS_FACING_BACK;
@@ -210,8 +225,18 @@ public final class NabdhCameraActivity extends Activity {
                                 android.graphics.Color.green(accent),
                                 android.graphics.Color.blue(accent))),
                 ring, mask));
-        shutter.setOnClickListener(v -> takePhoto());
+        shutterButton = shutter;
+        shutter.setOnClickListener(v -> startTimedPhoto());
+        timerButton = control(local("Timer off", "المؤقت مغلق"), () -> {
+            cancelCountdown();
+            timerSeconds = timerSeconds == 0 ? 3 : timerSeconds == 3 ? 10 : 0;
+            updateTimerLabel();
+        });
+        timerButton.setContentDescription(local("Camera shutter timer: off, 3 or 10 seconds",
+                "مؤقت كاميرا نبض: إيقاف أو 3 أو 10 ثوانٍ"));
+        captureBar.addView(timerButton, new LinearLayout.LayoutParams(dp(96), dp(52)));
         captureBar.addView(shutter, new LinearLayout.LayoutParams(dp(72), dp(72)));
+        captureBar.addView(new View(this), new LinearLayout.LayoutParams(dp(96), dp(52)));
         page.addView(captureBar, new LinearLayout.LayoutParams(-1, dp(80)));
         LinearLayout photoTools = new LinearLayout(this);
         photoTools.setGravity(Gravity.CENTER_VERTICAL);
@@ -262,6 +287,7 @@ public final class NabdhCameraActivity extends Activity {
 
     @Override protected void onPause() {
         active = false;
+        cancelCountdown();
         closeCamera();
         if (worker != null) {
             worker.quitSafely();
@@ -458,6 +484,53 @@ public final class NabdhCameraActivity extends Activity {
         }
     }
 
+    private void updateTimerLabel() {
+        if (timerButton == null) return;
+        timerButton.setText(timerSeconds == 0 ? local("Timer off", "المؤقت مغلق")
+                : (timerSeconds + local(" sec", " ثوانٍ")));
+    }
+    private void cancelCountdown() {
+        if (timerCallback != null) timerHandler.removeCallbacks(timerCallback);
+        timerCallback = null;
+        countdown = 0;
+        if (shutterButton != null) shutterButton.setText("●");
+        updateTimerLabel();
+    }
+    private void startTimedPhoto() {
+        if (takingPhoto) return;
+        if (timerCallback != null) {
+            cancelCountdown();
+            return;
+        }
+        if (timerSeconds == 0) {
+            takePhoto();
+            return;
+        }
+        if (device == null || session == null || reader == null) {
+            notifyUser(local("Camera is not ready", "الكاميرا ليست جاهزة بعد"));
+            return;
+        }
+        final long generation = cameraGeneration;
+        countdown = timerSeconds;
+        timerCallback = new Runnable() {
+            @Override public void run() {
+                if (!active || generation != cameraGeneration) {
+                    cancelCountdown();
+                    return;
+                }
+                if (countdown <= 0) {
+                    cancelCountdown();
+                    takePhoto();
+                    return;
+                }
+                if (shutterButton != null) shutterButton.setText(Integer.toString(countdown));
+                countdown--;
+                timerHandler.postDelayed(this, 1000);
+            }
+        };
+        timerCallback.run();
+    }
+
     private void takePhoto() {
         if (takingPhoto) return;
         if (device == null || session == null || reader == null) {
@@ -596,65 +669,56 @@ public final class NabdhCameraActivity extends Activity {
     }
 
     private Uri savePhoto(byte[] bytes) throws Exception {
-        String name = "NabdhCamera_" + System.currentTimeMillis() + ".jpg";
-        if (Build.VERSION.SDK_INT >= 29) {
-            ContentValues values = new ContentValues();
-            values.put(MediaStore.Images.Media.DISPLAY_NAME, name);
-            values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-            values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/NabdhGram");
-            values.put(MediaStore.Images.Media.IS_PENDING, 1);
-            Uri uri = getContentResolver().insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-            if (uri == null) throw new java.io.IOException("MediaStore");
-            boolean good = false;
-            try (OutputStream stream = getContentResolver().openOutputStream(uri)) {
-                if (stream == null) throw new java.io.IOException("Output stream");
-                stream.write(bytes);
-                good = true;
-            } finally {
-                if (!good) getContentResolver().delete(uri, null, null);
-            }
-            ContentValues completed = new ContentValues();
-            completed.put(MediaStore.Images.Media.IS_PENDING, 0);
-            getContentResolver().update(uri, completed, null, null);
-            notifyUser("Saved: " + name);
-            return uri;
-        } else {
-            File folder = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "NabdhGram");
-            if (!folder.exists() && !folder.mkdirs()) throw new java.io.IOException("Directory");
-            File photo = new File(folder, name);
-            try (OutputStream stream = new FileOutputStream(photo)) {
-                stream.write(bytes);
-            }
-            // Telegram's existing manifest declares its own FileProvider.
-            // Never expose file:// paths on Android 24+.
-            Uri shared = FileProvider.getUriForFile(this,
-                    getPackageName() + ".provider", photo);
-            notifyUser("Saved: " + name);
-            return shared;
-        }
+        // No public MediaStore insertion: only NabdhGram's private directory.
+        File original = NabdhCameraFiles.saveCapture(this, bytes);
+        lastPhotoFile = original;
+        notifyUser(local("Photo saved privately in Nabdh Camera",
+                "حُفظت الصورة داخل كاميرا نبض فقط"));
+        return NabdhCameraFiles.uri(this, original);
     }
 
     private void shareLastPhoto() {
-        Uri uri = lastPhotoUri;
-        if (uri == null) {
+        File file = lastPhotoFile;
+        if (file == null) {
             notifyUser(local("Capture a photo first", "التقط صورة أولًا"));
             return;
         }
+        if (sharePhoto != null) sharePhoto.setEnabled(false);
         try {
-            // Same-app ACTION_SEND enters Telegram's native send/media flow.
-            // Do not bypass Telegram's existing recipient and upload logic.
-            Intent intent = new Intent(this, LaunchActivity.class);
-            intent.setAction(Intent.ACTION_SEND);
-            intent.setType("image/jpeg");
-            intent.putExtra(Intent.EXTRA_STREAM, uri);
-            intent.setClipData(ClipData.newUri(getContentResolver(),
-                    "NabdhGram photo", uri));
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(intent);
-        } catch (RuntimeException error) {
-            notifyUser(local("Could not open NabdhGram photo sharing",
-                    "تعذّر فتح مشاركة الصورة في نبض جرام"));
+            photoShareWorker.execute(() -> {
+                try {
+                    // Removes EXIF GPS/XMP in a TEMP COPY, leaving private
+                    // original and its original pixel encoding untouched.
+                    Uri safe = NabdhCameraFiles.sanitizedShare(this, file);
+                    runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed()) return;
+                        try {
+                            Intent send = new Intent(this, LaunchActivity.class);
+                            send.setAction(Intent.ACTION_SEND);
+                            send.setType("image/jpeg");
+                            send.putExtra(Intent.EXTRA_STREAM, safe);
+                            send.setClipData(ClipData.newUri(getContentResolver(),
+                                    "NabdhGram sanitized photo", safe));
+                            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            startActivity(send);
+                        } catch (RuntimeException failed) {
+                            notifyUser(local("Photo sharing is unavailable",
+                                    "تعذرت مشاركة الصورة"));
+                        } finally {
+                            if (sharePhoto != null) sharePhoto.setEnabled(true);
+                        }
+                    });
+                } catch (Exception failClosed) {
+                    runOnUiThread(() -> {
+                        if (sharePhoto != null) sharePhoto.setEnabled(true);
+                        notifyUser(local("Could not remove metadata. Original was NOT shared.",
+                                "تعذرت إزالة البيانات الوصفية؛ لم تُشارك الصورة الأصلية."));
+                    });
+                }
+            });
+        } catch (RejectedExecutionException overloaded) {
+            if (sharePhoto != null) sharePhoto.setEnabled(true);
+            notifyUser(local("Photo processing is busy", "معالجة الصورة مشغولة"));
         }
     }
 
@@ -671,6 +735,12 @@ public final class NabdhCameraActivity extends Activity {
         if (previewSurface != null) { previewSurface.release(); previewSurface = null; }
         repeating = null;
         takingPhoto = false;
+    }
+
+    @Override protected void onDestroy() {
+        cancelCountdown();
+        photoShareWorker.shutdownNow();
+        super.onDestroy();
     }
 
     @Override public void onRequestPermissionsResult(

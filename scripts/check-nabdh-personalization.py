@@ -50,14 +50,31 @@ check("video_fps" in preferences and "setVideoFps" in preferences and
       "NabdhVideoActivity.class" in camera,
       "video controls must be connected to native recorder")
 gallery = (base / "overlay/java/NabdhCameraGalleryActivity.java").read_text(encoding="utf-8")
+private = (base / "overlay/java/NabdhCameraFiles.java").read_text(encoding="utf-8")
+editor = (base / "overlay/java/NabdhPhotoEditorActivity.java").read_text(encoding="utf-8")
+ai_editor = (base / "overlay/java/NabdhAiPhotoEditorActivity.java").read_text(encoding="utf-8")
 check("NabdhCameraGalleryActivity.java" in appearance
+      and "NabdhCameraFiles.java" in appearance
+      and "NabdhPhotoEditorActivity.java" in appearance
+      and "NabdhAiPhotoEditorActivity.java" in appearance
       and "NabdhCameraGalleryActivity.class" in camera
-      and "Nabdh Camera Gallery" in gallery
-      and "MediaStore.Images.Media.RELATIVE_PATH" in gallery
-      and "new ArrayBlockingQueue<>(70)" in gallery
-      and "loadThumbnail(uri" in gallery
-      and 'Intent.FLAG_GRANT_READ_URI_PERMISSION' in gallery,
-      "private, bounded camera album with thumbnails and native share missing")
+      and "NabdhCameraFiles.recent(this)" in gallery
+      and "getFilesDir()" in private
+      and "NabdhCameraFiles.sanitizedShare(this, file)" in gallery
+      and "NabdhCameraFiles.sanitizedShare(this, file)" in camera,
+      "gallery must use only private originals and sanitized shares")
+check("timerSeconds == 0 ? 3 : timerSeconds == 3 ? 10 : 0" in camera
+      and "timerHandler.postDelayed(this, 1000)" in camera,
+      "3/10 second capture timer missing")
+check("BitmapRegionDecoder.newInstance" in editor
+      and "keepOriginal.setChecked(true)" in editor
+      and "AtomicFile(original)" in editor,
+      "non-destructive crop/rotate editor missing")
+check("Segmentation.getClient(opts)" in ai_editor
+      and "SelfieSegmenterOptions.SINGLE_IMAGE_MODE" in ai_editor
+      and "portraitBlur(input, mask)" in ai_editor
+      and "NabdhCameraFiles.newPhoto(this)" in ai_editor,
+      "real bundled on-device ML Kit portrait model missing")
 check("getHighResolutionOutputSizes(ImageFormat.JPEG)" in camera
       and "Collections.max(Arrays.asList(output)" not in camera
       and "resolutionFallback = true;" in camera
@@ -103,7 +120,10 @@ check("NabdhPersonalizeActivity.HOME" in settings and
       "NabdhPersonalizeActivity.BUBBLES" in settings and
       "NabdhPersonalizeActivity.CAMERA" in settings,
       "appearance settings missing actual actions")
-check("NabdhCameraGalleryActivity" in manifest and
+check("NabdhCameraGalleryActivity" in manifest
+      and "NabdhPhotoEditorActivity" in manifest
+      and "NabdhAiPhotoEditorActivity" in manifest
+      and "NabdhCameraFiles" not in manifest and
       "NabdhPersonalizeActivity" in manifest and "NabdhAiChatActivity" in manifest
       and "NabdhVideoActivity" in manifest and 'android:supportsPictureInPicture="true"' in manifest,
       "new activities must remain private")
@@ -115,8 +135,15 @@ check("MediaRecorder" in get("NabdhVideoActivity.java")
       and "NabdhVideoActivity" in manifest,
       "video recorder must be installed as a private Android activity")
 check("mirroredSelfie(bytes)" in nativeCamera and
-      "NabdhCameraGalleryActivity.class" in nativeCamera,
+      "NabdhCameraGalleryActivity.class" in nativeCamera and
+      "NabdhCameraFiles.saveCapture(this, bytes)" in nativeCamera,
       "actual Camera2 mirror flow absent")
 check("NabdhAiChatActivity.class" in settings,
       "AI Chat must appear under intelligence settings")
+check("com.google.mlkit:segmentation-selfie:16.0.0-beta6" in
+      (root / "TMessagesProj/build.gradle").read_text(encoding="utf-8"),
+      "bundled ML Kit portrait model dependency missing")
+check('name="nabdh_private_camera" path="nabdh_camera/"' in
+      (root / "TMessagesProj/src/main/res/xml/provider_paths.xml").read_text(encoding="utf-8"),
+      "private camera FileProvider path missing")
 print("PASS: native layout, bubble, camera and isolated AI Chat routes")

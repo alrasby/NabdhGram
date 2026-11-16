@@ -25,10 +25,48 @@ check('intent.setAction(Intent.ACTION_SEND);' in camera and
       "captured images handed to native Telegram send without bypassing recipient UI")
 check('new Intent(this, LaunchActivity.class)' in camera,
       "share target must be Telegram LaunchActivity, not exported camera")
-check('FileProvider.getUriForFile(this,' in camera and
-      'getPackageName() + ".provider"' in camera and
-      "MediaStore.Images.Media.EXTERNAL_CONTENT_URI" in camera,
-      "camera files use content URIs on both old and new Android")
+check("NabdhCameraFiles.saveCapture(this, bytes)" in camera
+      and "NabdhCameraFiles.uri(this, original)" in camera
+      and "NabdhCameraFiles.sanitizedShare(this, file)" in camera
+      and "MediaStore.Images.Media.EXTERNAL_CONTENT_URI" not in camera,
+      "camera originals must be app-private and only sanitized copies shared")
+private = (ui / "NabdhCameraFiles.java").read_text(encoding="utf-8")
+gallery = (ui / "NabdhCameraGalleryActivity.java").read_text(encoding="utf-8")
+editor = (ui / "NabdhPhotoEditorActivity.java").read_text(encoding="utf-8")
+ai = (ui / "NabdhAiPhotoEditorActivity.java").read_text(encoding="utf-8")
+check("getFilesDir()" in private
+      and "NabdhCamera_" in private
+      and "MediaStore.Images.Media.EXTERNAL_CONTENT_URI" not in private
+      and 'new File(context.getFilesDir(), ALBUM)' in private,
+      "all camera photos must be stored only in app-private internal storage")
+check("removeMetadata(InputStream in, OutputStream out)" in private
+      and "new ExifInterface(checked)" in private
+      and "APP0 JFIF" in private and "fail closed" in private.lower()
+      and "privateShareDir" in private,
+      "share must scrub JPEG metadata into a private temporary copy")
+check("NabdhCameraFiles.recent(this)" in gallery
+      and "NabdhCameraFiles.sanitizedShare(this, file)" in gallery
+      and "MediaStore" not in gallery,
+      "gallery may browse only internal Nabdh camera album")
+check("NabdhPhotoEditorActivity.class" in gallery
+      and "NabdhAiPhotoEditorActivity.class" in gallery
+      and "new BitmapRegionDecoder" not in editor
+      and "BitmapRegionDecoder.newInstance" in editor
+      and "keepOriginal.setChecked(true)" in editor
+      and "AtomicFile(original)" in editor,
+      "actual editable crop/rotate must preserve original by default")
+check("SelfieSegmenterOptions.SINGLE_IMAGE_MODE" in ai
+      and "Segmentation.getClient(opts)" in ai
+      and "portraitBlur(input, mask)" in ai
+      and "NabdhCameraFiles.newPhoto(this)" in ai,
+      "AI editor must use real on-device segmentation and save private copies")
+check("timerSeconds == 0 ? 3 : timerSeconds == 3 ? 10 : 0" in camera
+      and "timerHandler.postDelayed(this, 1000)" in camera
+      and "cancelCountdown();" in camera,
+      "shutter timer needs 3/10 seconds, cancellation and real delayed capture")
+check('name="nabdh_private_camera" path="nabdh_camera/"' in provider
+      and 'name="nabdh_private_share" path="nabdh_private_share/"' in provider,
+      "provider must scope internal originals and sanitized share cache")
 check('android:name="androidx.core.content.FileProvider"' in manifest and
       'android:resource="@xml/provider_paths"' in manifest and
       'name="external_files" path="/storage/"' in provider,
