@@ -74,6 +74,23 @@ public final class NabdhEmojiPacks {
     private static final Paint PAINT = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private static volatile String selected;
 
+    // Several PNGs can finish in one instant while a chat or emoji panel is
+    // visible. Coalesce repaints to avoid a storm of EmojiView invalidations.
+    // The first unavailable glyph still draws Telegram's native fallback.
+    private static boolean redrawQueued;
+    private static void scheduleUiRedraw() {
+        synchronized (PENDING) {
+            if (redrawQueued) return;
+            redrawQueued = true;
+        }
+        AndroidUtilities.runOnUIThread(() -> {
+            synchronized (PENDING) {
+                redrawQueued = false;
+            }
+            Emoji.invalidateUiRunnable.run();
+        }, 100);
+    }
+
     private NabdhEmojiPacks() {}
 
     public static boolean isSupported(String id) {
@@ -261,7 +278,7 @@ public final class NabdhEmojiPacks {
                 }
                 if (bitmap != null) {
                     synchronized (MEMORY) { MEMORY.put(id, bitmap); }
-                    AndroidUtilities.runOnUIThread(Emoji.invalidateUiRunnable);
+                    scheduleUiRedraw();
                 }
             });
         } catch (RejectedExecutionException busy) {
