@@ -63,12 +63,6 @@ c = exact(c, "        fragmentView = scroll;",
                     () -> context.startActivity(new android.content.Intent(
                             context, NabdhCameraActivity.class)));
         }
-        if (featureId == 0 && titleRes == R.string.NabdhProductivityTitle) {
-            nabdhExpandedHeader(context, content);
-            nabdhExpandedButton(context, content, R.string.NabdhExpandedChannelFeed,
-                    () -> context.startActivity(new android.content.Intent(
-                            context, NabdhChannelFeedActivity.class)));
-        }
         if (featureId == 0 && titleRes == R.string.NabdhPrivacyTitle) {
             nabdhExpandedHeader(context, content);
             nabdhExpandedButton(context, content, R.string.NabdhExpandedSwipes,

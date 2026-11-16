@@ -140,9 +140,14 @@ public final class NabdhAppearancePickerActivity extends Activity {
                             "الإيموجي المدمج في Telegram · 😀 😉 😌 😨"),
                     R.drawable.settings_chat, !SharedConfig.useSystemEmoji,
                     () -> applyEmoji(false));
-            selection(local("System", "النظام"),
-                    local("Emoji style installed on your Android device · 😀 😉 😌 😨",
-                            "إيموجي جهاز Android · 😀 😉 😌 😨"),
+            String manufacturer = android.os.Build.MANUFACTURER == null ? ""
+                    : android.os.Build.MANUFACTURER.toLowerCase(java.util.Locale.ROOT);
+            String vendor = manufacturer.contains("samsung") ? "Samsung"
+                    : manufacturer.contains("google") ? "Google"
+                    : local("Device", "الجهاز");
+            selection(local("Android system · ", "نظام Android · ") + vendor,
+                    local("Uses the emoji font actually installed on this device · 😀 😉 😌 😨",
+                            "يستخدم خط الإيموجي المثبت فعليًا على الجهاز · 😀 😉 😌 😨"),
                     R.drawable.settings_language, SharedConfig.useSystemEmoji,
                     () -> applyEmoji(true));
         } else {

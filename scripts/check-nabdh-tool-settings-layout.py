@@ -32,13 +32,14 @@ require("nabdhExpandedHeader(context, content)" not in hub and
 for section, label in (
     ("NabdhNetworkTitle", "NabdhExpandedBrowser"),
     ("NabdhNetworkTitle", "NabdhExpandedCamera"),
-    ("NabdhProductivityTitle", "NabdhExpandedChannelFeed"),
     ("NabdhPrivacyTitle", "NabdhChatLockTitle"),
 ):
     require(f"titleRes == R.string.{section}" in category and
             f"R.string.{label}" in category,
             f"native {section} must link {label}")
 
+require("nabdhExpandedButton(context, content, R.string.NabdhExpandedChannelFeed" not in category,
+        "Channel Feed removed from Productivity")
 require("nabdhExpandedButton(context, content, R.string.NabdhExpandedSwipes" not in category,
         "redundant Swipe Actions entry must not appear")
 require("new org.telegram.ui.ActionBar.AlertDialog.Builder(context)" in category and
@@ -75,6 +76,8 @@ for name, code in (("browser", browser), ("camera", camera),
                    ("feed", feed), ("PIN manager", lock), ("AI", ai)):
     require("NabdhToolUi.install(this" in code,
             f"{name} must use the same in-app toolbar and typography")
+require("shell.setFitsSystemWindows(true);" in chrome,
+        "tool pages must be edge-safe on Android")
 require("Theme.key_windowBackgroundWhite" in chrome and
         "LocaleController.isRTL" in chrome and
         "fonts/rmedium.ttf" in chrome and

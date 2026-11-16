@@ -11,8 +11,7 @@ import android.text.Editable;
 import android.text.InputType;
 import android.view.View;
 import android.view.Gravity;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
+import android.widget.CheckBox;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -33,6 +32,7 @@ import org.telegram.ui.Components.NabdhToolUi;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Locale;
+import java.util.LinkedHashMap;
 
 /**
  * Explicit user-triggered, server-side Telegram message scheduling.
@@ -42,11 +42,11 @@ import java.util.Locale;
 public final class NabdhMessageSchedulerActivity extends Activity {
     private final Calendar schedule = Calendar.getInstance();
     private boolean dateChosen, timeChosen;
-    private long selectedUserId;
-    private String selectedName;
+    private static final int MAX_RECIPIENTS = 20;
+    private final LinkedHashMap<Long, ContactChoice> selected = new LinkedHashMap<>();
+    private ArrayList<ContactChoice> contacts = new ArrayList<>();
     private int account;
-    private AutoCompleteTextView recipient;
-    private ArrayAdapter<ContactChoice> adapter;
+    private TextView recipient;
     private Button dateButton, timeButton;
     private EditText message;
 
@@ -116,28 +116,23 @@ public final class NabdhMessageSchedulerActivity extends Activity {
         content.addView(note);
 
         content.addView(section(local("CONTACT", "جهة الاتصال")));
-        recipient = new AutoCompleteTextView(this);
-        recipient.setHint(local("Search Telegram contacts", "ابحث في جهات اتصال Telegram"));
-        recipient.setSingleLine(true);
-        recipient.setThreshold(1);
-        NabdhToolUi.styleInput(this, recipient);
-        recipient.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence value, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence value, int start, int before, int count) {
-                // A manually edited name must never silently retain an old recipient.
-                selectedUserId = 0;
-                selectedName = null;
-            }
-            @Override public void afterTextChanged(Editable value) {}
-        });
-        content.addView(recipient, new LinearLayout.LayoutParams(-1, dp(54)));
-        recipient.setOnItemClickListener((parent, row, index, id) -> {
-            Object choice = parent.getItemAtPosition(index);
-            if (choice instanceof ContactChoice) {
-                selectedUserId = ((ContactChoice) choice).id;
-                selectedName = ((ContactChoice) choice).name;
-            }
-        });
+        // Touch opens a native Telegram multi-selection sheet, never a dark
+        // system AutoComplete popup or the keyboard.
+        recipient = new TextView(this);
+        recipient.setTextSize(15);
+        recipient.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        recipient.setGravity(Gravity.CENTER_VERTICAL |
+                (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT));
+        recipient.setPadding(dp(16), dp(8), dp(16), dp(8));
+        recipient.setBackground(
+                org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+        recipient.setMinHeight(dp(54));
+        recipient.setClickable(true);
+        recipient.setFocusable(true);
+        recipient.setContentDescription(local("Choose Telegram contacts",
+                "اختر جهات اتصال Telegram"));
+        recipient.setOnClickListener(v -> chooseRecipients());
+        content.addView(recipient, new LinearLayout.LayoutParams(-1, dp(58)));
 
         Button refresh = button(local("Reload Telegram contacts", "تحديث جهات اتصال Telegram"));
         refresh.setOnClickListener(v -> reloadContacts());
@@ -225,15 +220,127 @@ public final class NabdhMessageSchedulerActivity extends Activity {
             }
         }
         choices.sort((a,b) -> a.name.compareToIgnoreCase(b.name));
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, choices);
-        recipient.setAdapter(adapter);
-        selectedUserId = 0;
-        selectedName = null;
-        recipient.setText("");
+        contacts = choices;
+        selected.clear();
+        updateRecipientLabel();
         if (choices.isEmpty()) {
             notifyUser(local("No Telegram contacts cached. Open Contacts in Telegram then return.",
                     "لا توجد جهات اتصال محمّلة. افتح جهات الاتصال في Telegram ثم عُد."));
         }
+    }
+
+    private void updateRecipientLabel() {
+        if (recipient == null) return;
+        if (selected.isEmpty()) {
+            recipient.setText(local("Tap to select one or more Telegram contacts  ›",
+                    "اضغط لاختيار جهة اتصال واحدة أو أكثر  ‹"));
+            return;
+        }
+        StringBuilder names = new StringBuilder();
+        int shown = 0;
+        for (ContactChoice choice : selected.values()) {
+            if (shown++ == 3) break;
+            if (names.length() > 0) names.append("، ");
+            names.append(choice.name);
+        }
+        if (selected.size() > 3) names.append(" …");
+        recipient.setText(local("Selected: ", "المحددون: ") + selected.size() + " · " + names);
+    }
+
+    private void renderChoices(LinearLayout list,
+                               LinkedHashMap<Long, ContactChoice> pending,
+                               String filter, TextView countLabel) {
+        list.removeAllViews();
+        String query = filter == null ? "" : filter.trim().toLowerCase(Locale.ROOT);
+        int visible = 0;
+        for (ContactChoice choice : contacts) {
+            if (!query.isEmpty() &&
+                    !choice.name.toLowerCase(Locale.ROOT).contains(query)) continue;
+            visible++;
+            CheckBox box = new CheckBox(this);
+            box.setText(choice.name);
+            box.setTextSize(14);
+            box.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            box.setGravity(Gravity.CENTER_VERTICAL |
+                    (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT));
+            box.setPadding(dp(14), dp(6), dp(14), dp(6));
+            box.setLayoutDirection(LocaleController.isRTL
+                    ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+            box.setChecked(pending.containsKey(choice.id));
+            NabdhToolUi.styleToggle(this, box);
+            box.setBackground(
+                    org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
+            box.setOnCheckedChangeListener((button, checked) -> {
+                if (checked && pending.size() >= MAX_RECIPIENTS) {
+                    button.setChecked(false);
+                    notifyUser(local("Choose up to 20 contacts per schedule",
+                            "يمكن اختيار 20 جهة اتصال كحد أقصى لكل جدولة"));
+                    return;
+                }
+                if (checked) pending.put(choice.id, choice);
+                else pending.remove(choice.id);
+                countLabel.setText(local("Selected: ", "تم اختيار: ")
+                        + pending.size() + " / " + MAX_RECIPIENTS);
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(55));
+            lp.bottomMargin = dp(3);
+            list.addView(box, lp);
+        }
+        if (visible == 0) {
+            TextView empty = section(local("No matching Telegram contacts",
+                    "لا توجد جهات اتصال مطابقة"));
+            list.addView(empty);
+        }
+        countLabel.setText(local("Selected: ", "تم اختيار: ")
+                + pending.size() + " / " + MAX_RECIPIENTS);
+    }
+
+    private void chooseRecipients() {
+        if (contacts.isEmpty()) {
+            notifyUser(local("Open Telegram Contacts, then reload this list.",
+                    "افتح جهات الاتصال في Telegram، ثم حدّث هذه القائمة."));
+            return;
+        }
+        final LinkedHashMap<Long, ContactChoice> pending = new LinkedHashMap<>(selected);
+        LinearLayout sheet = new LinearLayout(this);
+        sheet.setOrientation(LinearLayout.VERTICAL);
+        sheet.setPadding(dp(12), dp(8), dp(12), dp(6));
+        sheet.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        sheet.setLayoutDirection(LocaleController.isRTL
+                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        sheet.setFocusableInTouchMode(true);
+        sheet.requestFocus();
+
+        EditText query = new EditText(this);
+        query.setSingleLine(true);
+        query.setHint(local("Search Telegram contacts", "ابحث في جهات اتصال Telegram"));
+        NabdhToolUi.styleInput(this, query);
+        sheet.addView(query, new LinearLayout.LayoutParams(-1, dp(52)));
+
+        TextView count = section("");
+        sheet.addView(count);
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(list);
+        sheet.addView(scroll, new LinearLayout.LayoutParams(-1, dp(340)));
+        renderChoices(list, pending, "", count);
+        query.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence v, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence v, int start, int before, int count) {
+                renderChoices(list, pending, v.toString(), count);
+            }
+            @Override public void afterTextChanged(Editable v) {}
+        });
+        new org.telegram.ui.ActionBar.AlertDialog.Builder(this)
+                .setTitle(local("Telegram recipients", "المستلمون من Telegram"))
+                .setView(sheet)
+                .setNegativeButton(local("Cancel", "إلغاء"), null)
+                .setPositiveButton(local("Use selected", "اعتماد الاختيار"), (dialog, which) -> {
+                    selected.clear();
+                    selected.putAll(pending);
+                    updateRecipientLabel();
+                }).show();
     }
 
     private void updateDateTime() {
@@ -245,8 +352,8 @@ public final class NabdhMessageSchedulerActivity extends Activity {
     }
 
     private void confirmSchedule() {
-        if (selectedUserId <= 0 || selectedName == null) {
-            notifyUser(local("Select a contact from suggestions", "اختر جهة اتصال من نتائج البحث"));
+        if (selected.isEmpty()) {
+            notifyUser(local("Select at least one Telegram contact", "اختر جهة اتصال واحدة على الأقل"));
             return;
         }
         if (!dateChosen || !timeChosen) {
@@ -266,11 +373,16 @@ public final class NabdhMessageSchedulerActivity extends Activity {
                     "اختر موعدًا بعد دقيقة على الأقل وخلال سنة من الآن"));
             return;
         }
-        final long peer = selectedUserId;
         final int when = (int) date;
-        final String target = selectedName;
-        final String summary = target + "\n" + String.format(Locale.US,
-                "%04d-%02d-%02d  %02d:%02d",
+        final ArrayList<ContactChoice> recipients = new ArrayList<>(selected.values());
+        StringBuilder names = new StringBuilder();
+        for (ContactChoice choice : recipients) {
+            if (names.length() > 0) names.append("\n");
+            names.append("• ").append(choice.name);
+        }
+        final String summary = local("Recipients: ", "المستلمون: ")
+                + recipients.size() + "\n" + names + "\n"
+                + String.format(Locale.US, "%04d-%02d-%02d  %02d:%02d",
                 schedule.get(Calendar.YEAR), schedule.get(Calendar.MONTH) + 1,
                 schedule.get(Calendar.DAY_OF_MONTH), schedule.get(Calendar.HOUR_OF_DAY),
                 schedule.get(Calendar.MINUTE)) + "\n\n" + text;
@@ -279,27 +391,37 @@ public final class NabdhMessageSchedulerActivity extends Activity {
                 .setMessage(summary)
                 .setNegativeButton(local("Cancel", "إلغاء"), null)
                 .setPositiveButton(local("Schedule", "جدولة"), (dialog, which) -> {
-                    if (!UserConfig.getInstance(account).isClientActivated()
-                            || MessagesController.getInstance(account).getUser(peer) == null) {
-                        notifyUser(local("Contact unavailable; reload contacts",
-                                "جهة الاتصال غير متاحة. حدّث القائمة"));
+                    if (!UserConfig.getInstance(account).isClientActivated()) {
+                        notifyUser(local("Telegram session is unavailable",
+                                "جلسة Telegram غير متاحة"));
                         return;
+                    }
+                    MessagesController controller = MessagesController.getInstance(account);
+                    // Validate all recipients before sending any request.
+                    for (ContactChoice choice : recipients) {
+                        TLRPC.User user = controller.getUser(choice.id);
+                        if (user == null || user.deleted) {
+                            notifyUser(local("A contact is unavailable; reload contacts",
+                                    "إحدى جهات الاتصال غير متاحة؛ حدّث القائمة"));
+                            return;
+                        }
                     }
                     long current = ConnectionsManager.getInstance(account).getCurrentTime();
                     if (when <= current + 60) {
                         notifyUser(local("Selected time has passed", "انتهى الموعد المحدد"));
                         return;
                     }
-                    // One explicit confirmed action. Telegram queues the scheduled
-                    // message on its servers; no autonomous Android sender exists.
-                    SendMessagesHelper.SendMessageParams params =
-                            SendMessagesHelper.SendMessageParams.of(text, peer);
-                    params.scheduleDate = when;
-                    params.notify = true;
-                    SendMessagesHelper.getInstance(account).sendMessage(params);
-                    notifyUser(local("Scheduled message submitted to Telegram. "
+                    for (ContactChoice choice : recipients) {
+                        long peer = choice.id;
+                        SendMessagesHelper.SendMessageParams params =
+                                SendMessagesHelper.SendMessageParams.of(text, peer);
+                        params.scheduleDate = when;
+                        params.notify = true;
+                        SendMessagesHelper.getInstance(account).sendMessage(params);
+                    }
+                    notifyUser(local("Scheduled messages submitted to Telegram. "
                                     + "Check the chat's scheduled messages for confirmation.",
-                            "أُرسِل طلب الجدولة إلى Telegram. تحقق من الرسائل المجدولة "
+                            "أُرسلت طلبات الجدولة إلى Telegram. تحقق من الرسائل المجدولة "
                                     + "داخل المحادثة للتأكد من قبولها."));
                     finish();
                 })

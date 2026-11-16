@@ -64,6 +64,14 @@ check('GROUP_TAG = "nabdh:compact-setting-group:v1"' in renderer and
       "new RippleDrawable(" not in renderer and
       "surface.setColor(blended)" not in renderer,
       "each row must own a theme-live Glass surface and bounded ripple; no pale parent or giant press circle")
+check("getTypeface(\"fonts/rmedium.ttf\")" in renderer and
+      "R.drawable.nabdh_alt_shield" in page and
+      "R.drawable.nabdh_alt_lock" in page and
+      "R.drawable.nabdh_alt_language" in page and
+      "R.drawable.nabdh_alt_network" in page and
+      "NabdhToolUi.styleSlider(context, uiScale)" in page and
+      "NabdhToolUi.styleSlider(context, chatScale)" in page,
+      "all feature sections need icons and material-style sliders")
 check("getTypeface(\"fonts/rmedium.ttf\")" in renderer,
       "selected Telegram typography bridge lost")
 check("getCurrentLocale()" in (ui / "NabdhStrings.java").read_text(),

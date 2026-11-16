@@ -9,6 +9,7 @@ import android.graphics.drawable.RippleDrawable;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.SeekBar;
 import android.widget.Switch;
 import android.view.Gravity;
 import android.view.View;
@@ -78,6 +79,41 @@ public final class NabdhToolUi {
                 dp(activity, 16), dp(activity, 10));
     }
 
+    /** Material-like rounded slider; native SeekBar value callbacks are intact. */
+    public static void styleSlider(Context context, SeekBar slider) {
+        final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        final int muted = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
+        GradientDrawable base = new GradientDrawable();
+        base.setColor(Color.argb(62, Color.red(muted), Color.green(muted),
+                Color.blue(muted)));
+        base.setCornerRadius(dp(context, 20));
+        base.setSize(dp(context, 180), dp(context, 6));
+        GradientDrawable filled = new GradientDrawable();
+        filled.setColor(accent);
+        filled.setCornerRadius(dp(context, 20));
+        filled.setSize(dp(context, 180), dp(context, 6));
+        android.graphics.drawable.ClipDrawable clipped =
+                new android.graphics.drawable.ClipDrawable(filled,
+                        Gravity.LEFT, android.graphics.drawable.ClipDrawable.HORIZONTAL);
+        android.graphics.drawable.LayerDrawable track =
+                new android.graphics.drawable.LayerDrawable(
+                        new android.graphics.drawable.Drawable[]{base, clipped});
+        track.setId(0, android.R.id.background);
+        track.setId(1, android.R.id.progress);
+        slider.setProgressDrawable(track);
+        GradientDrawable thumb = new GradientDrawable();
+        thumb.setShape(GradientDrawable.OVAL);
+        thumb.setColor(accent);
+        thumb.setSize(dp(context, 20), dp(context, 20));
+        thumb.setStroke(dp(context, 2),
+                Theme.getColor(Theme.key_windowBackgroundGray));
+        slider.setThumb(thumb);
+        slider.setSplitTrack(false);
+        slider.setPadding(dp(context, 16), dp(context, 11),
+                dp(context, 16), dp(context, 11));
+        slider.setMinHeight(dp(context, 48));
+    }
+
     public static void styleToggle(Context activity, CompoundButton toggle) {
         int on = Theme.getColor(Theme.key_switchTrackBlueChecked);
         int off = Theme.getColor(Theme.key_switchTrackBlue);
@@ -100,6 +136,8 @@ public final class NabdhToolUi {
     public static void install(Activity activity, View content, String title) {
         LinearLayout shell = new LinearLayout(activity);
         shell.setOrientation(LinearLayout.VERTICAL);
+        // Keep the native bar and bottom controls outside Android 15+ system insets.
+        shell.setFitsSystemWindows(true);
         shell.setLayoutDirection(LocaleController.isRTL
                 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         shell.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));

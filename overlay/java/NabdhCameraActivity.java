@@ -70,6 +70,10 @@ public final class NabdhCameraActivity extends Activity {
     private volatile Uri lastPhotoUri;
     private Button sharePhoto;
 
+    private int dp(float value) {
+        return (int) (getResources().getDisplayMetrics().density * value + .5f);
+    }
+
     private String local(String en, String ar) {
         return org.telegram.messenger.LocaleController.isRTL ? ar : en;
     }
@@ -98,29 +102,72 @@ public final class NabdhCameraActivity extends Activity {
                 ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         preview = new TextureView(this);
         page.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1f));
+        // Four equally sized controls; the original five-button row was cropped.
         LinearLayout commands = new LinearLayout(this);
         commands.setGravity(Gravity.CENTER);
-        commands.addView(control("↻", () -> {
+        commands.setPadding(dp(6), dp(4), dp(6), dp(4));
+        Button switchCamera = control("↻", () -> {
             facing = facing == CameraCharacteristics.LENS_FACING_BACK
                      ? CameraCharacteristics.LENS_FACING_FRONT
                      : CameraCharacteristics.LENS_FACING_BACK;
             zoom = 1f;
             restartCamera();
-        }));
-        commands.addView(control("−", () -> {
+        });
+        switchCamera.setContentDescription(local("Switch camera", "تبديل الكاميرا"));
+        Button zoomOut = control("−", () -> {
             zoom = Math.max(1f, zoom / 1.3f);
             refreshRepeating();
-        }));
-        commands.addView(control("+", () -> {
+        });
+        zoomOut.setContentDescription(local("Zoom out", "تصغير"));
+        Button zoomIn = control("+", () -> {
             zoom = Math.min(zoomMax, zoom * 1.3f);
             refreshRepeating();
-        }));
-        commands.addView(control(local("Flash", "الفلاش"), () -> {
+        });
+        zoomIn.setContentDescription(local("Zoom in", "تكبير"));
+        Button flash = control(local("Flash", "الفلاش"), () -> {
             torch = !torch;
             refreshRepeating();
-        }));
-        commands.addView(control("●", this::takePhoto));
-        page.addView(commands, new LinearLayout.LayoutParams(-1, -2));
+        });
+        for (Button item : new Button[]{switchCamera, zoomOut, zoomIn, flash}) {
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1f);
+            lp.setMarginEnd(dp(3));
+            commands.addView(item, lp);
+        }
+        page.addView(commands, new LinearLayout.LayoutParams(-1, dp(56)));
+
+        LinearLayout captureBar = new LinearLayout(this);
+        captureBar.setGravity(Gravity.CENTER);
+        captureBar.setPadding(0, dp(2), 0, dp(4));
+        Button shutter = new Button(this);
+        shutter.setAllCaps(false);
+        shutter.setText("●");
+        shutter.setTextSize(34);
+        shutter.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlueText));
+        shutter.setContentDescription(local("Capture photo", "التقاط صورة"));
+        shutter.setMinHeight(0);
+        shutter.setMinimumWidth(0);
+        android.graphics.drawable.GradientDrawable ring =
+                new android.graphics.drawable.GradientDrawable();
+        ring.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        ring.setColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+        int accent = org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlueText);
+        ring.setStroke(dp(3), accent);
+        android.graphics.drawable.GradientDrawable mask =
+                new android.graphics.drawable.GradientDrawable();
+        mask.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        mask.setColor(android.graphics.Color.WHITE);
+        shutter.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(
+                        android.graphics.Color.argb(54, android.graphics.Color.red(accent),
+                                android.graphics.Color.green(accent),
+                                android.graphics.Color.blue(accent))),
+                ring, mask));
+        shutter.setOnClickListener(v -> takePhoto());
+        captureBar.addView(shutter, new LinearLayout.LayoutParams(dp(72), dp(72)));
+        page.addView(captureBar, new LinearLayout.LayoutParams(-1, dp(80)));
         sharePhoto = control(local("Share captured photo in NabdhGram",
                 "إرسال الصورة الملتقطة في نبض جرام"), this::shareLastPhoto);
         sharePhoto.setEnabled(false);
@@ -301,7 +348,11 @@ public final class NabdhCameraActivity extends Activity {
     }
 
     private void takePhoto() {
-        if (device == null || session == null || reader == null || takingPhoto) return;
+        if (takingPhoto) return;
+        if (device == null || session == null || reader == null) {
+            notifyUser(local("Camera is not ready", "الكاميرا ليست جاهزة بعد"));
+            return;
+        }
         takingPhoto = true;
         try {
             CaptureRequest.Builder capture = device.createCaptureRequest(

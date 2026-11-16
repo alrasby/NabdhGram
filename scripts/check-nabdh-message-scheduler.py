@@ -21,9 +21,11 @@ test("if (featureId == 202)" in category and
      "must replace old help-only schedule page without changing its ID")
 test("ContactsController.getInstance(account).contacts" in scheduler and
      "getUser(entry.user_id)" in scheduler and
-     "selectedUserId = 0;" in scheduler and
-     "setOnItemClickListener" in scheduler,
-     "must select an actual Telegram contact, never trust typed free text")
+     "chooseRecipients()" in scheduler and
+     "LinkedHashMap<Long, ContactChoice> selected" in scheduler and
+     "renderChoices(list, pending" in scheduler and
+     "AutoCompleteTextView" not in scheduler,
+     "must use bounded native multi-selection rather than dark system dropdown")
 test("DatePickerDialog" in scheduler and "TimePickerDialog" in scheduler and
      "if (!dateChosen || !timeChosen)" in scheduler,
      "must collect an explicit date and time")
@@ -35,8 +37,11 @@ test("date <= now + 60" in scheduler and
      "must reject expired and excessively distant schedules")
 test("SendMessagesHelper.SendMessageParams.of(text, peer)" in scheduler and
      "params.scheduleDate = when;" in scheduler and
-     "SendMessagesHelper.getInstance(account).sendMessage(params)" in scheduler,
-     "must use Telegram server scheduling, not local background alarms")
+     "SendMessagesHelper.getInstance(account).sendMessage(params)" in scheduler and
+     "for (ContactChoice choice : recipients)" in scheduler and
+     "MAX_RECIPIENTS = 20" in scheduler and
+     "controller.getUser(choice.id)" in scheduler,
+     "must prevalidate recipients, bound their count and use native per-peer scheduling")
 test(".setPositiveButton(local(\"Schedule\", \"جدولة\"), (dialog, which) -> {" in scheduler and
      "UserConfig.getInstance(account).isClientActivated()" in scheduler,
      "must require user confirmation and active Telegram session")
@@ -48,4 +53,4 @@ for lang in ("values", "values-ar"):
     values = {item.get("name"):item.text for item in ET.parse(resources).getroot()}
     test(set(values) == {"NabdhSchedulerCompose", "NabdhSchedulerComposeInfo"},
          "schedule label mismatch " + lang)
-print("PASS: selected Telegram contact, date/time validation, explicit confirmation and native server-side schedule")
+print("PASS: explicit multi-recipient contact selection and native bounded scheduling")

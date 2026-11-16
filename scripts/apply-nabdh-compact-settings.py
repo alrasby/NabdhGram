@@ -104,8 +104,26 @@ row = r'''    private void nabdhFeatureRow(Context context, LinearLayout content
         String title = NabdhStrings.get(context, nabdhDetailTitle(id));
         String note = id == 402
                 ? NabdhStrings.get(context, R.string.NabdhHStatusPartial) : null;
+        final int icon = id == 101 ? R.drawable.nabdh_alt_browser
+                : id == 102 ? R.drawable.nabdh_alt_shield
+                : id == 103 ? R.drawable.nabdh_alt_privacy
+                : id == 201 ? R.drawable.nabdh_alt_privacy
+                : id == 202 ? R.drawable.nabdh_alt_productivity
+                : id == 203 ? R.drawable.nabdh_alt_lock
+                : id == 301 ? R.drawable.nabdh_alt_ai
+                : id == 302 ? R.drawable.nabdh_alt_productivity
+                : id == 303 ? R.drawable.nabdh_alt_feed
+                : id == 401 ? R.drawable.nabdh_alt_language
+                : id == 402 ? R.drawable.nabdh_alt_ai
+                : id == 501 ? R.drawable.nabdh_alt_network
+                : id == 502 ? R.drawable.nabdh_alt_productivity
+                : id == 503 ? R.drawable.nabdh_alt_shield
+                : id == 601 ? R.drawable.nabdh_alt_language
+                : id == 602 ? R.drawable.nabdh_alt_shield
+                : id == 603 ? R.drawable.nabdh_alt_productivity
+                : R.drawable.settings_features;
         org.telegram.ui.Components.NabdhCompactSettings.row(
-                context, content, title, note, 0,
+                context, content, title, note, icon,
                 () -> presentFragment(new NabdhGramFeatureCategoryActivity(
                         titleRes, descriptionRes, id)));
     }'''
@@ -116,7 +134,8 @@ source = replace_method(source,
 actions = r'''    private void nabdhV1Button(Context context, LinearLayout content,
                               int title, Runnable action) {
         org.telegram.ui.Components.NabdhCompactSettings.row(
-                context, content, NabdhStrings.get(context, title), null, 0, action);
+                context, content, NabdhStrings.get(context, title), null,
+                R.drawable.settings_features, action);
     }'''
 source = replace_method(source,
     "    private void nabdhV1Button(Context context, LinearLayout content,",
@@ -235,6 +254,14 @@ def theme_native_widget(match):
 source, count_styled = widget_rx.subn(theme_native_widget, source)
 if count_styled < 7:
     raise SystemExit(f"Expected >=7 real V1 widgets for native theme (found {count_styled})")
+
+# Material-inspired styling, preserving the native SeekBar value callbacks.
+source = replace_once(source, "            uiScale.setMax(30);",
+    "            org.telegram.ui.Components.NabdhToolUi.styleSlider(context, uiScale);\n"
+    "            uiScale.setMax(30);", "app text material slider")
+source = replace_once(source, "            chatScale.setMax(8);",
+    "            org.telegram.ui.Components.NabdhToolUi.styleSlider(context, chatScale);\n"
+    "            chatScale.setMax(8);", "chat text material slider")
 
 page.write_text(source, encoding="utf-8")
 

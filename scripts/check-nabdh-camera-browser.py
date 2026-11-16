@@ -36,6 +36,11 @@ check('android:name="androidx.core.content.FileProvider"' in manifest and
 check("Nabdh Camera2" in camera and "كاميرا نبض جرام" in camera and
       "NabdhToolUi.install(this, page" in camera,
       "camera Arabic locale provided")
+check('shutter.setContentDescription(local("Capture photo", "التقاط صورة"));' in camera and
+      'shutter.setOnClickListener(v -> takePhoto());' in camera and
+      "captureBar.addView(shutter" in camera and
+      "new LinearLayout.LayoutParams(0, dp(48), 1f)" in camera,
+      "camera requires accessible shutter plus bounded controls")
 check("public boolean shouldOverrideUrlLoading(WebView view, String url)" in browser and
       "shouldOverrideUrlLoading(WebView view, WebResourceRequest request)" in browser,
       "old and new Android WebView redirects have URL allowlist")
