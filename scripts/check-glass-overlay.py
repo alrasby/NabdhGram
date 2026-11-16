@@ -444,7 +444,10 @@ checks = {
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
         and "if (nabdhFontDirty && android.os.SystemClock.uptimeMillis()" in launch
         and "nabdhLastFontScanMs >= 48L" in launch,
-    "composer retains RTL and content padding": "messageEditText.setPadding(dp(6), dp(9), dp(6), dp(10));" in composer
+    "composer retains RTL and content padding": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
+        and "messageEditText.setPadding(dp(6)" not in composer
+        and "leftMargin = dp(12) + (botCommandsMenuButton" in composer
+        and "leftMargin = dp(66) + (botCommandsMenuButton" in composer
         and "TEXT_DIRECTION_FIRST_STRONG" in composer
         and "LocaleController.isRTL" in composer
         and "android.view.Gravity.RIGHT : android.view.Gravity.LEFT" in composer,
