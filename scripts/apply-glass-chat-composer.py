@@ -24,7 +24,8 @@ replacement = """        // NabdhGram: Telegram already paints the entire messag
         messageEditText.setBackgroundDrawable(null);
         // Small text insets inside the native composer retain its height and
         // attachment/emoji/voice hit targets. All touch/send logic remains native.
-        messageEditText.setPadding(dp(6), dp(9), dp(6), dp(10));
+        // Preserve upstream 0px horizontal padding. Telegram dynamically
+        // reserves space for bot commands, emoji and attachment controls.
         messageEditText.setGravity((org.telegram.messenger.LocaleController.isRTL
                 ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT)
                 | android.view.Gravity.BOTTOM);
@@ -41,6 +42,17 @@ else:
         "messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));",
         "ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider);", 1)
     s = s.replace(new_theme_bind_anchor, bound_replacement, 1)
+
+# In bot chats Telegram measures the commands menu width dynamically, and
+# sets LEFT margins of both the emoji button and the text field. Ensure a
+# visible, stable gap between these three native hit targets without replacing
+# Telegram's menu/layout animation or shrinking any touch area.
+bot_icon_anchor = "((MarginLayoutParams) emojiButton.getLayoutParams()).leftMargin = dp(10) + (botCommandsMenuButton == null ? 0 : botCommandsMenuButton.getMeasuredWidth());"
+bot_field_anchor = "((MarginLayoutParams) messageEditText.getLayoutParams()).leftMargin = dp(57) + (botCommandsMenuButton == null ? 0 : botCommandsMenuButton.getMeasuredWidth());"
+if s.count(bot_icon_anchor) != 1 or s.count(bot_field_anchor) != 1:
+    raise SystemExit("Telegram bot menu composer margins changed: fail closed")
+s = s.replace(bot_icon_anchor, bot_icon_anchor.replace("dp(10)", "dp(12)"), 1)
+s = s.replace(bot_field_anchor, bot_field_anchor.replace("dp(57)", "dp(66)"), 1)
 
 resume_anchor = """    public void onResume() {
         isPaused = false;"""
