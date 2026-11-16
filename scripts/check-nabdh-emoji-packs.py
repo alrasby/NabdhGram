@@ -38,6 +38,13 @@ for attr in ("2D/png/72/", "assets/72x72/", "color/72x72/",
     require(attr in pack, "real safe pack loading missing: " + attr)
 for licence in ("Apache-2.0", "CC-BY-4.0", "CC-BY-SA-4.0"):
     require(licence in pack, "third-party attribution missing: " + licence)
+require("private static boolean redrawQueued;" in pack
+        and "if (redrawQueued) return;" in pack
+        and "scheduleUiRedraw();" in pack
+        and "AndroidUtilities.runOnUIThread(() -> {" in pack
+        and "}, 100);" in pack
+        and "AndroidUtilities.runOnUIThread(Emoji.invalidateUiRunnable);" not in pack,
+        "emoji PNG downloads must batch UI invalidations instead of triggering repaint storms")
 require("NotificationCenter.didSetNewTheme" in pack
         and "Emoji.invalidateUiRunnable.run()" in pack
         and "Emoji.replaceEmoji(" in picker,
