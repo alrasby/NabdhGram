@@ -121,16 +121,27 @@ d = once(d,
     '''        hasOnlySlefStories = onlySelfStories;
 
         boolean oldStoriesCellVisibility''',
-    '''        // Only hide the home strip, never delete story data or affect archives.
-        if (initialDialogsType == DIALOGS_TYPE_DEFAULT && folderId == 0
-                && communityId == 0 && ''' + prefix + '''.enabled(getContext(), "hide_stories")) {
-            newVisibility = false;
-            onlySelfStories = false;
-        }
+    '''        // Do not mutate upstream newVisibility: animator closures capture it.
+        final boolean nabdhHideHomeStories = initialDialogsType == DIALOGS_TYPE_DEFAULT
+                && folderId == 0 && communityId == 0
+                && ''' + prefix + '''.enabled(getContext(), "hide_stories");
+        if (nabdhHideHomeStories) onlySelfStories = false;
+        final boolean nabdhVisibleStories = newVisibility && !nabdhHideHomeStories;
         hasOnlySlefStories = onlySelfStories;
 
         boolean oldStoriesCellVisibility''',
     "native stories visibility")
+# Redirect only downstream uses of the computed visibility (including
+# anonymous animation callbacks), leaving the upstream local unmodified.
+startStories = d.index("    public void updateStoriesVisibility(boolean animated) {")
+endStories = d.index("    public void createSearchViewPager() {", startStories)
+story = d[startStories:endStories]
+separator = "        boolean oldStoriesCellVisibility"
+if story.count(separator) != 1:
+    raise SystemExit("Personalization: animation binding changed upstream")
+head, tail = story.split(separator, 1)
+tail = tail.replace("newVisibility", "nabdhVisibleStories")
+d = d[:startStories] + head + separator + tail + d[endStories:]
 d = once(d,
     '''        final float factor0 = isSupportSearch() ? 1 : 0;
         final float factor1 = (1f - actionModeVisible)''',
