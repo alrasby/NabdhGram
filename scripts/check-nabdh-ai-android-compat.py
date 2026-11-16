@@ -37,7 +37,7 @@ if "genai-prompt:1.0.0-beta4" not in gradle or "tasks-genai:0.10.27" not in grad
     raise SystemExit("FAIL: expected pinned AI dependency missing")
 service = (ui / "java/org/telegram/ui/NabdhAiCoreService.java").read_text()
 if not all(token in nano for token in (
-        "int status()", "FeatureStatus.DOWNLOADABLE", "FeatureStatus.DOWNLOADING",
+        "int status()", "FeatureStatus.DOWNLOADABLE", "FeatureStatus.UNAVAILABLE",
         "futures.download(new DownloadCallback()", "onDownloadFailed(GenAiException",
         "new DownloadCallback()", "public static int download(")):
     raise SystemExit("FAIL: Gemini Nano status and explicit official AICore download missing")
