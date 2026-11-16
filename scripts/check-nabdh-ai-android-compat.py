@@ -48,7 +48,7 @@ if not all(token in service for token in (
 if not all(token in activity for token in (
         "NabdhAiCoreService.DOWNLOAD_NANO", '"تنزيل Gemini Nano (للأجهزة المدعومة)"',
         '"NANO_UNAVAILABLE"', '"NANO_DOWNLOAD_FAILED"',
-        '"لا يوجد نموذج ذكاء محلي متوافق مثبت"')):
+        'لا يوجد نموذج ذكاء محلي متوافق مثبت')):
     raise SystemExit("FAIL: user-approved AICore download or localized no-model state missing")
 if "kotlinx-coroutines-android:1.11.0" not in gradle:
     raise SystemExit("FAIL: ML Kit beta4 download must pin compatible coroutines (Google known issue)")
