@@ -336,8 +336,9 @@ public final class NabdhEmojiPacks {
         if (context == null) return null;
         // getCacheDir() may be swept by Android between app launches,
         // repeatedly triggering the expensive network-first transition.
-        // Use bounded app-private persistent files, migrating old cache once.
-        File folder = new File(context.getFilesDir(), "nabdh_emoji_" + pack);
+        // Use bounded, private no-backup persistent files: survive relaunches
+        // without consuming the user's cloud-backup quota.
+        File folder = new File(context.getNoBackupFilesDir(), "nabdh_emoji_" + pack);
         if (!folder.exists() && !folder.mkdirs()) return null;
         File file = new File(folder, filename(pack, key));
         if (!file.isFile()) {
