@@ -542,6 +542,7 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-security-hardening.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-nabdh-native-emojis.py
           python3 nabdhgram/scripts/check-nabdh-native-emojis.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-16kb-elf.py --self-test
           python3 -m py_compile nabdhgram/scripts/check-nabdh-message-scheduler.py
           python3 nabdhgram/scripts/check-nabdh-message-scheduler.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream
@@ -753,6 +754,11 @@ jobs:
             }
           fi
           "$APKSIGNER" verify --verbose "$APK" > apk-signature.txt
+          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
+            python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "$APK" --enforce
+          else
+            python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "$APK"
+          fi
           sha256sum "$APK" > apk-sha256.txt
           echo "::group::Packaged APK identity and launcher"
           grep -E "^(package:|application-label:|launchable-activity:|sdkVersion:|targetSdkVersion:|application-icon)" apk-badging.txt || true
@@ -852,6 +858,7 @@ jobs:
             exit 1
           fi
           python3 nabdhgram/scripts/verify-release-aab.py "${bundles[0]}"
+          python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "${bundles[0]}" --enforce
           mkdir -p dist
           cp "${bundles[0]}" dist/nabdhgram-play-internal.aab
           sha256sum dist/nabdhgram-play-internal.aab > play-bundle-sha256.txt
