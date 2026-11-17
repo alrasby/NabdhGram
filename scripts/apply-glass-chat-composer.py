@@ -26,10 +26,8 @@ replacement = """        // NabdhGram: Telegram already paints the entire messag
         // attachment/emoji/voice hit targets. All touch/send logic remains native.
         // Preserve upstream 0px horizontal padding. Telegram dynamically
         // reserves space for bot commands, emoji and attachment controls.
-        messageEditText.setGravity((org.telegram.messenger.LocaleController.isRTL
-                ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT)
-                | android.view.Gravity.BOTTOM);
-        messageEditText.setTextDirection(android.view.View.TEXT_DIRECTION_FIRST_STRONG);
+        // Telegram controls editable text gravity and its custom hint separately.
+        // Avoid forcing RIGHT: it distorts bot placeholders with custom Arabic fonts.
         messageEditText.setSupportRtlHint(true);
         nabdhRefreshComposerFont();
         messageEditText.setTextColor(getThemedColor(Theme.key_chat_messagePanelText));"""
@@ -43,16 +41,12 @@ else:
         "ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider);", 1)
     s = s.replace(new_theme_bind_anchor, bound_replacement, 1)
 
-# In bot chats Telegram measures the commands menu width dynamically, and
-# sets LEFT margins of both the emoji button and the text field. Ensure a
-# visible, stable gap between these three native hit targets without replacing
-# Telegram's menu/layout animation or shrinking any touch area.
+# Keep Telegram's own measured bot-menu margins instead of adding new
+# offsets that compress Arabic hint rendering in its native EditText.
 bot_icon_anchor = "((MarginLayoutParams) emojiButton.getLayoutParams()).leftMargin = dp(10) + (botCommandsMenuButton == null ? 0 : botCommandsMenuButton.getMeasuredWidth());"
 bot_field_anchor = "((MarginLayoutParams) messageEditText.getLayoutParams()).leftMargin = dp(57) + (botCommandsMenuButton == null ? 0 : botCommandsMenuButton.getMeasuredWidth());"
 if s.count(bot_icon_anchor) != 1 or s.count(bot_field_anchor) != 1:
     raise SystemExit("Telegram bot menu composer margins changed: fail closed")
-s = s.replace(bot_icon_anchor, bot_icon_anchor.replace("dp(10)", "dp(12)"), 1)
-s = s.replace(bot_field_anchor, bot_field_anchor.replace("dp(57)", "dp(66)"), 1)
 
 resume_anchor = """    public void onResume() {
         isPaused = false;"""
@@ -88,8 +82,17 @@ resume_replacement = """    // Read persisted typography for both the message an
             chosen = org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + filename);
         }
         if (chosen != null) {
+            // EditTextBoldCursor caches a hint StaticLayout created with old
+            // glyph advances. A Typeface replacement alone leaves stale
+            // advances in the hint, causing Arabic letters to overlap.
+            final boolean hadHint = messageEditText.getHintLayoutEx() != null;
             messageEditText.setTypeface(chosen, bold
                     ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            if (hadHint) {
+                // Rebuild with the NEW paint, without changing user text.
+                messageEditText.setHintText("", false);
+                updateFieldHint(false);
+            }
             nabdhAppliedComposerFamily = appearanceKey;
         }
     }
