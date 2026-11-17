@@ -19,11 +19,15 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
+import java.lang.ref.WeakReference;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -53,7 +57,7 @@ public final class NabdhEmojiPacks {
 
     private static final String PREFS = "nabdhgram_emoji_packs_v1";
     private static final int MAX_IMAGE_BYTES = 180 * 1024;
-    private static final long MAX_DISK_BYTES = 20L * 1024L * 1024L;
+    private static final long MAX_DISK_BYTES = 64L * 1024L * 1024L;
     // Bound pending downloads so a chat with many distinct emojis cannot grow
     // an unbounded executor queue or consume unlimited memory.
     // Parallel, bounded first-load fetches. Two workers caused long waves of
@@ -76,41 +80,161 @@ public final class NabdhEmojiPacks {
     private static final Paint PAINT = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private static volatile String selected;
 
-    // A newly chosen pack must not replace individual glyphs on each HTTP
-    // completion: that produced the visible minute-long mixed-pack transition.
-    // Stage decoded bitmaps privately, publish each visible batch atomically
-    // only after its outstanding requests settle. Keep Telegram's fallback
-    // until then; preserve already committed icons when scrolling further.
-    private static final Set<String> VISIBLE = new HashSet<>();
-    private static final Set<String> STAGED = new HashSet<>();
+    // A cache populated per-scrolled-page is never a complete pack. It made
+    // each new row visibly switch from Telegram to Noto/Twemoji/OpenMoji.
+    // Do NOT activate external artwork until the whole supported picker set
+    // has been installed. Later pages read the verified private cache directly.
+    private static final String READY_MARKER = ".nabdh_pack_complete_v2";
     private static boolean redrawQueued;
-    private static int selectionVersion;
-    private static boolean pendingForSelected() {
-        final String prefix = selected() + "_";
-        for (String id : PENDING) {
-            if (id.startsWith(prefix)) return true;
-        }
-        return false;
+    private static volatile int selectionVersion;
+
+    public interface InstallListener {
+        void onProgress(int done, int total);
+        void onComplete(boolean success, int unsupportedCount);
     }
+
+    private static File packFolder(Context context, String pack) {
+        return new File(context.getNoBackupFilesDir(), "nabdh_emoji_" + pack);
+    }
+
+    public static boolean isReady(String pack) {
+        if (TELEGRAM.equals(pack) || SYSTEM.equals(pack)) return true;
+        if (!isSupported(pack)) return false;
+        Context context = ApplicationLoader.applicationContext;
+        return context != null && new File(packFolder(context, pack), READY_MARKER).isFile();
+    }
+
+    public static void cancelInstall() {
+        ++selectionVersion; // Workers stop at their next codepoint boundary.
+    }
+
+    /**
+     * Fully prepare a selected art pack BEFORE switching the UI. The first
+     * download is intentionally asynchronous and user-visible; after that,
+     * switching between installed packs is immediate and network-free.
+     */
+    public static void installAndChoose(Context context, String pack, InstallListener listener) {
+        if (!isSupported(pack)) throw new IllegalArgumentException("Unknown emoji pack");
+        final Context app = context.getApplicationContext();
+        final WeakReference<InstallListener> callback = new WeakReference<>(listener);
+        final int version = ++selectionVersion;
+        if (isReady(pack)) {
+            choose(app, pack);
+            AndroidUtilities.runOnUIThread(() -> {
+                InstallListener cb = callback.get();
+                if (cb != null) cb.onComplete(true, 0);
+            });
+            return;
+        }
+
+        new Thread(() -> {
+            final Set<String> unique = new HashSet<>();
+            for (String[] section : EmojiData.data) {
+                if (section == null) continue;
+                for (String emoji : section) {
+                    String id = cacheKey(pack, emoji);
+                    if (id != null) unique.add(id);
+                }
+            }
+            for (String[] section : EmojiData.dataColored) {
+                if (section == null) continue;
+                for (String emoji : section) {
+                    String id = cacheKey(pack, emoji);
+                    if (id != null) unique.add(id);
+                }
+            }
+            final ArrayList<String> ids = new ArrayList<>(unique);
+            final int total = ids.size();
+            final AtomicInteger next = new AtomicInteger();
+            final AtomicInteger done = new AtomicInteger();
+            final AtomicInteger errors = new AtomicInteger();
+            final AtomicInteger unsupported = new AtomicInteger();
+            final CountDownLatch workers = new CountDownLatch(6);
+            for (int w = 0; w < 6; ++w) {
+                EXECUTOR.execute(() -> {
+                    try {
+                        int i;
+                        while (version == selectionVersion && (i = next.getAndIncrement()) < total) {
+                            final String id = ids.get(i);
+                            final String key = id.substring(pack.length() + 1);
+                            try {
+                                loadBitmap(pack, key);
+                            } catch (FileNotFoundException missing) {
+                                unsupported.incrementAndGet();
+                                // Missing art is stable fallback, not a reason
+                                // to hold the user in an endless install loop.
+                                File folder = packFolder(app, pack);
+                                if (folder.isDirectory()) {
+                                    try {
+                                        new File(folder, filename(pack, key) + ".missing").createNewFile();
+                                    } catch (Exception ignored) {}
+                                }
+                            } catch (Exception failed) {
+                                errors.incrementAndGet();
+                            }
+                            int completed = done.incrementAndGet();
+                            if (completed % 30 == 0 || completed == total) {
+                                AndroidUtilities.runOnUIThread(() -> {
+                                    InstallListener cb = callback.get();
+                                    if (cb != null && version == selectionVersion) {
+                                        cb.onProgress(completed, total);
+                                    }
+                                });
+                            }
+                        }
+                    } finally {
+                        workers.countDown();
+                    }
+                });
+            }
+            try {
+                workers.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                errors.incrementAndGet();
+            }
+            boolean complete = version == selectionVersion && done.get() == total &&
+                    errors.get() == 0;
+            if (complete) {
+                // Commit on-disk readiness last; a cancelled/failed install
+                // can never make half a pack visible.
+                File folder = packFolder(app, pack);
+                try {
+                    if (!folder.isDirectory() && !folder.mkdirs()) complete = false;
+                    else {
+                        File stamp = new File(folder, READY_MARKER);
+                        File temp = new File(folder, READY_MARKER + ".tmp");
+                        try (FileOutputStream output = new FileOutputStream(temp)) {
+                            output.write(("complete:" + total).getBytes("UTF-8"));
+                        }
+                        if (!temp.renameTo(stamp)) complete = false;
+                    }
+                } catch (Exception e) {
+                    complete = false;
+                }
+            }
+            if (complete && version == selectionVersion) {
+                choose(app, pack);
+            }
+            final boolean ok = complete && version != 0;
+            AndroidUtilities.runOnUIThread(() -> {
+                InstallListener cb = callback.get();
+                if (cb != null && version <= selectionVersion) {
+                    cb.onComplete(ok, unsupported.get());
+                }
+            });
+        }, "NabdhEmojiPackInstaller").start();
+    }
+
     private static void scheduleUiRedraw() {
-        final int version;
         synchronized (PENDING) {
-            if (redrawQueued || STAGED.isEmpty() || pendingForSelected()) return;
+            if (redrawQueued) return;
             redrawQueued = true;
-            version = selectionVersion;
         }
         AndroidUtilities.runOnUIThread(() -> {
-            boolean repaint = false;
-            synchronized (PENDING) {
-                if (version != selectionVersion) return;
-                redrawQueued = false;
-                if (STAGED.isEmpty() || pendingForSelected()) return;
-                VISIBLE.addAll(STAGED);
-                STAGED.clear();
-                repaint = true;
-            }
-            if (repaint) Emoji.invalidateUiRunnable.run();
-        }, 240);
+            synchronized (PENDING) { redrawQueued = false; }
+            Emoji.invalidateUiRunnable.run();
+        }, 100);
     }
 
     private NabdhEmojiPacks() {}
@@ -130,7 +254,7 @@ public final class NabdhEmojiPacks {
                     pack = context == null ? TELEGRAM :
                             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                                     .getString("pack", TELEGRAM);
-                    if (!isSupported(pack)) pack = TELEGRAM;
+                    if (!isSupported(pack) || !isReady(pack)) pack = TELEGRAM;
                     selected = pack;
                 }
             }
@@ -140,13 +264,12 @@ public final class NabdhEmojiPacks {
 
     public static void choose(Context context, String pack) {
         if (!isSupported(pack)) throw new IllegalArgumentException("Unknown emoji pack");
+        if (!isReady(pack)) throw new IllegalStateException("Emoji pack is not fully installed");
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit().putString("pack", pack).apply();
         selected = pack;
         synchronized (PENDING) {
             ++selectionVersion;
-            VISIBLE.clear();
-            STAGED.clear();
             redrawQueued = false;
             RETRY_AFTER.clear();
         }
@@ -241,7 +364,27 @@ public final class NabdhEmojiPacks {
     }
 
     private static Bitmap getCached(String id) {
-        synchronized (MEMORY) { return MEMORY.get(id); }
+        synchronized (MEMORY) {
+            Bitmap cached = MEMORY.get(id);
+            if (cached != null) return cached;
+        }
+        // All installed artwork is already local. Decoding a 72x72 file is
+        // faster and less visually disruptive than showing a native emoji
+        // followed by asynchronously replacing it as the user scrolls.
+        int separator = id.indexOf('_');
+        if (separator < 1) return null;
+        String pack = id.substring(0, separator);
+        if (!isReady(pack)) return null;
+        Context context = ApplicationLoader.applicationContext;
+        if (context == null) return null;
+        File file = new File(packFolder(context, pack),
+                filename(pack, id.substring(separator + 1)));
+        if (!file.isFile()) return null;
+        Bitmap bitmap = decode(file);
+        if (bitmap != null) {
+            synchronized (MEMORY) { MEMORY.put(id, bitmap); }
+        }
+        return bitmap;
     }
 
     private static boolean hasCachedPack(String code) {
@@ -257,18 +400,10 @@ public final class NabdhEmojiPacks {
         String id = cacheKey(pack, code);
         if (id == null) return false;
         Bitmap bitmap = getCached(id);
-        final boolean published;
-        synchronized (PENDING) {
-            published = VISIBLE.contains(id);
-            if (bitmap != null && !published) STAGED.add(id);
-        }
         if (bitmap == null) {
-            requestBitmap(code);
+            // An unsupported glyph stays native. Do not start a late
+            // per-glyph network request after atomic pack activation.
             return false; // Keep Telegram's native emoji visible while fetching.
-        }
-        if (!published) {
-            scheduleUiRedraw();
-            return false; // Never paint a partially fetched new pack.
         }
         synchronized (PAINT) {
             canvas.drawBitmap(bitmap, null, bounds, PAINT);
@@ -280,7 +415,10 @@ public final class NabdhEmojiPacks {
         String pack = selected();
         if (TELEGRAM.equals(pack) || SYSTEM.equals(pack)) return;
         String id = cacheKey(pack, code);
-        if (id == null || getCached(id) != null) return;
+        if (id == null || getCached(id) != null || !isReady(pack)) return;
+        Context context = ApplicationLoader.applicationContext;
+        if (context != null && new File(packFolder(context, pack),
+                filename(pack, id.substring(pack.length() + 1)) + ".missing").isFile()) return;
         synchronized (PENDING) {
             Long retryAt = RETRY_AFTER.get(id);
             if (PENDING.contains(id) || (retryAt != null &&
@@ -311,15 +449,8 @@ public final class NabdhEmojiPacks {
                         }
                     }
                 }
-                if (bitmap != null) {
+                if (bitmap != null && pack.equals(selected())) {
                     synchronized (MEMORY) { MEMORY.put(id, bitmap); }
-                    if (pack.equals(selected())) {
-                        synchronized (PENDING) { STAGED.add(id); }
-                        scheduleUiRedraw();
-                    }
-                } else if (pack.equals(selected())) {
-                    // Missing/unavailable glyphs remain native without blocking
-                    // the rest of the batch from publishing.
                     scheduleUiRedraw();
                 }
             });
