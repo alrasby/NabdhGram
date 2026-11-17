@@ -30,7 +30,7 @@ for name in ("NOTO", "TWEMOJI", "OPENMOJI", "TELEGRAM", "SYSTEM"):
 for attr in ("2D/png/72/", "assets/72x72/", "color/72x72/",
              "MAX_IMAGE_BYTES", "MAX_DISK_BYTES", "LruCache",
              "HttpURLConnection", "ThreadPoolExecutor(", "ArrayBlockingQueue<>(256)",
-             "getFilesDir()", "getCacheDir()", "Character.codePointAt",
+             "getNoBackupFilesDir()", "getCacheDir()", "Character.codePointAt",
              "setConnectTimeout", "setReadTimeout",
              "SharedConfig.useSystemEmoji = SYSTEM.equals(pack)",
              'putString("pack", pack)', "if (bitmap == null)",
@@ -51,7 +51,7 @@ require("private static final Set<String> VISIBLE" in pack
         and "AndroidUtilities.runOnUIThread(Emoji.invalidateUiRunnable);" not in pack,
         "new emoji assets must publish in an atomic per-visible-batch repaint")
 require("6, 6, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(256)" in pack
-        and 'new File(context.getFilesDir(), "nabdh_emoji_" + pack)' in pack
+        and 'new File(context.getNoBackupFilesDir(), "nabdh_emoji_" + pack)' in pack
         and "legacy.renameTo(file);" in pack,
         "first-use fetch must be bounded/parallel and persistent across app launches")
 require("NotificationCenter.didSetNewTheme" in pack
