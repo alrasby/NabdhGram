@@ -120,6 +120,9 @@ launch = (root / "TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.jav
 verify("MediaController.getInstance().setBaseActivity(this, false);" in launch
        and "MediaController.getInstance().setFeedbackView(feedbackView, false);" in launch,
        "LaunchActivity must detach from MediaController on destroy")
+verify("if (instance == this) {\n            instance = null;" in launch
+       and "if (staticInstanceForAlerts == this) {\n            staticInstanceForAlerts = null;" in launch,
+       "destroyed LaunchActivity must release both static strong references")
 
 print("PASS: 9 app components, media lifecycle, protected PendingIntents, storage scopes, "
       "AI isolation and native Telegram launch lifecycle checked")
