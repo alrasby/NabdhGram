@@ -14,7 +14,7 @@ import zipfile
 
 
 def fingerprint(text):
-    marker = re.search(r"SHA256:\\s*([A-Fa-f0-9:]{64,95})", text)
+    marker = re.search(r"SHA256:\s*([A-Fa-f0-9:]{64,95})", text)
     if marker is None:
         raise ValueError("AAB upload certificate SHA256 missing")
     value = re.sub(r"[^A-Fa-f0-9]", "", marker.group(1)).upper()
