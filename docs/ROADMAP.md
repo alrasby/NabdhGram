@@ -70,6 +70,29 @@ The new AI integration is not shipped yet.
 - Clear user-facing explanations for security warnings and automation actions.
 - Test stability, privacy, resource consumption, Arabic usability, and performance before release.
 
+## First post-v1 update — Smart View contextual chat lock (planned, not shipped)
+
+- **Owner request (2026-11-17):** Add **«قفل المحادثة»** as an action in the
+  **Smart View** context menu opened by **long-pressing a conversation** in the
+  chat list, alongside the existing folder, read/unread, pin, mute and delete
+  actions. Do not add a new persistent button or clutter the chat list.
+- For an already locked chat, show **«إلغاء قفل المحادثة»** in the same position,
+  with a clear lock/unlock icon and accessible Arabic/English labels.
+- Reuse **NabdhChatLock** and its existing PIN verification, protected-list
+  storage, notification-content suppression and secure-window handling.
+  Unlocking must require authenticated authorization; a long-press must
+  never bypass the PIN or reveal private message content.
+- Keep Telegram's native Smart View/chat-list behavior, gestures, RTL, themes,
+  navigation, unread counters, pin/mute/delete controls and secret-chat
+  limitations intact. A long press alone must not mark the chat as read.
+- **Acceptance before shipping:** test long press → lock → PIN protection →
+  notification redaction → long press → authenticated unlock, after app restart
+  and when switching accounts. Check Arabic/English, light/dark Glass themes,
+  talkback/accessible touch targets, and regression of all existing menu actions.
+- **Scope:** This is a roadmap item for the **next update after first release**.
+  It is not implemented by this document and must not delay the current
+  owner-signed v1 / Google Play internal-testing gate.
+
 ## v1.5 — Advanced intelligence (future)
 - Opt-in advanced AI summaries, semantic retrieval, better task/decision extraction.
 - More sophisticated scam classification and reduced false positives.
