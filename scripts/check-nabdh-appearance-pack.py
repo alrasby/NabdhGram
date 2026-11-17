@@ -44,17 +44,21 @@ check("NabdhCompactSettings.header(context, content," in page and
 check("NabdhEmojiPacks.choose(this, pack)" in picker and
       "NabdhEmojiPacks.TELEGRAM.equals(chosen)" in picker and
       "NabdhEmojiPacks.SYSTEM.equals(chosen)" in picker and
-      "NabdhEmojiPacks.NOTO.equals(chosen)" in picker and
       "NabdhEmojiPacks.TWEMOJI.equals(chosen)" in picker and
-      "NabdhEmojiPacks.OPENMOJI.equals(chosen)" in picker and
+      "NabdhEmojiPacks.NOTO.equals(chosen)" not in picker and
+      "NabdhEmojiPacks.OPENMOJI.equals(chosen)" not in picker and
       "Emoji.replaceEmoji(" in picker and
       "Build.MANUFACTURER" not in picker,
-      "show only real independent emoji renderers with live preview; no OEM-name placebo")
-check("NabdhAppearancePrefs.isDuotone(this)" in picker and
-      "NabdhAppearancePrefs.setDuotone(this, true)" in picker and
-      "NabdhAppearancePrefs.setDuotone(this, false)" in picker and
-      "NabdhAppearancePrefs.icon(context, icon)" in renderer,
-      "appearance icon pack must actually change owned interface icons")
+      "three real emoji renderers and live preview; obsolete packs removed")
+check("NabdhAppearancePrefs.iconStyle(this)" in picker and
+      all('NabdhAppearancePrefs.' + name + '.equals(style)' in picker
+          for name in ("CLASSIC", "DUOTONE", "LINEAR", "BOLD")) and
+      all('NabdhAppearancePrefs.setIconStyle(this, NabdhAppearancePrefs.' + name + ')' in picker
+          for name in ("CLASSIC", "DUOTONE", "LINEAR", "BOLD")) and
+      "NabdhAppearancePrefs.icon(context, icon)" in renderer and
+      "onWindowVisibilityChanged(int visibility)" in renderer and
+      '"nabdh_duotone"' in prefs and '"icon_style"' in prefs,
+      "all four icon packs must apply, persist and refresh across existing settings")
 check("nbdh_" not in picker and "nabdh_appearance_packs_v1" in prefs,
       "appearance options must use local scoped persistence")
 check("NabdhAppearancePrefs.notificationIcon(" in notifications and
@@ -69,9 +73,15 @@ check("Telegram's own navigation icons remain unchanged" in picker,
       "scope of first-party icon pack must be disclosed")
 for name in ("shield","privacy","productivity","language","network","ai",
              "browser","camera","feed","lock","swipe"):
-    icon = root / "res/drawable" / ("nabdh_alt_" + name + ".xml")
-    check(icon.exists(), "missing original alternative vector " + name)
-    check(ET.parse(icon).getroot().tag == "vector", "invalid icon " + name)
+    for pack_name in ("alt", "linear", "bold"):
+        icon = root / "res/drawable" / ("nabdh_" + pack_name + "_" + name + ".xml")
+        check(icon.exists(), "missing first-party icon vector " + pack_name + ":" + name)
+        vector = ET.parse(icon).getroot()
+        check(vector.tag == "vector" and len(vector) >= 2,
+              "invalid or decorative-only icon " + pack_name + ":" + name)
+    check("R.drawable.nabdh_linear_" + name in prefs and
+          "R.drawable.nabdh_bold_" + name in prefs,
+          "icon style missing mapped UI action for " + name)
 notification_icon = root / "res/drawable/nabdh_notification_symbol.xml"
 check(notification_icon.exists() and ET.parse(notification_icon).getroot().tag == "vector",
       "no valid local status-bar icon")
@@ -88,5 +98,5 @@ for language in ("values","values-ar"):
 check("AlarmManager" not in picker and "READ_CONTACTS" not in picker and
       "sendMessage(" not in picker,
       "appearance screen cannot monitor chats or trigger send operations")
-print("PASS: Appearance/Language, actual Telegram/system/Noto/Twemoji/OpenMoji renderers, "
-      "two icon styles and native notification variants")
+print("PASS: Appearance/Language, built-in Twemoji17, four icon styles "
+      "(33 real first-party vectors) and native notification variants")
