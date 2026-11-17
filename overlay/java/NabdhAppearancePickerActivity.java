@@ -33,6 +33,11 @@ public final class NabdhAppearancePickerActivity extends Activity {
 
     private String kind;
     private LinearLayout items;
+    private boolean installingEmojiPack;
+    private String installingEmojiPackId;
+    private String emojiInstallError;
+    private TextView emojiInstallStatus;
+    private NabdhEmojiPacks.InstallListener installListener;
 
     private String local(String en, String ar) {
         return LocaleController.isRTL ? ar : en;
@@ -131,17 +136,27 @@ public final class NabdhAppearancePickerActivity extends Activity {
                     () -> NabdhAppearancePrefs.setDuotone(this, true));
             previewIcons();
         } else if (EMOJI_SETS.equals(kind)) {
+            if (installingEmojiPack) {
+                emojiInstallStatus = note(local(
+                        "Installing the complete " + installingEmojiPackId +
+                        " emoji set before switching. Keep this screen open to view progress.",
+                        "يجري تثبيت حزمة " + installingEmojiPackId +
+                        " كاملة قبل تفعيلها. يمكن متابعة نسبة التنزيل هنا."));
+                items.addView(emojiInstallStatus);
+            } else if (emojiInstallError != null) {
+                items.addView(note(emojiInstallError));
+            }
             items.addView(note(local(
                     "Noto, Twemoji and OpenMoji use real independent PNG artwork. "
-                    + "The first selection needs to download the visible emoji images from jsDelivr. "
-                    + "New artwork appears together after each visible batch is ready, not one glyph at a time. "
-                    + "Downloaded art stays in private app storage for later instant reuse. "
-                    + "Offline/missing glyphs use Telegram artwork. No chat text is sent.",
+                    + "First use downloads the full compatible emoji set from jsDelivr before changing styles. "
+                    + "Progress appears here; if the download fails, the previous set stays active. "
+                    + "Installed sets switch immediately offline using private local storage. "
+                    + "Artwork absent upstream retains Telegram fallback. No chat text is sent.",
                     "حزم Noto وTwemoji وOpenMoji تستخدم صور إيموجي مستقلة فعلية. "
-                    + "عند اختيار الحزمة للمرة الأولى تُحمَّل صور الرموز الظاهرة من jsDelivr. "
-                    + "تُطبّق الصور الجديدة معًا عند اكتمال دفعة التحميل، وليس رمزًا بعد آخر. "
-                    + "تُحفظ في مساحة التطبيق الخاصة لإعادة استخدامها سريعًا. "
-                    + "عند غياب الصورة أو انقطاع الشبكة يبقى رمز Telegram. لا تُرسل نصوص المحادثات.")));
+                    + "عند اختيار الحزمة أول مرة يُحمَّل كامل الإيموجي المتوافق من jsDelivr قبل تغيير المظهر. "
+                    + "تظهر نسبة التقدم هنا، وإذا انقطع التحميل تبقى الحزمة السابقة مفعّلة. "
+                    + "بعد التثبيت يصبح التبديل فوريًا دون إنترنت عبر التخزين الخاص. "
+                    + "الرموز غير المتوفرة لدى المصدر تستخدم رسم Telegram. لا تُرسل نصوص المحادثات.")));
             String chosen = NabdhEmojiPacks.selected();
             NabdhCompactSettings.header(this, items,
                     local("Emoji art packs", "حزم رسومات الإيموجي"));
@@ -204,8 +219,53 @@ public final class NabdhAppearancePickerActivity extends Activity {
     }
 
     private void applyEmojiPack(String pack) {
-        if (NabdhEmojiPacks.selected().equals(pack)) return;
-        NabdhEmojiPacks.choose(this, pack);
+        if (!installingEmojiPack && NabdhEmojiPacks.selected().equals(pack)) return;
+        if (installingEmojiPack) {
+            NabdhEmojiPacks.cancelInstall();
+            installListener = null;
+            installingEmojiPack = false;
+        }
+        emojiInstallError = null;
+        if (NabdhEmojiPacks.isReady(pack)) {
+            NabdhEmojiPacks.choose(this, pack);
+            return;
+        }
+        installingEmojiPack = true;
+        installingEmojiPackId = pack;
+        final String requested = pack;
+        installListener = new NabdhEmojiPacks.InstallListener() {
+            @Override public void onProgress(int done, int total) {
+                if (!installingEmojiPack || !requested.equals(installingEmojiPackId)) return;
+                if (emojiInstallStatus != null) {
+                    int percent = total <= 0 ? 0 : (done * 100 / total);
+                    emojiInstallStatus.setText(local(
+                            "Downloading " + requested + " emoji: " + done + "/" + total + " (" + percent + "%)",
+                            "تنزيل إيموجي " + requested + ": " + done + "/" + total + " (" + percent + "%)"));
+                }
+            }
+            @Override public void onComplete(boolean success, int unsupportedCount) {
+                if (!installingEmojiPack || !requested.equals(installingEmojiPackId)) return;
+                installingEmojiPack = false;
+                installingEmojiPackId = null;
+                installListener = null;
+                if (!success) {
+                    emojiInstallError = local(
+                            "Could not finish the emoji download. The original set is unchanged; try again online.",
+                            "لم يكتمل تنزيل الحزمة. بقيت الحزمة السابقة دون تغيير؛ حاول مجددًا مع اتصال إنترنت.");
+                } else if (unsupportedCount > 0) {
+                    emojiInstallError = local(
+                            unsupportedCount + " glyphs are unavailable upstream and will use Telegram artwork.",
+                            "عدد " + unsupportedCount + " من الرموز غير متوفر لدى المصدر وسيستخدم رسم Telegram.");
+                }
+                if (!isFinishing() && !isDestroyed()) render();
+            }
+        };
+        NabdhEmojiPacks.installAndChoose(getApplicationContext(), pack, installListener);
+    }
+
+    @Override public void onDestroy() {
+        super.onDestroy();
+        installListener = null; // Download may finish without retaining this Activity.
     }
 
     private void applyNotification(boolean nabdh) {
