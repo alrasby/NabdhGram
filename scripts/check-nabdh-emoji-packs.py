@@ -38,29 +38,39 @@ for attr in ("2D/png/72/", "assets/72x72/", "color/72x72/",
     require(attr in pack, "real safe pack loading missing: " + attr)
 for licence in ("Apache-2.0", "CC-BY-4.0", "CC-BY-SA-4.0"):
     require(licence in pack, "third-party attribution missing: " + licence)
-require("private static final Set<String> VISIBLE" in pack
-        and "private static final Set<String> STAGED" in pack
-        and "VISIBLE.clear();" in pack
-        and "STAGED.clear();" in pack
-        and "pendingForSelected()" in pack
-        and "VISIBLE.addAll(STAGED);" in pack
-        and "if (!published)" in pack
-        and "return false; // Never paint a partially fetched new pack." in pack
-        and "scheduleUiRedraw();" in pack
-        and "}, 240);" in pack
-        and "AndroidUtilities.runOnUIThread(Emoji.invalidateUiRunnable);" not in pack,
-        "new emoji assets must publish in an atomic per-visible-batch repaint")
+require('private static final String READY_MARKER = ".nabdh_pack_complete_v2"' in pack
+        and "public static boolean isReady(String pack)" in pack
+        and "if (!isSupported(pack) || !isReady(pack)) pack = TELEGRAM;" in pack
+        and "if (!isReady(pack)) throw new IllegalStateException" in pack
+        and "public static void installAndChoose(Context context, String pack, InstallListener listener)" in pack
+        and "for (String[] section : EmojiData.data)" in pack
+        and "for (String[] section : EmojiData.dataColored)" in pack
+        and "final CountDownLatch workers = new CountDownLatch(6);" in pack
+        and "done.get() == total" in pack
+        and "errors.get() == 0" in pack
+        and "output.getFD().sync();" in pack
+        and "if (complete && version == selectionVersion)" in pack
+        and "NabdhEmojiPacks.installAndChoose(getApplicationContext(), pack, installListener)" in picker,
+        "external pack must install the full picker inventory before atomic activation")
 require("6, 6, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(256)" in pack
         and 'new File(context.getNoBackupFilesDir(), "nabdh_emoji_" + pack)' in pack
-        and "legacy.renameTo(file);" in pack,
-        "first-use fetch must be bounded/parallel and persistent across app launches")
+        and "legacy.renameTo(file);" in pack
+        and "File file = new File(packFolder(context, pack)" in pack
+        and "Bitmap bitmap = decode(file);" in pack,
+        "installed images must render from private durable files without late CDN requests")
+require("requestBitmap(code);" not in pack
+        and "nativeDrawable.preload();" in pack
+        and "if (downloaded == null) errors.incrementAndGet();" in pack
+        and "errors.get() < 10" in pack,
+        "no per-glyph lazy reload or activation after a failed/offline install")
 require("NotificationCenter.didSetNewTheme" in pack
         and "Emoji.invalidateUiRunnable.run()" in pack
         and "Emoji.replaceEmoji(" in picker,
         "switch must repaint old spans and render actual sample")
 require('if (TELEGRAM.equals(pack) || SYSTEM.equals(pack)) return;' in pack
-        and "NabdhEmojiPacks.choose(this, pack)" in picker,
-        "no background requests unless user chooses external art")
+        and "NabdhEmojiPacks.choose(this, pack)" in picker
+        and "NabdhEmojiPacks.installAndChoose(getApplicationContext(), pack, installListener)" in picker,
+        "only user-selected art may download, with ready native fallback")
 require(all(k in pack for k in ("TEMPORARY_RETRY_MS", "MISSING_GLYPH_RETRY_MS",
         "RETRY_AFTER", "SystemClock.elapsedRealtime()", "HTTP_NOT_FOUND",
         "FileNotFoundException", "RejectedExecutionException", "pack.equals(selected())",
