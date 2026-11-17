@@ -48,6 +48,27 @@ bot_field_anchor = "((MarginLayoutParams) messageEditText.getLayoutParams()).lef
 if s.count(bot_icon_anchor) != 1 or s.count(bot_field_anchor) != 1:
     raise SystemExit("Telegram bot menu composer margins changed: fail closed")
 
+# ROOT CAUSE of Arabic 'القائمة' over 'الرسالة' in bot chats:
+# BotCommandsMenuView creates a wide ALIGN_NORMAL StaticLayout. An RTL run's
+# first glyph is drawn at getLineLeft(0) (near the RIGHT of that wide layout),
+# but Telegram measures the button using only getLineWidth(0), then draws
+# without subtracting lineLeft. Because the chat composer has clipChildren(false)
+# the misplaced label escapes the bot button and overlays the input hint.
+# Normalize the glyph origin to the button's measured text slot; do not change
+# the dimensions, EditText, bot commands semantics or touch targets.
+bot_menu = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui/bots/BotCommandsMenuView.java"
+bot_source = bot_menu.read_text(encoding="utf-8")
+bot_draw_anchor = "canvas.translate(AndroidUtilities.dp(34), (getMeasuredHeight() - menuTextLayout.getHeight()) / 2f);"
+bot_draw_fix = """// Align the first glyph with the measured text slot for both RTL and LTR.
+                // ALIGN_NORMAL RTL StaticLayout stores its glyphs far to the right
+                // within a 60%-of-screen layout, not at x=0.
+                canvas.clipRect(0, 0, getMeasuredWidth(), getMeasuredHeight());
+                canvas.translate(AndroidUtilities.dp(34) - menuTextLayout.getLineLeft(0),
+                        (getMeasuredHeight() - menuTextLayout.getHeight()) / 2f);"""
+if bot_source.count(bot_draw_anchor) != 1:
+    raise SystemExit("BotCommandsMenuView RTL draw anchor changed; refusing unsafe patch")
+bot_menu.write_text(bot_source.replace(bot_draw_anchor, bot_draw_fix, 1), encoding="utf-8")
+
 resume_anchor = """    public void onResume() {
         isPaused = false;"""
 if s.count(resume_anchor) != 1:
