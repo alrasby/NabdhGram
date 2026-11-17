@@ -10,7 +10,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import org.telegram.messenger.LocaleController;
-import org.telegram.messenger.NabdhEmojiPacks;
+import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.Emoji;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.NotificationsController;
@@ -33,7 +33,6 @@ public final class NabdhAppearancePickerActivity extends Activity {
 
     private String kind;
     private LinearLayout items;
-    private String emojiAvailabilityError;
 
     private String local(String en, String ar) {
         return LocaleController.isRTL ? ar : en;
@@ -141,31 +140,22 @@ public final class NabdhAppearancePickerActivity extends Activity {
             previewIcons();
         } else if (EMOJI_SETS.equals(kind)) {
             items.addView(note(local(
-                    "Twemoji 17.0.3 is included inside NabdhGram. Switching between "
-                    + "Telegram, Twemoji and Android uses no network or additional downloads. "
-                    + "Third-party Twemoji artwork is licensed CC BY 4.0.",
-                    "حزمة Twemoji 17.0.3 مدمجة بالكامل داخل نبض جرام. "
-                    + "التبديل بين Telegram وTwemoji وAndroid لا يحتاج إنترنت أو تنزيلات. "
-                    + "ترخيص رسومات Twemoji هو CC BY 4.0.")));
-            if (emojiAvailabilityError != null) {
-                items.addView(note(emojiAvailabilityError));
-            }
-            String chosen = NabdhEmojiPacks.selected();
+                    "Use original Telegram emojis or the emoji font installed on your Android device. "
+                    + "Both options are built in, work offline and require no downloads.",
+                    "اختر الإيموجي الأصلي لتليجرام أو إيموجي نظام Android المثبت في هاتفك. "
+                    + "الخياران مدمجان، ويعملان دون إنترنت أو تنزيلات.")));
+            boolean system = SharedConfig.useSystemEmoji;
             NabdhCompactSettings.header(this, items,
-                    local("Emoji artwork", "رسومات الإيموجي"));
+                    local("Emoji appearance", "مظهر الإيموجي"));
             selection("Telegram",
-                    local("Original bundled Telegram emoji", "إيموجي Telegram الأصلي المدمج"),
-                    R.drawable.settings_chat, NabdhEmojiPacks.TELEGRAM.equals(chosen),
-                    () -> applyEmojiPack(NabdhEmojiPacks.TELEGRAM));
-            selection("Twemoji 17",
-                    local("Complete bundled Twemoji 17 artwork · CC BY 4.0",
-                            "رسومات Twemoji 17 المدمجة · ترخيص CC BY 4.0"),
-                    R.drawable.settings_language, NabdhEmojiPacks.TWEMOJI.equals(chosen),
-                    () -> applyEmojiPack(NabdhEmojiPacks.TWEMOJI));
+                    local("Original Telegram emoji artwork",
+                            "رسومات إيموجي Telegram الأصلية"),
+                    R.drawable.settings_chat, !system,
+                    () -> applySystemEmoji(false));
             selection(local("Android system", "نظام Android"),
-                    local("Uses device emoji font", "يستخدم خط الإيموجي المثبت على جهازك"),
-                    R.drawable.settings_language, NabdhEmojiPacks.SYSTEM.equals(chosen),
-                    () -> applyEmojiPack(NabdhEmojiPacks.SYSTEM));
+                    local("Device emoji font", "خط إيموجي نظام الجهاز"),
+                    R.drawable.settings_language, system,
+                    () -> applySystemEmoji(true));
             TextView samples = new TextView(this);
             samples.setTextSize(29);
             samples.setGravity(Gravity.CENTER);
@@ -173,13 +163,6 @@ public final class NabdhAppearancePickerActivity extends Activity {
             samples.setText(Emoji.replaceEmoji("😀 😍 😂 ❤️ 👍 🇴🇲 🐱 🌷",
                     samples.getPaint().getFontMetricsInt(), true));
             items.addView(samples);
-            items.addView(note(local(
-                    "Graphics © Twemoji contributors, CC BY 4.0. "
-                    + "Source: jdecked/twemoji v17.0.3. Files are bundled unmodified; "
-                    + "unavailable variants retain Telegram's native artwork.",
-                    "الرسومات © مساهمو Twemoji بترخيص CC BY 4.0. "
-                    + "المصدر: jdecked/twemoji v17.0.3. الصور مدمجة دون تعديل، "
-                    + "والرموز غير المتوفرة تستخدم رسم Telegram الأصلي.")));
         } else {
             items.addView(note(local(
                     "Status bar icons are monochrome. They are separate from the app launcher icon.",
@@ -199,16 +182,13 @@ public final class NabdhAppearancePickerActivity extends Activity {
         }
     }
 
-    private void applyEmojiPack(String pack) {
-        if (NabdhEmojiPacks.selected().equals(pack)) return;
-        if (!NabdhEmojiPacks.isReady(pack)) {
-            emojiAvailabilityError = local(
-                    "Bundled Twemoji assets are missing in this build.",
-                    "ملفات Twemoji المدمجة غير متوفرة في هذا البناء.");
-            return;
-        }
-        emojiAvailabilityError = null;
-        NabdhEmojiPacks.choose(this, pack);
+    private void applySystemEmoji(boolean useSystem) {
+        if (SharedConfig.useSystemEmoji == useSystem) return;
+        SharedConfig.useSystemEmoji = useSystem;
+        SharedConfig.saveConfig();
+        Emoji.invalidateUiRunnable.run();
+        NotificationCenter.getGlobalInstance().postNotificationName(
+                NotificationCenter.didSetNewTheme, false, false);
     }
 
     private void applyNotification(boolean nabdh) {
