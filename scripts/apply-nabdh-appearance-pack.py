@@ -72,6 +72,32 @@ for name, (filled, stroke) in vectors.items():
         'android:strokeLineCap="round" android:strokeLineJoin="round"/>\n'
         '</vector>\n', encoding="utf-8")
 
+# Two additional original sets reuse the SAME 11 vetted glyph geometries,
+# with distinctly rendered strokes. Vectors tint to the current Glass theme
+# through NabdhCompactSettings, so they add only a few kilobytes to the APK.
+for style, fill_alpha, outer_width, detail_width in (
+    ("linear", "0.00", "1.65", "1.55"),   # airy rounded single-line glyphs
+    ("bold", "0.48", "2.35", "2.55"),     # confident soft-filled glyphs
+):
+    for name, (shape, detail) in vectors.items():
+        file = drawables / ("nabdh_" + style + "_" + name + ".xml")
+        if file.exists():
+            raise SystemExit("Appearance style conflict: " + str(file))
+        file.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\\n'
+            '<vector xmlns:android="http://schemas.android.com/apk/res/android" '
+            'android:width="24dp" android:height="24dp" '
+            'android:viewportWidth="24" android:viewportHeight="24">\\n'
+            '  <path android:pathData="' + shape + '" '
+            'android:fillColor="#FFFFFFFF" android:fillAlpha="' + fill_alpha + '" '
+            'android:strokeColor="#FFFFFFFF" android:strokeWidth="' + outer_width + '" '
+            'android:strokeLineCap="round" android:strokeLineJoin="round"/>\\n'
+            '  <path android:pathData="' + detail + '" '
+            'android:fillColor="@android:color/transparent" '
+            'android:strokeColor="#FFFFFFFF" android:strokeWidth="' + detail_width + '" '
+            'android:strokeLineCap="round" android:strokeLineJoin="round"/>\\n'
+            '</vector>\\n', encoding="utf-8")
+
 status = drawables / "nabdh_notification_symbol.xml"
 if status.exists():
     raise SystemExit("Appearance status icon conflict")
@@ -163,9 +189,9 @@ messages = {
     "values": {
         "NabdhAppearanceTextIcons": "Text and icons",
         "NabdhAppearanceIconPacks": "Icon style",
-        "NabdhAppearanceIconPacksInfo": "Classic or Nabdh Duotone for NabdhGram tools",
+        "NabdhAppearanceIconPacksInfo": "Classic, Duotone, Linear or Bold for NabdhGram tools",
         "NabdhAppearanceEmojis": "Emoji set",
-        "NabdhAppearanceEmojisInfo": "Telegram or Android system emojis",
+        "NabdhAppearanceEmojisInfo": "Telegram, Android system or bundled Twemoji 17",
         "NabdhAppearanceLauncher": "App icon",
         "NabdhAppearanceLauncherInfo": "Telegram's built-in launcher icon chooser",
         "NabdhAppearanceNotification": "Notification icon",
@@ -179,9 +205,9 @@ messages = {
     "values-ar": {
         "NabdhAppearanceTextIcons": "النصوص والأيقونات",
         "NabdhAppearanceIconPacks": "حزم الأيقونات",
-        "NabdhAppearanceIconPacksInfo": "الكلاسيكية أو نبض ثنائية اللون لأدوات نبض جرام",
+        "NabdhAppearanceIconPacksInfo": "الكلاسيكية، ثنائية اللون، الخطية أو المصمتة لأدوات نبض جرام",
         "NabdhAppearanceEmojis": "حزم الإيموجي",
-        "NabdhAppearanceEmojisInfo": "إيموجي Telegram أو نظام Android",
+        "NabdhAppearanceEmojisInfo": "Telegram أو Android أو Twemoji 17 المدمجة",
         "NabdhAppearanceLauncher": "أيقونة التطبيق",
         "NabdhAppearanceLauncherInfo": "اختيار الأيقونة عبر واجهة Telegram الحالية",
         "NabdhAppearanceNotification": "أيقونة الإشعارات",
@@ -214,5 +240,5 @@ n = n.replace(old,
     ".setSmallIcon(org.telegram.ui.Components.NabdhAppearancePrefs.notificationIcon("
     "ApplicationLoader.applicationContext))")
 notification.write_text(n, encoding="utf-8")
-print("PASS: functional grouped appearance choices, original packs, system emoji, "
+print("PASS: functional grouped appearance choices, four real icon styles, bundled Twemoji, "
       "built-in app icons and dynamic notification icon")
