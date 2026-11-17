@@ -29,8 +29,8 @@ for name in ("NOTO", "TWEMOJI", "OPENMOJI", "TELEGRAM", "SYSTEM"):
             "picker entry missing working renderer " + name)
 for attr in ("2D/png/72/", "assets/72x72/", "color/72x72/",
              "MAX_IMAGE_BYTES", "MAX_DISK_BYTES", "LruCache",
-             "HttpURLConnection", "ThreadPoolExecutor(", "ArrayBlockingQueue<>(64)",
-             "getCacheDir()", "Character.codePointAt",
+             "HttpURLConnection", "ThreadPoolExecutor(", "ArrayBlockingQueue<>(256)",
+             "getFilesDir()", "getCacheDir()", "Character.codePointAt",
              "setConnectTimeout", "setReadTimeout",
              "SharedConfig.useSystemEmoji = SYSTEM.equals(pack)",
              'putString("pack", pack)', "if (bitmap == null)",
@@ -38,13 +38,22 @@ for attr in ("2D/png/72/", "assets/72x72/", "color/72x72/",
     require(attr in pack, "real safe pack loading missing: " + attr)
 for licence in ("Apache-2.0", "CC-BY-4.0", "CC-BY-SA-4.0"):
     require(licence in pack, "third-party attribution missing: " + licence)
-require("private static boolean redrawQueued;" in pack
-        and "if (redrawQueued) return;" in pack
+require("private static final Set<String> VISIBLE" in pack
+        and "private static final Set<String> STAGED" in pack
+        and "VISIBLE.clear();" in pack
+        and "STAGED.clear();" in pack
+        and "pendingForSelected()" in pack
+        and "VISIBLE.addAll(STAGED);" in pack
+        and "if (!published)" in pack
+        and "return false; // Never paint a partially fetched new pack." in pack
         and "scheduleUiRedraw();" in pack
-        and "AndroidUtilities.runOnUIThread(() -> {" in pack
-        and "}, 100);" in pack
+        and "}, 240);" in pack
         and "AndroidUtilities.runOnUIThread(Emoji.invalidateUiRunnable);" not in pack,
-        "emoji PNG downloads must batch UI invalidations instead of triggering repaint storms")
+        "new emoji assets must publish in an atomic per-visible-batch repaint")
+require("6, 6, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(256)" in pack
+        and 'new File(context.getFilesDir(), "nabdh_emoji_" + pack)' in pack
+        and "legacy.renameTo(file);" in pack,
+        "first-use fetch must be bounded/parallel and persistent across app launches")
 require("NotificationCenter.didSetNewTheme" in pack
         and "Emoji.invalidateUiRunnable.run()" in pack
         and "Emoji.replaceEmoji(" in picker,
