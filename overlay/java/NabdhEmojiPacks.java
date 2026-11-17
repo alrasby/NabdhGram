@@ -154,11 +154,13 @@ public final class NabdhEmojiPacks {
                 EXECUTOR.execute(() -> {
                     try {
                         int i;
-                        while (version == selectionVersion && (i = next.getAndIncrement()) < total) {
+                        while (version == selectionVersion && errors.get() < 10 &&
+                               (i = next.getAndIncrement()) < total) {
                             final String id = ids.get(i);
                             final String key = id.substring(pack.length() + 1);
                             try {
-                                loadBitmap(pack, key);
+                                Bitmap downloaded = loadBitmap(pack, key);
+                                if (downloaded == null) errors.incrementAndGet();
                             } catch (FileNotFoundException missing) {
                                 unsupported.incrementAndGet();
                                 // Missing art is stable fallback, not a reason
@@ -206,6 +208,7 @@ public final class NabdhEmojiPacks {
                         File temp = new File(folder, READY_MARKER + ".tmp");
                         try (FileOutputStream output = new FileOutputStream(temp)) {
                             output.write(("complete:" + total).getBytes("UTF-8"));
+                            output.getFD().sync();
                         }
                         if (!temp.renameTo(stamp)) complete = false;
                     }
@@ -216,7 +219,7 @@ public final class NabdhEmojiPacks {
             if (complete && version == selectionVersion) {
                 choose(app, pack);
             }
-            final boolean ok = complete && version != 0;
+            final boolean ok = complete && isReady(pack);
             AndroidUtilities.runOnUIThread(() -> {
                 InstallListener cb = callback.get();
                 if (cb != null && version <= selectionVersion) {
@@ -310,7 +313,8 @@ public final class NabdhEmojiPacks {
         }
 
         @Override public void preload() {
-            requestBitmap(code);
+            // Installed packs must not fetch fresh PNGs as the user scrolls.
+            // Unsupported glyphs consistently use the native fallback.
             nativeDrawable.preload();
         }
 
