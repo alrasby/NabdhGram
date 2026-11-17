@@ -32,19 +32,15 @@ if code.count(before) != 1:
     raise SystemExit(f"Emoji upstream API changed: {code.count(before)} drawable anchors")
 emoji.write_text(code.replace(before, after, 1), encoding="utf-8")
 
-# Telegram 13.2.2 calls onScrolled even after adapter/layout updates.
-# Those IDLE callbacks must not repeatedly show/hide the bottom emoji/GIF/
-# sticker tab strip; only user drag/fling should affect its scroll visibility.
-# Preserve native tab switching, gestures and animation for real scrolling.
+# The actual phone video shows tab flicker during USER scroll, not only idle.
+# Keep category tabs pinned while scrolling; preserve explicit search and selection.
 view = root / "ui/Components/EmojiView.java"
 native = view.read_text(encoding="utf-8")
 scroll_anchor = """            if (!smoothScrolling) {
                 checkBottomTabScroll(dy);
             }"""
-scroll_fixed = """            if (!smoothScrolling &&
-                    recyclerView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE) {
-                checkBottomTabScroll(dy);
-            }"""
+scroll_fixed = """            // NabdhGram: keep emoji/GIF/sticker tabs stable during scroll.
+            // Explicit search/selection controls still manage their visibility."""
 if native.count(scroll_anchor) != 1:
     raise SystemExit(f"EmojiView native idle-scroll anchor changed ({native.count(scroll_anchor)})")
 native = native.replace(scroll_anchor, scroll_fixed, 1)
