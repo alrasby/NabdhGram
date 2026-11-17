@@ -103,7 +103,22 @@ public final class NabdhCompactSettings {
         row.setClipToOutline(true);
 
         if (icon != 0) {
-            ImageView image = new ImageView(context);
+            // Refresh the icon when returning from the standalone picker
+            // without reconstructing settings or restarting Telegram.
+            ImageView image = new ImageView(context) {
+                private int applied = -1;
+                private void refreshStyle() {
+                    int current = NabdhAppearancePrefs.icon(context, icon);
+                    if (applied != current) {
+                        applied = current;
+                        setImageResource(current);
+                    }
+                }
+                @Override protected void onWindowVisibilityChanged(int visibility) {
+                    super.onWindowVisibilityChanged(visibility);
+                    if (visibility == View.VISIBLE) refreshStyle();
+                }
+            };
             image.setImageResource(NabdhAppearancePrefs.icon(context, icon));
             image.setColorFilter(accent);
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
