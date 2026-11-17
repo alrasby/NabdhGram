@@ -83,8 +83,11 @@ check("cameraGeneration++;" in camera and
       "generation != cameraGeneration" in camera and
       "openingCamera" in camera and
       "onOpened(CameraDevice opened)" in camera and
-      "previewSurface.release();" in camera,
-      "camera switching and pause must release old surfaces and reject late callbacks")
+      "previewSurface.release();" in camera
+      and "worker.quitSafely();" in camera
+      and "worker.join(" not in camera
+      and "readerGeneration != cameraGeneration" in camera,
+      "camera must close resources, reject stale capture callbacks and never block onPause")
 check("onCaptureFailed(CameraCaptureSession current," in camera and
       "onCaptureSequenceAborted(CameraCaptureSession current," in camera and
       "takingPhoto = false;" in camera,
