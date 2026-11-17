@@ -33,11 +33,7 @@ public final class NabdhAppearancePickerActivity extends Activity {
 
     private String kind;
     private LinearLayout items;
-    private boolean installingEmojiPack;
-    private String installingEmojiPackId;
-    private String emojiInstallError;
-    private TextView emojiInstallStatus;
-    private NabdhEmojiPacks.InstallListener installListener;
+    private String emojiAvailabilityError;
 
     private String local(String en, String ar) {
         return LocaleController.isRTL ? ar : en;
@@ -122,83 +118,68 @@ public final class NabdhAppearancePickerActivity extends Activity {
                     + "Telegram's own navigation icons remain unchanged.",
                     "تُطبّق حزمة الأيقونات على إعدادات نبض جرام وأدواته. "
                     + "أيقونات التنقل الأصلية في Telegram لا تتغير.")));
-            boolean duotone = NabdhAppearancePrefs.isDuotone(this);
+            String style = NabdhAppearancePrefs.iconStyle(this);
             NabdhCompactSettings.header(this, items,
                     local("Available icon styles", "أنماط الأيقونات المتاحة"));
             selection(local("Classic", "الكلاسيكية"),
-                    local("Original outlined symbols", "أيقونات الحدود الأصلية"),
-                    R.drawable.nabdh_tool_browser, !duotone,
-                    () -> NabdhAppearancePrefs.setDuotone(this, false));
-            selection(local("Nabdh Duotone", "نبض ثنائي اللون"),
-                    local("Custom soft-filled symbols for NabdhGram",
-                            "رموز خاصة بنبض جرام بتصميم ممتلئ وهادئ"),
-                    R.drawable.nabdh_alt_browser, duotone,
-                    () -> NabdhAppearancePrefs.setDuotone(this, true));
+                    local("Telegram-inspired original symbols", "الرموز الأصلية المتناسقة مع Telegram"),
+                    R.drawable.nabdh_tool_browser, NabdhAppearancePrefs.CLASSIC.equals(style),
+                    () -> NabdhAppearancePrefs.setIconStyle(this, NabdhAppearancePrefs.CLASSIC));
+            selection(local("Nabdh Duotone", "نبض ثنائية اللون"),
+                    local("Soft-filled Glass symbols", "أيقونات ناعمة بلمسات Glass"),
+                    R.drawable.nabdh_alt_browser, NabdhAppearancePrefs.DUOTONE.equals(style),
+                    () -> NabdhAppearancePrefs.setIconStyle(this, NabdhAppearancePrefs.DUOTONE));
+            selection(local("Nabdh Linear", "نبض الخطية"),
+                    local("Fine geometric outlines", "خطوط هندسية دقيقة وعصرية"),
+                    R.drawable.nabdh_linear_browser, NabdhAppearancePrefs.LINEAR.equals(style),
+                    () -> NabdhAppearancePrefs.setIconStyle(this, NabdhAppearancePrefs.LINEAR));
+            selection(local("Nabdh Bold", "نبض المصمتة"),
+                    local("Strong, softly filled geometric symbols",
+                            "رموز هندسية بارزة بتعبئة ناعمة"),
+                    R.drawable.nabdh_bold_browser, NabdhAppearancePrefs.BOLD.equals(style),
+                    () -> NabdhAppearancePrefs.setIconStyle(this, NabdhAppearancePrefs.BOLD));
             previewIcons();
         } else if (EMOJI_SETS.equals(kind)) {
-            if (installingEmojiPack) {
-                emojiInstallStatus = note(local(
-                        "Installing the complete " + installingEmojiPackId +
-                        " emoji set before switching. Keep this screen open to view progress.",
-                        "يجري تثبيت حزمة " + installingEmojiPackId +
-                        " كاملة قبل تفعيلها. يمكن متابعة نسبة التنزيل هنا."));
-                items.addView(emojiInstallStatus);
-            } else if (emojiInstallError != null) {
-                items.addView(note(emojiInstallError));
-            }
             items.addView(note(local(
-                    "Noto, Twemoji and OpenMoji use real independent PNG artwork. "
-                    + "First use downloads the full compatible emoji set from jsDelivr before changing styles. "
-                    + "Progress appears here; if the download fails, the previous set stays active. "
-                    + "Installed sets switch immediately offline using private local storage. "
-                    + "Artwork absent upstream retains Telegram fallback. No chat text is sent.",
-                    "حزم Noto وTwemoji وOpenMoji تستخدم صور إيموجي مستقلة فعلية. "
-                    + "عند اختيار الحزمة أول مرة يُحمَّل كامل الإيموجي المتوافق من jsDelivr قبل تغيير المظهر. "
-                    + "تظهر نسبة التقدم هنا، وإذا انقطع التحميل تبقى الحزمة السابقة مفعّلة. "
-                    + "بعد التثبيت يصبح التبديل فوريًا دون إنترنت عبر التخزين الخاص. "
-                    + "الرموز غير المتوفرة لدى المصدر تستخدم رسم Telegram. لا تُرسل نصوص المحادثات.")));
+                    "Twemoji 17.0.3 is included inside NabdhGram. Switching between "
+                    + "Telegram, Twemoji and Android uses no network or additional downloads. "
+                    + "Third-party Twemoji artwork is licensed CC BY 4.0.",
+                    "حزمة Twemoji 17.0.3 مدمجة بالكامل داخل نبض جرام. "
+                    + "التبديل بين Telegram وTwemoji وAndroid لا يحتاج إنترنت أو تنزيلات. "
+                    + "ترخيص رسومات Twemoji هو CC BY 4.0.")));
+            if (emojiAvailabilityError != null) {
+                items.addView(note(emojiAvailabilityError));
+            }
             String chosen = NabdhEmojiPacks.selected();
             NabdhCompactSettings.header(this, items,
-                    local("Emoji art packs", "حزم رسومات الإيموجي"));
+                    local("Emoji artwork", "رسومات الإيموجي"));
             selection("Telegram",
-                    local("Original bundled Telegram emoji (no download)",
-                            "إيموجي Telegram الأصلي المدمج دون تنزيل"),
+                    local("Original bundled Telegram emoji", "إيموجي Telegram الأصلي المدمج"),
                     R.drawable.settings_chat, NabdhEmojiPacks.TELEGRAM.equals(chosen),
                     () -> applyEmojiPack(NabdhEmojiPacks.TELEGRAM));
-            selection("Google Noto Emoji",
-                    local("Original Noto PNG artwork · Apache 2.0",
-                            "رسومات Noto الأصلية · ترخيص Apache 2.0"),
-                    R.drawable.settings_language, NabdhEmojiPacks.NOTO.equals(chosen),
-                    () -> applyEmojiPack(NabdhEmojiPacks.NOTO));
-            selection("Twemoji",
-                    local("Original Twemoji artwork · CC BY 4.0",
-                            "رسومات Twemoji الأصلية · ترخيص CC BY 4.0"),
-                    R.drawable.settings_chat, NabdhEmojiPacks.TWEMOJI.equals(chosen),
+            selection("Twemoji 17",
+                    local("Complete bundled Twemoji 17 artwork · CC BY 4.0",
+                            "رسومات Twemoji 17 المدمجة · ترخيص CC BY 4.0"),
+                    R.drawable.settings_language, NabdhEmojiPacks.TWEMOJI.equals(chosen),
                     () -> applyEmojiPack(NabdhEmojiPacks.TWEMOJI));
-            selection("OpenMoji",
-                    local("Original OpenMoji artwork · CC BY-SA 4.0",
-                            "رسومات OpenMoji الأصلية · ترخيص CC BY-SA 4.0"),
-                    R.drawable.settings_language, NabdhEmojiPacks.OPENMOJI.equals(chosen),
-                    () -> applyEmojiPack(NabdhEmojiPacks.OPENMOJI));
             selection(local("Android system", "نظام Android"),
-                    local("Uses only the emoji font installed on this device",
-                            "يستخدم خط الإيموجي المثبت على هذا الجهاز فقط"),
+                    local("Uses device emoji font", "يستخدم خط الإيموجي المثبت على جهازك"),
                     R.drawable.settings_language, NabdhEmojiPacks.SYSTEM.equals(chosen),
                     () -> applyEmojiPack(NabdhEmojiPacks.SYSTEM));
             TextView samples = new TextView(this);
             samples.setTextSize(29);
             samples.setGravity(Gravity.CENTER);
             samples.setPadding(dp(6), dp(18), dp(6), dp(10));
-            samples.setText(Emoji.replaceEmoji("😀 😍 😂 ❤️ 👍 🇴🇲 🐱 🌷", 
+            samples.setText(Emoji.replaceEmoji("😀 😍 😂 ❤️ 👍 🇴🇲 🐱 🌷",
                     samples.getPaint().getFontMetricsInt(), true));
             items.addView(samples);
             items.addView(note(local(
-                    "Artwork credit: Google Noto Emoji (Apache 2.0); "
-                    + "Twemoji contributors (CC BY 4.0); OpenMoji / HfG Schwäbisch Gmünd "
-                    + "(CC BY-SA 4.0). The selected pack applies only inside NabdhGram.",
-                    "حقوق الرسومات: Google Noto Emoji ‏(Apache 2.0)، ومساهمو Twemoji "
-                    + "‏(CC BY 4.0)، ومشروع OpenMoji / HfG Schwäbisch Gmünd "
-                    + "‏(CC BY-SA 4.0). يقتصر تغيير العرض على نبض جرام.")));
+                    "Graphics © Twemoji contributors, CC BY 4.0. "
+                    + "Source: jdecked/twemoji v17.0.3. Files are bundled unmodified; "
+                    + "unavailable variants retain Telegram's native artwork.",
+                    "الرسومات © مساهمو Twemoji بترخيص CC BY 4.0. "
+                    + "المصدر: jdecked/twemoji v17.0.3. الصور مدمجة دون تعديل، "
+                    + "والرموز غير المتوفرة تستخدم رسم Telegram الأصلي.")));
         } else {
             items.addView(note(local(
                     "Status bar icons are monochrome. They are separate from the app launcher icon.",
@@ -219,53 +200,15 @@ public final class NabdhAppearancePickerActivity extends Activity {
     }
 
     private void applyEmojiPack(String pack) {
-        if (!installingEmojiPack && NabdhEmojiPacks.selected().equals(pack)) return;
-        if (installingEmojiPack) {
-            NabdhEmojiPacks.cancelInstall();
-            installListener = null;
-            installingEmojiPack = false;
-        }
-        emojiInstallError = null;
-        if (NabdhEmojiPacks.isReady(pack)) {
-            NabdhEmojiPacks.choose(this, pack);
+        if (NabdhEmojiPacks.selected().equals(pack)) return;
+        if (!NabdhEmojiPacks.isReady(pack)) {
+            emojiAvailabilityError = local(
+                    "Bundled Twemoji assets are missing in this build.",
+                    "ملفات Twemoji المدمجة غير متوفرة في هذا البناء.");
             return;
         }
-        installingEmojiPack = true;
-        installingEmojiPackId = pack;
-        final String requested = pack;
-        installListener = new NabdhEmojiPacks.InstallListener() {
-            @Override public void onProgress(int done, int total) {
-                if (!installingEmojiPack || !requested.equals(installingEmojiPackId)) return;
-                if (emojiInstallStatus != null) {
-                    int percent = total <= 0 ? 0 : (done * 100 / total);
-                    emojiInstallStatus.setText(local(
-                            "Downloading " + requested + " emoji: " + done + "/" + total + " (" + percent + "%)",
-                            "تنزيل إيموجي " + requested + ": " + done + "/" + total + " (" + percent + "%)"));
-                }
-            }
-            @Override public void onComplete(boolean success, int unsupportedCount) {
-                if (!installingEmojiPack || !requested.equals(installingEmojiPackId)) return;
-                installingEmojiPack = false;
-                installingEmojiPackId = null;
-                installListener = null;
-                if (!success) {
-                    emojiInstallError = local(
-                            "Could not finish the emoji download. The original set is unchanged; try again online.",
-                            "لم يكتمل تنزيل الحزمة. بقيت الحزمة السابقة دون تغيير؛ حاول مجددًا مع اتصال إنترنت.");
-                } else if (unsupportedCount > 0) {
-                    emojiInstallError = local(
-                            unsupportedCount + " glyphs are unavailable upstream and will use Telegram artwork.",
-                            "عدد " + unsupportedCount + " من الرموز غير متوفر لدى المصدر وسيستخدم رسم Telegram.");
-                }
-                if (!isFinishing() && !isDestroyed()) render();
-            }
-        };
-        NabdhEmojiPacks.installAndChoose(getApplicationContext(), pack, installListener);
-    }
-
-    @Override public void onDestroy() {
-        super.onDestroy();
-        installListener = null; // Download may finish without retaining this Activity.
+        emojiAvailabilityError = null;
+        NabdhEmojiPacks.choose(this, pack);
     }
 
     private void applyNotification(boolean nabdh) {
