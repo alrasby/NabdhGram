@@ -64,6 +64,7 @@ public final class NabdhEmojiPacks {
     // Telegram/selected-pack mixing as each individual PNG completed.
     private static final ThreadPoolExecutor EXECUTOR = new ThreadPoolExecutor(
             6, 6, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(256));
+    private static final AtomicInteger DISK_WRITES = new AtomicInteger();
     private static final LruCache<String, Bitmap> MEMORY = new LruCache<String, Bitmap>(6 * 1024 * 1024) {
         @Override protected int sizeOf(String key, Bitmap bitmap) {
             return bitmap.getByteCount();
@@ -198,6 +199,9 @@ public final class NabdhEmojiPacks {
             boolean complete = version == selectionVersion && done.get() == total &&
                     errors.get() == 0;
             if (complete) {
+                // Recheck storage quota once after workers settle, before
+                // validating the complete image corpus and committing.
+                trim(packFolder(app, pack));
                 // A decoded in-memory bitmap is insufficient: failed rename,
                 // storage eviction or a partially written file could cause
                 // the old/new styles to mix later while scrolling.
@@ -541,7 +545,10 @@ public final class NabdhEmojiPacks {
                 stream.write(data);
             }
             if (!temp.renameTo(file)) temp.delete();
-            trim(folder);
+            // Listing the full emoji folder after every PNG is quadratic in
+            // the number of glyphs and made first-time installs unnecessarily
+            // slow on flash storage. Prune periodically, then once at commit.
+            if ((DISK_WRITES.incrementAndGet() & 63) == 0) trim(folder);
             return bitmap;
         } finally {
             connection.disconnect();
