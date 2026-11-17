@@ -489,12 +489,12 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-feature-visibility.py
           python3 nabdhgram/scripts/apply-nabdh-feature-visibility.py Telegram-upstream
 
-      - name: Install local Twemoji 17 renderer and preserve native emoji options
+      - name: Preserve native Telegram emoji tabs and Android system emoji choice
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m py_compile nabdhgram/scripts/apply-nabdh-emoji-packs.py
-          python3 nabdhgram/scripts/apply-nabdh-emoji-packs.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-stable-emoji-tabs.py
+          python3 nabdhgram/scripts/apply-nabdh-stable-emoji-tabs.py Telegram-upstream
 
       - name: Verify rounded Profile bio presses and unified chat input
         shell: bash
@@ -540,8 +540,8 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-personalization.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-v1-visibility.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-security-hardening.py Telegram-upstream
-          python3 -m py_compile nabdhgram/scripts/check-nabdh-emoji-packs.py
-          python3 nabdhgram/scripts/check-nabdh-emoji-packs.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-native-emojis.py
+          python3 nabdhgram/scripts/check-nabdh-native-emojis.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-nabdh-message-scheduler.py
           python3 nabdhgram/scripts/check-nabdh-message-scheduler.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream
@@ -622,16 +622,6 @@ jobs:
             echo "Native submodules, Android SDK/NDK, Gradle, APK and physical-device QA were NOT run."
             echo "This is NOT a release-ready or Android-verified result."
           } >> "$GITHUB_STEP_SUMMARY"
-      - name: Bundle exact Twemoji 17.0.3 artwork and CC BY attribution
-        if: ${{ !inputs.source_preflight_only }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -m py_compile nabdhgram/scripts/bundle-twemoji17.py
-          python3 nabdhgram/scripts/bundle-twemoji17.py Telegram-upstream
-          test -s Telegram-upstream/TMessagesProj/src/main/assets/nabdh_twemoji/72x72/1f600.png
-          test -s Telegram-upstream/TMessagesProj/src/main/assets/nabdh_twemoji/LICENSE-GRAPHICS
-
       - name: Initialize and verify pinned native submodules after overlay preflight
         if: ${{ !inputs.source_preflight_only }}
         shell: bash
@@ -721,29 +711,26 @@ jobs:
           set -euo pipefail
           APK="Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/${{ inputs.release_mode && 'release' || 'debug' }}/app.apk"
           test -s "$APK" || { echo "::error::APK missing at $APK"; exit 1; }
-          # Never publish an APK with only Java placeholders but missing art.
+          # Final package must not contain the removed 20+ MB art payload.
           APK_PATH="$APK" python3 - <<'PY'
           import os
           import zipfile
           with zipfile.ZipFile(os.environ["APK_PATH"]) as apk:
-              names = set(apk.namelist())
-              pngs = [n for n in names if n.startswith(
-                  "assets/nabdh_twemoji/72x72/") and n.endswith(".png")]
-              required = {f"assets/nabdh_twemoji/72x72/{name}"
-                          for name in ("1f600.png", "1f44d.png", "2764.png",
-                                       "1f1f4-1f1f2.png")}
-              if len(pngs) < 3000 or not required.issubset(names):
-                  raise SystemExit(f"Missing embedded Twemoji 17 artwork: {len(pngs)} images")
-              if "assets/nabdh_twemoji/LICENSE-GRAPHICS" not in names or \
-                      "assets/nabdh_twemoji/ABOUT.txt" not in names:
-                  raise SystemExit("Missing bundled Twemoji CC BY attribution")
-              print(f"PASS: signed/debug APK includes {len(pngs)} pinned Twemoji PNGs")
+              bundled = [name for name in apk.namelist()
+                         if "nabdh_twemoji" in name.lower()
+                         or "twemoji17" in name.lower()]
+              if bundled:
+                  raise SystemExit(f"Removed Twemoji artwork still packaged: {len(bundled)} entries")
+          print("PASS: no third-party emoji art or download payload in final APK")
           PY
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           test -x "$AAPT" || { echo "::error::aapt not installed"; exit 1; }
           test -x "$APKSIGNER" || { echo "::error::apksigner not installed"; exit 1; }
           "$AAPT" dump badging "$APK" > apk-badging.txt
+          grep -q "targetSdkVersion:'36'" apk-badging.txt || {
+            echo "::error::Google Play submission requires Android API 36"; exit 1;
+          }
           "$AAPT" dump resources "$APK" > apk-resources.txt
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > apk-manifest-tree.txt
           "$AAPT" dump permissions "$APK" > apk-permissions.txt
@@ -828,6 +815,42 @@ jobs:
           echo "Filename: nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk" >> "$GITHUB_STEP_SUMMARY"
           du -h dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Build owner-signed Android App Bundle for Google Play testing
+        if: ${{ inputs.release_mode && steps.compile.outcome == 'success' }}
+        working-directory: Telegram-upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :TMessagesProj_App:bundleBundleAfatRelease --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-play-bundle-build.log
+
+      - name: Validate and preserve Play upload AAB
+        if: ${{ inputs.release_mode && steps.compile.outcome == 'success' }}
+        shell: bash
+        env:
+          NABDH_RELEASE_CERT_SHA256: ${{ secrets.NABDH_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          mapfile -t bundles < <(find Telegram-upstream/TMessagesProj_App/build/outputs/bundle/ -type f -name '*.aab')
+          if [[ "${#bundles[@]}" != "1" ]]; then
+            echo "::error::Expected exactly one owner-signed Release AAB, found ${#bundles[@]}"
+            exit 1
+          fi
+          python3 nabdhgram/scripts/verify-release-aab.py "${bundles[0]}"
+          mkdir -p dist
+          cp "${bundles[0]}" dist/nabdhgram-play-internal.aab
+          sha256sum dist/nabdhgram-play-internal.aab > play-bundle-sha256.txt
+          du -h dist/nabdhgram-play-internal.aab >> "$GITHUB_STEP_SUMMARY"
+          echo "Google Play testing upload: owner-signed nabdhgram-play-internal.aab" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload verified Google Play internal-test AAB
+        if: ${{ inputs.release_mode && steps.compile.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nabdhgram-owner-signed-google-play-aab
+          path: dist/nabdhgram-play-internal.aab
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Collect APK paths
         if: ${{ always() && !inputs.source_preflight_only }}
         shell: bash
@@ -849,6 +872,8 @@ jobs:
           name: nabdhgram-identity-build-log
           path: |
             nabdhgram-build.log
+            nabdhgram-play-bundle-build.log
+            play-bundle-sha256.txt
             nabdhgram-manifest-check.log
             identity-patch.log
             apk-paths.txt
