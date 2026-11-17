@@ -84,19 +84,19 @@ for style, fill_alpha, outer_width, detail_width in (
         if file.exists():
             raise SystemExit("Appearance style conflict: " + str(file))
         file.write_text(
-            '<?xml version="1.0" encoding="utf-8"?>\\n'
+            '<?xml version="1.0" encoding="utf-8"?>\n'
             '<vector xmlns:android="http://schemas.android.com/apk/res/android" '
             'android:width="24dp" android:height="24dp" '
-            'android:viewportWidth="24" android:viewportHeight="24">\\n'
+            'android:viewportWidth="24" android:viewportHeight="24">\n'
             '  <path android:pathData="' + shape + '" '
             'android:fillColor="#FFFFFFFF" android:fillAlpha="' + fill_alpha + '" '
             'android:strokeColor="#FFFFFFFF" android:strokeWidth="' + outer_width + '" '
-            'android:strokeLineCap="round" android:strokeLineJoin="round"/>\\n'
+            'android:strokeLineCap="round" android:strokeLineJoin="round"/>\n'
             '  <path android:pathData="' + detail + '" '
             'android:fillColor="@android:color/transparent" '
             'android:strokeColor="#FFFFFFFF" android:strokeWidth="' + detail_width + '" '
-            'android:strokeLineCap="round" android:strokeLineJoin="round"/>\\n'
-            '</vector>\\n', encoding="utf-8")
+            'android:strokeLineCap="round" android:strokeLineJoin="round"/>\n'
+            '</vector>\n', encoding="utf-8")
 
 status = drawables / "nabdh_notification_symbol.xml"
 if status.exists():
