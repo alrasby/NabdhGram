@@ -444,13 +444,15 @@ checks = {
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
         and "if (nabdhFontDirty && android.os.SystemClock.uptimeMillis()" in launch
         and "nabdhLastFontScanMs >= 48L" in launch,
-    "composer retains RTL and content padding": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
+    "composer keeps native bot spacing and rebuilds font-dependent hint": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
         and "messageEditText.setPadding(dp(6)" not in composer
-        and "leftMargin = dp(12) + (botCommandsMenuButton" in composer
-        and "leftMargin = dp(66) + (botCommandsMenuButton" in composer
-        and "TEXT_DIRECTION_FIRST_STRONG" in composer
-        and "LocaleController.isRTL" in composer
-        and "android.view.Gravity.RIGHT : android.view.Gravity.LEFT" in composer,
+        and "leftMargin = dp(10) + (botCommandsMenuButton" in composer
+        and "leftMargin = dp(57) + (botCommandsMenuButton" in composer
+        and "messageEditText.setGravity(Gravity.BOTTOM);" in composer
+        and "messageEditText.setGravity((org.telegram" not in composer
+        and "messageEditText.setSupportRtlHint(true)" in composer
+        and "messageEditText.getHintLayoutEx() != null" in composer
+        and 'messageEditText.setHintText("", false);' in composer,
     "rounded bubble default with saved preference": 'public static int bubbleRadius = 19;' in shared_config
         and 'bubbleRadius = preferences.getInt("bubbleRadius", 19);' in shared_config,
     "native settings rounded touch selector": "listView.setSelectorRadius(17);" in native_settings,
