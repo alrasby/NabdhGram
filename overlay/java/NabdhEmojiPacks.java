@@ -198,6 +198,21 @@ public final class NabdhEmojiPacks {
             boolean complete = version == selectionVersion && done.get() == total &&
                     errors.get() == 0;
             if (complete) {
+                // A decoded in-memory bitmap is insufficient: failed rename,
+                // storage eviction or a partially written file could cause
+                // the old/new styles to mix later while scrolling.
+                File folder = packFolder(app, pack);
+                for (String id : ids) {
+                    String key = id.substring(pack.length() + 1);
+                    String fileName = filename(pack, key);
+                    if (!new File(folder, fileName).isFile() &&
+                            !new File(folder, fileName + ".missing").isFile()) {
+                        complete = false;
+                        break;
+                    }
+                }
+            }
+            if (complete) {
                 // Commit on-disk readiness last; a cancelled/failed install
                 // can never make half a pack visible.
                 File folder = packFolder(app, pack);
