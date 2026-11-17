@@ -748,8 +748,11 @@ jobs:
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > apk-manifest-tree.txt
           "$AAPT" dump permissions "$APK" > apk-permissions.txt
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then
-            "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -q "nabdh_private_backup_rules" || {
-              echo "::error::Privacy rules are missing from release manifest"; exit 1;
+            grep -q "android:dataExtractionRules" apk-manifest-tree.txt || {
+              echo "::error::Release manifest is missing Android data-extraction rules"; exit 1;
+            }
+            grep -q "nabdh_private_backup_rules" apk-resources.txt || {
+              echo "::error::Release APK has no compiled private-backup rules"; exit 1;
             }
           fi
           # Verify the actual APK permissions, not only the source manifest.
