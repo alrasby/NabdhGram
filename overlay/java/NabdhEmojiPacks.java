@@ -56,8 +56,10 @@ public final class NabdhEmojiPacks {
     private static final long MAX_DISK_BYTES = 20L * 1024L * 1024L;
     // Bound pending downloads so a chat with many distinct emojis cannot grow
     // an unbounded executor queue or consume unlimited memory.
+    // Parallel, bounded first-load fetches. Two workers caused long waves of
+    // Telegram/selected-pack mixing as each individual PNG completed.
     private static final ThreadPoolExecutor EXECUTOR = new ThreadPoolExecutor(
-            2, 2, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(64));
+            6, 6, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(256));
     private static final LruCache<String, Bitmap> MEMORY = new LruCache<String, Bitmap>(6 * 1024 * 1024) {
         @Override protected int sizeOf(String key, Bitmap bitmap) {
             return bitmap.getByteCount();
@@ -74,21 +76,41 @@ public final class NabdhEmojiPacks {
     private static final Paint PAINT = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private static volatile String selected;
 
-    // Several PNGs can finish in one instant while a chat or emoji panel is
-    // visible. Coalesce repaints to avoid a storm of EmojiView invalidations.
-    // The first unavailable glyph still draws Telegram's native fallback.
+    // A newly chosen pack must not replace individual glyphs on each HTTP
+    // completion: that produced the visible minute-long mixed-pack transition.
+    // Stage decoded bitmaps privately, publish each visible batch atomically
+    // only after its outstanding requests settle. Keep Telegram's fallback
+    // until then; preserve already committed icons when scrolling further.
+    private static final Set<String> VISIBLE = new HashSet<>();
+    private static final Set<String> STAGED = new HashSet<>();
     private static boolean redrawQueued;
+    private static int selectionVersion;
+    private static boolean pendingForSelected() {
+        final String prefix = selected() + "_";
+        for (String id : PENDING) {
+            if (id.startsWith(prefix)) return true;
+        }
+        return false;
+    }
     private static void scheduleUiRedraw() {
+        final int version;
         synchronized (PENDING) {
-            if (redrawQueued) return;
+            if (redrawQueued || STAGED.isEmpty() || pendingForSelected()) return;
             redrawQueued = true;
+            version = selectionVersion;
         }
         AndroidUtilities.runOnUIThread(() -> {
+            boolean repaint = false;
             synchronized (PENDING) {
+                if (version != selectionVersion) return;
                 redrawQueued = false;
+                if (STAGED.isEmpty() || pendingForSelected()) return;
+                VISIBLE.addAll(STAGED);
+                STAGED.clear();
+                repaint = true;
             }
-            Emoji.invalidateUiRunnable.run();
-        }, 100);
+            if (repaint) Emoji.invalidateUiRunnable.run();
+        }, 240);
     }
 
     private NabdhEmojiPacks() {}
@@ -122,6 +144,10 @@ public final class NabdhEmojiPacks {
                 .edit().putString("pack", pack).apply();
         selected = pack;
         synchronized (PENDING) {
+            ++selectionVersion;
+            VISIBLE.clear();
+            STAGED.clear();
+            redrawQueued = false;
             RETRY_AFTER.clear();
         }
         // Preserve native Telegram's setting for system vs custom spans.
@@ -231,9 +257,18 @@ public final class NabdhEmojiPacks {
         String id = cacheKey(pack, code);
         if (id == null) return false;
         Bitmap bitmap = getCached(id);
+        final boolean published;
+        synchronized (PENDING) {
+            published = VISIBLE.contains(id);
+            if (bitmap != null && !published) STAGED.add(id);
+        }
         if (bitmap == null) {
             requestBitmap(code);
             return false; // Keep Telegram's native emoji visible while fetching.
+        }
+        if (!published) {
+            scheduleUiRedraw();
+            return false; // Never paint a partially fetched new pack.
         }
         synchronized (PAINT) {
             canvas.drawBitmap(bitmap, null, bounds, PAINT);
@@ -278,6 +313,13 @@ public final class NabdhEmojiPacks {
                 }
                 if (bitmap != null) {
                     synchronized (MEMORY) { MEMORY.put(id, bitmap); }
+                    if (pack.equals(selected())) {
+                        synchronized (PENDING) { STAGED.add(id); }
+                        scheduleUiRedraw();
+                    }
+                } else if (pack.equals(selected())) {
+                    // Missing/unavailable glyphs remain native without blocking
+                    // the rest of the batch from publishing.
                     scheduleUiRedraw();
                 }
             });
@@ -292,9 +334,17 @@ public final class NabdhEmojiPacks {
     private static Bitmap loadBitmap(String pack, String key) throws Exception {
         Context context = ApplicationLoader.applicationContext;
         if (context == null) return null;
-        File folder = new File(context.getCacheDir(), "nabdh_emoji_" + pack);
+        // getCacheDir() may be swept by Android between app launches,
+        // repeatedly triggering the expensive network-first transition.
+        // Use bounded app-private persistent files, migrating old cache once.
+        File folder = new File(context.getFilesDir(), "nabdh_emoji_" + pack);
         if (!folder.exists() && !folder.mkdirs()) return null;
         File file = new File(folder, filename(pack, key));
+        if (!file.isFile()) {
+            File legacy = new File(new File(context.getCacheDir(),
+                    "nabdh_emoji_" + pack), file.getName());
+            if (legacy.isFile()) legacy.renameTo(file);
+        }
         if (file.isFile()) {
             Bitmap cached = decode(file);
             if (cached != null) {
