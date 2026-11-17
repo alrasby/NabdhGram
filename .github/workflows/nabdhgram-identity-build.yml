@@ -752,14 +752,14 @@ jobs:
               echo "::error::Release manifest is missing Android data-extraction rules"; exit 1;
             }
             python3 - <<'PY'
-            import re
-            from pathlib import Path
-            manifest = Path("apk-manifest-tree.txt").read_text(encoding="utf-8")
-            match = re.search(r"(?m)^.*android:allowBackup.*$", manifest)
-            if not match or not re.search(r"(?:0x0|false)\\s*$", match.group(0), re.I):
-                raise SystemExit("FAIL: signed Release must have allowBackup=false")
-            print("PASS: signed APK manifest disables automatic app-data backup")
-            PY
+          import re
+          from pathlib import Path
+          manifest = Path("apk-manifest-tree.txt").read_text(encoding="utf-8")
+          match = re.search(r"(?m)^.*android:allowBackup.*$", manifest)
+          if not match or not re.search(r"(?:0x0|false)\s*$", match.group(0), re.I):
+              raise SystemExit("FAIL: signed Release must have allowBackup=false")
+          print("PASS: signed APK manifest disables automatic app-data backup")
+          PY
             grep -q "nabdh_private_backup_rules" apk-resources.txt || {
               echo "::error::Release APK has no compiled private-backup rules"; exit 1;
             }
