@@ -669,6 +669,14 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/configure-release-signing.py Telegram-upstream
+      - name: Enforce Google Play Release-only sensitive-permission policy
+        if: ${{ inputs.release_mode }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-play-permissions.py
+          python3 nabdhgram/scripts/apply-nabdh-play-permissions.py Telegram-upstream
+
       - name: Validate final APK manifest merge before expensive compilation
         if: ${{ !inputs.source_preflight_only }}
         working-directory: Telegram-upstream
@@ -707,6 +715,8 @@ jobs:
       - name: Verify APK identity and collect launcher diagnostics
         if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
         shell: bash
+        env:
+          NABDH_RELEASE_CERT_SHA256: ${{ secrets.NABDH_RELEASE_CERT_SHA256 }}
         run: |
           set -euo pipefail
           APK="Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/${{ inputs.release_mode && 'release' || 'debug' }}/app.apk"
@@ -736,6 +746,12 @@ jobs:
           "$AAPT" dump permissions "$APK" > apk-permissions.txt
           # Verify the actual APK permissions, not only the source manifest.
           ! grep -E "uses-permission: name='android.permission.(READ_SMS|RECEIVE_SMS|QUERY_ALL_PACKAGES|BIND_ACCESSIBILITY_SERVICE)'" apk-permissions.txt
+          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
+            ! grep -E "uses-permission: name='android.permission.(REQUEST_INSTALL_PACKAGES|READ_CALL_LOG)'" apk-permissions.txt || {
+              echo "::error::Restricted Play installation/call-log permission in signed APK"
+              exit 1
+            }
+          fi
           "$APKSIGNER" verify --verbose "$APK" > apk-signature.txt
           sha256sum "$APK" > apk-sha256.txt
           echo "::group::Packaged APK identity and launcher"
