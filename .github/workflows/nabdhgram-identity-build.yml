@@ -489,7 +489,7 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-feature-visibility.py
           python3 nabdhgram/scripts/apply-nabdh-feature-visibility.py Telegram-upstream
 
-      - name: Install actual open-licensed Noto, Twemoji and OpenMoji PNG renderers
+      - name: Install local Twemoji 17 renderer and preserve native emoji options
         shell: bash
         run: |
           set -euo pipefail
@@ -622,6 +622,16 @@ jobs:
             echo "Native submodules, Android SDK/NDK, Gradle, APK and physical-device QA were NOT run."
             echo "This is NOT a release-ready or Android-verified result."
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Bundle exact Twemoji 17.0.3 artwork and CC BY attribution
+        if: ${{ !inputs.source_preflight_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/bundle-twemoji17.py
+          python3 nabdhgram/scripts/bundle-twemoji17.py Telegram-upstream
+          test -s Telegram-upstream/TMessagesProj/src/main/assets/nabdh_twemoji/72x72/1f600.png
+          test -s Telegram-upstream/TMessagesProj/src/main/assets/nabdh_twemoji/LICENSE-GRAPHICS
+
       - name: Initialize and verify pinned native submodules after overlay preflight
         if: ${{ !inputs.source_preflight_only }}
         shell: bash
@@ -711,6 +721,24 @@ jobs:
           set -euo pipefail
           APK="Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/${{ inputs.release_mode && 'release' || 'debug' }}/app.apk"
           test -s "$APK" || { echo "::error::APK missing at $APK"; exit 1; }
+          # Never publish an APK with only Java placeholders but missing art.
+          APK_PATH="$APK" python3 - <<'PY'
+          import os
+          import zipfile
+          with zipfile.ZipFile(os.environ["APK_PATH"]) as apk:
+              names = set(apk.namelist())
+              pngs = [n for n in names if n.startswith(
+                  "assets/nabdh_twemoji/72x72/") and n.endswith(".png")]
+              required = {f"assets/nabdh_twemoji/72x72/{name}"
+                          for name in ("1f600.png", "1f44d.png", "2764.png",
+                                       "1f1f4-1f1f2.png")}
+              if len(pngs) < 3000 or not required.issubset(names):
+                  raise SystemExit(f"Missing embedded Twemoji 17 artwork: {len(pngs)} images")
+              if "assets/nabdh_twemoji/LICENSE-GRAPHICS" not in names or \
+                      "assets/nabdh_twemoji/ABOUT.txt" not in names:
+                  raise SystemExit("Missing bundled Twemoji CC BY attribution")
+              print(f"PASS: signed/debug APK includes {len(pngs)} pinned Twemoji PNGs")
+          PY
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           test -x "$AAPT" || { echo "::error::aapt not installed"; exit 1; }
