@@ -41,15 +41,14 @@ check("NabdhCompactSettings.header(context, content," in page and
       "NabdhAppearanceLanguageGroup" in page and
       "NabdhAppearanceBackupGroup" in page,
       "visual section grouping is incomplete")
-check("NabdhEmojiPacks.choose(this, pack)" in picker and
-      "NabdhEmojiPacks.TELEGRAM.equals(chosen)" in picker and
-      "NabdhEmojiPacks.SYSTEM.equals(chosen)" in picker and
-      "NabdhEmojiPacks.TWEMOJI.equals(chosen)" in picker and
-      "NabdhEmojiPacks.NOTO.equals(chosen)" not in picker and
-      "NabdhEmojiPacks.OPENMOJI.equals(chosen)" not in picker and
+check("NabdhEmojiPacks" not in picker and
+      "Twemoji" not in picker and "OpenMoji" not in picker and
+      "SharedConfig.useSystemEmoji = useSystem;" in picker and
+      "SharedConfig.saveConfig();" in picker and
+      "Emoji.invalidateUiRunnable.run();" in picker and
       "Emoji.replaceEmoji(" in picker and
       "Build.MANUFACTURER" not in picker,
-      "three real emoji renderers and live preview; obsolete packs removed")
+      "native Telegram/system emoji picker and preview; no obsolete packs")
 check("NabdhAppearancePrefs.iconStyle(this)" in picker and
       all('NabdhAppearancePrefs.' + name + '.equals(style)' in picker
           for name in ("CLASSIC", "DUOTONE", "LINEAR", "BOLD")) and
@@ -98,5 +97,5 @@ for language in ("values","values-ar"):
 check("AlarmManager" not in picker and "READ_CONTACTS" not in picker and
       "sendMessage(" not in picker,
       "appearance screen cannot monitor chats or trigger send operations")
-print("PASS: Appearance/Language, built-in Twemoji17, four icon styles "
+print("PASS: Appearance/Language, native Telegram/Android emoji, four icon styles "
       "(33 real first-party vectors) and native notification variants")
