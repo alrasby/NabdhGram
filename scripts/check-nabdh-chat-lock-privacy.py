@@ -85,4 +85,14 @@ require("DialogObject.isEncryptedDialog(dialog.id)" in activity,
 require("MessagesController.markDialogAsRead(" not in locks and
         "MessagesController.markDialogAsReadNow(" not in locks,
         "PIN manager never acknowledges Telegram messages")
+require("private static Set<String> cachedLocked;" in locks
+        and "cachedLocked = null;" in locks
+        and "cachedPrimaryTime != primaryTime" in locks
+        and "cachedBackupTime != backupTime" in locks
+        and "cachedUnreadable || cachedLocked.contains(id(account, dialog))" in locks,
+        "lock checks must cache safely and fail closed when the state file is corrupt")
+require("SystemClock.elapsedRealtime() < blockedUntilElapsed" in locks
+        and "blockedUntilElapsed = SystemClock.elapsedRealtime() + 60_000;" in locks
+        and 'info.put("blockedUntil", now + 60_000);' in locks,
+        "rate-limiting must resist wall-clock adjustments during the running process")
 print("PASS: source contract for PIN gating, notification redaction, popup, recents and no-read")
