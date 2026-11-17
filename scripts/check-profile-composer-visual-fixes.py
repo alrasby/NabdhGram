@@ -58,4 +58,11 @@ check("ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, res
       and "nabdhRefreshComposerFont();" in composer
       and "messageEditText.setTypeface(chosen, bold" in composer,
       "native live-theme binding or immediate font refresh changed")
+bot_menu = (ui / "bots/BotCommandsMenuView.java").read_text(encoding="utf-8")
+check("menuTextLayout.getLineLeft(0)" in bot_menu
+      and "canvas.translate(AndroidUtilities.dp(34) - menuTextLayout.getLineLeft(0)" in bot_menu
+      and "canvas.clipRect(0, 0, getMeasuredWidth(), getMeasuredHeight())" in bot_menu
+      and "menuTextWidth = menuTextLayout.getLineCount() > 0 ? menuTextLayout.getLineWidth(0)" in bot_menu
+      and "if (expanded)" in bot_menu,
+      "Arabic bot menu label must stay inside its measured button, never overlap message hint")
 print("PASS: rounded Profile Glass press effects and one native-theme chat composer")
