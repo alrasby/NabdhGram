@@ -677,6 +677,8 @@ jobs:
           set -euo pipefail
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-play-permissions.py
           python3 nabdhgram/scripts/apply-nabdh-play-permissions.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-private-backup.py
+          python3 nabdhgram/scripts/apply-nabdh-private-backup.py Telegram-upstream
 
       - name: Validate final APK manifest merge before expensive compilation
         if: ${{ !inputs.source_preflight_only }}
@@ -745,6 +747,11 @@ jobs:
           "$AAPT" dump resources "$APK" > apk-resources.txt
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > apk-manifest-tree.txt
           "$AAPT" dump permissions "$APK" > apk-permissions.txt
+          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
+            "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -q "nabdh_private_backup_rules" || {
+              echo "::error::Privacy rules are missing from release manifest"; exit 1;
+            }
+          fi
           # Verify the actual APK permissions, not only the source manifest.
           ! grep -E "uses-permission: name='android.permission.(READ_SMS|RECEIVE_SMS|QUERY_ALL_PACKAGES|BIND_ACCESSIBILITY_SERVICE)'" apk-permissions.txt
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then
