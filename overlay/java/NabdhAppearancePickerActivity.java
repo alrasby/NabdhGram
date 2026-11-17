@@ -133,14 +133,15 @@ public final class NabdhAppearancePickerActivity extends Activity {
         } else if (EMOJI_SETS.equals(kind)) {
             items.addView(note(local(
                     "Noto, Twemoji and OpenMoji use real independent PNG artwork. "
-                    + "After selecting one, NabdhGram fetches only visible emoji codepoints "
-                    + "from the public jsDelivr image CDN and caches images privately. "
-                    + "No message text or contact details are uploaded. "
-                    + "Missing/offline glyphs stay as Telegram emojis.",
+                    + "The first selection needs to download the visible emoji images from jsDelivr. "
+                    + "New artwork appears together after each visible batch is ready, not one glyph at a time. "
+                    + "Downloaded art stays in private app storage for later instant reuse. "
+                    + "Offline/missing glyphs use Telegram artwork. No chat text is sent.",
                     "حزم Noto وTwemoji وOpenMoji تستخدم صور إيموجي مستقلة فعلية. "
-                    + "عند اختيارها تُحمّل صور الرموز الظاهرة فقط من خادم الصور العام "
-                    + "jsDelivr وتُحفظ محليًا. لا تُرسل نصوص الرسائل أو جهات الاتصال. "
-                    + "الرموز غير المتوفرة أو عند انقطاع الاتصال تُعرض بإيموجي Telegram.")));
+                    + "عند اختيار الحزمة للمرة الأولى تُحمَّل صور الرموز الظاهرة من jsDelivr. "
+                    + "تُطبّق الصور الجديدة معًا عند اكتمال دفعة التحميل، وليس رمزًا بعد آخر. "
+                    + "تُحفظ في مساحة التطبيق الخاصة لإعادة استخدامها سريعًا. "
+                    + "عند غياب الصورة أو انقطاع الشبكة يبقى رمز Telegram. لا تُرسل نصوص المحادثات.")));
             String chosen = NabdhEmojiPacks.selected();
             NabdhCompactSettings.header(this, items,
                     local("Emoji art packs", "حزم رسومات الإيموجي"));
