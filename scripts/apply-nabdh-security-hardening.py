@@ -184,4 +184,33 @@ s = once(s,
 '''PendingIntent contentIntent = PendingIntent.getActivity(ApplicationLoader.applicationContext, 0, intent, fixIntentFlags(PendingIntent.FLAG_IMMUTABLE));''',
 "player notification content intent")
 player.write_text(s, encoding="utf-8")
-print("PASS: closed unneeded Telegram services, bounded MusicPlayerService callbacks, safe PendingIntents and legacy storage scope")
+
+# Telegram 13.2.2 retains the most recently created LaunchActivity through
+# two static strong references. The OS can destroy/recreate that Activity
+# during a rotation or a resource configuration change. Clearing references
+# to the destroyed instance prevents retaining its entire old view hierarchy.
+# The identity checks are essential: NEVER clear a newer live Activity.
+launch = root / "TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java"
+launch_source = launch.read_text(encoding="utf-8")
+launch_source = once(launch_source,
+'''        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && frameMetricsOverlayView != null) {
+            frameMetricsOverlayView.detach();
+        }
+    }
+
+    private static void onDestroyStaticResources()''',
+'''        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && frameMetricsOverlayView != null) {
+            frameMetricsOverlayView.detach();
+        }
+        if (instance == this) {
+            instance = null;
+        }
+        if (staticInstanceForAlerts == this) {
+            staticInstanceForAlerts = null;
+        }
+    }
+
+    private static void onDestroyStaticResources()''',
+"LaunchActivity static stale references")
+launch.write_text(launch_source, encoding="utf-8")
+print("PASS: internal services, MediaPlayer lifecycle, LaunchActivity refs, PendingIntents and legacy storage scope")
