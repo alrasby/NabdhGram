@@ -69,9 +69,10 @@ require("ArrayList<TLRPC.TL_contact> telegramContacts" in scheduler
 require(not any(x in pack for x in
                 ("getDialogMessage(", "READ_CONTACTS", "getChat(", "getMessageText(")),
         "emoji CDN must not receive message/contact content")
-require("recyclerView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE" in emoji_view
-        and "checkBottomTabScroll(dy);" in emoji_view,
-        "programmatic/idle emoji adapter scrolling must not flicker bottom tabs")
+require("keep emoji/GIF/sticker tabs stable during scroll" in emoji_view
+        and "checkBottomTabScroll(dy);" not in emoji_view
+        and "showBottomTab(true, true);" in emoji_view,
+        "emoji tabs must stay pinned during scrolling without disabling explicit actions")
 require("Math.abs(bottomTabContainer.getTranslationY() -" in emoji_view
         and "nextBottomTabTranslation) >= 0.5f" in emoji_view
         and "bottomTabContainer.setTranslationY(nextBottomTabTranslation);" in emoji_view,
