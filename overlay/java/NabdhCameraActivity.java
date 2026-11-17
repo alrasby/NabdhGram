@@ -290,10 +290,11 @@ public final class NabdhCameraActivity extends Activity {
         cancelCountdown();
         closeCamera();
         if (worker != null) {
+            // Never block the UI waiting for camera JPEG or HAL callbacks.
+            // closeCamera() already invalidates cameraGeneration and releases
+            // the session, device, reader and preview surface. The old Looper
+            // exits asynchronously after its queued callbacks finish.
             worker.quitSafely();
-            try { worker.join(1500); } catch (InterruptedException interrupted) {
-                Thread.currentThread().interrupt();
-            }
             worker = null;
             cameraHandler = null;
         }
@@ -360,19 +361,23 @@ public final class NabdhCameraActivity extends Activity {
             if (size == null) throw new IllegalStateException("No supported JPEG size");
             reader = ImageReader.newInstance(size.getWidth(), size.getHeight(),
                     ImageFormat.JPEG, 2);
+            final long readerGeneration = cameraGeneration;
             reader.setOnImageAvailableListener(source -> {
+                if (!active || readerGeneration != cameraGeneration) return;
                 try (Image image = source.acquireLatestImage()) {
-                    if (image == null) return;
+                    if (image == null || !active || readerGeneration != cameraGeneration) return;
                     ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                     // Fail rather than allocate unbounded input on a faulty HAL.
                     if (buffer.remaining() > 96 * 1024 * 1024)
                         throw new java.io.IOException("Camera JPEG exceeds safe buffer");
                     byte[] bytes = new byte[buffer.remaining()];
                     buffer.get(bytes);
+                    if (!active || readerGeneration != cameraGeneration) return;
                     final Uri saved = savePhoto(
                             facing == CameraCharacteristics.LENS_FACING_FRONT &&
                             cameraOption("camera_mirror") ? mirroredSelfie(bytes) : bytes);
                     runOnUiThread(() -> {
+                        if (!active || readerGeneration != cameraGeneration) return;
                         lastPhotoUri = saved;
                         if (sharePhoto != null) sharePhoto.setEnabled(saved != null);
                     });
