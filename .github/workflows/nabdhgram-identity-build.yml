@@ -609,6 +609,8 @@ jobs:
           set -euo pipefail
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-chat-consistency.py nabdhgram/scripts/check-nabdh-chat-consistency.py nabdhgram/scripts/check-upstream-api-preservation.py
           python3 nabdhgram/scripts/check-upstream-api-preservation.py --self-test
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-maven-mirror.py
+          python3 nabdhgram/scripts/apply-nabdh-maven-mirror.py --self-test
           python3 nabdhgram/scripts/check-upstream-api-preservation.py Telegram-upstream
           git -C Telegram-upstream diff --check
           echo "PASS: Native Telegram methods, theme fields, Java syntax, and patch whitespace checked."
@@ -630,6 +632,18 @@ jobs:
           set -euo pipefail
           git -C Telegram-upstream submodule update --init --recursive --depth=1 --jobs=4
           bash nabdhgram/scripts/verify-upstream.sh Telegram-upstream
+
+      - name: Use Google's hosted Maven Central mirror for owner-signed Release
+        if: ${{ inputs.release_mode && !inputs.source_preflight_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Maven Central returned HTTP 429 on Release #2 from shared CI egress.
+          # Use Google's documented mirror for the SAME immutable artifacts;
+          # keep Google Android, Huawei and other repositories untouched.
+          python3 nabdhgram/scripts/apply-nabdh-maven-mirror.py Telegram-upstream
+          git -C Telegram-upstream diff --check
+          grep -Fq 'https://maven-central.storage-download.googleapis.com/maven2/' Telegram-upstream/settings.gradle
 
       - name: Install Android SDK and NDK
         if: ${{ !inputs.source_preflight_only }}
