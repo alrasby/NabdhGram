@@ -96,8 +96,9 @@ def main():
         application = ET.parse(release_manifest).getroot().find("application")
         android_label = "{http://schemas.android.com/apk/res/android}label"
         tools_replace = "{http://schemas.android.com/tools}replace"
-        if application is None or application.get(android_label) != "@string/NabdhGramAppName" \\
-                or "android:label" not in application.get(tools_replace, "").split(","):
+        if (application is None
+                or application.get(android_label) != "@string/NabdhGramAppName"
+                or "android:label" not in application.get(tools_replace, "").split(",")):
             raise RuntimeError("Release application label policy failed: " + relative)
     print("PASS: both Release manifests match the independent NabdhGram app label")
 
