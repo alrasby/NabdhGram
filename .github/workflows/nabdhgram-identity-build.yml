@@ -634,6 +634,9 @@ jobs:
           python3 nabdhgram/scripts/check-upstream-api-preservation.py --self-test
           python3 -m py_compile nabdhgram/scripts/check-packaged-splash.py
           python3 nabdhgram/scripts/check-packaged-splash.py --self-test
+          python3 -m py_compile nabdhgram/scripts/configure-release-native-symbols.py nabdhgram/scripts/report-play-aab-size.py
+          python3 nabdhgram/scripts/configure-release-native-symbols.py --self-test
+          python3 nabdhgram/scripts/report-play-aab-size.py --self-test
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-maven-mirror.py
           python3 nabdhgram/scripts/apply-nabdh-maven-mirror.py --self-test
           python3 nabdhgram/scripts/check-upstream-api-preservation.py Telegram-upstream
@@ -718,6 +721,20 @@ jobs:
           python3 nabdhgram/scripts/apply-nabdh-play-permissions.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-private-backup.py
           python3 nabdhgram/scripts/apply-nabdh-private-backup.py Telegram-upstream
+
+      - name: Use compact native symbol tables in owner-signed Release
+        if: ${{ inputs.release_mode && !inputs.source_preflight_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only replace the pinned app and library release debug-symbol
+          # policy. Keep both native symbol names and R8, ABI coverage,
+          # original signing, and unrelated Gradle builds intact.
+          python3 nabdhgram/scripts/configure-release-native-symbols.py Telegram-upstream
+          git -C Telegram-upstream diff --check
+          for file in TMessagesProj_App/build.gradle TMessagesProj/build.gradle; do
+            grep -Fq "ndk.debugSymbolLevel = 'SYMBOL_TABLE'" "Telegram-upstream/$file"
+          done
 
       - name: Validate final APK manifest merge before expensive compilation
         if: ${{ !inputs.source_preflight_only }}
@@ -916,6 +933,8 @@ jobs:
             exit 1
           fi
           python3 nabdhgram/scripts/verify-release-aab.py "${bundles[0]}"
+          python3 nabdhgram/scripts/report-play-aab-size.py "${bundles[0]}" | tee play-bundle-size-audit.md
+          cat play-bundle-size-audit.md >> "$GITHUB_STEP_SUMMARY"
           python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "${bundles[0]}" --enforce
           mkdir -p dist
           cp "${bundles[0]}" dist/nabdhgram-play-internal.aab
@@ -955,6 +974,7 @@ jobs:
             nabdhgram-build.log
             nabdhgram-play-bundle-build.log
             play-bundle-sha256.txt
+            play-bundle-size-audit.md
             nabdhgram-manifest-check.log
             identity-patch.log
             apk-paths.txt
