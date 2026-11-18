@@ -31,6 +31,34 @@ def main():
     if s.count(resume) != 1:
         raise SystemExit("DialogsActivity resume title anchor changed")
     s = s.replace(resume, guard, 1)
+    # Preserve the full-size, user-centered NabdhGram ActionBar title when
+    # stories are fully expanded. Telegram normally scales this native text
+    # container down to ~40% opacity/size while hiding its own image wordmark;
+    # that is why #759 showed a miniature NabdhGram above the story circles.
+    fade_end = """        }
+    }
+
+    public static float viewOffset = 0.0f;"""
+    if s.count(fade_end) != 1:
+        raise SystemExit("Telegram stories/action-bar fade anchor changed")
+    s = s.replace(fade_end, """        }
+        if (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect
+                && folderId == 0 && communityId == 0 && actionBar != null
+                && dialogStoriesCell != null
+                && dialogStoriesCell.getVisibility() == View.VISIBLE
+                && dialogStoriesCell.isFullExpanded() && !actionBar.isActionModeShowed()
+                && searchAnimationProgress < 0.01f) {
+            // Expanded stories: native wordmark alpha is zero; keep the
+            // branded ActionBar title at real size, never at 0.4 scale.
+            actionBar.getTitlesContainer().setScaleX(1f);
+            actionBar.getTitlesContainer().setScaleY(1f);
+            actionBar.getTitlesContainer().setAlpha(1f);
+            actionBar.getTitlesContainer().setVisibility(View.VISIBLE);
+        }
+    }
+
+    public static float viewOffset = 0.0f;""", 1)
+
     p.write_text(s, encoding="utf-8")
     # Telegram 13.2 runs DialogsActivity inside a recycled MainTabsActivity
     # pager. Changing only DialogsActivity.createView/onResume did not fix
