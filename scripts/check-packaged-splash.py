@@ -65,7 +65,15 @@ def verify(apk, dumped_resources, dumped_manifest):
     aapt = Path(dumped_resources).read_text(encoding="utf-8")
     style = compiled_id(aapt, "style/Theme.TMessages.Start")
     brand = compiled_id(aapt, "drawable/nabdhgram_launcher_foreground")
-    telegram = compiled_id(aapt, "drawable/tg_splash_320")
+    # The unused upstream Telegram logo may be removed by Release R8's
+    # resource shrinker. Absence is desirable, not a verification failure.
+    # When retained for another code path, it still must never be used here.
+    telegram_ids = re.findall(
+        r"(?m)^\\s*spec resource (0x[0-9a-fA-F]+) \\S+:drawable/tg_splash_320:",
+        aapt)
+    require(len(telegram_ids) <= 1,
+            "Ambiguous packaged upstream Telegram splash resource")
+    telegram = int(telegram_ids[0], 16) if telegram_ids else None
     manifest = Path(dumped_manifest).read_text(encoding="utf-8")
     require(manifest.count(f"android:theme(0x01010000)=@0x{style:08x}") >= 2,
             "APK application and LaunchActivity must use audited launch style")
@@ -77,7 +85,8 @@ def verify(apk, dumped_resources, dumped_manifest):
             continue
         where = ("night" if night else "day") + "-v" + str(sdk)
         icon_type, icon = values[SPLASH_ICON_ATTR]
-        require(icon_type == 1 and icon != telegram and icon == brand,
+        require(icon_type == 1 and icon == brand and
+                (telegram is None or icon != telegram),
                 f"Unbranded compiled {where} startup icon: {icon:#010x}; expected {brand:#010x}")
         bg_type, bg = values.get(SPLASH_BG_ATTR, (-1, -1))
         require(bg_type == 0x1d and bg == BRAND_BG,
