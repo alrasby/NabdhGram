@@ -79,7 +79,80 @@ def main():
         }
         blur3_updateColors();""", 1)
     tabs.write_text(main_tabs, encoding="utf-8")
-    print("NabdhGram main dialogs and main-tabs host title overlays applied.")
+
+    # Telegram 13.2.2 has a SECOND independently drawn home logo:
+    # DialogStoriesCell renders the native Telegram wordmark when stories
+    # collapse. Changing DialogsActivity's ActionBar alone leaves that logo
+    # untouched and yields a tiny NabdhGram ActionBar title while stories expand.
+    stories = Path(sys.argv[1]).resolve() / (
+        "TMessagesProj/src/main/java/org/telegram/ui/Stories/DialogStoriesCell.java"
+    )
+    story = stories.read_text(encoding="utf-8")
+
+    def story_once(before, after, label):
+        if story.count(before) != 1:
+            raise SystemExit(f"Telegram stories {label} anchor changed: {story.count(before)}")
+        return story.replace(before, after, 1)
+
+    story = story_once(
+        "    ImageView telegramLogoView;",
+        "    TextView telegramLogoView;",
+        "wordmark type"
+    )
+    story = story_once(
+        """        telegramLogoView = new ImageView(context);
+        telegramLogoView.setContentDescription(getString(R.string.AppName));
+        telegramLogoView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        telegramLogoView.setImageResource(R.drawable.telegram_logo_2);
+        telegramLogoView.setColorFilter(getTextLogoColor(), PorterDuff.Mode.MULTIPLY);
+        telegramLogoView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        telegramLogoView.setFocusableInTouchMode(true);
+        addView(telegramLogoView, LayoutHelper.createFrame(90, 22));""",
+        """        // Visible home wordmark is separate from the native ActionBar title.
+        // Use the approved name, never Telegram's image-based wordmark.
+        telegramLogoView = new TextView(context);
+        telegramLogoView.setContentDescription("NabdhGram");
+        telegramLogoView.setText("NabdhGram");
+        telegramLogoView.setSingleLine(true);
+        telegramLogoView.setEllipsize(TextUtils.TruncateAt.END);
+        telegramLogoView.setTextSize(20);
+        telegramLogoView.setTypeface(AndroidUtilities.bold());
+        telegramLogoView.setGravity(Gravity.CENTER_VERTICAL);
+        telegramLogoView.setTextColor(getTextLogoColor());
+        telegramLogoView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        telegramLogoView.setFocusableInTouchMode(true);
+        addView(telegramLogoView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 28));""",
+        "visible brand"
+    )
+    story = story_once(
+        "        telegramLogoView.setColorFilter(getTextLogoColor(), PorterDuff.Mode.MULTIPLY);",
+        "        telegramLogoView.setTextColor(getTextLogoColor());",
+        "wordmark theme updates"
+    )
+    story = story_once(
+        """            telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));
+            telegramLogoView.setTranslationY(bottomY - barOffset + dp(14 + FAKE_TOP_PADDING + 4.333f) + translationOffset /*titleView.getTranslationY() + dpf2(37.33f)*/);
+
+            emojiStatusView.setTranslationX(titleView.getTranslationX() - dpf2(3.33f) + telegramLogoView.getMeasuredWidth());""",
+        """            float nabdhLogoX = titleView.getTranslationX() + dp(1);
+            if (type == TYPE_DIALOGS &&
+                    org.telegram.ui.Components.NabdhHomePrefs.enabled(getContext(), "center_title")) {
+                // Center the visible stories-header title, not only the ActionBar
+                // underneath. Keep space for the avatar, toolbar and status icon.
+                float desired = (getWidth() - telegramLogoView.getMeasuredWidth()) / 2f;
+                float minX = dp(72);
+                float maxX = getWidth() - actionBar.menu.getVisibleItemsMeasuredWidthWithAlpha()
+                        - telegramLogoView.getMeasuredWidth() - dp(36);
+                nabdhLogoX = Math.max(minX, Math.min(desired, Math.max(minX, maxX)));
+            }
+            telegramLogoView.setTranslationX(nabdhLogoX);
+            telegramLogoView.setTranslationY(bottomY - barOffset + dp(14 + FAKE_TOP_PADDING + 4.333f) + translationOffset /*titleView.getTranslationY() + dpf2(37.33f)*/);
+
+            emojiStatusView.setTranslationX(nabdhLogoX + telegramLogoView.getMeasuredWidth() + dp(4));""",
+        "stories and premium status title geometry"
+    )
+    stories.write_text(story, encoding="utf-8")
+    print("PASS: main home title and independent stories-header brand are NabdhGram.")
 
 if __name__ == "__main__":
     main()
