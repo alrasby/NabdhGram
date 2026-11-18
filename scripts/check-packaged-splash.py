@@ -69,7 +69,7 @@ def verify(apk, dumped_resources, dumped_manifest):
     # resource shrinker. Absence is desirable, not a verification failure.
     # When retained for another code path, it still must never be used here.
     telegram_ids = re.findall(
-        r"(?m)^\\s*spec resource (0x[0-9a-fA-F]+) \\S+:drawable/tg_splash_320:",
+        r"(?m)^\s*spec resource (0x[0-9a-fA-F]+) \S+:drawable/tg_splash_320:",
         aapt)
     require(len(telegram_ids) <= 1,
             "Ambiguous packaged upstream Telegram splash resource")
