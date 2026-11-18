@@ -40,12 +40,29 @@ check("messageEditText.setBackgroundDrawable(null);" in composer
       and "nabdhInputGlass.setCornerRadius" not in composer
       and "nabdhComposerSurface" not in composer,
       "message editor has duplicate bright pill over native Telegram input panel")
-check("messageEditText.setPadding(dp(6), dp(9), dp(6), dp(10));" in composer
+check("messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
+      and "messageEditText.setPadding(dp(6)" not in composer
       and "messageEditText.setSupportRtlHint(true)" in composer
-      and "TEXT_DIRECTION_FIRST_STRONG" in composer,
-      "native composer small insets/RTL and mixed-script hint layout missing")
+      and "messageEditText.setGravity(Gravity.BOTTOM);" in composer
+      and "messageEditText.setGravity((org.telegram" not in composer
+      and "messageEditText.setTextDirection(android.view.View.TEXT_DIRECTION_FIRST_STRONG);" not in composer
+      and "leftMargin = dp(10) + (botCommandsMenuButton" in composer
+      and "leftMargin = dp(57) + (botCommandsMenuButton" in composer
+      and "leftMargin = dp(66) + (botCommandsMenuButton" not in composer,
+      "native bot menu margins, gravity and RTL custom hint support missing")
+check("messageEditText.getHintLayoutEx() != null" in composer
+      and 'messageEditText.setHintText("", false);' in composer
+      and "updateFieldHint(false);" in composer,
+      "typeface refresh fails to recreate the cached Arabic hint StaticLayout")
 check("ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider)" in composer
       and "nabdhRefreshComposerFont();" in composer
       and "messageEditText.setTypeface(chosen, bold" in composer,
       "native live-theme binding or immediate font refresh changed")
+bot_menu = (ui / "bots/BotCommandsMenuView.java").read_text(encoding="utf-8")
+check("menuTextLayout.getLineLeft(0)" in bot_menu
+      and "canvas.translate(AndroidUtilities.dp(34) - menuTextLayout.getLineLeft(0)" in bot_menu
+      and "canvas.clipRect(0, 0, getMeasuredWidth(), getMeasuredHeight())" in bot_menu
+      and "menuTextWidth = menuTextLayout.getLineCount() > 0 ? menuTextLayout.getLineWidth(0)" in bot_menu
+      and "if (expanded)" in bot_menu,
+      "Arabic bot menu label must stay inside its measured button, never overlap message hint")
 print("PASS: rounded Profile Glass press effects and one native-theme chat composer")

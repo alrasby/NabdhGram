@@ -51,12 +51,38 @@ assert 'appVersion = nabdhVersionName + " (" + pInfo.versionCode + ")";' in iden
 assert "Cells/SessionCell.java" in identity_overlay and '"NandhGram".equalsIgnoreCase(nabdhDisplayApp)' in identity_overlay, "SessionCell must correct only this client app_name"
 assert "SessionBottomSheet.java" in identity_overlay and "nabdhDisplayVersion.startsWith" in identity_overlay, "Session detail must normalize historic versions"
 assert "while (nabdhVersionName.startsWith(" in identity_overlay, "Repeated NandhGram / NabdhGram prefixes must be stripped"
-assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Install Android SDK and NDK") < workflow.index("      - name: Build branded debug APK"), "Expensive SDK/NDK setup must run only after source overlays pass"
+assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Install Android SDK and NDK") < workflow.index("      - name: Build branded Android APK"), "Expensive SDK/NDK setup must run only after source overlays pass"
 # Every upstream upgrade must retain this symbol-preservation preflight.
 assert workflow.index("      - name: Verify NabdhGram Glass overlays before Gradle") < workflow.index("      - name: Preserve Telegram native Java APIs before Gradle") < workflow.index("      - name: Initialize and verify pinned native submodules after overlay preflight") < workflow.index("      - name: Install Android SDK and NDK"), "Native method/field preservation must run before slow submodule checkout and Gradle"
 assert "check-upstream-api-preservation.py --self-test" in workflow and "git -C Telegram-upstream diff --check" in workflow, "Upgrade compatibility preflight was removed"
 assert "source_preflight_only:" in workflow and "Report source-only preflight success" in workflow, "Source-only upgrade preflight cannot be triggered"
-assert workflow.count("!inputs.source_preflight_only") == 12, "Expensive Android or APK steps are not completely excluded from source-only preflight"
+# Verify each expensive stage individually: a fixed count breaks when adding
+# a correctly guarded manifest preflight and can miss an unguarded stage.
+expensive_stages = (
+    "Initialize and verify pinned native submodules after overlay preflight",
+    "Install Android SDK and NDK",
+    "Validate final APK manifest merge before expensive compilation",
+    "Build branded Android APK",
+    "Verify APK identity and collect launcher diagnostics",
+    "Collect APK paths",
+    "Upload APK when available",
+    "Upload diagnostics",
+    "Report status",
+    "Fail on build error or missing APK",
+)
+for stage_name in expensive_stages:
+    step_marker = "      - name: " + stage_name
+    assert workflow.count(step_marker) == 1, f"Missing or duplicate expensive stage: {stage_name}"
+    start = workflow.index(step_marker)
+    end = workflow.find("\n      - name: ", start + len(step_marker))
+    if end < 0:
+        end = len(workflow)
+    step = workflow[start:end]
+    conditions = [line.strip() for line in step.splitlines()[:12]
+                  if line.startswith("        if: ")]
+    assert len(conditions) == 1 and "!inputs.source_preflight_only" in conditions[0], (
+        f"Expensive stage missing source-only guard: {stage_name}"
+    )
 credits_script = (ROOT / "scripts/apply-nabdhgram-settings.py").read_text(encoding="utf-8")
 assert "APP_VERSION_NAME=" in credits_script and "APP_VERSION_CODE=" in credits_script and '"NabdhGramCredits": branded_credits' in credits_script, "NabdhGram credits must match pinned Telegram version"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"

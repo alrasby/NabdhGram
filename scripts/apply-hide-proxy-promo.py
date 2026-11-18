@@ -26,6 +26,12 @@ helper = """    // Telegram itself manages promotional MTProxy peers and exposes
                 || viewPages[0].dialogsType != DIALOGS_TYPE_DEFAULT) {
             return;
         }
+        // This is a user-visible preference, defaulted on per NabdhGram's
+        // approved MTProxy promotion policy; never alter Telegram servers.
+        android.content.Context app = org.telegram.messenger.ApplicationLoader.applicationContext;
+        if (app != null && !app.getSharedPreferences(
+                "nabdhgram_network", android.content.Context.MODE_PRIVATE)
+                .getBoolean("hide_proxy_sponsors", true)) return;
         MessagesController controller = getMessagesController();
         if (controller.promoDialogType != MessagesController.PROMO_TYPE_PROXY) return;
         java.util.ArrayList<TLRPC.Dialog> visible =

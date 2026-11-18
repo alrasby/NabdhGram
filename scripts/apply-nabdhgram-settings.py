@@ -32,16 +32,17 @@ def main():
             presentFragment(new DebugSettingsActivity());
             return true;
         });''' + s[end:]
+    # Put NabdhGram immediately AFTER the native Language row, before its
+    # existing group separator. Do not inject a second item under "Help".
+    # Native Telegram Settings item IDs and click routing are untouched.
     s = once(s,
-        '        items.add(UItem.asHeader(getString(R.string.SettingsHelp)));',
-        '''        // NabdhGram feature hub; currently a transparent status overview.
-        // Do not present planned capabilities as already active.
+        '        items.add(SettingCell.Factory.of(10, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.settings_language, getString(R.string.SettingsLanguage), LocaleController.getCurrentLanguageName()));',
+        '''        items.add(SettingCell.Factory.of(10, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.settings_language, getString(R.string.SettingsLanguage), LocaleController.getCurrentLanguageName()));
+        // NabdhGram Settings belongs immediately below Language, not in Help.
         items.add(SettingCell.Factory.of(80, IconBackgroundColors.CYAN.top,
-                IconBackgroundColors.CYAN.bottom, R.drawable.settings_privacy,
-                getString(R.string.NabdhGramSettingsTitle), getString(R.string.NabdhGramFeaturesStatus)));
-        items.add(UItem.asShadow(null));
-
-        items.add(UItem.asHeader(getString(R.string.SettingsHelp)));''', "settings hub")
+                IconBackgroundColors.CYAN.bottom, R.drawable.settings_features,
+                getString(R.string.NabdhGramSettingsTitle), getString(R.string.NabdhGramFeaturesStatus)));''',
+        "NabdhGram immediately after native Language")
     s = once(s, '        switch (item.id) {\n            case 1:',
         '''        switch (item.id) {
             case 80:

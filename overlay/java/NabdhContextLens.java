@@ -10,7 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * User-triggered LOCAL text utility. No GENERATIVE model, persistent storage, contacts, permissions
+ * User-triggered LOCAL tools. No GENERATIVE model, automatic storage, contacts, permissions
  * or network. This is intentionally not marketed as a model-generated answer.
  * Language detection reuses Telegram's already-bundled on-device ML Kit model.
  * Telegram's optional AI Editor, translation and voice transcription stay
@@ -45,7 +45,12 @@ public final class NabdhContextLens {
             label("Check link signals (local)", "فحص مؤشرات الروابط (محلي)"),
             label("Clean up text (local)", "تنسيق النص (محلي)"),
             label("Detect language (on-device ML)", "التعرّف على اللغة (نموذج محلي)"),
-            label("Translation and voice options", "خيارات الترجمة والصوت")
+            label("Translation and voice options", "خيارات الترجمة والصوت"),
+            label("Focus Lens — draft text signals", "عدسة التركيز — مؤشرات النص"),
+            label("Manual catch-up of pasted text", "مراجعة نص ملصق يدويًا"),
+            label("NabdhShield — local URL warnings", "نبض شيلد — تحذيرات روابط محلية"),
+            label("Save as encrypted local note", "حفظ ملاحظة محلية مشفرة"),
+            label("Open saved local notes", "فتح الملاحظات المحلية")
         };
         new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
             .setTitle(label("Nabdh Context Lens", "عدسة نبض الذكية"))
@@ -54,12 +59,23 @@ public final class NabdhContextLens {
                     detectLanguage(context, source);
                     return;
                 }
+                if (which == 9) {
+                    NabdhWorkspace.saveWithFeedback(context, source, arabic());
+                    return;
+                }
+                if (which == 10) {
+                    NabdhWorkspace.show(context, arabic());
+                    return;
+                }
                 final String output;
                 switch (which) {
                     case 0: output = summary(source); break;
                     case 1: output = tasks(source); break;
                     case 2: output = linkSignals(source); break;
                     case 3: output = cleanup(source); break;
+                    case 6: output = NabdhV1Engine.focus(source, arabic()); break;
+                    case 7: output = NabdhV1Engine.catchUp(source, arabic()); break;
+                    case 8: output = NabdhV1Engine.shield(source, arabic()); break;
                     default: output = label(
                         "Translation: use Telegram's Translate action on a selected message where supported. "
                         + "Voice: use Telegram's own transcription action when available. "

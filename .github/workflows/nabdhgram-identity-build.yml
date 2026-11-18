@@ -12,10 +12,20 @@ on:
         type: boolean
         required: false
         default: false
+      release_mode:
+        description: 'Private production-signed Release (requires secrets and manual main dispatch)'
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       source_preflight_only:
         description: 'Validate every upstream overlay without native SDK, NDK or Gradle'
+        required: false
+        default: false
+        type: boolean
+      release_mode:
+        description: 'Build signed Release from main using project-owned signing credentials'
         required: false
         default: false
         type: boolean
@@ -52,12 +62,31 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: nabdhgram
-      - name: Configure Java 17
+      - name: Validate private Release dispatch before cloning sources
+        if: ${{ inputs.release_mode }}
+        shell: bash
+        env:
+          NABDH_RELEASE_KEYSTORE_B64: ${{ secrets.NABDH_RELEASE_KEYSTORE_B64 }}
+          NABDH_RELEASE_STORE_PASSWORD: ${{ secrets.NABDH_RELEASE_STORE_PASSWORD }}
+          NABDH_RELEASE_KEY_ALIAS: ${{ secrets.NABDH_RELEASE_KEY_ALIAS }}
+          NABDH_RELEASE_KEY_PASSWORD: ${{ secrets.NABDH_RELEASE_KEY_PASSWORD }}
+          NABDH_RELEASE_CERT_SHA256: ${{ secrets.NABDH_RELEASE_CERT_SHA256 }}
+          NABDH_FIREBASE_CONFIG_B64: ${{ secrets.NABDH_FIREBASE_CONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" || "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]]; then
+            echo "::error::Signed release only allowed from a manual main dispatch"
+            exit 1
+          fi
+          for name in NABDH_RELEASE_KEYSTORE_B64 NABDH_RELEASE_STORE_PASSWORD NABDH_RELEASE_KEY_ALIAS NABDH_RELEASE_KEY_PASSWORD NABDH_RELEASE_CERT_SHA256 NABDH_FIREBASE_CONFIG_B64; do
+            if [[ -z "${!name:-}" ]]; then echo "::error::Missing project-owned release secret: $name"; exit 1; fi
+          done
+      - name: Configure Java 21 for Java 21 MediaPipe AI library
         if: ${{ !inputs.source_preflight_only }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - name: Restore Gradle dependency and build caches
         if: ${{ !inputs.source_preflight_only }}
         uses: gradle/actions/setup-gradle@v4
@@ -115,9 +144,23 @@ jobs:
             exit 1
           fi
 
-      - name: Install six approved NabdhGram icon variants
+      - name: Install three approved circular NabdhGram icon variants
         run: |
           python3 nabdhgram/scripts/apply-nabdh-approved-icon-variants.py Telegram-upstream
+
+      - name: Export and verify three approved Android icon packs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/package-nabdh-android-icons.py Telegram-upstream nabdhgram-icons-android.zip
+
+      - name: Upload downloadable icon ZIP (five Android densities)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nabdhgram-three-icons-android-${{ github.run_number }}
+          path: nabdhgram-icons-android.zip
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Apply NabdhGram welcome screen copy
         shell: bash
@@ -212,6 +255,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-global-textviews.py Telegram-upstream
+
+      - name: Fix RTL notification detail fade and rebind selected Arabic text
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-notification-typography.py Telegram-upstream
 
       - name: Apply NabdhGram Glass settings design
         shell: bash
@@ -367,6 +416,26 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-liquid-intelligence.py Telegram-upstream
 
+      - name: Install real local V1 Shield, Focus, recap, and encrypted Workspace tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-v1-signatures.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-v1-hierarchy.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-voice-clarity.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-settings-order.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-v1-user-features.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-proxy-promo-controls.py Telegram-upstream
+
+      - name: Install opt-in Camera2, browser and cached Channel Feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-expanded-tools.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-chat-lock.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-ai-core.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-chat-lock-privacy.py Telegram-upstream
+
       - name: Unify chat bubble palette and native Arabic TextPaint refresh
         shell: bash
         run: |
@@ -385,6 +454,48 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-profile-bio-glass.py Telegram-upstream
 
+      - name: Render compact grouped native NabdhGram settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-compact-settings.py
+          python3 nabdhgram/scripts/apply-nabdh-compact-settings.py Telegram-upstream
+
+      - name: Install user-confirmed Telegram message scheduler
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-message-scheduler.py
+          python3 nabdhgram/scripts/apply-nabdh-message-scheduler.py Telegram-upstream
+
+      - name: Install NabdhGram appearance and licensed original icon variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-appearance-pack.py
+          python3 nabdhgram/scripts/apply-nabdh-appearance-pack.py Telegram-upstream
+
+      - name: Integrate real NabdhGram home, bubble, and Camera2 customization
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-personalization.py
+          python3 nabdhgram/scripts/apply-nabdh-personalization.py Telegram-upstream
+
+      - name: Hide unready V1 feature tiles without deleting future implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-feature-visibility.py
+          python3 nabdhgram/scripts/apply-nabdh-feature-visibility.py Telegram-upstream
+
+      - name: Preserve native Telegram emoji tabs and Android system emoji choice
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-stable-emoji-tabs.py
+          python3 nabdhgram/scripts/apply-nabdh-stable-emoji-tabs.py Telegram-upstream
+
       - name: Verify rounded Profile bio presses and unified chat input
         shell: bash
         run: |
@@ -397,20 +508,60 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --apply Telegram-upstream
 
+      - name: Constrain Android permissions and clean up media service lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-security-hardening.py
+          python3 nabdhgram/scripts/apply-nabdh-security-hardening.py Telegram-upstream
+
       - name: Verify NabdhGram Glass overlays before Gradle
         shell: bash
         run: |
           set -euo pipefail
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-qr-login.py nabdhgram/scripts/apply-glass-remaining-settings.py nabdhgram/scripts/apply-nabdh-empty-state.py nabdhgram/scripts/apply-glass-login-finish.py nabdhgram/scripts/apply-glass-v1-finishing.py nabdhgram/scripts/apply-glass-final-screens.py nabdhgram/scripts/apply-glass-chat-typefaces.py nabdhgram/scripts/apply-nabdh-arabic-resources.py nabdhgram/scripts/apply-hide-proxy-promo.py nabdhgram/scripts/apply-glass-diagnostic-icons.py nabdhgram/scripts/apply-glass-login.py nabdhgram/scripts/apply-glass-dialog-typography.py nabdhgram/scripts/apply-glass-document-layout.py nabdhgram/scripts/apply-glass-locale-polish.py nabdhgram/scripts/apply-glass-badge-centering.py nabdhgram/scripts/apply-glass-header-insets.py nabdhgram/scripts/install-open-fonts.py nabdhgram/scripts/apply-glass-global-textviews.py nabdhgram/scripts/apply-glass-bubble-outline.py nabdhgram/scripts/apply-glass-bubble-radius.py nabdhgram/scripts/apply-glass-native-settings-profile.py nabdhgram/scripts/apply-glass-contacts.py nabdhgram/scripts/apply-glass-chat-composer.py nabdhgram/scripts/apply-glass-selector.py nabdhgram/scripts/apply-glass-global-font.py nabdhgram/scripts/apply-glass-dialog-cards.py nabdhgram/scripts/apply-glass-dialog-sections.py nabdhgram/scripts/check-glass-overlay.py nabdhgram/scripts/apply-contacts-permission-policy.py nabdhgram/scripts/apply-nabdh-approved-icon-variants.py nabdhgram/scripts/check-nabdh-approved-icons.py
           python3 nabdhgram/scripts/check-glass-design-contract.py
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-expanded-tools.py nabdhgram/scripts/package-nabdh-android-icons.py nabdhgram/scripts/apply-nabdh-chat-lock.py nabdhgram/scripts/apply-nabdh-ai-core.py nabdhgram/scripts/apply-nabdh-chat-lock-privacy.py nabdhgram/scripts/check-nabdh-chat-lock-privacy.py nabdhgram/scripts/check-nabdh-ai-android-compat.py
+          test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhAiCoreService.java
+          test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhAiNanoProvider.java
+          test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhAiGemmaProvider.java
+          test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhBrowserActivity.java
+          test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhCameraActivity.java
+          test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/NabdhChannelFeedActivity.java
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-camera-browser.py
+          python3 nabdhgram/scripts/check-nabdh-camera-browser.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-ai-android-compat.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-expanded-tools.py nabdhgram/scripts/apply-nabdh-chat-lock.py nabdhgram/scripts/check-nabdh-tool-settings-layout.py
+          python3 nabdhgram/scripts/check-nabdh-tool-settings-layout.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-compact-settings.py
+          python3 nabdhgram/scripts/check-nabdh-compact-settings.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-appearance-pack.py
+          python3 nabdhgram/scripts/check-nabdh-appearance-pack.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-personalization.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-v1-visibility.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-security-hardening.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-native-emojis.py
+          python3 nabdhgram/scripts/check-nabdh-native-emojis.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-16kb-elf.py --self-test
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-message-scheduler.py
+          python3 nabdhgram/scripts/check-nabdh-message-scheduler.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-notification-typography.py Telegram-upstream
           python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream
           python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --verify Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-liquid-intelligence.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-v1-integration.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-settings-order.py --verify Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-v1-user-features.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-settings-entry.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-proxy-promo-controls.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-v1-user-features.py nabdhgram/scripts/check-nabdh-v1-user-features.py
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-v1-hierarchy.py nabdhgram/scripts/apply-nabdh-voice-clarity.py nabdhgram/scripts/apply-nabdh-notification-typography.py nabdhgram/scripts/check-nabdh-notification-typography.py
           python3 nabdhgram/scripts/check-nabdh-chat-consistency.py Telegram-upstream
           python3 nabdhgram/scripts/check-chat-settings-visual-fixes.py Telegram-upstream
-          python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py nabdhgram/scripts/check-profile-composer-visual-fixes.py
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-profile-bio-glass.py nabdhgram/scripts/check-packaged-splash.py nabdhgram/scripts/check-profile-composer-visual-fixes.py nabdhgram/scripts/apply-nabdh-v1-signatures.py nabdhgram/scripts/check-nabdh-v1-integration.py
           python3 -m py_compile nabdhgram/scripts/apply-chat-settings-visual-fixes.py nabdhgram/scripts/check-chat-settings-visual-fixes.py
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/Components/NabdhGlassRowDecoration.java
           # Validate generated Java, not only the Python overlay source.
@@ -430,6 +581,7 @@ jobs:
           python3 nabdhgram/scripts/apply-network-diagnostics.py Telegram-upstream
 
       - name: Disable upstream Google Services configuration for experimental debug build
+        if: ${{ !inputs.release_mode }}
         shell: bash
         run: |
           set -euo pipefail
@@ -445,6 +597,7 @@ jobs:
           PY
 
       - name: Limit experimental APK to arm64-v8a
+        if: ${{ !inputs.release_mode }}
         shell: bash
         run: |
           set -euo pipefail
@@ -504,31 +657,127 @@ jobs:
             rm -rf "$NDK_DIR"
             sleep $((attempt * 15))
           done
-      - name: Build branded debug APK
+      - name: Provision owner signing and matching Firebase release configuration
+        if: ${{ inputs.release_mode }}
+        shell: bash
+        env:
+          NABDH_RELEASE_KEYSTORE_B64: ${{ secrets.NABDH_RELEASE_KEYSTORE_B64 }}
+          NABDH_RELEASE_STORE_PASSWORD: ${{ secrets.NABDH_RELEASE_STORE_PASSWORD }}
+          NABDH_RELEASE_KEY_ALIAS: ${{ secrets.NABDH_RELEASE_KEY_ALIAS }}
+          NABDH_RELEASE_KEY_PASSWORD: ${{ secrets.NABDH_RELEASE_KEY_PASSWORD }}
+          NABDH_RELEASE_CERT_SHA256: ${{ secrets.NABDH_RELEASE_CERT_SHA256 }}
+          NABDH_FIREBASE_CONFIG_B64: ${{ secrets.NABDH_FIREBASE_CONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/configure-release-signing.py Telegram-upstream
+      - name: Enforce Google Play Release-only sensitive-permission policy
+        if: ${{ inputs.release_mode }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-play-permissions.py
+          python3 nabdhgram/scripts/apply-nabdh-play-permissions.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-private-backup.py
+          python3 nabdhgram/scripts/apply-nabdh-private-backup.py Telegram-upstream
+
+      - name: Validate final APK manifest merge before expensive compilation
+        if: ${{ !inputs.source_preflight_only }}
+        working-directory: Telegram-upstream
+        shell: bash
+        env:
+          RELEASE_MODE: ${{ inputs.release_mode }}
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          if [[ "$RELEASE_MODE" == "true" ]]; then
+            task=":TMessagesProj_App:processAfatReleaseMainManifest"
+          else
+            task=":TMessagesProj_App:processAfatDebugMainManifest"
+          fi
+          # Resolve transitive AAR manifests before running the expensive
+          # native/Java/APK assembly; fail fast with an actionable log.
+          ./gradlew "$task" --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-manifest-check.log
+          echo "PASS: merged Android manifest for $task"
+      - name: Build branded Android APK
         if: ${{ !inputs.source_preflight_only }}
         id: compile
         continue-on-error: true
         working-directory: Telegram-upstream
         shell: bash
+        env:
+          RELEASE_MODE: ${{ inputs.release_mode }}
         run: |
           set -o pipefail
           chmod +x ./gradlew
-          ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-build.log
+          if [[ "$RELEASE_MODE" == "true" ]]; then
+            task=":TMessagesProj_App:assembleAfatRelease"
+          else
+            task=":TMessagesProj_App:assembleAfatDebug"
+          fi
+          ./gradlew "$task" --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-build.log
       - name: Verify APK identity and collect launcher diagnostics
         if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
         shell: bash
+        env:
+          NABDH_RELEASE_CERT_SHA256: ${{ secrets.NABDH_RELEASE_CERT_SHA256 }}
         run: |
           set -euo pipefail
-          APK="Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk"
+          APK="Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/${{ inputs.release_mode && 'release' || 'debug' }}/app.apk"
           test -s "$APK" || { echo "::error::APK missing at $APK"; exit 1; }
+          # Final package must not contain the removed 20+ MB art payload.
+          APK_PATH="$APK" python3 - <<'PY'
+          import os
+          import zipfile
+          with zipfile.ZipFile(os.environ["APK_PATH"]) as apk:
+              bundled = [name for name in apk.namelist()
+                         if "nabdh_twemoji" in name.lower()
+                         or "twemoji17" in name.lower()]
+              if bundled:
+                  raise SystemExit(f"Removed Twemoji artwork still packaged: {len(bundled)} entries")
+          print("PASS: no third-party emoji art or download payload in final APK")
+          PY
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           test -x "$AAPT" || { echo "::error::aapt not installed"; exit 1; }
           test -x "$APKSIGNER" || { echo "::error::apksigner not installed"; exit 1; }
           "$AAPT" dump badging "$APK" > apk-badging.txt
+          grep -q "targetSdkVersion:'36'" apk-badging.txt || {
+            echo "::error::Google Play submission requires Android API 36"; exit 1;
+          }
           "$AAPT" dump resources "$APK" > apk-resources.txt
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > apk-manifest-tree.txt
+          "$AAPT" dump permissions "$APK" > apk-permissions.txt
+          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
+            grep -q "android:dataExtractionRules" apk-manifest-tree.txt || {
+              echo "::error::Release manifest is missing Android data-extraction rules"; exit 1;
+            }
+            python3 - <<'PY'
+          import re
+          from pathlib import Path
+          manifest = Path("apk-manifest-tree.txt").read_text(encoding="utf-8")
+          match = re.search(r"(?m)^.*android:allowBackup.*$", manifest)
+          if not match or not re.search(r"(?:0x0|false)\s*$", match.group(0), re.I):
+              raise SystemExit("FAIL: signed Release must have allowBackup=false")
+          print("PASS: signed APK manifest disables automatic app-data backup")
+          PY
+            grep -q "nabdh_private_backup_rules" apk-resources.txt || {
+              echo "::error::Release APK has no compiled private-backup rules"; exit 1;
+            }
+          fi
+          # Verify the actual APK permissions, not only the source manifest.
+          ! grep -E "uses-permission: name='android.permission.(READ_SMS|RECEIVE_SMS|QUERY_ALL_PACKAGES|BIND_ACCESSIBILITY_SERVICE)'" apk-permissions.txt
+          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
+            ! grep -E "uses-permission: name='android.permission.(REQUEST_INSTALL_PACKAGES|READ_CALL_LOG)'" apk-permissions.txt || {
+              echo "::error::Restricted Play installation/call-log permission in signed APK"
+              exit 1
+            }
+          fi
           "$APKSIGNER" verify --verbose "$APK" > apk-signature.txt
+          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
+            python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "$APK" --enforce
+          else
+            python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "$APK"
+          fi
           sha256sum "$APK" > apk-sha256.txt
           echo "::group::Packaged APK identity and launcher"
           grep -E "^(package:|application-label:|launchable-activity:|sdkVersion:|targetSdkVersion:|application-icon)" apk-badging.txt || true
@@ -576,28 +825,73 @@ jobs:
           # Inspect FINAL compiled resources, not just source XML. In build #572
           # Android night-v29 selected tg_splash_320 despite branded day-v31.
           python3 nabdhgram/scripts/check-packaged-splash.py "$APK" apk-resources.txt apk-manifest-tree.txt
+          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
+            python3 nabdhgram/scripts/verify-release-apk.py "$APK" apk-badging.txt apk-manifest-tree.txt
+          fi
       - name: Publish verified APK with a clean filename
         if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk dist/nabdhgram.apk
-          cmp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk dist/nabdhgram.apk
+          cp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/${{ inputs.release_mode && 'release' || 'debug' }}/app.apk dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
+          cmp Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/${{ inputs.release_mode && 'release' || 'debug' }}/app.apk dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
           python3 - <<'PY'
           import pathlib, zipfile, sys
-          apk = pathlib.Path("dist/nabdhgram.apk")
+          apk = pathlib.Path("dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk")
           with zipfile.ZipFile(apk) as z:
               abis = sorted({p.split("/")[1] for p in z.namelist() if p.startswith("lib/") and p.count("/") >= 2})
           print(f"Packaged native ABIs: {abis}")
           print(f"APK size: {apk.stat().st_size / 1024 / 1024:.2f} MiB")
-          if abis != ["arm64-v8a"]:
-              sys.exit("APK contains unexpected or missing native ABIs")
+          if not abis or "arm64-v8a" not in abis:
+              sys.exit("APK lacks arm64 native libraries")
+          if "${{ inputs.release_mode }}" != "true" and abis != ["arm64-v8a"]:
+              sys.exit("Debug ABI filter changed")
+          if "${{ inputs.release_mode }}" == "true" and "armeabi-v7a" not in abis:
+              sys.exit("Release is missing 32-bit ARM libraries")
           PY
-          sha256sum dist/nabdhgram.apk
+          sha256sum dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
           echo "### NabdhGram APK" >> "$GITHUB_STEP_SUMMARY"
-          echo "Filename: \`nabdhgram.apk\` (arm64-v8a only)" >> "$GITHUB_STEP_SUMMARY"
-          du -h dist/nabdhgram.apk >> "$GITHUB_STEP_SUMMARY"
+          echo "APK mode: ${{ inputs.release_mode && 'privately signed Release' || 'experimental Debug' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Filename: nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk" >> "$GITHUB_STEP_SUMMARY"
+          du -h dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build owner-signed Android App Bundle for Google Play testing
+        if: ${{ inputs.release_mode && steps.compile.outcome == 'success' }}
+        working-directory: Telegram-upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :TMessagesProj_App:bundleBundleAfatRelease --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-play-bundle-build.log
+
+      - name: Validate and preserve Play upload AAB
+        if: ${{ inputs.release_mode && steps.compile.outcome == 'success' }}
+        shell: bash
+        env:
+          NABDH_RELEASE_CERT_SHA256: ${{ secrets.NABDH_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          mapfile -t bundles < <(find Telegram-upstream/TMessagesProj_App/build/outputs/bundle/ -type f -name '*.aab')
+          if [[ "${#bundles[@]}" != "1" ]]; then
+            echo "::error::Expected exactly one owner-signed Release AAB, found ${#bundles[@]}"
+            exit 1
+          fi
+          python3 nabdhgram/scripts/verify-release-aab.py "${bundles[0]}"
+          python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "${bundles[0]}" --enforce
+          mkdir -p dist
+          cp "${bundles[0]}" dist/nabdhgram-play-internal.aab
+          sha256sum dist/nabdhgram-play-internal.aab > play-bundle-sha256.txt
+          du -h dist/nabdhgram-play-internal.aab >> "$GITHUB_STEP_SUMMARY"
+          echo "Google Play testing upload: owner-signed nabdhgram-play-internal.aab" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload verified Google Play internal-test AAB
+        if: ${{ inputs.release_mode && steps.compile.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nabdhgram-owner-signed-google-play-aab
+          path: dist/nabdhgram-play-internal.aab
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Collect APK paths
         if: ${{ always() && !inputs.source_preflight_only }}
@@ -609,8 +903,8 @@ jobs:
         if: ${{ always() && !inputs.source_preflight_only }}
         uses: actions/upload-artifact@v4
         with:
-          name: nabdhgram-identity-debug-apk
-          path: dist/nabdhgram.apk
+          name: ${{ inputs.release_mode && 'nabdhgram-owner-signed-release-apk' || 'nabdhgram-identity-debug-apk' }}
+          path: dist/nabdhgram*.apk
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload diagnostics
@@ -620,6 +914,9 @@ jobs:
           name: nabdhgram-identity-build-log
           path: |
             nabdhgram-build.log
+            nabdhgram-play-bundle-build.log
+            play-bundle-sha256.txt
+            nabdhgram-manifest-check.log
             identity-patch.log
             apk-paths.txt
             apk-badging.txt
@@ -627,6 +924,7 @@ jobs:
             apk-sha256.txt
             apk-resources.txt
             apk-manifest-tree.txt
+            apk-permissions.txt
           if-no-files-found: ignore
           retention-days: 14
       - name: Report status
@@ -636,12 +934,19 @@ jobs:
           {
             echo "## NabdhGram identity build"
             echo "Gradle result: **${{ steps.compile.outcome }}**"
-            echo "Expected debug ID: net.nabdhserv.nabdhgram"
-            echo "Firebase/Google Services integration is disabled for this experimental debug build; push notifications may not work."
-            echo "Launcher icon status: **${{ steps.brand.outputs.icon_status }}**" 
-            echo "Developer-owned Telegram API configuration required via GitHub Actions secrets."
-            echo "Do not distribute this experimental APK."
+            echo "Package: net.nabdhserv.nabdhgram"
+            echo "Build mode: ${{ inputs.release_mode && 'owner-signed Release' || 'experimental Debug with Firebase disabled' }}"
+            echo "Launcher icon: **${{ steps.brand.outputs.icon_status }}**"
+            echo "Public distribution additionally needs license/privacy and final device QA."
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Erase private release keys from ephemeral build workspace
+        if: ${{ always() && inputs.release_mode }}
+        shell: bash
+        run: |
+          rm -f Telegram-upstream/TMessagesProj/config/release.keystore Telegram-upstream/TMessagesProj_App/google-services.json
+          if [ -f Telegram-upstream/gradle.properties ]; then
+            sed -i -E 's/^(RELEASE_(STORE_PASSWORD|KEY_ALIAS|KEY_PASSWORD))=.*/\1=REMOVED/' Telegram-upstream/gradle.properties
+          fi
       - name: Fail on build error or missing APK
         if: ${{ always() && !inputs.source_preflight_only }}
         shell: bash
@@ -649,4 +954,4 @@ jobs:
           BUILD_RESULT: ${{ steps.compile.outcome }}
         run: |
           test "$BUILD_RESULT" = success
-          test -s dist/nabdhgram.apk
+          test -s dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk

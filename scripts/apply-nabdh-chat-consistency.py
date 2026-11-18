@@ -38,6 +38,19 @@ s = once(s,
 
     public static void createChatResources(Context context, boolean fontsOnly) {""",
     "Theme chat-paint lifecycle")
+# A fresh native dialog paint initialization must preserve selected
+# Arabic family and UI scale for canvas-drawn chat-list rows.
+s = once(s,
+    """        dialogs_searchNameEncryptedPaint.setTextSize(dp(16));
+    }
+
+    public static void applyDialogsTheme() {""",
+    """        dialogs_searchNameEncryptedPaint.setTextSize(dp(16));
+        org.telegram.ui.Components.NabdhTypefaceManager.applyDialogPaints();
+    }
+
+    public static void applyDialogsTheme() {""",
+    "native dialog paint typography")
 theme.write_text(s, encoding="utf-8")
 
 settings = ui / "NabdhGramFeatureCategoryActivity.java"
@@ -125,4 +138,22 @@ for current in (122, 160):
                         org.telegram.ui.Components.NabdhGlassStyle.current(), alpha));""",
         f"native {current} rim alpha")
 bubble.write_text(s, encoding="utf-8")
+# MessageObject caches StaticLayout for font size but not family/weight.
+# Invalidate lazily by generation so offscreen messages rebuild on next bind.
+model = root / "TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java"
+native = model.read_text(encoding="utf-8")
+native = once(native,
+    "    public boolean checkLayout() {",
+    """    private int nabdhFontGeneration =
+            org.telegram.ui.Components.NabdhTypefaceManager.generation();
+
+    public boolean checkLayout() {
+        final int generation = org.telegram.ui.Components.NabdhTypefaceManager.generation();
+        if (nabdhFontGeneration != generation) {
+            nabdhFontGeneration = generation;
+            layoutCreated = false;
+        }""",
+    "cached message typography generation")
+model.write_text(native, encoding="utf-8")
+
 print("PASS: chat fonts and text/media bubble colors now share native managers")

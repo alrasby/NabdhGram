@@ -48,10 +48,31 @@ jobs:
         run: python3 scripts/check-nabdh-liquid-intelligence.py --self-test
       - name: Test chat bubble palette and Arabic text-manager source
         run: python3 scripts/check-nabdh-chat-consistency.py --self-test
+      - name: Self-test service exposure and playback memory hardening
+        run: python3 scripts/check-nabdh-security-hardening.py --self-test
+      - name: Self-test hidden V1 and deferred feature visibility
+        run: python3 scripts/check-nabdh-v1-visibility.py --self-test
+      - name: Self-test native home, bubble, camera and AI Chat integration
+        run: python3 scripts/check-nabdh-personalization.py --self-test
       - name: Verify integrated Glass design contract
         run: python3 scripts/check-glass-design-contract.py
       - name: Verify fixed-left ON thumb and native state invariants
         run: python3 scripts/apply-fixed-left-toggle-thumb.py --self-test
+      - name: Test release signing guard and offline V1 engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/configure-release-signing.py --self-test
+          python3 tools/setup-release-secrets.py --self-test
+          python3 scripts/verify-release-apk.py --self-test
+          python3 scripts/check-nabdh-v1-integration.py --self-test
+          python3 scripts/apply-nabdh-settings-order.py --self-test
+          python3 scripts/check-nabdh-settings-entry.py --self-test
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          javac -encoding UTF-8 -d "$tmpdir" overlay/java/NabdhV1Engine.java overlay/java/NabdhFileGuard.java tests/java/org/telegram/ui/Components/NabdhV1EngineSmokeTest.java tests/java/org/telegram/ui/Components/NabdhShieldVerificationTest.java
+          java -cp "$tmpdir" org.telegram.ui.Components.NabdhV1EngineSmokeTest
+          java -cp "$tmpdir" org.telegram.ui.Components.NabdhShieldVerificationTest
       - name: Ensure no Android APK is misrepresented
         run: |
           test -f docs/BUILD_SETUP.md

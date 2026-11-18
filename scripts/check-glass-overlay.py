@@ -167,8 +167,10 @@ checks = {
             ("GradientDrawable glassCard =", "GradientDrawable infoCard =",
              "GradientDrawable fontGlass =", "RippleDrawable touchSurface =")),
     "NabdhGram settings categories use theme-aware shared drawable": all(
-        "NabdhGlassRowDecoration.newCardBackground()" in (ui / page).read_text(encoding="utf-8")
-        for page in ("NabdhGramSettingsActivity.java", "NabdhGramFeatureCategoryActivity.java")),
+        "NabdhCompactSettings.row(" in (ui / page).read_text(encoding="utf-8")
+        for page in ("NabdhGramSettingsActivity.java", "NabdhGramFeatureCategoryActivity.java"))
+        and "Theme.key_windowBackgroundWhite" in
+        (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "native Glass rows include specular highlight":
         "canvas.drawLine(rect.left + round" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
@@ -294,8 +296,9 @@ checks = {
     "finished NabdhGram settings use one accessible column":
         'section(context, content, R.string.NabdhShieldTitle' in settings
         and "compactGrid" not in settings
-        and 'card.setOnClickListener(v -> presentFragment(' in settings
-        and 'description.setMaxLines(2);' in settings,
+        and 'NabdhCompactSettings.row(context, parent' in settings
+        and 'parent.addView(group, params);' in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "contacts card uses shared rounded Glass background":
         "cell.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in
             (ui / "Adapters/ContactsAdapter.java").read_text(encoding="utf-8"),
@@ -314,8 +317,10 @@ checks = {
         and "nabdhLastProxyPromoId" not in dialogs
         and "viewPages[0].updateList(true);" in dialogs,
     "compact Glass card text and height":
-        "card.setMinimumHeight((int) (78 * density + .5f))" in settings
-        and "descLp.topMargin = (int) (3 * density + .5f);" in settings,
+        "row.setMinimumHeight(dp(context, TextUtils.isEmpty(subtitle) ? 54 : 66))" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+        and "summary.setTextSize(11);" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "device default font preserves native weights, custom fonts keep headings": all(
         part in typefaces for part in (
             'getString("font_family", "system-default")',
@@ -353,21 +358,33 @@ checks = {
         'localeFilters += ["zz", "ar"]' in
         (root / "TMessagesProj_App/build.gradle").read_text(encoding="utf-8")
         and "<string name=\"NabdhGramSettingsTitle\">إعدادات نبض جرام</string>" in appearance_ar,
-    "NabdhGram settings spacing compacted": all(
-        token in settings for token in (
-            "cardLp.bottomMargin = (int) (8 * density + .5f);",
-            "labelsLp.setMarginStart((int) (11 * density + .5f));",
-            "int pad = (int) (12 * context.getResources().getDisplayMetrics().density);",
-        )
-    ),
+    "NabdhGram settings spacing compacted":
+        "int pad = (int) (12 * context.getResources().getDisplayMetrics().density);" in settings
+        and "row.setPadding(dp(context, 14), dp(context, 9)," in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+        and 'params.bottomMargin = dp(context, 16);' in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "settings and nested page headings localized": all(
         item in settings for item in (
             "actionBar.setTitle(NabdhStrings.get(context, R.string.NabdhGramSettingsTitle));",
-            "heading.setText(NabdhStrings.get(context, titleRes));",
-            "description.setText(NabdhStrings.get(context, summaryRes));",
+            "NabdhStrings.get(context, titleRes)",
+            "NabdhStrings.get(context, summaryRes)",
         )
-    ) and "actionBar.setTitle(NabdhStrings.get(context, titleRes));" in feature
-      and "explanation.setText(NabdhStrings.get(context, descriptionRes));" in feature,
+    ) and (
+        ("actionBar.setTitle(NabdhStrings.get(context, titleRes));" in feature
+         and "explanation.setText(NabdhStrings.get(context, descriptionRes));" in feature)
+        or (
+            "actionBar.setTitle(NabdhStrings.get(context, featureId == 0 ? titleRes : nabdhDetailTitle(featureId)));" in feature
+            and "explanation.setText(NabdhStrings.get(context, featureId == 0 ? nabdhCategoryDescription() : nabdhDetailDescription(featureId)));" in feature
+            and "addNabdhFeatureMenu(context, content);" in feature
+        )
+        or (
+            "featureId == 0 && titleRes == R.string.NabdhLanguageTitle" in feature
+            and "R.string.NabdhCompactStyleLanguageTitle" in feature
+            and "explanation.setText(NabdhStrings.get(context, featureId == 0 ? nabdhCategoryDescription() : nabdhDetailDescription(featureId)));" in feature
+            and "addNabdhFeatureMenu(context, content);" in feature
+        )
+    ),
     "appearance settings describe working Glass and fonts": "Choose the application font below." in appearance_en
         and "اختر خط التطبيق أدناه." in appearance_ar
         and "Glass appearance and application fonts" in appearance_en
@@ -427,10 +444,15 @@ checks = {
     "font applied before drawing": "addOnPreDrawListener(nabdhFontPreDrawListener)" in launch
         and "if (nabdhFontDirty && android.os.SystemClock.uptimeMillis()" in launch
         and "nabdhLastFontScanMs >= 48L" in launch,
-    "composer retains RTL and content padding": "messageEditText.setPadding(dp(6), dp(9), dp(6), dp(10));" in composer
-        and "TEXT_DIRECTION_FIRST_STRONG" in composer
-        and "LocaleController.isRTL" in composer
-        and "android.view.Gravity.RIGHT : android.view.Gravity.LEFT" in composer,
+    "composer keeps native bot spacing and rebuilds font-dependent hint": "messageEditText.setPadding(0, dp(9), 0, dp(10));" in composer
+        and "messageEditText.setPadding(dp(6)" not in composer
+        and "leftMargin = dp(10) + (botCommandsMenuButton" in composer
+        and "leftMargin = dp(57) + (botCommandsMenuButton" in composer
+        and "messageEditText.setGravity(Gravity.BOTTOM);" in composer
+        and "messageEditText.setGravity((org.telegram" not in composer
+        and "messageEditText.setSupportRtlHint(true)" in composer
+        and "messageEditText.getHintLayoutEx() != null" in composer
+        and 'messageEditText.setHintText("", false);' in composer,
     "rounded bubble default with saved preference": 'public static int bubbleRadius = 19;' in shared_config
         and 'bubbleRadius = preferences.getInt("bubbleRadius", 19);' in shared_config,
     "native settings rounded touch selector": "listView.setSelectorRadius(17);" in native_settings,
@@ -487,9 +509,13 @@ checks = {
         and '"serif".equals(family)' in typefaces,
     "appearance font preference persisted": 'getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
         and 'putString("font_family", family).commit()' in (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8"),
-    "settings card native ripple": "card.setBackground(org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground())" in settings
-        and "extends android.graphics.drawable.RippleDrawable" in
-            (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+    "settings card native ripple": "NabdhCompactSettings.row(context, parent" in settings
+        and "NabdhGlassRowDecoration.newCardBackground()" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+        and "row.setClipToOutline(true)" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+        and "group.setBackground(null)" in
+            (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
         and "makeRippleMask()" in
             (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8"),
     "pinned decoration never draws a box across mixed chat rows":
@@ -579,7 +605,10 @@ checks["global font renderer respects secondary explanatory labels"] = (
     (ui / "LaunchActivity.java").read_text(encoding="utf-8")
 )
 checks["NabdhGram settings descriptions opt into readable body weight"] = (
-    'description.setTag("nabdh:secondary-text");' in settings
+    'summary.setTextColor(secondary);' in
+        (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
+    and 'summary.setTextSize(11);' in
+        (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
 )
 checks["feature category explanations opt into readable body weight"] = (
     'explanation.setTag("nabdh:secondary-text");' in feature
