@@ -55,7 +55,19 @@ public final class NabdhHomePrefs {
             float target = (bar.getWidth() - title.getWidth()) / 2f;
             target = Math.max(safe, Math.min(target,
                     Math.max(safe, bar.getWidth() - title.getWidth() - safe)));
-            title.setTranslationX(target - title.getX());
+            // View.getX() includes the previous translation. Subtracting it
+            // makes each resume/toggle re-apply the opposite offset, so the
+            // title jumps instead of remaining centered. Resolve its stable
+            // layout origin relative to the ActionBar, excluding this view's
+            // own translation, and apply one idempotent absolute offset.
+            float origin = title.getLeft();
+            android.view.ViewParent parent = title.getParent();
+            while (parent instanceof android.view.View && parent != bar) {
+                android.view.View p = (android.view.View) parent;
+                origin += p.getLeft() + p.getTranslationX();
+                parent = p.getParent();
+            }
+            title.setTranslationX(target - origin);
         });
     }
     /** Requested recording rate; Camera2 chooses a hardware-supported range. */
