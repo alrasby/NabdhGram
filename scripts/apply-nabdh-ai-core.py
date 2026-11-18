@@ -122,7 +122,7 @@ comment = """
 # Google-internal protoc metadata annotations missing from public javalite.
 # These annotations are not executable code. Explicit allowlist only.
 # MediaPipe GenAI 0.10.27 / R8; keep all runtime protobuf classes checked.
-""" + "\\n".join("-dontwarn " + marker for marker in annotation_markers)
+""" + "\n".join("-dontwarn " + marker for marker in annotation_markers)
 rules = once(rules, end_marker, end_marker + comment, "protobuf metadata only")
 for marker in annotation_markers:
     if rules.splitlines().count("-dontwarn " + marker) != 1:
