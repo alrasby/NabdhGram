@@ -16,9 +16,19 @@ TO = "ndk.debugSymbolLevel = 'SYMBOL_TABLE'"
 
 
 def adjust(content, module):
-    matches = list(RELEASE.finditer(content))
+    # Telegram also declares signingConfigs.release; it must never count as
+    # a buildType or be rewritten. Restrict the search to buildTypes only.
+    sections = list(re.finditer(r"(?m)^ {4}buildTypes \\{$", content))
+    if len(sections) != 1:
+        raise ValueError(f"{module}: expected exactly one buildTypes section")
+    section_start = sections[0].end()
+    section_end = re.search(r"(?m)^ {4}\\}$", content[section_start:])
+    if section_end is None:
+        raise ValueError(f"{module}: unterminated buildTypes section")
+    section_end = section_start + section_end.start()
+    matches = list(RELEASE.finditer(content, section_start, section_end))
     if len(matches) != 1:
-        raise ValueError(f"{module}: expected exactly one release buildType")
+        raise ValueError(f"{module}: expected exactly one buildTypes.release")
     match = matches[0]
     body = match["body"]
     if body.count(FROM) != 1 or TO in body:
@@ -63,8 +73,20 @@ def self_test():
         }
     }
 """
+    signing = """    signingConfigs {
+        release {
+            storeFile file("../TMessagesProj/config/release.keystore")
+            storePassword RELEASE_STORE_PASSWORD
+            keyAlias RELEASE_KEY_ALIAS
+        }
+    }
+"""
     for module in MODULES:
-        result = adjust(body, module)
+        # Regression: the real upstream app declares *two* release blocks,
+        # one for signing and one inside buildTypes. Only the latter changes.
+        source = signing + body
+        result = adjust(source, module)
+        assert result.startswith(signing), "Owner signing config was modified"
         assert result.count(FROM) == 2 and result.count(TO) == 1
         assert "debug {\n            ndk.debugSymbolLevel = 'FULL'" in result
         assert "standalone {\n            ndk.debugSymbolLevel = 'FULL'" in result
