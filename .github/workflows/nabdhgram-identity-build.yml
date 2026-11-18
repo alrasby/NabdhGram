@@ -433,7 +433,15 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-nabdh-expanded-tools.py Telegram-upstream
           python3 nabdhgram/scripts/apply-nabdh-chat-lock.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-ai-core.py
           python3 nabdhgram/scripts/apply-nabdh-ai-core.py Telegram-upstream
+          # Verify that Google's internal protobuf annotation is the ONLY R8
+          # missing-type exception. Keep minification enabled for Release.
+          grep -Fqx -- '-dontwarn com.google.protobuf.Internal$ProtoMethodMayReturnNull' Telegram-upstream/TMessagesProj/proguard-rules.pro
+          if grep -Eq '^[-]dontwarn com[.]google[.]protobuf[.][*][*]' Telegram-upstream/TMessagesProj/proguard-rules.pro; then
+            echo "::error::Broad Protobuf suppression is forbidden"; exit 1
+          fi
+          grep -Fq 'minifyEnabled true' Telegram-upstream/TMessagesProj_App/build.gradle
           python3 nabdhgram/scripts/apply-nabdh-chat-lock-privacy.py Telegram-upstream
 
       - name: Unify chat bubble palette and native Arabic TextPaint refresh

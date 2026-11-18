@@ -93,6 +93,29 @@ g = once(g, anchor, anchor + '''
 '''.rstrip(), "pinned ML Kit/MediaPipe library dependencies")
 gradle.write_text(g, encoding="utf-8")
 
+# MediaPipe GenAI 0.10.27 includes Google-internal protobuf gencode whose
+# enum forNumber() carries @Internal.ProtoMethodMayReturnNull. Protoc emits
+# this annotation only for non-OSS builds (see protobuf compiler/java/lite/enum.cc).
+# The OSS protobuf-javalite runtime correctly does not ship that annotation.
+# In Release, R8 reports it as missing; suppress ONLY this metadata annotation,
+# never the com.google.protobuf runtime or all missing classes.
+proguard = root / "TMessagesProj/proguard-rules.pro"
+rules = proguard.read_text(encoding="utf-8")
+annotation_rule = "-dontwarn com.google.protobuf.Internal$ProtoMethodMayReturnNull"
+if annotation_rule in rules or "-dontwarn com.google.protobuf.**" in rules:
+    raise SystemExit("NabdhAI R8 annotation rule collision or broad protobuf suppression")
+end_marker = "#-dontobfuscate"
+rules = once(rules, end_marker, end_marker + """
+
+# MediaPipe GenAI protobuf enum metadata from Google-internal protoc:
+# forNumber() may be nullable. This marker does NOT exist in OSS javalite;
+# it is not a runtime API. Keep R8 active and silence this single annotation.
+-dontwarn com.google.protobuf.Internal$ProtoMethodMayReturnNull""",
+    "Google-internal protobuf annotation only")
+if rules.count(annotation_rule) != 1:
+    raise SystemExit("NabdhAI expected exactly one scoped R8 annotation rule")
+proguard.write_text(rules, encoding="utf-8")
+
 labels = {
     "values": ("NabdhAI Core — on-device inference",
         "Optional local inference with Gemini Nano if ready; verified Gemma fallback on compatible devices. Neither model reads chats without a user request."),
