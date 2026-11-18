@@ -93,27 +93,40 @@ g = once(g, anchor, anchor + '''
 '''.rstrip(), "pinned ML Kit/MediaPipe library dependencies")
 gradle.write_text(g, encoding="utf-8")
 
-# MediaPipe GenAI 0.10.27 includes Google-internal protobuf gencode whose
-# enum forNumber() carries @Internal.ProtoMethodMayReturnNull. Protoc emits
-# this annotation only for non-OSS builds (see protobuf compiler/java/lite/enum.cc).
-# The OSS protobuf-javalite runtime correctly does not ship that annotation.
-# In Release, R8 reports it as missing; suppress ONLY this metadata annotation,
-# never the com.google.protobuf runtime or all missing classes.
+# MediaPipe GenAI 0.10.27 contains bytecode generated with Google's
+# internal protoc. The open-source protobuf-javalite 4.26.1 runtime lacks
+# these annotation-only declarations (not runtime functions). A prior
+# one-marker fix exposed additional metadata markers during R8 Release #4.
+# Enumerate the known metadata annotations, not a protobuf wildcard, and
+# never suppress warnings for runtime classes like GeneratedMessageLite.
 proguard = root / "TMessagesProj/proguard-rules.pro"
 rules = proguard.read_text(encoding="utf-8")
-annotation_rule = "-dontwarn com.google.protobuf.Internal$ProtoMethodMayReturnNull"
-if annotation_rule in rules or "-dontwarn com.google.protobuf.**" in rules:
-    raise SystemExit("NabdhAI R8 annotation rule collision or broad protobuf suppression")
+annotation_markers = (
+    "com.google.protobuf.Internal$ProtoMethodMayReturnNull",
+    "com.google.protobuf.Internal$ProtoNonnullApi",
+    "com.google.protobuf.ProtoField",
+    "com.google.protobuf.ProtoOneof",
+    "com.google.protobuf.ProtoOneofCase",
+    "com.google.protobuf.ProtoPresenceBits",
+    "com.google.protobuf.ProtoPresenceCheckedField",
+)
+if any("-dontwarn " + marker in rules for marker in annotation_markers):
+    raise SystemExit("NabdhAI R8 annotation rule already installed")
+if any(line.strip().startswith(("-ignorewarnings", "-dontwarn com.google.protobuf.**",
+                                "-dontwarn com.google.protobuf.*"))
+       for line in rules.splitlines()):
+    raise SystemExit("NabdhAI broad protobuf warning suppression forbidden")
 end_marker = "#-dontobfuscate"
-rules = once(rules, end_marker, end_marker + """
+comment = """
 
-# MediaPipe GenAI protobuf enum metadata from Google-internal protoc:
-# forNumber() may be nullable. This marker does NOT exist in OSS javalite;
-# it is not a runtime API. Keep R8 active and silence this single annotation.
--dontwarn com.google.protobuf.Internal$ProtoMethodMayReturnNull""",
-    "Google-internal protobuf annotation only")
-if rules.count(annotation_rule) != 1:
-    raise SystemExit("NabdhAI expected exactly one scoped R8 annotation rule")
+# Google-internal protoc metadata annotations missing from public javalite.
+# These annotations are not executable code. Explicit allowlist only.
+# MediaPipe GenAI 0.10.27 / R8; keep all runtime protobuf classes checked.
+""" + "\\n".join("-dontwarn " + marker for marker in annotation_markers)
+rules = once(rules, end_marker, end_marker + comment, "protobuf metadata only")
+for marker in annotation_markers:
+    if rules.splitlines().count("-dontwarn " + marker) != 1:
+        raise SystemExit("NabdhAI R8 scoped rule invariant failed: " + marker)
 proguard.write_text(rules, encoding="utf-8")
 
 labels = {
