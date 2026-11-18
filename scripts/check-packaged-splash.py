@@ -18,11 +18,22 @@ def require(ok, reason):
     if not ok:
         raise AssertionError(reason)
 
+def resource_ids(aapt, resource):
+    return [int(match, 16) for match in re.findall(
+        r"(?m)^\s*spec resource (0x[0-9a-fA-F]+) \S+:"
+        + re.escape(resource) + r":", aapt)]
+
+
 def compiled_id(aapt, resource):
-    ids = re.findall(r"(?m)^\s*spec resource (0x[0-9a-fA-F]+) \S+:"
-                     + re.escape(resource) + r":", aapt)
+    ids = resource_ids(aapt, resource)
     require(len(ids) == 1, "Missing/ambiguous packaged resource: " + resource)
-    return int(ids[0], 16)
+    return ids[0]
+
+
+def optional_compiled_id(aapt, resource):
+    ids = resource_ids(aapt, resource)
+    require(len(ids) <= 1, "Ambiguous packaged resource: " + resource)
+    return ids[0] if ids else None
 
 def style_configs(table, style_id):
     def u16(p): return struct.unpack_from("<H", table, p)[0]
@@ -65,7 +76,10 @@ def verify(apk, dumped_resources, dumped_manifest):
     aapt = Path(dumped_resources).read_text(encoding="utf-8")
     style = compiled_id(aapt, "style/Theme.TMessages.Start")
     brand = compiled_id(aapt, "drawable/nabdhgram_launcher_foreground")
-    telegram = compiled_id(aapt, "drawable/tg_splash_320")
+    # The unused upstream Telegram logo may be removed by Release R8's
+    # resource shrinker. Absence is desirable, not a verification failure.
+    # When retained for another code path, it still must never be used here.
+    telegram = optional_compiled_id(aapt, "drawable/tg_splash_320")
     manifest = Path(dumped_manifest).read_text(encoding="utf-8")
     require(manifest.count(f"android:theme(0x01010000)=@0x{style:08x}") >= 2,
             "APK application and LaunchActivity must use audited launch style")
@@ -77,7 +91,8 @@ def verify(apk, dumped_resources, dumped_manifest):
             continue
         where = ("night" if night else "day") + "-v" + str(sdk)
         icon_type, icon = values[SPLASH_ICON_ATTR]
-        require(icon_type == 1 and icon != telegram and icon == brand,
+        require(icon_type == 1 and icon == brand and
+                (telegram is None or icon != telegram),
                 f"Unbranded compiled {where} startup icon: {icon:#010x}; expected {brand:#010x}")
         bg_type, bg = values.get(SPLASH_BG_ATTR, (-1, -1))
         require(bg_type == 0x1d and bg == BRAND_BG,
@@ -87,7 +102,29 @@ def verify(apk, dumped_resources, dumped_manifest):
     require(any(c.startswith("night-") for c in checked), "Night startup not verified")
     print("PASS: packaged NabdhGram startup logo in: " + ", ".join(checked))
 
+def self_test():
+    # Release resource shrinking legitimately strips an unused upstream logo.
+    sample = ("  spec resource 0x7f080111 net.nabdhserv.nabdhgram:"
+              "drawable/nabdhgram_launcher_foreground:\n"
+              "  spec resource 0x7f080222 net.nabdhserv.nabdhgram:"
+              "drawable/tg_splash_320:\n")
+    assert compiled_id(sample, "drawable/nabdhgram_launcher_foreground") == 0x7f080111
+    assert optional_compiled_id(sample, "drawable/tg_splash_320") == 0x7f080222
+    assert optional_compiled_id(sample.replace(sample.splitlines(True)[1], ""),
+                                "drawable/tg_splash_320") is None
+    try:
+        optional_compiled_id(sample + sample.splitlines(True)[1],
+                             "drawable/tg_splash_320")
+        raise AssertionError("Duplicate compiled upstream resource was accepted")
+    except AssertionError as exc:
+        assert "Ambiguous packaged resource" in str(exc)
+    print("PASS: compiled splash ID parsing accepts shrunk old logo, rejects duplicates")
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        raise SystemExit("Usage: check-packaged-splash.py APK apk-resources.txt apk-manifest-tree.txt")
-    verify(*sys.argv[1:])
+    if sys.argv[1:] == ["--self-test"]:
+        self_test()
+    elif len(sys.argv) == 4:
+        verify(*sys.argv[1:])
+    else:
+        raise SystemExit("Usage: check-packaged-splash.py --self-test | APK apk-resources.txt apk-manifest-tree.txt")
