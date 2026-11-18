@@ -76,6 +76,32 @@ def main():
         raise SystemExit("Expected upstream debug application label was not found")
     debug_xml = debug_xml.replace('tools:replace="android:supportsRtl"', 'tools:replace="android:supportsRtl,android:label"')
     debug_manifest.write_text(debug_xml, encoding="utf-8")
+    # Release uses two independent upstream manifests (legacy and SDK23).
+    # Keep both labels identical to the app module and debug flavor. AAPT
+    # merges resource *references*, so @string/AppName conflicts with the
+    # approved @string/NabdhGramAppName even if both strings display the
+    # same visible text. Fix both source variants before Gradle merges them.
+    import xml.etree.ElementTree as ET
+    for relative in (
+        "TMessagesProj/config/release/AndroidManifest.xml",
+        "TMessagesProj/config/release/AndroidManifest_SDK23.xml",
+    ):
+        release_manifest = root / relative
+        replace_once(release_manifest,
+                     'android:label="@string/AppName"',
+                     'android:label="@string/NabdhGramAppName"')
+        replace_once(release_manifest,
+                     'tools:replace="android:supportsRtl"',
+                     'tools:replace="android:supportsRtl,android:label"')
+        application = ET.parse(release_manifest).getroot().find("application")
+        android_label = "{http://schemas.android.com/apk/res/android}label"
+        tools_replace = "{http://schemas.android.com/tools}replace"
+        if (application is None
+                or application.get(android_label) != "@string/NabdhGramAppName"
+                or "android:label" not in application.get(tools_replace, "").split(",")):
+            raise RuntimeError("Release application label policy failed: " + relative)
+    print("PASS: both Release manifests match the independent NabdhGram app label")
+
     # Telegram Devices reads this MTProto app_version, not the launcher label.
     connection = root / "TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsManager.java"
     connection_src = connection.read_text(encoding="utf-8")
