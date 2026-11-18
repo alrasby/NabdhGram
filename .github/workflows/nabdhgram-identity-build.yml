@@ -636,6 +636,22 @@ jobs:
           python3 nabdhgram/scripts/check-packaged-splash.py --self-test
           python3 -m py_compile nabdhgram/scripts/configure-release-native-symbols.py nabdhgram/scripts/report-play-aab-size.py
           python3 nabdhgram/scripts/configure-release-native-symbols.py --self-test
+          # Exercise this Release-only overlay against the actual pinned
+          # Telegram Groovy build files, before any native/Gradle compilation.
+          # Never mutate the checked-out source or signing configuration.
+          tmp_release_gradle="$(mktemp -d)"
+          trap 'rm -rf "$tmp_release_gradle"' EXIT
+          mkdir -p "$tmp_release_gradle/TMessagesProj_App" "$tmp_release_gradle/TMessagesProj"
+          touch "$tmp_release_gradle/gradle.properties"
+          cp Telegram-upstream/TMessagesProj_App/build.gradle "$tmp_release_gradle/TMessagesProj_App/build.gradle"
+          cp Telegram-upstream/TMessagesProj/build.gradle "$tmp_release_gradle/TMessagesProj/build.gradle"
+          python3 nabdhgram/scripts/configure-release-native-symbols.py "$tmp_release_gradle"
+          grep -Fq "ndk.debugSymbolLevel = 'SYMBOL_TABLE'" "$tmp_release_gradle/TMessagesProj_App/build.gradle"
+          grep -Fq "ndk.debugSymbolLevel = 'SYMBOL_TABLE'" "$tmp_release_gradle/TMessagesProj/build.gradle"
+          diff -q Telegram-upstream/TMessagesProj_App/build.gradle "$tmp_release_gradle/TMessagesProj_App/build.gradle" >/dev/null && {
+            echo "::error::Release symbol substitution made no changes"; exit 1
+          }
+          echo "PASS: Real pinned Telegram release native symbol policy safely applicable"
           python3 nabdhgram/scripts/report-play-aab-size.py --self-test
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-maven-mirror.py
           python3 nabdhgram/scripts/apply-nabdh-maven-mirror.py --self-test
