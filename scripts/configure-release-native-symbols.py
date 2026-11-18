@@ -18,11 +18,11 @@ TO = "ndk.debugSymbolLevel = 'SYMBOL_TABLE'"
 def adjust(content, module):
     # Telegram also declares signingConfigs.release; it must never count as
     # a buildType or be rewritten. Restrict the search to buildTypes only.
-    sections = list(re.finditer(r"(?m)^ {4}buildTypes \\{$", content))
+    sections = list(re.finditer(r"(?m)^ {4}buildTypes \{$", content))
     if len(sections) != 1:
         raise ValueError(f"{module}: expected exactly one buildTypes section")
     section_start = sections[0].end()
-    section_end = re.search(r"(?m)^ {4}\\}$", content[section_start:])
+    section_end = re.search(r"(?m)^ {4}\}$", content[section_start:])
     if section_end is None:
         raise ValueError(f"{module}: unterminated buildTypes section")
     section_end = section_start + section_end.start()
