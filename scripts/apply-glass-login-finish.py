@@ -93,8 +93,22 @@ s = replace_once(s,
         nabdhBackGlass.setColor(0xFFE9F6F7);
         nabdhBackGlass.setStroke(dp(1), 0xFF67CCC8);
         nabdhBackGlass.setCornerRadius(dp(14));
-        backButtonView.setBackground(nabdhBackGlass);""",
+        backButtonView.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(0x4436C9C1),
+                nabdhBackGlass, null));""",
     "navigation button icon")
+
+# Native LoginActivity.updateColors() can run after fragment creation and
+# silently overwrite the brand-color icon with BlackText. Keep the branded
+# color on every update, without altering LoginActivity navigation callbacks.
+s = replace_once(s,
+    "backButtonFilterColor = applyColorFilter(backButtonView, Theme.getColor(Theme.key_windowBackgroundWhiteBlackText), backButtonFilterColor, PorterDuff.Mode.SRC_ATOP);",
+    "backButtonFilterColor = applyColorFilter(backButtonView, nabdhLoginTurquoise(), backButtonFilterColor, PorterDuff.Mode.SRC_ATOP);",
+    "back navigation icon updates")
+s = replace_once(s,
+    "backButtonSelectorColor = applySelectorBackground(backButtonView, Theme.getColor(Theme.key_listSelector), backButtonSelectorColor, Theme.RIPPLE_MASK_CIRCLE_20DP);",
+    "// NabdhGram back glass is maintained by its own brand drawable.",
+    "retain brand back surface on updateColors")
 
 # Telegram uses a special 1.5dp border around each OTP box. Color and corner
 # radius can be polished without disturbing the code selection or timers.
