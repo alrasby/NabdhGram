@@ -540,7 +540,11 @@ k = replace_once(k,
         // touch key. Paint the parent's centered circular background instead.
         backButton.post(() -> {
             android.view.ViewParent parent = backButton.getParent();
-            if (parent instanceof View) {
+            // Never replace the background of the entire keypad if an
+            // upstream layout moves the icon outside its individual key cell.
+            if (parent instanceof View
+                    && ((View) parent).getWidth() <= dp(140)
+                    && ((View) parent).getHeight() <= dp(110)) {
                 ((View) parent).setBackground(getButtonDrawable(11));
             }
             backButton.setBackground(null);
@@ -595,7 +599,11 @@ if k.count(theme_anchor) != 1:
 k = k.replace(theme_anchor, theme_anchor + """
         backButton.post(() -> {
             android.view.ViewParent parent = backButton.getParent();
-            if (parent instanceof View) {
+            // Never replace the background of the entire keypad if an
+            // upstream layout moves the icon outside its individual key cell.
+            if (parent instanceof View
+                    && ((View) parent).getWidth() <= dp(140)
+                    && ((View) parent).getHeight() <= dp(110)) {
                 ((View) parent).setBackground(getButtonDrawable(11));
             }
             backButton.setBackground(null);
