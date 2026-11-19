@@ -55,6 +55,10 @@ def check(root):
     ):
         if marker not in noto_java:
             raise ValueError("Android multilingual fallback contract missing: " + marker)
+    if ('new Typeface.CustomFallbackBuilder(' not in noto_java
+            or 'public static Typeface createArabic(' not in noto_java
+            or 'fonts/NotoSans.ttf' not in noto_java):
+        raise ValueError("Noto Arabic must use Latin primary to avoid inflated Latin line metrics")
     if '"noto-sans".equals(family)' not in bridge or "NabdhNotoFallback.create(" not in bridge:
         raise ValueError("Noto selected preference is not routed to native fallback")
     if 'Typeface.create(bundled,' not in bridge:
