@@ -17,6 +17,32 @@ import android.os.Build;
 public final class NabdhNotoFallback {
     private NabdhNotoFallback() {}
 
+    // Noto Sans Arabic is a variable-width font. A moderately condensed
+    // native width avoids the excessively loose Arabic appearance while
+    // retaining its OpenType shaping, ligatures and standard letter spacing.
+    private static final float ARABIC_WIDTH = 87.5f;
+
+    public static Typeface createArabic(Context context, boolean bold, boolean italic) {
+        if (context == null) return Typeface.DEFAULT;
+        final int weight = bold ? 700 : 400;
+        final int style = (bold ? Typeface.BOLD : Typeface.NORMAL)
+                | (italic ? Typeface.ITALIC : Typeface.NORMAL);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Typeface typeface = new Typeface.Builder(
+                        context.getAssets(), "fonts/NotoSansArabic.ttf")
+                        .setFontVariationSettings("'wdth' " + ARABIC_WIDTH + ", 'wght' " + weight)
+                        .build();
+                return italic ? Typeface.create(typeface, Typeface.ITALIC) : typeface;
+            }
+            Typeface bundled = Typeface.createFromAsset(
+                    context.getAssets(), "fonts/NotoSansArabic.ttf");
+            return Typeface.create(bundled, style);
+        } catch (RuntimeException failure) {
+            return Typeface.create("sans-serif", style);
+        }
+    }
+
     public static Typeface create(Context context, boolean bold, boolean italic) {
         if (context == null) {
             return Typeface.DEFAULT;
@@ -34,7 +60,7 @@ public final class NabdhNotoFallback {
                         .build();
                 android.graphics.fonts.Font arabic = new android.graphics.fonts.Font.Builder(
                         assets, "fonts/NotoSansArabic.ttf")
-                        .setFontVariationSettings("'wght' " + weight)
+                        .setFontVariationSettings("'wdth' " + ARABIC_WIDTH + ", 'wght' " + weight)
                         .setWeight(weight)
                         .build();
                 android.graphics.fonts.FontFamily primary =
