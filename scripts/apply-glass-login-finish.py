@@ -535,7 +535,11 @@ k = replace_once(k,
 # cyan asset. Keep the existing ImageView, tap handler and key repeat intact.
 k = replace_once(k,
     "backButton.setImageResource(R.drawable.msg_clear_input);",
-    "backButton.setImageResource(R.drawable.nabdh_keypad_delete);",
+    """backButton.setImageResource(R.drawable.nabdh_keypad_delete);
+        // Set the real Backspace ImageView's background explicitly. The
+        // numeric key index is not a reliable Backspace identifier in all
+        // pinned Telegram keypad layouts and themes.
+        backButton.setBackground(getButtonDrawable(11));""",
     "keypad delete glyph")
 # Telegram's stock keypad positions the digit at 25% of the full key cell
 # and its letters at 70%. Once the background becomes a centered circle,
