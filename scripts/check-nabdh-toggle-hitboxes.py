@@ -13,7 +13,7 @@ for token in required:
     if token not in helper:
         raise SystemExit("Missing actual rendered switch hitbox: " + token)
 cases = {
-    "DataSettingsActivity.java": 2,
+    "DataSettingsActivity.java": 1,
     "NotificationsSettingsActivity.java": 1,
     "ThemeActivity.java": 2,
 }
@@ -21,6 +21,8 @@ for name, count in cases.items():
     text = (root / name).read_text(encoding="utf-8")
     if text.count("NabdhToggleHitbox.isToggleTap(view, x)") != count:
         raise SystemExit(f"{name}: incorrect physical hitbox count")
+    if name == "DataSettingsActivity.java" and text.count("if (nabdhToggleHit)") != 2:
+        raise SystemExit("Data Settings must retain exactly two shared toggle branches")
     if "LocaleController.isRTL && x <= dp(76)" in text or (
         "LocaleController.isRTL && x <= AndroidUtilities.dp(76)" in text
     ):
