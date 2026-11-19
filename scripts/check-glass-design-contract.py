@@ -120,6 +120,8 @@ assert "Math.min(box.width(), box.height()) * .5f - dp(0.5f)" in login_overlay, 
 assert "Gravity.LEFT | Gravity.TOP, 16, 16, 0, 16" in login_overlay and "Gravity.LEFT | Gravity.TOP, 68, 16, 0, 16" in login_overlay, "Language/proxy actions are not left-aligned"
 assert "state_pressed" in login_overlay and "int active = accent;" in login_overlay, "Pressed keys are not visibly tinted"
 assert 'nabdhLoginTurquoise()' in login_overlay and '0xFF008B83' in login_overlay, "NabdhGram login brand turquoise not applied"
+assert 'backButtonFilterColor = applyColorFilter(backButtonView, nabdhLoginTurquoise()' in login_overlay, "Native theme update overwrites branded back icon"
+assert 'backButtonSelectorColor = applySelectorBackground(backButtonView' in login_overlay, "Original back-selector patch anchor must be guarded"
 assert 'new int[]{0xFFDCF7F6, 0xFF20C6BE, accent}' in login_overlay, "The branded login button must have a silver-to-turquoise gradient"
 assert 'if (index == 11)' in login_overlay and 'new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent}' in login_overlay, "Delete circle does not match the NabdhGram logo palette"
 assert 'backButton.setColorFilter(android.graphics.Color.WHITE);' in login_overlay, "Delete glyph is not theme accent"
