@@ -405,6 +405,8 @@ once(
                                 getString(R.string.NabdhQrLoginError));
                     }
                 });
+                // Reserve the trailing edge for the floating Continue button.
+                // A narrower QR action must never appear behind the FAB.
                 // Keep the phone form's top title/country/number rhythm intact.
                 // The independent QR action sits BELOW the phone number input
                 // as requested, while it never validates that field.
@@ -413,7 +415,7 @@ once(
                     throw new IllegalStateException("Phone input is not attached");
                 }
                 addView(nabdhQrButton, phoneInputIndex + 1, LayoutHelper.createLinear(
-                        LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 16, 12, 16, 4));
+                        LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 36, 12, 92, 4));
             }""",
     "phone form QR button")
 once("    public void onFragmentDestroy() {\n        super.onFragmentDestroy();",
