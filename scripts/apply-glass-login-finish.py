@@ -66,13 +66,13 @@ s = replace_once(s,
     """        floatingButton = new FragmentFloatingButton(context, resourceProvider) {
             @Override public void updateColors() {
                 super.updateColors();
+                // Match the silver/cyan/turquoise gradient of the
+                // approved NabdhGram mark rather than a flat Telegram blue.
                 int accent = nabdhLoginTurquoise();
-                int shadow = androidx.core.graphics.ColorUtils.blendARGB(
-                        accent, android.graphics.Color.BLACK, .12f);
                 android.graphics.drawable.GradientDrawable surface =
                         new android.graphics.drawable.GradientDrawable(
                                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                                new int[]{accent, shadow});
+                                new int[]{0xFFDCF7F6, 0xFF20C6BE, accent});
                 surface.setShape(android.graphics.drawable.GradientDrawable.OVAL);
                 surface.setStroke(dp(1), android.graphics.Color.argb(50, 255, 255, 255));
                 setBackground(new android.graphics.drawable.RippleDrawable(
@@ -90,10 +90,8 @@ s = replace_once(s,
         android.graphics.drawable.GradientDrawable nabdhBackGlass =
                 new android.graphics.drawable.GradientDrawable();
         int nabdhNavTint = nabdhLoginTurquoise();
-        nabdhBackGlass.setColor(android.graphics.Color.argb(67,
-                android.graphics.Color.red(nabdhNavTint),
-                android.graphics.Color.green(nabdhNavTint),
-                android.graphics.Color.blue(nabdhNavTint)));
+        nabdhBackGlass.setColor(0xFFE9F6F7);
+        nabdhBackGlass.setStroke(dp(1), 0xFF67CCC8);
         nabdhBackGlass.setCornerRadius(dp(14));
         backButtonView.setBackground(nabdhBackGlass);""",
     "navigation button icon")
