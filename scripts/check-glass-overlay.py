@@ -252,7 +252,7 @@ checks = {
         all(part in (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
             for part in ("class NabdhCircleKey", "canvas.drawCircle(",
                          "Math.min(box.width(), box.height())", "state_pressed",
-                         "54 + android.graphics.Color.red(accent) * 46",
+                         "int active = accent;",
                          "R.drawable.nabdh_keypad_delete"))
         and ("backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));" in
              (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
