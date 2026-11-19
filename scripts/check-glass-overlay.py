@@ -262,9 +262,9 @@ checks = {
                          "Math.min(box.width(), box.height())", "state_pressed",
                          "int active = accent;",
                          "R.drawable.nabdh_keypad_delete"))
-        and ("backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83);" in
+        and ("backButton.setColorFilter(android.graphics.Color.WHITE);" in
              (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
-             or "final int backColor = Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83;" in
+             or "final int backColor = android.graphics.Color.WHITE;" in
              (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")),
     "Telegram empty-chat egg replaced by approved NabdhGram logo":
         (root / "TMessagesProj/src/main/res/drawable-nodpi/nabdh_empty_logo.png").is_file()
