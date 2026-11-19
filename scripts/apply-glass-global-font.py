@@ -72,9 +72,27 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                                 (bold ? Typeface.BOLD : Typeface.NORMAL)
                                 | (italic ? Typeface.ITALIC : Typeface.NORMAL));
                     } else if ("sans-serif".equals(family) || "serif".equals(family)) {
+                        // Historical saved sans-serif choice still renders
+                        // until Appearance migrates it to the device default.
+                        // The redundant option is no longer in the menu.
                         selected = Typeface.create(family,
                                 (bold ? Typeface.BOLD : Typeface.NORMAL)
                                 | (italic ? Typeface.ITALIC : Typeface.NORMAL));
+                    } else if ("dejavu-sans-condensed".equals(family)) {
+                        // Use authentic Regular/Bold faces, not artificial
+                        // emboldening. Android keeps platform fallback for
+                        // scripts/glyphs not present in DejaVu.
+                        Typeface bundled = getTypeface("fonts/" + (bold
+                                ? "DejaVuSansCondensed-Bold.ttf"
+                                : "DejaVuSansCondensed.ttf"));
+                        if (bundled != null) {
+                            // Keep the verified native Bold font exactly as
+                            // loaded; create(Typeface, NORMAL) can discard the
+                            // source face's real weight on some Android APIs.
+                            selected = italic
+                                    ? Typeface.create(bundled, Typeface.ITALIC)
+                                    : bundled;
+                        }
                     } else if ("readex-pro".equals(family) || "vazirmatn".equals(family)
                             || "noto-sans-arabic".equals(family) || "tajawal".equals(family)
                             || "rubik".equals(family)) {
