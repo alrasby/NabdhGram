@@ -120,7 +120,9 @@ assert "Math.min(box.width(), box.height()) * .5f - dp(0.5f)" in login_overlay, 
 assert "Gravity.LEFT | Gravity.TOP, 16, 16, 0, 16" in login_overlay and "Gravity.LEFT | Gravity.TOP, 68, 16, 0, 16" in login_overlay, "Language/proxy actions are not left-aligned"
 assert "state_pressed" in login_overlay and "int active = accent;" in login_overlay, "Pressed keys are not visibly tinted"
 assert 'nabdhLoginTurquoise()' in login_overlay and '0xFF008B83' in login_overlay, "NabdhGram login brand turquoise not applied"
-assert 'backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83);' in login_overlay, "Delete glyph is not theme accent"
+assert 'new int[]{0xFFDCF7F6, 0xFF20C6BE, accent}' in login_overlay, "The branded login button must have a silver-to-turquoise gradient"
+assert 'if (index == 11)' in login_overlay and 'new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent}' in login_overlay, "Delete circle does not match the NabdhGram logo palette"
+assert 'backButton.setColorFilter(android.graphics.Color.WHITE);' in login_overlay, "Delete glyph is not theme accent"
 empty_script = (ROOT / "scripts/apply-nabdh-empty-state.py").read_text(encoding="utf-8")
 assert "branding/approved/nabdhgram-welcome-transparent.png" in empty_script and "R.drawable.nabdh_empty_logo" in empty_script, "Approved empty-chat branding is missing"
 assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
