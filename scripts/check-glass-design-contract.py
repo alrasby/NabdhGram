@@ -252,7 +252,7 @@ assert "codeFieldContainer.codeField.length * 45L + 180L" in login_overlay, "Cor
 assert "contentView.setBackground(" in native_surfaces and "listView.adapter.setApplyBackground(false);" in native_surfaces, "Account root must be opaque and native white row fill disabled"
 assert "setNabdhBorderless(boolean enabled)" in finishing_ui and "if (!nabdhBorderless)" in finishing_ui, "Phone and country must use borderless native renderer"
 assert "setNabdhBorderless(true)" in finishing_ui, "Login phone and country must explicitly opt in to borderless fields"
-assert "LayoutHelper.WRAP_CONTENT, 48, Gravity.CENTER_HORIZONTAL, 28, 12, 28, 4" in (ROOT / "scripts/apply-nabdh-qr-login.py").read_text(encoding="utf-8"), "QR login must shrink horizontally"
+assert "LayoutHelper.MATCH_PARENT, 48, Gravity.CENTER_HORIZONTAL, 16, 12, 16, 4" in (ROOT / "scripts/apply-nabdh-qr-login.py").read_text(encoding="utf-8"), "QR login must shrink horizontally"
 assert '<string name="AppName">NabdhGram</string>' in (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8"), "In-app AppName remains Telegram"
 assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Main dialogs title still unbranded"
 assert "private void nabdhRestoreChatTitle()" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "MainTabs host can still reintroduce native Telegram title"
