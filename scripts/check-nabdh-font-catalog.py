@@ -22,8 +22,10 @@ def check(root):
     labels = tuple(re.findall(r'"([^"]+)"', match.group(1)))
     if labels != FAMILIES or len(set(labels)) != len(labels):
         raise ValueError("Duplicate/missing catalog entries: " + str(labels))
-    if 'if ("sans-serif".equals(selectedFont))' not in menu:
-        raise ValueError("Previous generic sans preference not migrated")
+    if ('"sans-serif".equals(selectedFont)' not in menu
+            or '"dejavu-sans-condensed".equals(selectedFont)' not in menu
+            or 'selectedFont = "system-default";' not in menu):
+        raise ValueError("Legacy font preference migrations missing")
     if "dejavu-sans-condensed" not in menu or "dejavu-sans-condensed" not in bridge:
         raise ValueError("Legacy DejaVu setting migration missing")
     for filename, content in (
