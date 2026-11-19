@@ -20,10 +20,16 @@ def check(text):
         "TL_auth_exportLoginToken",
         "TL_auth_importLoginToken",
         "TL_auth_loginTokenSuccess",
+        "indexOfChild(phoneOutlineView)",
+        "addView(nabdhQrButton, phoneInputIndex,",
+        "ApplicationLoader.isNetworkOnline()",
+        "NabdhQrLoginOffline",
     )
     for marker in required:
         if text.count(marker) < 1:
             raise ValueError("QR lifecycle/auth contract missing: " + marker)
+    if text.find("addView(nabdhQrButton, phoneInputIndex,") < 0:
+        raise ValueError("Direct QR sign-in must appear before phone entry")
     if "dialog.setOnDismissListener(ignored ->" in text:
         raise ValueError("Telegram BaseFragment overwrites that QR dismiss listener")
     if text.count("showDialog(dialog, dismissed -> {") != 1:
@@ -45,6 +51,10 @@ def self_test():
         "TL_auth_exportLoginToken",
         "TL_auth_importLoginToken",
         "TL_auth_loginTokenSuccess",
+        "indexOfChild(phoneOutlineView)",
+        "addView(nabdhQrButton, phoneInputIndex,",
+        "ApplicationLoader.isNetworkOnline()",
+        "NabdhQrLoginOffline",
     ))
     check(fixture)
     for bad in (
