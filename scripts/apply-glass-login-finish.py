@@ -536,10 +536,16 @@ k = replace_once(k,
 k = replace_once(k,
     "backButton.setImageResource(R.drawable.msg_clear_input);",
     """backButton.setImageResource(R.drawable.nabdh_keypad_delete);
-        // Set the real Backspace ImageView's background explicitly. The
-        // numeric key index is not a reliable Backspace identifier in all
-        // pinned Telegram keypad layouts and themes.
-        backButton.setBackground(getButtonDrawable(11));""",
+        // The ImageView is only the glyph; the wider parent is the actual
+        // touch key. Paint the parent's centered circular background instead.
+        backButton.post(() -> {
+            android.view.ViewParent parent = backButton.getParent();
+            if (parent instanceof View) {
+                ((View) parent).setBackground(getButtonDrawable(11));
+            }
+            backButton.setBackground(null);
+            backButton.setColorFilter(android.graphics.Color.WHITE);
+        });""",
     "keypad delete glyph")
 # Telegram's stock keypad positions the digit at 25% of the full key cell
 # and its letters at 70%. Once the background becomes a centered circle,
@@ -580,6 +586,21 @@ key_text_after = """            // Both text lines share the exact center of the
             }"""
 k = replace_once(k, key_text_before, key_text_after,
     "center keypad number and letters in the circular surface")
+# ThemeBind may restore native key colors after the first frame. Keep the
+# actual Backspace touch-cell surface branded on subsequent theme changes.
+# Do not replace its click/repeat listeners or change numeric keys.
+theme_anchor = "final int backColor = android.graphics.Color.WHITE;"
+if k.count(theme_anchor) != 1:
+    raise SystemExit("Backspace theme update anchor changed")
+k = k.replace(theme_anchor, theme_anchor + """
+        backButton.post(() -> {
+            android.view.ViewParent parent = backButton.getParent();
+            if (parent instanceof View) {
+                ((View) parent).setBackground(getButtonDrawable(11));
+            }
+            backButton.setBackground(null);
+            backButton.setColorFilter(android.graphics.Color.WHITE);
+        });""", 1)
 keyboard.write_text(k, encoding="utf-8")
 delete_icon = root / "TMessagesProj/src/main/res/drawable/nabdh_keypad_delete.xml"
 delete_icon.parent.mkdir(parents=True, exist_ok=True)
