@@ -46,6 +46,13 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                 String family = ApplicationLoader.applicationContext
                         .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
                         .getString("font_family", "system-default");
+                // Old DejaVu selection must not survive app upgrades.
+                if ("dejavu-sans-condensed".equals(family)) {
+                    family = "system-default";
+                    ApplicationLoader.applicationContext
+                            .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
+                            .edit().putString("font_family", family).apply();
+                }
                 boolean userBold = ApplicationLoader.applicationContext
                         .getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE)
                         .getBoolean("font_bold", false);
@@ -84,26 +91,13 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                         // Older Android: preserve native system glyph fallback.
                         selected = NabdhNotoFallback.create(
                                 ApplicationLoader.applicationContext, bold, italic);
-                    } else if ("dejavu-sans-condensed".equals(family)) {
-                        // Use authentic Regular/Bold faces, not artificial
-                        // emboldening. Android keeps platform fallback for
-                        // scripts/glyphs not present in DejaVu.
-                        Typeface bundled = getTypeface("fonts/" + (bold
-                                ? "DejaVuSansCondensed-Bold.ttf"
-                                : "DejaVuSansCondensed.ttf"));
-                        if (bundled != null) {
-                            // Keep the verified native Bold font exactly as
-                            // loaded; create(Typeface, NORMAL) can discard the
-                            // source face's real weight on some Android APIs.
-                            selected = italic
-                                    ? Typeface.create(bundled, Typeface.ITALIC)
-                                    : bundled;
-                        }
+                    } else if ("noto-sans-arabic".equals(family)) {
+                        selected = NabdhNotoFallback.createArabic(
+                                ApplicationLoader.applicationContext, bold, italic);
                     } else if ("readex-pro".equals(family) || "vazirmatn".equals(family)
-                            || "noto-sans-arabic".equals(family) || "tajawal".equals(family)
+                            || "tajawal".equals(family)
                             || "rubik".equals(family)) {
                         String fontFile = "vazirmatn".equals(family) ? "Vazirmatn.ttf"
-                                : "noto-sans-arabic".equals(family) ? "NotoSansArabic.ttf"
                                 : "tajawal".equals(family) ? "Tajawal.ttf"
                                 : "rubik".equals(family) ? "Rubik.ttf" : "ReadexPro.ttf";
                         Typeface bundled = getTypeface("fonts/" + fontFile);
