@@ -23,22 +23,40 @@ public final class NabdhNotoFallback {
     private static final float ARABIC_WIDTH = 87.5f;
 
     public static Typeface createArabic(Context context, boolean bold, boolean italic) {
+        // A lone NotoSansArabic Typeface applies Arabic vertical metrics to
+        // Latin UI copy as well, producing oversized line gaps in Settings.
+        // Put Noto Sans Latin first and the user-selected compact Arabic face
+        // second. This keeps Arabic shaping intact without changing text size.
         if (context == null) return Typeface.DEFAULT;
         final int weight = bold ? 700 : 400;
         final int style = (bold ? Typeface.BOLD : Typeface.NORMAL)
                 | (italic ? Typeface.ITALIC : Typeface.NORMAL);
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                Typeface typeface = new Typeface.Builder(
-                        context.getAssets(), "fonts/NotoSansArabic.ttf")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                android.content.res.AssetManager assets = context.getAssets();
+                android.graphics.fonts.Font latin = new android.graphics.fonts.Font.Builder(
+                        assets, "fonts/NotoSans.ttf")
+                        .setFontVariationSettings("'wght' " + weight)
+                        .setWeight(weight).build();
+                android.graphics.fonts.Font arabic = new android.graphics.fonts.Font.Builder(
+                        assets, "fonts/NotoSansArabic.ttf")
                         .setFontVariationSettings("'wdth' " + ARABIC_WIDTH + ", 'wght' " + weight)
+                        .setWeight(weight).build();
+                return new Typeface.CustomFallbackBuilder(
+                        new android.graphics.fonts.FontFamily.Builder(latin).build())
+                        .addCustomFallback(new android.graphics.fonts.FontFamily.Builder(arabic).build())
+                        .setSystemFallback("sans-serif")
+                        .setStyle(new android.graphics.fonts.FontStyle(weight,
+                                italic ? android.graphics.fonts.FontStyle.FONT_SLANT_ITALIC
+                                        : android.graphics.fonts.FontStyle.FONT_SLANT_UPRIGHT))
                         .build();
-                return italic ? Typeface.create(typeface, Typeface.ITALIC) : typeface;
             }
-            Typeface bundled = Typeface.createFromAsset(
-                    context.getAssets(), "fonts/NotoSansArabic.ttf");
-            return Typeface.create(bundled, style);
-        } catch (RuntimeException failure) {
+            // A custom multi-family fallback is unavailable before Android 10.
+            // Prefer consistent Latin text metrics over the incorrect all-script
+            // Arabic font metrics; Android supplies native Arabic fallback.
+            Typeface latin = Typeface.createFromAsset(context.getAssets(), "fonts/NotoSans.ttf");
+            return Typeface.create(latin, style);
+        } catch (java.io.IOException | RuntimeException failure) {
             return Typeface.create("sans-serif", style);
         }
     }
