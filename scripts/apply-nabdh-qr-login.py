@@ -334,12 +334,15 @@ once(
                 TextView nabdhQrButton = new TextView(context);
                 nabdhQrButton.setText(R.string.NabdhQrLoginButton);
                 nabdhQrButton.setGravity(Gravity.CENTER);
-                nabdhQrButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+                nabdhQrButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
                 nabdhQrButton.setTypeface(AndroidUtilities.bold());
+                // Let translated text wrap instead of clipping at larger font scales.
+                nabdhQrButton.setSingleLine(false);
+                nabdhQrButton.setMaxLines(2);
+                nabdhQrButton.setMinHeight(dp(48));
                 nabdhQrButton.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-                // Change horizontal size only: keep its 52dp touch height.
-                nabdhQrButton.setMinWidth(dp(220));
-                nabdhQrButton.setPadding(dp(24), 0, dp(24), 0);
+                // Use the available form width; no fixed 220dp text bottleneck.
+                nabdhQrButton.setPadding(dp(12), dp(6), dp(12), dp(6));
                 nabdhQrButton.setBackground(
                         org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
                 nabdhQrButton.setContentDescription(context.getString(R.string.NabdhQrLoginButton));
@@ -370,7 +373,7 @@ once(
                     throw new IllegalStateException("Phone input is not attached");
                 }
                 addView(nabdhQrButton, phoneInputIndex + 1, LayoutHelper.createLinear(
-                        LayoutHelper.WRAP_CONTENT, 48, Gravity.CENTER_HORIZONTAL, 28, 12, 28, 4));
+                        LayoutHelper.MATCH_PARENT, 48, Gravity.CENTER_HORIZONTAL, 16, 12, 16, 4));
             }""",
     "phone form QR button")
 once("    public void onFragmentDestroy() {\n        super.onFragmentDestroy();",
