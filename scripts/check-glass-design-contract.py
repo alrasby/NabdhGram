@@ -119,7 +119,8 @@ assert "getWidth() * 0.25f - numberWidth / 2f" in login_overlay, "Original upstr
 assert "Math.min(box.width(), box.height()) * .5f - dp(0.5f)" in login_overlay, "Key circles were not enlarged"
 assert "Gravity.LEFT | Gravity.TOP, 16, 16, 0, 16" in login_overlay and "Gravity.LEFT | Gravity.TOP, 68, 16, 0, 16" in login_overlay, "Language/proxy actions are not left-aligned"
 assert "state_pressed" in login_overlay and "int active = accent;" in login_overlay, "Pressed keys are not visibly tinted"
-assert 'backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));' in login_overlay, "Delete glyph is not theme accent"
+assert 'nabdhLoginTurquoise()' in login_overlay and '0xFF008B83' in login_overlay, "NabdhGram login brand turquoise not applied"
+assert 'backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83);' in login_overlay, "Delete glyph is not theme accent"
 empty_script = (ROOT / "scripts/apply-nabdh-empty-state.py").read_text(encoding="utf-8")
 assert "branding/approved/nabdhgram-welcome-transparent.png" in empty_script and "R.drawable.nabdh_empty_logo" in empty_script, "Approved empty-chat branding is missing"
 assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
