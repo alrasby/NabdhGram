@@ -52,14 +52,23 @@ s = replace_once(s,
 # Restyle only the login continuation FAB: retain Telegram's
 # FragmentFloatingButton animation/progress and original onDone handler.
 # This uses the active NabdhGram theme accent, not a fixed Telegram blue.
+# NabdhGram brand turquoise has a distinct identity from Telegram's blue.
+# Keep the UI accent accessible on white and dark surfaces. The field user's
+# requested logo/brand color must not derive from Telegram's BlueText theme key.
+s = replace_once(s, "    private ImageView proxyButtonView;",
+    """    private static int nabdhLoginTurquoise() {
+        return Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83;
+    }
+
+    private ImageView proxyButtonView;""", "brand turquoise color helper")
 s = replace_once(s,
     "        floatingButton = new FragmentFloatingButton(context, resourceProvider);",
     """        floatingButton = new FragmentFloatingButton(context, resourceProvider) {
             @Override public void updateColors() {
                 super.updateColors();
-                int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+                int accent = nabdhLoginTurquoise();
                 int shadow = androidx.core.graphics.ColorUtils.blendARGB(
-                        accent, android.graphics.Color.BLACK, .13f);
+                        accent, android.graphics.Color.BLACK, .12f);
                 android.graphics.drawable.GradientDrawable surface =
                         new android.graphics.drawable.GradientDrawable(
                                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
@@ -77,10 +86,10 @@ s = replace_once(s,
 s = replace_once(s,
     "        backButtonView.setImageResource(R.drawable.ic_ab_back);",
     """        backButtonView.setImageResource(R.drawable.ic_ab_back);
-        backButtonView.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        backButtonView.setColorFilter(nabdhLoginTurquoise());
         android.graphics.drawable.GradientDrawable nabdhBackGlass =
                 new android.graphics.drawable.GradientDrawable();
-        int nabdhNavTint = Theme.getColor(Theme.key_listSelector);
+        int nabdhNavTint = nabdhLoginTurquoise();
         nabdhBackGlass.setColor(android.graphics.Color.argb(67,
                 android.graphics.Color.red(nabdhNavTint),
                 android.graphics.Color.green(nabdhNavTint),
@@ -404,8 +413,9 @@ key_end += len("\n    }")
 # Replace complete shape logic rather than tweaking any of its 4 corner radii.
 k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) {
         final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
-        final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-        // Compact lightly tinted key, main theme accent during press.
+        // Keep the keypad identity aligned with the NabdhGram login button.
+        final int accent = Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83;
+        // Compact lightly tinted key, main brand-turquoise during press.
         // Resolve colors on updateColors() for light/dark/imported themes.
         int rest = android.graphics.Color.rgb(
                 (android.graphics.Color.red(base) * 87 + android.graphics.Color.red(accent) * 13) / 100,
@@ -468,16 +478,17 @@ k = k[:pos2] + """        // Measure child hit targets from the *new* parent con
 backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
 if k.count(backspace_icon) == 2:
     k = k.replace(backspace_icon,
-        "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
+        "backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83);")
 else:
     modern_constructor = "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);"
     modern_update = "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);"
     if k.count(modern_constructor) != 1 or k.count(modern_update) != 1:
         raise SystemExit("Backspace icon anchors changed")
     k = k.replace(modern_constructor,
-        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlueText, PorterDuff.Mode.SRC_ATOP);", 1)
+        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);
+        backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83, PorterDuff.Mode.SRC_ATOP);", 1)
     k = k.replace(modern_update,
-        "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);", 1)
+        "final int backColor = Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83;", 1)
 k = replace_once(k,
     "numberTextPaint.setTextSize(dp(24));",
     "numberTextPaint.setTextSize(dp(22));",
