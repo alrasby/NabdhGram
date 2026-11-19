@@ -245,6 +245,10 @@ checks = {
                           "ThemeBind.selectorBackground(v, getButtonDrawable(index)"))
         and (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8").count(
             "setButtonBackground(v, a);") == 2,
+    "data/storage English and Arabic toggles follow actual switch hit area":
+        "boolean nabdhToggleHit = false;" in (ui / "DataSettingsActivity.java").read_text(encoding="utf-8")
+        and "toggleView.getX() + toggleView.getWidth() / 2f" in (ui / "DataSettingsActivity.java").read_text(encoding="utf-8")
+        and (ui / "DataSettingsActivity.java").read_text(encoding="utf-8").count("if (nabdhToggleHit)") == 2,
     "third-party login cannot advertise official-only Firebase SMS":
         'settings.allow_firebase = false; // Third-party app' in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
@@ -254,9 +258,9 @@ checks = {
                          "Math.min(box.width(), box.height())", "state_pressed",
                          "int active = accent;",
                          "R.drawable.nabdh_keypad_delete"))
-        and ("backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));" in
+        and ("backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83);" in
              (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
-             or "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);" in
+             or "final int backColor = Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83;" in
              (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")),
     "Telegram empty-chat egg replaced by approved NabdhGram logo":
         (root / "TMessagesProj/src/main/res/drawable-nodpi/nabdh_empty_logo.png").is_file()
