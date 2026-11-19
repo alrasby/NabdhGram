@@ -121,6 +121,13 @@ fields = """
             AndroidUtilities.cancelRunOnUIThread(nabdhQrRefresh);
             nabdhQrRefresh = null;
         }
+        // Avoid repeated unauthenticated MTProto requests while offline.
+        // Manual Refresh works again when connectivity is restored.
+        if (!org.telegram.messenger.ApplicationLoader.isNetworkOnline()) {
+            nabdhQrStatusView.setText(R.string.NabdhQrLoginOffline);
+            nabdhQrCodeView.setImageDrawable(null);
+            return;
+        }
         nabdhQrWaiting = true;
         final int generation = ++nabdhQrGeneration;
         nabdhQrStatusView.setText(R.string.NabdhQrLoginLoading);
@@ -282,7 +289,13 @@ once(
                                 getString(R.string.NabdhQrLoginError));
                     }
                 });
-                addView(nabdhQrButton, LayoutHelper.createLinear(
+                // QR sign-in is independent of phone-number validation.
+                // Put the action immediately before the number field.
+                final int phoneInputIndex = indexOfChild(phoneOutlineView);
+                if (phoneInputIndex < 0) {
+                    throw new IllegalStateException("Phone input is not attached");
+                }
+                addView(nabdhQrButton, phoneInputIndex, LayoutHelper.createLinear(
                         LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8));
             }""",
     "phone form QR button")
@@ -296,11 +309,12 @@ login.write_text(s, encoding="utf-8")
 
 strings = (
     ("NabdhQrLoginTitle", "Log in via QR", "تسجيل الدخول عبر QR"),
-    ("NabdhQrLoginButton", "Log in with QR code", "تسجيل الدخول عبر رمز QR"),
+    ("NabdhQrLoginButton", "Log in via QR - no phone number", "الدخول عبر QR دون رقم الهاتف"),
     ("NabdhQrLoginInstructions", "Open Telegram on another device, then Settings > Devices > Link Desktop Device. Scan and approve this code.", "افتح Telegram على جهاز آخر، ثم الإعدادات ← الأجهزة ← ربط جهاز. امسح الرمز ووافق على تسجيل الدخول."),
     ("NabdhQrLoginRetry", "Refresh QR code", "تحديث رمز QR"),
     ("NabdhQrLoginLoading", "Requesting a secure code…", "جارٍ الحصول على رمز آمن…"),
     ("NabdhQrLoginError", "QR login is currently unavailable. Check your connection and tap Refresh.", "تعذر تسجيل الدخول عبر QR حاليًا. تحقق من الاتصال واضغط تحديث."),
+    ("NabdhQrLoginOffline", "No internet connection. Connect and tap Refresh.", "لا يوجد اتصال بالإنترنت. اتصل بالشبكة ثم اضغط تحديث."),
 )
 for folder, index in (("values", 1), ("values-ar", 2)):
     target = res / folder / "nabdh_qr_login.xml"
