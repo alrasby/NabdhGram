@@ -126,6 +126,7 @@ assert 'new int[]{0xFFDCF7F6, 0xFF20C6BE, accent}' in login_overlay, "The brande
 assert 'if (index == 11)' in login_overlay and 'new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent}' in login_overlay, "Delete circle does not match the NabdhGram logo palette"
 assert 'backButton.setColorFilter(android.graphics.Color.WHITE);' in login_overlay, "Delete glyph is not theme accent"
 assert '((View) parent).setBackground(getButtonDrawable(11));' in login_overlay and 'backButton.post(() -> {' in login_overlay, "Delete key container still uses native gray background"
+assert '((View) parent).getWidth() <= dp(140)' in login_overlay, "Backspace styling may overwrite entire keyboard"
 empty_script = (ROOT / "scripts/apply-nabdh-empty-state.py").read_text(encoding="utf-8")
 assert "branding/approved/nabdhgram-welcome-transparent.png" in empty_script and "R.drawable.nabdh_empty_logo" in empty_script, "Approved empty-chat branding is missing"
 assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
@@ -231,6 +232,10 @@ assert "view instanceof org.telegram.ui.Cells.AboutLinkCell" in native_surfaces,
 global_fonts = (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8")
 assert "nabdhContainsArabic(label.getText())" in global_fonts and "nabdhExpectedTextFaces" in global_fonts, "Arabic settings must follow font changes despite native custom faces"
 assert "nabdhExpectedAnimatedFaces" in global_fonts, "Animated native labels need rebinding drift detection"
+assert 'NabdhNotoFallback.createArabic(' in global_fonts and 'NabdhNotoFallback.create(' in global_fonts, "Visible settings bypass Noto script-aware font fallback"
+assert '"noto-sans-arabic".equals(family) ? "NotoSansArabic.ttf"' not in global_fonts, "Raw Noto Arabic font must not control Latin UI line metrics"
+assert 'if (compositeNoto)' in global_fonts, "Noto composite typeface is reconstructed and may lose fallback"
+
 assert "final boolean telegramTextFace" in global_fonts, "Telegram-native typefaces excluded from UI scale"
 assert '"nabdh:secondary-text".equals(label.getTag())' in global_fonts, "Global bold still destroys explanatory text hierarchy"
 assert 'description.setTag("nabdh:secondary-text");' in (ROOT / "scripts/apply-glass-final-screens.py").read_text(encoding="utf-8"), "Final Settings card builder must preserve readable description weight"
