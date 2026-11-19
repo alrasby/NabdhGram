@@ -100,11 +100,18 @@ fields = """
         builder.setNegativeButton(context.getString(R.string.Cancel), null);
         final AlertDialog dialog = builder.create();
         nabdhQrDialog = dialog;
-        dialog.setOnDismissListener(ignored -> {
+        // BaseFragment.showDialog() installs its OWN OnDismissListener.
+        // Passing ours through its overload is essential: setting a listener
+        // directly on dialog is overwritten and leaks QR refresh requests.
+        if (showDialog(dialog, dismissed -> {
             if (nabdhQrDialog == dialog) nabdhStopQrLogin();
-        });
-        showDialog(dialog);
-        if (dialog.isShowing()) nabdhRequestQrToken();
+        }) != dialog || !dialog.isShowing()) {
+            nabdhStopQrLogin();
+            needShowAlert(getString(R.string.AppName),
+                    getString(R.string.NabdhQrLoginError));
+            return;
+        }
+        nabdhRequestQrToken();
     }
 
     private void nabdhRequestQrToken() {
@@ -256,7 +263,25 @@ once(
                 nabdhQrButton.setBackground(
                         org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
                 nabdhQrButton.setContentDescription(context.getString(R.string.NabdhQrLoginButton));
-                nabdhQrButton.setOnClickListener(view -> nabdhShowQrLogin());
+                nabdhQrButton.setOnClickListener(view -> {
+                    try {
+                        nabdhShowQrLogin();
+                    } catch (RuntimeException exception) {
+                        // Keep login screen usable if a manufacturer-specific
+                        // dialog/UI failure occurs. No auth token or phone
+                        // number is logged by this QR error boundary.
+                        FileLog.e(exception);
+                        if (nabdhQrDialog != null) {
+                            try {
+                                nabdhQrDialog.dismiss();
+                            } catch (RuntimeException ignored) {
+                            }
+                        }
+                        nabdhStopQrLogin();
+                        needShowAlert(getString(R.string.AppName),
+                                getString(R.string.NabdhQrLoginError));
+                    }
+                });
                 addView(nabdhQrButton, LayoutHelper.createLinear(
                         LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8));
             }""",
