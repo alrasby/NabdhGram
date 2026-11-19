@@ -21,15 +21,19 @@ def check(text):
         "TL_auth_importLoginToken",
         "TL_auth_loginTokenSuccess",
         "indexOfChild(phoneOutlineView)",
-        "addView(nabdhQrButton, phoneInputIndex,",
+        "addView(nabdhQrButton, phoneInputIndex + 1,",
         "ApplicationLoader.isNetworkOnline()",
         "NabdhQrLoginOffline",
+        "nabdhWatchQrRequest(generation);",
+        "NABDH_QR_TIMEOUT_MS = 20000L",
+        "nabdhCancelQrTimeout();",
+        "NabdhQrLoginTimeout",
     )
     for marker in required:
         if text.count(marker) < 1:
             raise ValueError("QR lifecycle/auth contract missing: " + marker)
-    if text.find("addView(nabdhQrButton, phoneInputIndex,") < 0:
-        raise ValueError("Direct QR sign-in must appear before phone entry")
+    if text.find("addView(nabdhQrButton, phoneInputIndex + 1,") < 0:
+        raise ValueError("QR sign-in must appear immediately below phone entry")
     if "dialog.setOnDismissListener(ignored ->" in text:
         raise ValueError("Telegram BaseFragment overwrites that QR dismiss listener")
     if text.count("showDialog(dialog, dismissed -> {") != 1:
@@ -52,9 +56,13 @@ def self_test():
         "TL_auth_importLoginToken",
         "TL_auth_loginTokenSuccess",
         "indexOfChild(phoneOutlineView)",
-        "addView(nabdhQrButton, phoneInputIndex,",
+        "addView(nabdhQrButton, phoneInputIndex + 1,",
         "ApplicationLoader.isNetworkOnline()",
         "NabdhQrLoginOffline",
+        "nabdhWatchQrRequest(generation);",
+        "NABDH_QR_TIMEOUT_MS = 20000L",
+        "nabdhCancelQrTimeout();",
+        "NabdhQrLoginTimeout",
     ))
     check(fixture)
     for bad in (
