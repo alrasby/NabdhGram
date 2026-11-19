@@ -125,8 +125,10 @@ assert 'backButtonSelectorColor = applySelectorBackground(backButtonView' in log
 assert 'new int[]{0xFFDCF7F6, 0xFF20C6BE, accent}' in login_overlay, "The branded login button must have a silver-to-turquoise gradient"
 assert 'if (index == 11)' in login_overlay and 'new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent}' in login_overlay, "Delete circle does not match the NabdhGram logo palette"
 assert 'backButton.setColorFilter(android.graphics.Color.WHITE);' in login_overlay, "Delete glyph is not theme accent"
-assert '((View) parent).setBackground(getButtonDrawable(11));' in login_overlay and 'backButton.post(() -> {' in login_overlay, "Delete key container still uses native gray background"
-assert '((View) parent).getWidth() <= dp(140)' in login_overlay, "Backspace styling may overwrite entire keyboard"
+assert 'backButton.setBackground(getButtonDrawable(11));' in login_overlay, "Backspace icon must have a visible branded drawable"
+assert 'backButton.setBackground(null)' not in login_overlay, "Regression: white backspace glyph hidden on transparent background"
+assert '((View) parent).setBackground(' not in login_overlay, "Regression: keyboard parent is not the individual delete key"
+assert login_overlay.count('backButton.setBackground(getButtonDrawable(11));') >= 2, "Backspace themed background must survive native updateColors"
 empty_script = (ROOT / "scripts/apply-nabdh-empty-state.py").read_text(encoding="utf-8")
 assert "branding/approved/nabdhgram-welcome-transparent.png" in empty_script and "R.drawable.nabdh_empty_logo" in empty_script, "Approved empty-chat branding is missing"
 assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
