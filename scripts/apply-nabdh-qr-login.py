@@ -30,6 +30,7 @@ fields = """
     private int nabdhQrRequestId = -1;
     private int nabdhQrGeneration;
     private boolean nabdhQrWaiting;
+    private boolean nabdhQrApprovalPending;
     private Runnable nabdhQrRefresh;
 
     private boolean nabdhQrActive(int generation) {
@@ -48,6 +49,7 @@ fields = """
             nabdhQrRequestId = -1;
         }
         nabdhQrWaiting = false;
+        nabdhQrApprovalPending = false;
         nabdhQrCodeView = null;
         nabdhQrStatusView = null;
         nabdhQrDialog = null;
@@ -114,6 +116,18 @@ fields = """
         nabdhRequestQrToken();
     }
 
+    // An approved QR emits updateLoginToken, not a login success response
+    // spontaneously. Export the token once more per Telegram MTProto spec.
+    private void nabdhOnQrAccepted() {
+        if (nabdhQrDialog == null || !nabdhQrDialog.isShowing()
+                || getParentActivity() == null) return;
+        if (nabdhQrWaiting) {
+            nabdhQrApprovalPending = true;
+        } else {
+            nabdhRequestQrToken();
+        }
+    }
+
     private void nabdhRequestQrToken() {
         if (nabdhQrDialog == null || !nabdhQrDialog.isShowing()
                 || nabdhQrWaiting || getParentActivity() == null) return;
@@ -150,6 +164,15 @@ fields = """
                     if (!nabdhQrActive(generation)) return;
                     nabdhQrRequestId = -1;
                     nabdhQrWaiting = false;
+                    if (nabdhQrApprovalPending && error == null
+                            && response instanceof TLRPC.TL_auth_loginToken) {
+                        // A scan arrived while the old request was pending;
+                        // consume one approval signal before rendering.
+                        nabdhQrApprovalPending = false;
+                        nabdhRequestQrToken();
+                        return;
+                    }
+                    nabdhQrApprovalPending = false;
                     nabdhProcessQrToken(response, error, generation, flags);
                 }), flags);
     }
@@ -253,6 +276,15 @@ fields = """
     }
 
 """
+once("        getNotificationCenter().addWeakObserver(this, NotificationCenter.newSuggestionsAvailable);",
+     """        getNotificationCenter().addWeakObserver(this, NotificationCenter.newSuggestionsAvailable);
+        getNotificationCenter().addWeakObserver(this, NotificationCenter.nabdhQrTokenAccepted);""",
+     "QR token accepted listener")
+once("        if (id == NotificationCenter.didUpdateConnectionState) {",
+     """        if (id == NotificationCenter.nabdhQrTokenAccepted && account == currentAccount) {
+            nabdhOnQrAccepted();
+        } else if (id == NotificationCenter.didUpdateConnectionState) {""",
+     "QR accepted update handler")
 once("    private View cachedFragmentView;\n", fields + "    private View cachedFragmentView;\n", "QR controller location")
 once(
     "            addView(phoneOutlineView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 58, 16, 8, 16, 8));",
@@ -301,6 +333,7 @@ once(
     "phone form QR button")
 once("    public void onFragmentDestroy() {\n        super.onFragmentDestroy();",
      """    public void onFragmentDestroy() {
+        getNotificationCenter().removeObserver(this, NotificationCenter.nabdhQrTokenAccepted);
         // Stop server-token refresh and cancel in-flight work before teardown.
         if (nabdhQrDialog != null) nabdhQrDialog.dismiss();
         nabdhStopQrLogin();
