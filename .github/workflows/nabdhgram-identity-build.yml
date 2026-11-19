@@ -392,6 +392,12 @@ jobs:
         run: |
           python3 nabdhgram/scripts/apply-nabdh-qr-login.py Telegram-upstream
 
+      - name: Route QR approval update to native LoginActivity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/apply-nabdh-qr-signal.py Telegram-upstream
+
       - name: Dismiss MTProxy promotional channel through native Telegram API
         shell: bash
         run: |
@@ -409,6 +415,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-settings-surfaces.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-physical-toggle-hitboxes.py Telegram-upstream
 
       - name: Complete Glass coverage on folder and power saving settings
         shell: bash
@@ -583,6 +590,7 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-toggle-hitboxes.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-notification-typography.py Telegram-upstream
           python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream
           python3 nabdhgram/scripts/apply-fixed-left-toggle-thumb.py --verify Telegram-upstream
@@ -652,6 +660,8 @@ jobs:
           test -s Telegram-upstream/TMessagesProj/src/main/java/org/telegram/messenger/NabdhNotoFallback.java
           python3 nabdhgram/scripts/check-nabdh-noto-fonts.py Telegram-upstream/TMessagesProj/src/main/assets/fonts
           python3 nabdhgram/scripts/check-nabdh-qr-dialog.py Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/LoginActivity.java
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-qr-signal.py
+          python3 nabdhgram/scripts/check-nabdh-qr-approval.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-packaged-splash.py
           python3 nabdhgram/scripts/check-packaged-splash.py --self-test
           python3 -m py_compile nabdhgram/scripts/configure-release-native-symbols.py nabdhgram/scripts/report-play-aab-size.py

@@ -30,7 +30,40 @@ fields = """
     private int nabdhQrRequestId = -1;
     private int nabdhQrGeneration;
     private boolean nabdhQrWaiting;
+    private boolean nabdhQrApprovalPending;
     private Runnable nabdhQrRefresh;
+    // The server may not answer on restricted networks. Never show an
+    // endless loading panel; this watchdog does NOT resend automatically.
+    private Runnable nabdhQrRequestTimeout;
+    private static final long NABDH_QR_TIMEOUT_MS = 20000L;
+
+    private void nabdhCancelQrTimeout() {
+        if (nabdhQrRequestTimeout != null) {
+            AndroidUtilities.cancelRunOnUIThread(nabdhQrRequestTimeout);
+            nabdhQrRequestTimeout = null;
+        }
+    }
+
+    private void nabdhWatchQrRequest(final int generation) {
+        nabdhCancelQrTimeout();
+        nabdhQrRequestTimeout = () -> {
+            nabdhQrRequestTimeout = null;
+            if (!nabdhQrActive(generation) || !nabdhQrWaiting) return;
+            int expiredRequestId = nabdhQrRequestId;
+            nabdhQrRequestId = -1;
+            nabdhQrWaiting = false;
+            nabdhQrApprovalPending = false;
+            // Invalidate an in-flight callback even when native cancellation
+            // races a late response. No retry loop, no leaked auth token.
+            nabdhQrGeneration++;
+            if (expiredRequestId >= 0) {
+                getConnectionsManager().cancelRequest(expiredRequestId, true);
+            }
+            nabdhQrCodeView.setImageDrawable(null);
+            nabdhQrStatusView.setText(R.string.NabdhQrLoginTimeout);
+        };
+        AndroidUtilities.runOnUIThread(nabdhQrRequestTimeout, NABDH_QR_TIMEOUT_MS);
+    }
 
     private boolean nabdhQrActive(int generation) {
         return generation == nabdhQrGeneration && nabdhQrDialog != null
@@ -39,6 +72,7 @@ fields = """
 
     private void nabdhStopQrLogin() {
         nabdhQrGeneration++;
+        nabdhCancelQrTimeout();
         if (nabdhQrRefresh != null) {
             AndroidUtilities.cancelRunOnUIThread(nabdhQrRefresh);
             nabdhQrRefresh = null;
@@ -48,6 +82,7 @@ fields = """
             nabdhQrRequestId = -1;
         }
         nabdhQrWaiting = false;
+        nabdhQrApprovalPending = false;
         nabdhQrCodeView = null;
         nabdhQrStatusView = null;
         nabdhQrDialog = null;
@@ -68,7 +103,7 @@ fields = """
         nabdhQrCodeView.setAdjustViewBounds(true);
         nabdhQrCodeView.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
         nabdhQrCodeView.setContentDescription(context.getString(R.string.NabdhQrLoginTitle));
-        panel.addView(nabdhQrCodeView, new android.widget.LinearLayout.LayoutParams(dp(248), dp(248)));
+        panel.addView(nabdhQrCodeView, new android.widget.LinearLayout.LayoutParams(dp(224), dp(224)));
 
         nabdhQrStatusView = new android.widget.TextView(context);
         nabdhQrStatusView.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 14);
@@ -114,6 +149,18 @@ fields = """
         nabdhRequestQrToken();
     }
 
+    // An approved QR emits updateLoginToken, not a login success response
+    // spontaneously. Export the token once more per Telegram MTProto spec.
+    private void nabdhOnQrAccepted() {
+        if (nabdhQrDialog == null || !nabdhQrDialog.isShowing()
+                || getParentActivity() == null) return;
+        if (nabdhQrWaiting) {
+            nabdhQrApprovalPending = true;
+        } else {
+            nabdhRequestQrToken();
+        }
+    }
+
     private void nabdhRequestQrToken() {
         if (nabdhQrDialog == null || !nabdhQrDialog.isShowing()
                 || nabdhQrWaiting || getParentActivity() == null) return;
@@ -131,6 +178,9 @@ fields = """
         nabdhQrWaiting = true;
         final int generation = ++nabdhQrGeneration;
         nabdhQrStatusView.setText(R.string.NabdhQrLoginLoading);
+        getConnectionsManager().checkConnection();
+        getConnectionsManager().resumeNetworkMaybe();
+        nabdhWatchQrRequest(generation);
 
         TLRPC.TL_auth_exportLoginToken request = new TLRPC.TL_auth_exportLoginToken();
         request.api_id = BuildVars.APP_ID;
@@ -148,8 +198,18 @@ fields = """
         nabdhQrRequestId = getConnectionsManager().sendRequest(request,
                 (response, error) -> AndroidUtilities.runOnUIThread(() -> {
                     if (!nabdhQrActive(generation)) return;
+                    nabdhCancelQrTimeout();
                     nabdhQrRequestId = -1;
                     nabdhQrWaiting = false;
+                    if (nabdhQrApprovalPending && error == null
+                            && response instanceof TLRPC.TL_auth_loginToken) {
+                        // A scan arrived while the old request was pending;
+                        // consume one approval signal before rendering.
+                        nabdhQrApprovalPending = false;
+                        nabdhRequestQrToken();
+                        return;
+                    }
+                    nabdhQrApprovalPending = false;
                     nabdhProcessQrToken(response, error, generation, flags);
                 }), flags);
     }
@@ -174,6 +234,8 @@ fields = """
                 nabdhQrCodeView.setImageBitmap(bitmap);
                 nabdhQrStatusView.setText(R.string.NabdhQrLoginInstructions);
             } catch (Exception exception) {
+                // Local QR bitmap failure is distinct from a server timeout.
+                FileLog.e(exception);
                 nabdhQrStatusView.setText(R.string.NabdhQrLoginError);
                 nabdhQrCodeView.setImageDrawable(null);
                 return;
@@ -196,9 +258,11 @@ fields = """
             nabdhQrWaiting = true;
             TLRPC.TL_auth_importLoginToken importRequest = new TLRPC.TL_auth_importLoginToken();
             importRequest.token = migration.token;
+            nabdhWatchQrRequest(generation);
             nabdhQrRequestId = getConnectionsManager().sendRequest(importRequest,
                     (result, importError) -> AndroidUtilities.runOnUIThread(() -> {
                         if (!nabdhQrActive(generation)) return;
+                        nabdhCancelQrTimeout();
                         nabdhQrRequestId = -1;
                         nabdhQrWaiting = false;
                         nabdhProcessQrToken(result, importError, generation, flags);
@@ -253,6 +317,15 @@ fields = """
     }
 
 """
+once("        getNotificationCenter().addWeakObserver(this, NotificationCenter.newSuggestionsAvailable);",
+     """        getNotificationCenter().addWeakObserver(this, NotificationCenter.newSuggestionsAvailable);
+        getNotificationCenter().addWeakObserver(this, NotificationCenter.nabdhQrTokenAccepted);""",
+     "QR token accepted listener")
+once("        if (id == NotificationCenter.didUpdateConnectionState) {",
+     """        if (id == NotificationCenter.nabdhQrTokenAccepted && account == currentAccount) {
+            nabdhOnQrAccepted();
+        } else if (id == NotificationCenter.didUpdateConnectionState) {""",
+     "QR accepted update handler")
 once("    private View cachedFragmentView;\n", fields + "    private View cachedFragmentView;\n", "QR controller location")
 once(
     "            addView(phoneOutlineView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 58, 16, 8, 16, 8));",
@@ -289,18 +362,20 @@ once(
                                 getString(R.string.NabdhQrLoginError));
                     }
                 });
-                // QR sign-in is independent of phone-number validation.
-                // Put the action immediately before the number field.
+                // Keep the phone form's top title/country/number rhythm intact.
+                // The independent QR action sits BELOW the phone number input
+                // as requested, while it never validates that field.
                 final int phoneInputIndex = indexOfChild(phoneOutlineView);
                 if (phoneInputIndex < 0) {
                     throw new IllegalStateException("Phone input is not attached");
                 }
-                addView(nabdhQrButton, phoneInputIndex, LayoutHelper.createLinear(
-                        LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8));
+                addView(nabdhQrButton, phoneInputIndex + 1, LayoutHelper.createLinear(
+                        LayoutHelper.WRAP_CONTENT, 48, Gravity.CENTER_HORIZONTAL, 28, 12, 28, 4));
             }""",
     "phone form QR button")
 once("    public void onFragmentDestroy() {\n        super.onFragmentDestroy();",
      """    public void onFragmentDestroy() {
+        getNotificationCenter().removeObserver(this, NotificationCenter.nabdhQrTokenAccepted);
         // Stop server-token refresh and cancel in-flight work before teardown.
         if (nabdhQrDialog != null) nabdhQrDialog.dismiss();
         nabdhStopQrLogin();
@@ -309,12 +384,13 @@ login.write_text(s, encoding="utf-8")
 
 strings = (
     ("NabdhQrLoginTitle", "Log in via QR", "تسجيل الدخول عبر QR"),
-    ("NabdhQrLoginButton", "Log in via QR - no phone number", "الدخول عبر QR دون رقم الهاتف"),
+    ("NabdhQrLoginButton", "Log in via QR Only", "الدخول عبر QR فقط"),
     ("NabdhQrLoginInstructions", "Open Telegram on another device, then Settings > Devices > Link Desktop Device. Scan and approve this code.", "افتح Telegram على جهاز آخر، ثم الإعدادات ← الأجهزة ← ربط جهاز. امسح الرمز ووافق على تسجيل الدخول."),
     ("NabdhQrLoginRetry", "Refresh QR code", "تحديث رمز QR"),
     ("NabdhQrLoginLoading", "Requesting a secure code…", "جارٍ الحصول على رمز آمن…"),
     ("NabdhQrLoginError", "QR login is currently unavailable. Check your connection and tap Refresh.", "تعذر تسجيل الدخول عبر QR حاليًا. تحقق من الاتصال واضغط تحديث."),
     ("NabdhQrLoginOffline", "No internet connection. Connect and tap Refresh.", "لا يوجد اتصال بالإنترنت. اتصل بالشبكة ثم اضغط تحديث."),
+    ("NabdhQrLoginTimeout", "Telegram did not respond. Check your network or proxy and tap Refresh.", "لم يستجب خادم تيليجرام. تحقق من الشبكة أو البروكسي واضغط تحديث."),
 )
 for folder, index in (("values", 1), ("values-ar", 2)):
     target = res / folder / "nabdh_qr_login.xml"

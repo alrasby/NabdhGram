@@ -49,20 +49,66 @@ s = replace_once(s,
 
 # Refined back arrow surface, using built-in Telegram glyphs, keeping click area
 # and exit behavior exactly intact.
+# Restyle only the login continuation FAB: retain Telegram's
+# FragmentFloatingButton animation/progress and original onDone handler.
+# This uses the active NabdhGram theme accent, not a fixed Telegram blue.
+# NabdhGram brand turquoise has a distinct identity from Telegram's blue.
+# Keep the UI accent accessible on white and dark surfaces. The field user's
+# requested logo/brand color must not derive from Telegram's BlueText theme key.
+s = replace_once(s, "    private ImageView proxyButtonView;",
+    """    private static int nabdhLoginTurquoise() {
+        return Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83;
+    }
+
+    private ImageView proxyButtonView;""", "brand turquoise color helper")
+s = replace_once(s,
+    "        floatingButton = new FragmentFloatingButton(context, resourceProvider);",
+    """        floatingButton = new FragmentFloatingButton(context, resourceProvider) {
+            @Override public void updateColors() {
+                super.updateColors();
+                // Match the silver/cyan/turquoise gradient of the
+                // approved NabdhGram mark rather than a flat Telegram blue.
+                int accent = nabdhLoginTurquoise();
+                android.graphics.drawable.GradientDrawable surface =
+                        new android.graphics.drawable.GradientDrawable(
+                                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                                new int[]{0xFFDCF7F6, 0xFF20C6BE, accent});
+                surface.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                surface.setStroke(dp(1), android.graphics.Color.argb(50, 255, 255, 255));
+                setBackground(new android.graphics.drawable.RippleDrawable(
+                        android.content.res.ColorStateList.valueOf(
+                                android.graphics.Color.argb(80, 255, 255, 255)),
+                        surface, null));
+            }
+        };""",
+    "login FAB matching brand accent")
+
 s = replace_once(s,
     "        backButtonView.setImageResource(R.drawable.ic_ab_back);",
     """        backButtonView.setImageResource(R.drawable.ic_ab_back);
-        backButtonView.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        backButtonView.setColorFilter(nabdhLoginTurquoise());
         android.graphics.drawable.GradientDrawable nabdhBackGlass =
                 new android.graphics.drawable.GradientDrawable();
-        int nabdhNavTint = Theme.getColor(Theme.key_listSelector);
-        nabdhBackGlass.setColor(android.graphics.Color.argb(67,
-                android.graphics.Color.red(nabdhNavTint),
-                android.graphics.Color.green(nabdhNavTint),
-                android.graphics.Color.blue(nabdhNavTint)));
+        int nabdhNavTint = nabdhLoginTurquoise();
+        nabdhBackGlass.setColor(0xFFE9F6F7);
+        nabdhBackGlass.setStroke(dp(1), 0xFF67CCC8);
         nabdhBackGlass.setCornerRadius(dp(14));
-        backButtonView.setBackground(nabdhBackGlass);""",
+        backButtonView.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(0x4436C9C1),
+                nabdhBackGlass, null));""",
     "navigation button icon")
+
+# Native LoginActivity.updateColors() can run after fragment creation and
+# silently overwrite the brand-color icon with BlackText. Keep the branded
+# color on every update, without altering LoginActivity navigation callbacks.
+s = replace_once(s,
+    "backButtonFilterColor = applyColorFilter(backButtonView, Theme.getColor(Theme.key_windowBackgroundWhiteBlackText), backButtonFilterColor, PorterDuff.Mode.SRC_ATOP);",
+    "backButtonFilterColor = applyColorFilter(backButtonView, nabdhLoginTurquoise(), backButtonFilterColor, PorterDuff.Mode.SRC_ATOP);",
+    "back navigation icon updates")
+s = replace_once(s,
+    "backButtonSelectorColor = applySelectorBackground(backButtonView, Theme.getColor(Theme.key_listSelector), backButtonSelectorColor, Theme.RIPPLE_MASK_CIRCLE_20DP);",
+    "// NabdhGram back glass is maintained by its own brand drawable.",
+    "retain brand back surface on updateColors")
 
 # Telegram uses a special 1.5dp border around each OTP box. Color and corner
 # radius can be polished without disturbing the code selection or timers.
@@ -350,7 +396,7 @@ k = replace_once(k,
         }
         @Override public void draw(Canvas canvas) {
             android.graphics.Rect box = getBounds();
-            float radius = Math.max(1f, Math.min(box.width(), box.height()) * .5f - dp(1));
+            float radius = Math.max(1f, Math.min(box.width(), box.height()) * .5f - dp(0.5f));
             paint.setColor(pressed ? active : resting);
             paint.setAlpha(alpha);
             canvas.drawCircle(box.exactCenterX(), box.exactCenterY(), radius, paint);
@@ -379,18 +425,30 @@ key_end += len("\n    }")
 # Replace complete shape logic rather than tweaking any of its 4 corner radii.
 k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) {
         final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
-        final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-        // A subtly tinted blue key at rest, a clearly stronger cyan press.
+        // Keep the keypad identity aligned with the NabdhGram login button.
+        final int accent = Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83;
+        // Compact lightly tinted key, main brand-turquoise during press.
         // Resolve colors on updateColors() for light/dark/imported themes.
         int rest = android.graphics.Color.rgb(
-                (android.graphics.Color.red(base) * 83 + android.graphics.Color.red(accent) * 17) / 100,
-                (android.graphics.Color.green(base) * 83 + android.graphics.Color.green(accent) * 17) / 100,
-                (android.graphics.Color.blue(base) * 83 + android.graphics.Color.blue(accent) * 17) / 100);
-        int active = android.graphics.Color.rgb(
-                (android.graphics.Color.red(base) * 54 + android.graphics.Color.red(accent) * 46) / 100,
-                (android.graphics.Color.green(base) * 54 + android.graphics.Color.green(accent) * 46) / 100,
-                (android.graphics.Color.blue(base) * 54 + android.graphics.Color.blue(accent) * 46) / 100);
-        int ink = android.graphics.Color.argb(165,
+                (android.graphics.Color.red(base) * 87 + android.graphics.Color.red(accent) * 13) / 100,
+                (android.graphics.Color.green(base) * 87 + android.graphics.Color.green(accent) * 13) / 100,
+                (android.graphics.Color.blue(base) * 87 + android.graphics.Color.blue(accent) * 13) / 100);
+        // The pressed surface uses the REAL app primary/theme accent.
+        int active = accent;
+        // The delete key is the second brand control in the login keypad:
+        // a glossy silver/aqua/teal circle, with a white delete glyph.
+        if (index == 11) {
+            android.graphics.drawable.GradientDrawable delete =
+                    new android.graphics.drawable.GradientDrawable(
+                            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                            new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent});
+            delete.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            return new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(0x66FFFFFF),
+                    delete, new NabdhCircleKey(android.graphics.Color.WHITE,
+                            android.graphics.Color.WHITE));
+        }
+        int ink = android.graphics.Color.argb(72,
                 android.graphics.Color.red(accent),
                 android.graphics.Color.green(accent),
                 android.graphics.Color.blue(accent));
@@ -410,11 +468,11 @@ if "ThemeBind.selectorBackground(v, getButtonDrawable(index)" in k:
         raise SystemExit("Custom keyboard theme binding declarations were lost")
 # Expand actual *key cell height*, not only the drawable radius. The stock
 # 230dp keyboard uses 10dp outer + 6dp inter-key gaps, capping circles to
-# about 47dp. Smaller gutters yield 52dp keys (+11%) at the SAME 230dp height
+# about 47dp. Smaller gutters yield larger circles at the SAME 230dp height
 # without overlapping adjacent touch views or covering the number field.
 k = replace_once(k,
     "private final static int SIDE_PADDING = 10, BUTTON_PADDING = 6;",
-    "private final static int SIDE_PADDING = 4, BUTTON_PADDING = 3;",
+    "private final static int SIDE_PADDING = 2, BUTTON_PADDING = 2;",
     "expand keypad circles by enlarging available cell height")
 # Telegram's original CustomPhoneKeyboardView.onMeasure reads getWidth()
 # and getHeight(), i.e. previous layout dimensions, instead of the incoming
@@ -445,16 +503,16 @@ k = k[:pos2] + """        // Measure child hit targets from the *new* parent con
 backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
 if k.count(backspace_icon) == 2:
     k = k.replace(backspace_icon,
-        "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));")
+        "backButton.setColorFilter(android.graphics.Color.WHITE);")
 else:
     modern_constructor = "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);"
     modern_update = "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);"
     if k.count(modern_constructor) != 1 or k.count(modern_update) != 1:
         raise SystemExit("Backspace icon anchors changed")
     k = k.replace(modern_constructor,
-        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlueText, PorterDuff.Mode.SRC_ATOP);", 1)
+        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);\n        backButton.setColorFilter(android.graphics.Color.WHITE, PorterDuff.Mode.SRC_ATOP);", 1)
     k = k.replace(modern_update,
-        "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);", 1)
+        "final int backColor = android.graphics.Color.WHITE;", 1)
 k = replace_once(k,
     "numberTextPaint.setTextSize(dp(24));",
     "numberTextPaint.setTextSize(dp(22));",
@@ -495,7 +553,7 @@ key_text_after = """            // Both text lines share the exact center of the
             // Use the same radius as the center-aligned circular key drawable,
             // adapting to compact devices and display scales.
             final float keyRadius = Math.max(1f,
-                    Math.min(getWidth(), getHeight()) * .5f - dp(1));
+                    Math.min(getWidth(), getHeight()) * .5f - dp(0.5f));
             final float numberCenter = centerY - (hasSymbols ? keyRadius * .18f : 0);
             final float numberBaseline = numberCenter
                     - (numberFont.ascent + numberFont.descent) / 2f;

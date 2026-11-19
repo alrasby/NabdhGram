@@ -668,4 +668,32 @@ if profile_src.count(old_scrim) != 3:
 profile_src = profile_src.replace(old_scrim, new_scrim)
 profile_path.write_text(profile_src, encoding="utf-8")
 
+# Telegram's DataSettingsActivity previously chose toggle-vs-details by
+# LocaleController.isRTL (left 76dp Arabic, right 76dp English). The NabdhGram
+# card presentation shows the switches physically on the LEFT in both
+# languages. That mismatch makes English first taps open the child page
+# instead of changing the setting. Derive hit area from the REAL switch view
+# position; preserve tapping the rest of the row to edit its details.
+data_settings = ui / "DataSettingsActivity.java"
+data_src = data_settings.read_text(encoding="utf-8")
+data_handler = "        listView.setOnItemClickListener((view, position, x, y) -> {"
+if data_src.count(data_handler) != 1:
+    raise SystemExit("Telegram data settings item click callback changed")
+switch_hit = """        listView.setOnItemClickListener((view, position, x, y) -> {
+            // Use the physical switch bounds, not the interface language.
+            // In NabdhGram English, the visual switch can be left-aligned.
+            boolean nabdhToggleHit = false;
+            if (view instanceof NotificationsCheckCell) {
+                View toggleView = ((NotificationsCheckCell) view).getCheckBox();
+                float center = toggleView.getX() + toggleView.getWidth() / 2f;
+                nabdhToggleHit = Math.abs(x - center) <= AndroidUtilities.dp(48);
+            }"""
+data_src = data_src.replace(data_handler, switch_hit, 1)
+legacy_hit = ("LocaleController.isRTL && x <= AndroidUtilities.dp(76) "
+              "|| !LocaleController.isRTL && x >= view.getMeasuredWidth() - AndroidUtilities.dp(76)")
+if data_src.count(legacy_hit) != 2:
+    raise SystemExit("Expected exactly two DataSettingsActivity toggle click locations")
+data_src = data_src.replace(legacy_hit, "nabdhToggleHit")
+data_settings.write_text(data_src, encoding="utf-8")
+
 print("NabdhGram Glass backgrounds installed on native settings and profile rows.")

@@ -245,6 +245,14 @@ checks = {
                           "ThemeBind.selectorBackground(v, getButtonDrawable(index)"))
         and (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8").count(
             "setButtonBackground(v, a);") == 2,
+    "data/storage English and Arabic toggles follow actual switch hit area":
+        "NabdhToggleHitbox.isToggleTap(view, x)" in (ui / "DataSettingsActivity.java").read_text(encoding="utf-8")
+        and (ui / "DataSettingsActivity.java").read_text(encoding="utf-8").count("if (nabdhToggleHit)") == 2,
+    "settings toggle hit areas follow rendered positions across pages":
+        "NabdhToggleHitbox.isToggleTap(view, x)" in (ui / "ThemeActivity.java").read_text(encoding="utf-8")
+        and "NabdhToggleHitbox.isToggleTap(view, x)" in (ui / "NotificationsSettingsActivity.java").read_text(encoding="utf-8")
+        and "checkBoxClickArea.setTranslationX(desiredLeft - checkBoxClickArea.getLeft())"
+            in (ui / "Cells/TextCheckCell2.java").read_text(encoding="utf-8"),
     "third-party login cannot advertise official-only Firebase SMS":
         'settings.allow_firebase = false; // Third-party app' in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
@@ -252,11 +260,11 @@ checks = {
         all(part in (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
             for part in ("class NabdhCircleKey", "canvas.drawCircle(",
                          "Math.min(box.width(), box.height())", "state_pressed",
-                         "54 + android.graphics.Color.red(accent) * 46",
+                         "int active = accent;",
                          "R.drawable.nabdh_keypad_delete"))
-        and ("backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));" in
+        and ("backButton.setColorFilter(android.graphics.Color.WHITE);" in
              (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
-             or "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);" in
+             or "final int backColor = android.graphics.Color.WHITE;" in
              (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")),
     "Telegram empty-chat egg replaced by approved NabdhGram logo":
         (root / "TMessagesProj/src/main/res/drawable-nodpi/nabdh_empty_logo.png").is_file()
@@ -635,10 +643,10 @@ checks["dialogs use NabdhGram title rather than upstream Telegram logo span"] = 
     and 'actionBar.setTitle(ssb, statusDrawable);' not in dialogs
 )
 
-checks["QR button is narrower while retaining native 52dp height"] = (
+checks["QR button fits below phone input at 48dp height"] = (
     "nabdhQrButton.setMinWidth(dp(220));" in login_source
     and "nabdhQrButton.setPadding(dp(24), 0, dp(24), 0);" in login_source
-    and "LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8" in login_source
+    and "LayoutHelper.WRAP_CONTENT, 48, Gravity.CENTER_HORIZONTAL, 28, 12, 28, 4" in login_source
 )
 checks["AppName and default main title use NabdhGram after navigation"] = (
     '<string name="AppName">NabdhGram</string>' in
