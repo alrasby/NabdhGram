@@ -71,7 +71,10 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                         selected = Typeface.create(Typeface.DEFAULT,
                                 (bold ? Typeface.BOLD : Typeface.NORMAL)
                                 | (italic ? Typeface.ITALIC : Typeface.NORMAL));
-                    } else if ("serif".equals(family)) {
+                    } else if ("sans-serif".equals(family) || "serif".equals(family)) {
+                        // Historical saved sans-serif choice still renders
+                        // until Appearance migrates it to the device default.
+                        // The redundant option is no longer in the menu.
                         selected = Typeface.create(family,
                                 (bold ? Typeface.BOLD : Typeface.NORMAL)
                                 | (italic ? Typeface.ITALIC : Typeface.NORMAL));
