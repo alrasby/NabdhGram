@@ -27,7 +27,7 @@ font_assets = root / "TMessagesProj/src/main/assets/fonts"
 # These five fonts have explicit legacy name checks in both LaunchActivity and
 # AndroidUtilities; modern composite families are verified separately.
 font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf")
-new_font_files = ("NotoSans.ttf", "DejaVuSansCondensed.ttf", "DejaVuSansCondensed-Bold.ttf")
+new_font_files = ("NotoSans.ttf",)
 noto_fallback = (root / "TMessagesProj/src/main/java/org/telegram/messenger/NabdhNotoFallback.java").read_text(encoding="utf-8")
 localized = (ui / "NabdhStrings.java").read_text(encoding="utf-8")
 feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
@@ -418,7 +418,10 @@ checks = {
         )
     ) and '"noto-sans".equals(family)' in typefaces,
     "font options mapped to native renderer": all(name in launch for name in font_files),
-    "font options mapped to Telegram typefaces": all(name in typefaces for name in font_files),
+    "font options mapped to Telegram typefaces": all(
+        name in typefaces for name in font_files if name != "NotoSansArabic.ttf"
+    ) and "NabdhNotoFallback.createArabic(" in typefaces
+      and '"noto-sans-arabic".equals(family)' in typefaces,
     "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "system-default")' in launch,
     "native font scan skips editors": "!(view instanceof android.widget.EditText)" in launch,
     "native font scan only when layout dirty": "nabdhFontLayoutListener = () -> nabdhFontDirty = true;" in launch,
