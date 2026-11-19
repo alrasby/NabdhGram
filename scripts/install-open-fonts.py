@@ -10,6 +10,7 @@ base = f"https://raw.githubusercontent.com/google/fonts/{commit}/ofl"
 fonts = {
     "Vazirmatn": ("vazirmatn", "Vazirmatn[wght].ttf"),
     "NotoSansArabic": ("notosansarabic", "NotoSansArabic[wdth,wght].ttf"),
+    "NotoSans": ("notosans", "NotoSans[wdth,wght].ttf"),
     "Tajawal": ("tajawal", "Tajawal-Regular.ttf"),
     "Rubik": ("rubik", "Rubik[wght].ttf"),
 }

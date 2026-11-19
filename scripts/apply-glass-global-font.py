@@ -78,6 +78,12 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                         selected = Typeface.create(family,
                                 (bold ? Typeface.BOLD : Typeface.NORMAL)
                                 | (italic ? Typeface.ITALIC : Typeface.NORMAL));
+                    } else if ("noto-sans".equals(family)) {
+                        // Android 10+: Noto Sans -> Noto Sans Arabic -> device
+                        // fallback, including emoji/CJK and other scripts.
+                        // Older Android: preserve native system glyph fallback.
+                        selected = NabdhNotoFallback.create(
+                                ApplicationLoader.applicationContext, bold, italic);
                     } else if ("dejavu-sans-condensed".equals(family)) {
                         // Use authentic Regular/Bold faces, not artificial
                         // emboldening. Android keeps platform fallback for
@@ -118,4 +124,11 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
 """
 s=s.replace(anchor,replacement,1)
 p.write_text(s,encoding="utf-8")
+helper = Path(__file__).resolve().parents[1] / "overlay/java/NabdhNotoFallback.java"
+target = p.parent / "NabdhNotoFallback.java"
+if target.exists():
+    raise SystemExit("Noto fallback class already exists; refusing overwrite")
+if not helper.is_file():
+    raise SystemExit("Noto fallback source file missing")
+target.write_bytes(helper.read_bytes())
 print("NabdhGram font selection wired into Telegram bundled text typefaces.")
