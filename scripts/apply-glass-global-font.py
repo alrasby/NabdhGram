@@ -83,8 +83,12 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                                 ? "DejaVuSansCondensed-Bold.ttf"
                                 : "DejaVuSansCondensed.ttf"));
                         if (bundled != null) {
-                            selected = Typeface.create(bundled,
-                                    italic ? Typeface.ITALIC : Typeface.NORMAL);
+                            // Keep the verified native Bold font exactly as
+                            // loaded; create(Typeface, NORMAL) can discard the
+                            // source face's real weight on some Android APIs.
+                            selected = italic
+                                    ? Typeface.create(bundled, Typeface.ITALIC)
+                                    : bundled;
                         }
                     } else if ("readex-pro".equals(family) || "vazirmatn".equals(family)
                             || "noto-sans-arabic".equals(family) || "tajawal".equals(family)
