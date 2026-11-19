@@ -370,12 +370,18 @@ k = replace_once(k,
     private static final class NabdhCircleKey extends android.graphics.drawable.Drawable {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final int resting, active;
+        private final int[] gradientColors;
         private boolean pressed;
         private int alpha = 255;
 
         NabdhCircleKey(int resting, int active) {
+            this(resting, active, null);
+        }
+
+        NabdhCircleKey(int resting, int active, int[] gradientColors) {
             this.resting = resting;
             this.active = active;
+            this.gradientColors = gradientColors;
         }
 
         @Override public boolean isStateful() { return true; }
@@ -398,8 +404,15 @@ k = replace_once(k,
             android.graphics.Rect box = getBounds();
             float radius = Math.max(1f, Math.min(box.width(), box.height()) * .5f - dp(0.5f));
             paint.setColor(pressed ? active : resting);
+            // Gradient is clipped to the SAME true circle as all numeric keys.
+            // A GradientDrawable OVAL would stretch across the 3-column key cell.
+            paint.setShader(gradientColors == null ? null :
+                    new android.graphics.LinearGradient(
+                            box.left, box.top, box.right, box.bottom,
+                            gradientColors, null, android.graphics.Shader.TileMode.CLAMP));
             paint.setAlpha(alpha);
             canvas.drawCircle(box.exactCenterX(), box.exactCenterY(), radius, paint);
+            paint.setShader(null);
         }
         @Override public void setAlpha(int value) { alpha = value; invalidateSelf(); }
         @Override public void setColorFilter(android.graphics.ColorFilter colorFilter) {
@@ -435,17 +448,14 @@ k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) 
                 (android.graphics.Color.blue(base) * 87 + android.graphics.Color.blue(accent) * 13) / 100);
         // The pressed surface uses the REAL app primary/theme accent.
         int active = accent;
-        // The delete key is the second brand control in the login keypad:
-        // a glossy silver/aqua/teal circle, with a white delete glyph.
+        // Key 11 uses a true circular gradient, NOT an oval stretched
+        // across its wide touch cell. Keep native hit target unchanged.
         if (index == 11) {
-            android.graphics.drawable.GradientDrawable delete =
-                    new android.graphics.drawable.GradientDrawable(
-                            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                            new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent});
-            delete.setShape(android.graphics.drawable.GradientDrawable.OVAL);
             return new android.graphics.drawable.RippleDrawable(
                     android.content.res.ColorStateList.valueOf(0x66FFFFFF),
-                    delete, new NabdhCircleKey(android.graphics.Color.WHITE,
+                    new NabdhCircleKey(0xFF20C6BE, accent,
+                            new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent}),
+                    new NabdhCircleKey(android.graphics.Color.WHITE,
                             android.graphics.Color.WHITE));
         }
         int ink = android.graphics.Color.argb(72,
