@@ -311,26 +311,40 @@ fields = """    // NabdhGram: weak tracking avoids retaining recycled chat cells
                         }
                         String fontFile = "readex-pro".equals(family) ? "ReadexPro.ttf"
                                 : "vazirmatn".equals(family) ? "Vazirmatn.ttf"
-                                : "noto-sans-arabic".equals(family) ? "NotoSansArabic.ttf"
                                 : "tajawal".equals(family) ? "Tajawal.ttf"
                                 : "rubik".equals(family) ? "Rubik.ttf" : null;
                         boolean deviceDefault = "system-default".equals(family);
+                        boolean secondary = "nabdh:secondary-text".equals(label.getTag());
+                        int selectedStyle = forceBold && !secondary
+                                ? android.graphics.Typeface.BOLD : originalStyle;
+                        // IMPORTANT: never load the raw Arabic font in this
+                        // scanner. Its Latin line metrics caused the oversized
+                        // typography card even after the native renderer was fixed.
+                        // Use one script-aware fallback for settings and chats.
+                        boolean compositeNoto = "noto-sans-arabic".equals(family)
+                                || "noto-sans".equals(family);
                         android.graphics.Typeface base = deviceDefault
                                 ? nabdhOriginalTypefaces.get(label)
+                                : "noto-sans-arabic".equals(family)
+                                    ? org.telegram.messenger.NabdhNotoFallback.createArabic(
+                                            this, (selectedStyle & android.graphics.Typeface.BOLD) != 0,
+                                            (selectedStyle & android.graphics.Typeface.ITALIC) != 0)
+                                : "noto-sans".equals(family)
+                                    ? org.telegram.messenger.NabdhNotoFallback.create(
+                                            this, (selectedStyle & android.graphics.Typeface.BOLD) != 0,
+                                            (selectedStyle & android.graphics.Typeface.ITALIC) != 0)
                                 : fontFile == null
                                     ? android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
                                     : org.telegram.messenger.AndroidUtilities.getTypeface("fonts/" + fontFile);
                         if (base != null && (!deviceDefault || applied != null || forceBold || uiPercent != 100)) {
-                            // Optional typefaces start Regular; returning to
-                            // Device font restores this native TextView style.
-                            // Do not turn explanatory paragraphs into large
-                            // bold headings. They still receive the chosen
-                            // family and size; only weight keeps its native
-                            // hierarchy, including when global Bold is on.
-                            boolean secondary = "nabdh:secondary-text".equals(label.getTag());
-                            label.setTypeface(base,
-                                    forceBold && !secondary
-                                    ? android.graphics.Typeface.BOLD : originalStyle);
+                            // CustomFallbackBuilder already contains correctly weighted
+                            // Latin and Arabic font families. Wrapping it in
+                            // Typeface.create(..., style) can discard its fallback.
+                            if (compositeNoto) {
+                                label.setTypeface(base);
+                            } else {
+                                label.setTypeface(base, selectedStyle);
+                            }
                             float sizePx = originalPx * uiPercent / 100f;
                             if (Math.abs(label.getTextSize() - sizePx) > 0.5f) {
                                 label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx);
