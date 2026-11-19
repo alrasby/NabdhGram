@@ -71,10 +71,21 @@ replacement = """    private static final java.util.HashMap<String, Typeface> na
                         selected = Typeface.create(Typeface.DEFAULT,
                                 (bold ? Typeface.BOLD : Typeface.NORMAL)
                                 | (italic ? Typeface.ITALIC : Typeface.NORMAL));
-                    } else if ("sans-serif".equals(family) || "serif".equals(family)) {
+                    } else if ("serif".equals(family)) {
                         selected = Typeface.create(family,
                                 (bold ? Typeface.BOLD : Typeface.NORMAL)
                                 | (italic ? Typeface.ITALIC : Typeface.NORMAL));
+                    } else if ("dejavu-sans-condensed".equals(family)) {
+                        // Use authentic Regular/Bold faces, not artificial
+                        // emboldening. Android keeps platform fallback for
+                        // scripts/glyphs not present in DejaVu.
+                        Typeface bundled = getTypeface("fonts/" + (bold
+                                ? "DejaVuSansCondensed-Bold.ttf"
+                                : "DejaVuSansCondensed.ttf"));
+                        if (bundled != null) {
+                            selected = Typeface.create(bundled,
+                                    italic ? Typeface.ITALIC : Typeface.NORMAL);
+                        }
                     } else if ("readex-pro".equals(family) || "vazirmatn".equals(family)
                             || "noto-sans-arabic".equals(family) || "tajawal".equals(family)
                             || "rubik".equals(family)) {
