@@ -536,20 +536,11 @@ k = replace_once(k,
 k = replace_once(k,
     "backButton.setImageResource(R.drawable.msg_clear_input);",
     """backButton.setImageResource(R.drawable.nabdh_keypad_delete);
-        // The ImageView is only the glyph; the wider parent is the actual
-        // touch key. Paint the parent's centered circular background instead.
-        backButton.post(() -> {
-            android.view.ViewParent parent = backButton.getParent();
-            // Never replace the background of the entire keypad if an
-            // upstream layout moves the icon outside its individual key cell.
-            if (parent instanceof View
-                    && ((View) parent).getWidth() <= dp(140)
-                    && ((View) parent).getHeight() <= dp(110)) {
-                ((View) parent).setBackground(getButtonDrawable(11));
-            }
-            backButton.setBackground(null);
-            backButton.setColorFilter(android.graphics.Color.WHITE);
-        });""",
+        // The icon MUST keep a non-null branded background: white glyph
+        // on a null/white background was invisible in the physical screenshot.
+        // Never touch the parent: it may own the entire keypad layout.
+        backButton.setBackground(getButtonDrawable(11));
+        backButton.setColorFilter(android.graphics.Color.WHITE);""",
     "keypad delete glyph")
 # Telegram's stock keypad positions the digit at 25% of the full key cell
 # and its letters at 70%. Once the background becomes a centered circle,
@@ -597,18 +588,10 @@ theme_anchor = "final int backColor = android.graphics.Color.WHITE;"
 if k.count(theme_anchor) != 1:
     raise SystemExit("Backspace theme update anchor changed")
 k = k.replace(theme_anchor, theme_anchor + """
-        backButton.post(() -> {
-            android.view.ViewParent parent = backButton.getParent();
-            // Never replace the background of the entire keypad if an
-            // upstream layout moves the icon outside its individual key cell.
-            if (parent instanceof View
-                    && ((View) parent).getWidth() <= dp(140)
-                    && ((View) parent).getHeight() <= dp(110)) {
-                ((View) parent).setBackground(getButtonDrawable(11));
-            }
-            backButton.setBackground(null);
-            backButton.setColorFilter(android.graphics.Color.WHITE);
-        });""", 1)
+        // Themed drawable may be rebound by the native keyboard during a
+        // theme change; restore the branded surface on the icon itself.
+        backButton.setBackground(getButtonDrawable(11));
+        backButton.setColorFilter(android.graphics.Color.WHITE);""", 1)
 keyboard.write_text(k, encoding="utf-8")
 delete_icon = root / "TMessagesProj/src/main/res/drawable/nabdh_keypad_delete.xml"
 delete_icon.parent.mkdir(parents=True, exist_ok=True)
