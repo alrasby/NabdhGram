@@ -24,7 +24,7 @@ universal = (ui / "Components/UniversalAdapter.java").read_text(encoding="utf-8"
 launch = (ui / "LaunchActivity.java").read_text(encoding="utf-8")
 document_cell = (ui / "Cells/ChatMessageCell.java").read_text(encoding="utf-8")
 font_assets = root / "TMessagesProj/src/main/assets/fonts"
-font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf")
+font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "NotoSans.ttf", "Tajawal.ttf", "Rubik.ttf", "DejaVuSansCondensed.ttf", "DejaVuSansCondensed-Bold.ttf")
 localized = (ui / "NabdhStrings.java").read_text(encoding="utf-8")
 feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
