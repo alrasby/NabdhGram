@@ -373,7 +373,7 @@ once(
                     throw new IllegalStateException("Phone input is not attached");
                 }
                 addView(nabdhQrButton, phoneInputIndex + 1, LayoutHelper.createLinear(
-                        LayoutHelper.MATCH_PARENT, 48, Gravity.CENTER_HORIZONTAL, 16, 12, 16, 4));
+                        LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 16, 12, 16, 4));
             }""",
     "phone form QR button")
 once("    public void onFragmentDestroy() {\n        super.onFragmentDestroy();",
