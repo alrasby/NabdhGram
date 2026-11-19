@@ -24,7 +24,11 @@ universal = (ui / "Components/UniversalAdapter.java").read_text(encoding="utf-8"
 launch = (ui / "LaunchActivity.java").read_text(encoding="utf-8")
 document_cell = (ui / "Cells/ChatMessageCell.java").read_text(encoding="utf-8")
 font_assets = root / "TMessagesProj/src/main/assets/fonts"
-font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "NotoSans.ttf", "Tajawal.ttf", "Rubik.ttf", "DejaVuSansCondensed.ttf", "DejaVuSansCondensed-Bold.ttf")
+# These five fonts have explicit legacy name checks in both LaunchActivity and
+# AndroidUtilities; modern composite families are verified separately.
+font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf")
+new_font_files = ("NotoSans.ttf", "DejaVuSansCondensed.ttf", "DejaVuSansCondensed-Bold.ttf")
+noto_fallback = (root / "TMessagesProj/src/main/java/org/telegram/messenger/NabdhNotoFallback.java").read_text(encoding="utf-8")
 localized = (ui / "NabdhStrings.java").read_text(encoding="utf-8")
 feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
 appearance_en = (root / "TMessagesProj/src/main/res/values/nabdhgram_settings.xml").read_text(encoding="utf-8")
@@ -402,7 +406,17 @@ checks = {
     "appearance font options in Glass surface": "fontCard.setBackground(" in feature
         and "org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());" in feature
         and "fontCard.addView(choices);" in feature,
-    "all selected fonts bundled": all((font_assets / name).is_file() and (font_assets / name).stat().st_size > 10000 for name in font_files),
+    "all selected fonts bundled": all((font_assets / name).is_file() and (font_assets / name).stat().st_size > 10000 for name in font_files + new_font_files),
+    "Noto mixed-script custom font fallback installed": all(
+        marker in noto_fallback for marker in (
+            "new Typeface.CustomFallbackBuilder(primary)",
+            ".addCustomFallback(arabicFallback)",
+            '.setSystemFallback("sans-serif")',
+            "Build.VERSION_CODES.Q",
+            "fonts/NotoSans.ttf",
+            "fonts/NotoSansArabic.ttf",
+        )
+    ) and '"noto-sans".equals(family)' in typefaces,
     "font options mapped to native renderer": all(name in launch for name in font_files),
     "font options mapped to Telegram typefaces": all(name in typefaces for name in font_files),
     "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "system-default")' in launch,
