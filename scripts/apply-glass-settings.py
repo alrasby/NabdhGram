@@ -267,12 +267,20 @@ s = s.replace(anchor, anchor + """
             choices.setOrientation(android.widget.RadioGroup.VERTICAL);
             android.content.SharedPreferences prefs = context.getSharedPreferences("nabdhgram_appearance", Context.MODE_PRIVATE);
             String selectedFont = prefs.getString("font_family", "system-default");
-            String[] families = {"system-default", "readex-pro", "vazirmatn", "noto-sans-arabic", "tajawal", "rubik", "sans-serif", "serif"};
+            // Android's generic sans-serif is already the device-default
+            // family: deduplicate its menu entry, migrate the old saved ID.
+            if ("sans-serif".equals(selectedFont)) {
+                selectedFont = "system-default";
+                prefs.edit().putString("font_family", selectedFont).commit();
+            }
+            // Distinct options only: keep Latin, Arabic-first and serif choices.
+            String[] families = {"system-default", "readex-pro", "vazirmatn", "noto-sans-arabic",
+                    "tajawal", "rubik", "dejavu-sans-condensed", "serif"};
             int[] names = {R.string.NabdhFontSystemDefault, R.string.NabdhFontReadex, R.string.NabdhFontVazirmatn,
                     R.string.NabdhFontNotoSansArabic, R.string.NabdhFontTajawal,
-                    R.string.NabdhFontRubik, R.string.NabdhFontSans, R.string.NabdhFontSerif};
+                    R.string.NabdhFontRubik, R.string.NabdhFontDejaVuCondensed, R.string.NabdhFontSerif};
             String[] assets = {null, "ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf",
-                    "Tajawal.ttf", "Rubik.ttf", null, null};
+                    "Tajawal.ttf", "Rubik.ttf", "DejaVuSansCondensed.ttf", null};
             android.graphics.Typeface[] fonts = new android.graphics.Typeface[families.length];
             for (int i = 0; i < families.length; i++) {
                 if (assets[i] != null) {
@@ -502,14 +510,14 @@ s = s.replace(anchor, anchor + """
 """, 1)
 
 for lang, labels in {
-    "values": ("Application font", "Readex Pro", "Sans-serif", "Serif", "Uses the device font by default. Optional fonts start in Regular. Some specialized Telegram views keep independent typography.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"),
-    "values-ar": ("خط التطبيق", "Readex Pro", "Sans-serif", "Serif", "خط الجهاز هو الافتراضي، وتبدأ الخطوط الاختيارية بالوزن العادي. قد تحتفظ بعض عناصر تيليجرام الخاصة بخطوطها.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik"),
+    "values": ("Application font", "Readex Pro", "Sans-serif", "Serif", "Uses the device font by default. Optional fonts start in Regular. Some specialized Telegram views keep independent typography.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik", "DejaVu Sans Condensed"),
+    "values-ar": ("خط التطبيق", "Readex Pro", "Sans-serif", "Serif", "خط الجهاز هو الافتراضي، وتبدأ الخطوط الاختيارية بالوزن العادي. قد تحتفظ بعض عناصر تيليجرام الخاصة بخطوطها.", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik", "DejaVu Sans Condensed"),
 }.items():
     res = root / "TMessagesProj/src/main/res" / lang / "nabdhgram_settings.xml"
     xml = res.read_text(encoding="utf-8")
     if xml.count("</resources>") != 1:
         raise SystemExit("Unexpected resource structure for font labels")
-    keys = ("NabdhFontTitle", "NabdhFontReadex", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope", "NabdhFontVazirmatn", "NabdhFontNotoSansArabic", "NabdhFontTajawal", "NabdhFontRubik")
+    keys = ("NabdhFontTitle", "NabdhFontReadex", "NabdhFontSans", "NabdhFontSerif", "NabdhFontScope", "NabdhFontVazirmatn", "NabdhFontNotoSansArabic", "NabdhFontTajawal", "NabdhFontRubik", "NabdhFontDejaVuCondensed")
     extra = "".join('    <string name="' + k + '">' + escape(v).replace("'", "\\'") + '</string>\n' for k, v in zip(keys, labels))
     extra += ('    <string name="NabdhFontSystemDefault">'
               + 'Device default font'
