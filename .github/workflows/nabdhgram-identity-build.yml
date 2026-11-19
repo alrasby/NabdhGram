@@ -238,6 +238,15 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/install-open-fonts.py Telegram-upstream
 
+      - name: Bundle verified DejaVu Sans Condensed Regular and Bold
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 nabdhgram/scripts/install-dejavu-condensed.py Telegram-upstream
+          test -s Telegram-upstream/TMessagesProj/src/main/assets/fonts/DejaVuSansCondensed.ttf
+          test -s Telegram-upstream/TMessagesProj/src/main/assets/fonts/DejaVuSansCondensed-Bold.ttf
+          test -s Telegram-upstream/TMessagesProj/src/main/assets/fonts/DejaVu-LICENSE.txt
+
       - name: Apply persisted typography to Telegram text rendering
         shell: bash
         run: |
@@ -634,6 +643,9 @@ jobs:
           python3 nabdhgram/scripts/check-upstream-api-preservation.py --self-test
           python3 -m py_compile nabdhgram/scripts/check-nabdh-qr-dialog.py
           python3 nabdhgram/scripts/check-nabdh-qr-dialog.py --self-test
+          python3 -m py_compile nabdhgram/scripts/install-dejavu-condensed.py nabdhgram/scripts/check-nabdh-font-catalog.py
+          python3 nabdhgram/scripts/install-dejavu-condensed.py --self-test
+          python3 nabdhgram/scripts/check-nabdh-font-catalog.py nabdhgram
           python3 nabdhgram/scripts/check-nabdh-qr-dialog.py Telegram-upstream/TMessagesProj/src/main/java/org/telegram/ui/LoginActivity.java
           python3 -m py_compile nabdhgram/scripts/check-packaged-splash.py
           python3 nabdhgram/scripts/check-packaged-splash.py --self-test
