@@ -49,10 +49,35 @@ s = replace_once(s,
 
 # Refined back arrow surface, using built-in Telegram glyphs, keeping click area
 # and exit behavior exactly intact.
+# Restyle only the login continuation FAB: retain Telegram's
+# FragmentFloatingButton animation/progress and original onDone handler.
+# This uses the active NabdhGram theme accent, not a fixed Telegram blue.
+s = replace_once(s,
+    "        floatingButton = new FragmentFloatingButton(context, resourceProvider);",
+    """        floatingButton = new FragmentFloatingButton(context, resourceProvider) {
+            @Override public void updateColors() {
+                super.updateColors();
+                int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+                int shadow = androidx.core.graphics.ColorUtils.blendARGB(
+                        accent, android.graphics.Color.BLACK, .13f);
+                android.graphics.drawable.GradientDrawable surface =
+                        new android.graphics.drawable.GradientDrawable(
+                                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                                new int[]{accent, shadow});
+                surface.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                surface.setStroke(dp(1), android.graphics.Color.argb(50, 255, 255, 255));
+                setBackground(new android.graphics.drawable.RippleDrawable(
+                        android.content.res.ColorStateList.valueOf(
+                                android.graphics.Color.argb(80, 255, 255, 255)),
+                        surface, null));
+            }
+        };""",
+    "login FAB matching brand accent")
+
 s = replace_once(s,
     "        backButtonView.setImageResource(R.drawable.ic_ab_back);",
     """        backButtonView.setImageResource(R.drawable.ic_ab_back);
-        backButtonView.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        backButtonView.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         android.graphics.drawable.GradientDrawable nabdhBackGlass =
                 new android.graphics.drawable.GradientDrawable();
         int nabdhNavTint = Theme.getColor(Theme.key_listSelector);
@@ -350,7 +375,7 @@ k = replace_once(k,
         }
         @Override public void draw(Canvas canvas) {
             android.graphics.Rect box = getBounds();
-            float radius = Math.max(1f, Math.min(box.width(), box.height()) * .5f - dp(1));
+            float radius = Math.max(1f, Math.min(box.width(), box.height()) * .5f - dp(0.5f));
             paint.setColor(pressed ? active : resting);
             paint.setAlpha(alpha);
             canvas.drawCircle(box.exactCenterX(), box.exactCenterY(), radius, paint);
@@ -380,17 +405,15 @@ key_end += len("\n    }")
 k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) {
         final int base = Theme.getColor(Theme.key_windowBackgroundWhite);
         final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
-        // A subtly tinted blue key at rest, a clearly stronger cyan press.
+        // Compact lightly tinted key, main theme accent during press.
         // Resolve colors on updateColors() for light/dark/imported themes.
         int rest = android.graphics.Color.rgb(
-                (android.graphics.Color.red(base) * 83 + android.graphics.Color.red(accent) * 17) / 100,
-                (android.graphics.Color.green(base) * 83 + android.graphics.Color.green(accent) * 17) / 100,
-                (android.graphics.Color.blue(base) * 83 + android.graphics.Color.blue(accent) * 17) / 100);
-        int active = android.graphics.Color.rgb(
-                (android.graphics.Color.red(base) * 54 + android.graphics.Color.red(accent) * 46) / 100,
-                (android.graphics.Color.green(base) * 54 + android.graphics.Color.green(accent) * 46) / 100,
-                (android.graphics.Color.blue(base) * 54 + android.graphics.Color.blue(accent) * 46) / 100);
-        int ink = android.graphics.Color.argb(165,
+                (android.graphics.Color.red(base) * 87 + android.graphics.Color.red(accent) * 13) / 100,
+                (android.graphics.Color.green(base) * 87 + android.graphics.Color.green(accent) * 13) / 100,
+                (android.graphics.Color.blue(base) * 87 + android.graphics.Color.blue(accent) * 13) / 100);
+        // The pressed surface uses the REAL app primary/theme accent.
+        int active = accent;
+        int ink = android.graphics.Color.argb(72,
                 android.graphics.Color.red(accent),
                 android.graphics.Color.green(accent),
                 android.graphics.Color.blue(accent));
@@ -410,11 +433,11 @@ if "ThemeBind.selectorBackground(v, getButtonDrawable(index)" in k:
         raise SystemExit("Custom keyboard theme binding declarations were lost")
 # Expand actual *key cell height*, not only the drawable radius. The stock
 # 230dp keyboard uses 10dp outer + 6dp inter-key gaps, capping circles to
-# about 47dp. Smaller gutters yield 52dp keys (+11%) at the SAME 230dp height
+# about 47dp. Smaller gutters yield larger circles at the SAME 230dp height
 # without overlapping adjacent touch views or covering the number field.
 k = replace_once(k,
     "private final static int SIDE_PADDING = 10, BUTTON_PADDING = 6;",
-    "private final static int SIDE_PADDING = 4, BUTTON_PADDING = 3;",
+    "private final static int SIDE_PADDING = 2, BUTTON_PADDING = 2;",
     "expand keypad circles by enlarging available cell height")
 # Telegram's original CustomPhoneKeyboardView.onMeasure reads getWidth()
 # and getHeight(), i.e. previous layout dimensions, instead of the incoming
@@ -495,7 +518,7 @@ key_text_after = """            // Both text lines share the exact center of the
             // Use the same radius as the center-aligned circular key drawable,
             // adapting to compact devices and display scales.
             final float keyRadius = Math.max(1f,
-                    Math.min(getWidth(), getHeight()) * .5f - dp(1));
+                    Math.min(getWidth(), getHeight()) * .5f - dp(0.5f));
             final float numberCenter = centerY - (hasSymbols ? keyRadius * .18f : 0);
             final float numberBaseline = numberCenter
                     - (numberFont.ascent + numberFont.descent) / 2f;
