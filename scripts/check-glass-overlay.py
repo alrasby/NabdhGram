@@ -635,10 +635,10 @@ checks["dialogs use NabdhGram title rather than upstream Telegram logo span"] = 
     and 'actionBar.setTitle(ssb, statusDrawable);' not in dialogs
 )
 
-checks["QR button is narrower while retaining native 52dp height"] = (
+checks["QR button fits below phone input at 48dp height"] = (
     "nabdhQrButton.setMinWidth(dp(220));" in login_source
     and "nabdhQrButton.setPadding(dp(24), 0, dp(24), 0);" in login_source
-    and "LayoutHelper.WRAP_CONTENT, 52, Gravity.CENTER_HORIZONTAL, 28, 14, 28, 8" in login_source
+    and "LayoutHelper.WRAP_CONTENT, 48, Gravity.CENTER_HORIZONTAL, 28, 12, 28, 4" in login_source
 )
 checks["AppName and default main title use NabdhGram after navigation"] = (
     '<string name="AppName">NabdhGram</string>' in
