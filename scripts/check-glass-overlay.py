@@ -246,9 +246,13 @@ checks = {
         and (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8").count(
             "setButtonBackground(v, a);") == 2,
     "data/storage English and Arabic toggles follow actual switch hit area":
-        "boolean nabdhToggleHit = false;" in (ui / "DataSettingsActivity.java").read_text(encoding="utf-8")
-        and "toggleView.getX() + toggleView.getWidth() / 2f" in (ui / "DataSettingsActivity.java").read_text(encoding="utf-8")
+        "NabdhToggleHitbox.isToggleTap(view, x)" in (ui / "DataSettingsActivity.java").read_text(encoding="utf-8")
         and (ui / "DataSettingsActivity.java").read_text(encoding="utf-8").count("if (nabdhToggleHit)") == 2,
+    "settings toggle hit areas follow rendered positions across pages":
+        "NabdhToggleHitbox.isToggleTap(view, x)" in (ui / "ThemeActivity.java").read_text(encoding="utf-8")
+        and "NabdhToggleHitbox.isToggleTap(view, x)" in (ui / "NotificationsSettingsActivity.java").read_text(encoding="utf-8")
+        and "checkBoxClickArea.setTranslationX(desiredLeft - checkBoxClickArea.getLeft())"
+            in (ui / "Cells/TextCheckCell2.java").read_text(encoding="utf-8"),
     "third-party login cannot advertise official-only Firebase SMS":
         'settings.allow_firebase = false; // Third-party app' in
         (ui / "LoginActivity.java").read_text(encoding="utf-8"),
