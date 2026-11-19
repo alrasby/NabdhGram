@@ -485,7 +485,7 @@ else:
     if k.count(modern_constructor) != 1 or k.count(modern_update) != 1:
         raise SystemExit("Backspace icon anchors changed")
     k = k.replace(modern_constructor,
-        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);\\n        backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83, PorterDuff.Mode.SRC_ATOP);", 1)
+        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);\n        backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83, PorterDuff.Mode.SRC_ATOP);", 1)
     k = k.replace(modern_update,
         "final int backColor = Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83;", 1)
 k = replace_once(k,
