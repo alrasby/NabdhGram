@@ -421,6 +421,19 @@ k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) 
                 (android.graphics.Color.blue(base) * 87 + android.graphics.Color.blue(accent) * 13) / 100);
         // The pressed surface uses the REAL app primary/theme accent.
         int active = accent;
+        // The delete key is the second brand control in the login keypad:
+        // a glossy silver/aqua/teal circle, with a white delete glyph.
+        if (index == 11) {
+            android.graphics.drawable.GradientDrawable delete =
+                    new android.graphics.drawable.GradientDrawable(
+                            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                            new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent});
+            delete.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            return new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(0x66FFFFFF),
+                    delete, new NabdhCircleKey(android.graphics.Color.WHITE,
+                            android.graphics.Color.WHITE));
+        }
         int ink = android.graphics.Color.argb(72,
                 android.graphics.Color.red(accent),
                 android.graphics.Color.green(accent),
@@ -476,16 +489,16 @@ k = k[:pos2] + """        // Measure child hit targets from the *new* parent con
 backspace_icon = "backButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));"
 if k.count(backspace_icon) == 2:
     k = k.replace(backspace_icon,
-        "backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83);")
+        "backButton.setColorFilter(android.graphics.Color.WHITE);")
 else:
     modern_constructor = "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);"
     modern_update = "final int backColor = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);"
     if k.count(modern_constructor) != 1 or k.count(modern_update) != 1:
         raise SystemExit("Backspace icon anchors changed")
     k = k.replace(modern_constructor,
-        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);\n        backButton.setColorFilter(Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83, PorterDuff.Mode.SRC_ATOP);", 1)
+        "ThemeBind.colorFilter(backButton, Theme.key_windowBackgroundWhiteBlackText, PorterDuff.Mode.SRC_ATOP);\n        backButton.setColorFilter(android.graphics.Color.WHITE, PorterDuff.Mode.SRC_ATOP);", 1)
     k = k.replace(modern_update,
-        "final int backColor = Theme.isCurrentThemeDark() ? 0xFF23D1C5 : 0xFF008B83;", 1)
+        "final int backColor = android.graphics.Color.WHITE;", 1)
 k = replace_once(k,
     "numberTextPaint.setTextSize(dp(24));",
     "numberTextPaint.setTextSize(dp(22));",
