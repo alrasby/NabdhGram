@@ -36,7 +36,9 @@ check("Stories/DialogStoriesCell.java" in title_overlay and
       'telegramLogoView.setText("NabdhGram");' in title_overlay and
       'telegramLogoView = new TextView(context);' in title_overlay and
       '"center_title"' in title_overlay and
-      "dialogStoriesCell.isFullExpanded()" in title_overlay,
+      'type == TYPE_DIALOGS ? 0f : logoVisibility * progress' in title_overlay and
+      'actionBar.getTitlesContainer().setAlpha(1f)' in title_overlay and
+      'dialogStoriesCell.isFullExpanded()' not in title_overlay,
       "stories header must render NabdhGram and keep expanded title full-size")
 check("title.setTranslationX(target - origin);" in preferences and
       "title.setTranslationX(target - title.getX());" not in preferences,
