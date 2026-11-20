@@ -642,6 +642,13 @@ checks["feature category explanations opt into readable body weight"] = (
 checks["new Glass and Intelligence help texts opt into readable body weight"] = (
     feature.count('note.setTag("nabdh:secondary-text");') >= 2
 )
+stories_header = (ui / "Stories/DialogStoriesCell.java").read_text(encoding="utf-8")
+checks["stories wordmark stays at stable left anchor unless center enabled"] = (
+    'float nabdhLogoX = dp(72);' in stories_header
+    and 'NabdhHomePrefs.enabled(getContext(), "center_title")' in stories_header
+    and 'float nabdhLogoX = titleView.getTranslationX() + dp(1);' not in stories_header
+    and 'telegramLogoView.setTranslationX(nabdhLogoX);' in stories_header
+)
 checks["main title alignment is controlled by user preference, not forced"] = (
     'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
     and 'actionBar.setCenterTitleAndGlass(true);' not in dialogs
