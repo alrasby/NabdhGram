@@ -53,6 +53,10 @@ def main():
             actionBar.getTitlesContainer().setScaleY(1f);
             actionBar.getTitlesContainer().setAlpha(1f);
             actionBar.getTitlesContainer().setVisibility(View.VISIBLE);
+            // The home header and stories row animate independently. Reapply
+            // the approved, avatar-safe title position during that animation,
+            // not only when opening the screen or toggling the setting.
+            org.telegram.ui.Components.NabdhHomePrefs.applyTitle(actionBar, getContext());
         }
     }
 
