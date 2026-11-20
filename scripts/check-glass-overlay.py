@@ -728,16 +728,23 @@ checks["Keypad uses turquoise pressed state with untouched native gestures"] = (
     and "state_pressed" in keyboard_source
     and "int active = accent;" in keyboard_source
 )
-# Short surgical source inspection of pinned renderer anchors.
-for key, rel, spans in (
-    ("BUBBLE", "ActionBar/MessageDrawable.java", [(730, 770), (897, 998), (1060, 1118)]),
-    ("DIALOG", "Cells/DialogCell.java", [(4655, 4673)]),
-    ("ACTION", "ActionBar/ActionBar.java", [(950, 985), (1750, 1800)]),
+# One-time targeted source inspection for adaptive selection-toolbar tint.
+import re
+for label, relative in (
+    ("ACTION_TINT", "ActionBar/ActionBar.java"),
+    ("DIALOG_TINT", "DialogsActivity.java"),
 ):
-    rows = (ui / rel).read_text(encoding="utf-8").splitlines()
-    for lo, hi in spans:
-        for n in range(lo-1, min(hi,len(rows))):
-            print(f"NABDH_SOURCE {key} {n+1}: {rows[n]}", flush=True)
+    rows = (ui / relative).read_text(encoding="utf-8").splitlines()
+    candidates = [i for i, line in enumerate(rows)
+                  if re.search(r"setItemsColor|itemsActionModeColor|actionBarActionModeDefaultIcon|setActionModeColor|setActionModeTopColor", line)]
+    print("NABDH_COLOR_START", label, len(candidates), flush=True)
+    printed = set()
+    for spot in candidates[:18]:
+        for i in range(max(0,spot-4),min(len(rows),spot+8)):
+            if i not in printed:
+                print(f"NABDH_COLOR {label} {i+1}: {rows[i]}",flush=True)
+                printed.add(i)
+    print("NABDH_COLOR_END", label, flush=True)
 
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
