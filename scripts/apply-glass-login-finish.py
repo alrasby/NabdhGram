@@ -625,7 +625,7 @@ update_block = k[update_start:update_end]
 # revisions. Locate its semantic for-loop, not a brittle text literal.
 import re
 loop_matches = list(re.finditer(
-    r"for\\s*\\(\\s*int\\s+a\\s*=\\s*0\\s*;\\s*a\\s*<\\s*views\\.length\\s*;\\s*a\\+\\+\\s*\\)\\s*\\{",
+    r"for\s*\(\s*int\s+a\s*=\s*0\s*;\s*a\s*<\s*views\.length\s*;\s*a\+\+\s*\)\s*\{",
     update_block))
 if len(loop_matches) != 1:
     raise SystemExit("Pinned updateColors views loop changed: " +
