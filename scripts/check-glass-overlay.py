@@ -751,6 +751,13 @@ checks["opt-in symmetric no-tail card uses real message renderer"] = (
     and "currentType == TYPE_TEXT || currentType == TYPE_MEDIA" in bubble_source
 )
 
+# One-time source probe for native Telegram folder count badge paints.
+folder_source = (ui / "Components/FilterTabsView.java").read_text(encoding="utf-8").splitlines()
+for i, line in enumerate(folder_source):
+    if ("counter" in line.lower() or "badge" in line.lower() or "unread" in line.lower() or "countText" in line):
+        if any(tok in line for tok in ("setColor", "getColor", "drawRoundRect", "drawCircle", "drawText", "Paint(", "getThemedColor", "Theme.key", "counterPaint", "counterText", "badgePaint")):
+            print(f"NABDH_FOLDER_COUNT {i+1}: {line}", flush=True)
+
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):
