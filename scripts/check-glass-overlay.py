@@ -648,6 +648,8 @@ checks["stories wordmark stays at stable left anchor unless center enabled"] = (
     and 'NabdhHomePrefs.enabled(getContext(), "center_title")' in stories_header
     and 'float nabdhLogoX = titleView.getTranslationX() + dp(1);' not in stories_header
     and 'telegramLogoView.setTranslationX(nabdhLogoX);' in stories_header
+    and 'telegramLogoView.setScaleX(1f);' in stories_header
+    and 'telegramLogoView.setScaleY(1f);' in stories_header
 )
 checks["main title alignment is controlled by user preference, not forced"] = (
     'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
