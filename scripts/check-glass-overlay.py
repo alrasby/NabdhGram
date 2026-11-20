@@ -728,23 +728,16 @@ checks["Keypad uses turquoise pressed state with untouched native gestures"] = (
     and "state_pressed" in keyboard_source
     and "int active = accent;" in keyboard_source
 )
-# Temporary pinned-source inspection for targeted UI repair.
-for source_name, rel, pattern, width in (
-    ("ACTIONBAR", "ActionBar/ActionBar.java", r"actionMode|ActionMode|actionBarActionModeDefaultIcon|setColorFilter", 4),
-    ("DIALOGCELL", "Cells/DialogCell.java", r"reorder|Reorder|pin.*button|draw.*Pin|drag", 6),
-    ("BUBBLEDRAW", "ActionBar/MessageDrawable.java", r"makePath\(|drawRoundRect|isOut|drawPath|NinePatch|drawRadius|drawBubble", 4),
+# Short surgical source inspection of pinned renderer anchors.
+for key, rel, spans in (
+    ("BUBBLE", "ActionBar/MessageDrawable.java", [(730, 770), (897, 998), (1060, 1118)]),
+    ("DIALOG", "Cells/DialogCell.java", [(4655, 4673)]),
+    ("ACTION", "ActionBar/ActionBar.java", [(950, 985), (1750, 1800)]),
 ):
-    import re
-    src = (ui / rel).read_text(encoding="utf-8").splitlines()
-    positions = [j for j, line in enumerate(src) if re.search(pattern, line)]
-    print("NABDH_INSPECT_START", source_name, "hits", len(positions), flush=True)
-    covered = set()
-    for pos in positions[:60]:
-        for k in range(max(0, pos - width), min(len(src), pos + width + 1)):
-            if k not in covered:
-                print(f"NABDH_INSPECT {source_name} {k+1}: {src[k]}", flush=True)
-                covered.add(k)
-    print("NABDH_INSPECT_END", source_name, flush=True)
+    rows = (ui / rel).read_text(encoding="utf-8").splitlines()
+    for lo, hi in spans:
+        for n in range(lo-1, min(hi,len(rows))):
+            print(f"NABDH_SOURCE {key} {n+1}: {rows[n]}", flush=True)
 
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
