@@ -40,9 +40,12 @@ check("Stories/DialogStoriesCell.java" in title_overlay and
       'actionBar.getTitlesContainer().setAlpha(1f)' in title_overlay and
       'dialogStoriesCell.isFullExpanded()' not in title_overlay,
       "stories header must render NabdhGram and keep expanded title full-size")
-check("title.setTranslationX(target - origin);" in preferences and
-      "title.setTranslationX(target - title.getX());" not in preferences,
-      "center-title offset must be idempotent across resume/scroll")
+check('final float safeStart = 72f * dp;' in preferences and
+      'title.setTranslationX(translation);' in preferences and
+      'final boolean center = enabled(context, "center_title");' in preferences and
+      'title.setTranslationX(0);' not in preferences and
+      'NabdhHomePrefs.applyTitle(actionBar, getContext());' in title_overlay,
+      "main header must stay after story avatars and respect opt-in centering on every animation frame")
 
 check("bubbleRadius = radius" in preferences and
       'putInt("bubbleRadius", radius)' in preferences and
