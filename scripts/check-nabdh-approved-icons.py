@@ -23,6 +23,39 @@ for legacy in retired:
     assert ('"' + legacy + '"') not in java[java.index("public enum LauncherIcon"):], "Retired launcher must not remain selectable"
 assert "nabdhRetireOldAliases();" in java, "Missing old launcher alias recovery"
 
+# Default MUST be NabdhGram as well, not Telegram's native paper-plane.
+# The chooser thumbnail and enabled DefaultIcon launcher must refer to the
+# same approved artwork; all Android densities must have matching pixels.
+assert ('DEFAULT("DefaultIcon", R.drawable.nabdh_icon_preview_background, '
+        'R.mipmap.nabdh_icon_default, R.string.AppIconDefault)') in java, (
+        "Default icon picker is still showing Telegram")
+assert ('DEFAULT("DefaultIcon", R.drawable.icon_background_sa, '
+        'R.mipmap.icon_foreground_sa') not in java, (
+        "Official Telegram Default preview unexpectedly returned")
+default_start = manifest.index('android:name="org.telegram.messenger.DefaultIcon"')
+default_element = manifest[manifest.rfind("<activity-alias", 0, default_start):
+                           manifest.index(">", default_start) + 1]
+assert 'android:icon="@mipmap/nabdhgram_launcher"' in default_element, (
+    "Default launcher alias is not branded")
+assert 'android:roundIcon="@mipmap/nabdhgram_launcher_round"' in default_element, (
+    "Default round launcher alias is not branded")
+app_res = root / "TMessagesProj_App/src/main/res"
+for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
+                        ("xxhdpi", 144), ("xxxhdpi", 192)):
+    preview = res / ("mipmap-" + density) / "nabdh_icon_default.png"
+    launcher = app_res / ("mipmap-" + density) / "nabdhgram_launcher.png"
+    with Image.open(preview) as a, Image.open(launcher) as b:
+        a.load()
+        b.load()
+        assert a.size == b.size == (pixels, pixels)
+        assert ImageChops.difference(a.convert("RGBA"), b.convert("RGBA")).getbbox() is None, (
+            "Default picker differs from the actual NabdhGram launcher: " + density)
+adaptive = app_res / "mipmap-anydpi-v26/nabdhgram_launcher.xml"
+assert adaptive.is_file(), "Default adaptive launcher resource missing"
+assert "<adaptive-icon" in adaptive.read_text(encoding="utf-8"), (
+    "Default launcher lost Android adaptive behavior")
+
+
 # Source hashes prevent future builds silently replacing the user's logos.
 approved = {
     "silver": ("nabdh-icon-silver-circle.webp", "f0092210e0197f166ed5c63d9afdab52e63f2aadd074b59a432b5572da88d78b"),
@@ -99,4 +132,4 @@ manifest_start = 'android:theme="@style/Theme.TMessages.Start"'
 assert manifest_start in manifest, "Native Telegram launch theme no longer applied"
 app_style = (root / "TMessagesProj_App/src/main/res/values-v31/nabdhgram_splash.xml").read_text(encoding="utf-8")
 assert '@drawable/nabdhgram_launcher_foreground' in app_style, "App-level Android 12 style reverts startup icon"
-print("PASS: three circular launcher aliases, exact owner imagery, Android densities and safe upgrade aliases")
+print("PASS: NabdhGram Default picker matches adaptive launcher and three approved variants retain their artwork")
