@@ -238,13 +238,13 @@ checks = {
         "versionView.setOnLongClickListener(v -> {" in native_settings
         and "presentFragment(new DebugSettingsActivity());" in native_settings
         and "openDebugMenu();" not in native_settings,
-    "generated keypad preserves upstream ThemeBind and cached color declarations":
+    "generated keypad preserves native callbacks and turquoise press tint":
         all(token in (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
             for token in ("private static void setButtonBackground(View v, int index)",
                           "private int lastBackButtonColor, lastButtonsSelectorColor;",
-                          "ThemeBind.selectorBackground(v, getButtonDrawable(index)"))
+                          "v.setBackground(getButtonDrawable(index));"))
         and (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8").count(
-            "setButtonBackground(v, a);") == 2,
+            "setButtonBackground(v, a);") >= 2,
     "data/storage English and Arabic toggles follow actual switch hit area":
         "NabdhToggleHitbox.isToggleTap(view, x)" in (ui / "DataSettingsActivity.java").read_text(encoding="utf-8")
         and (ui / "DataSettingsActivity.java").read_text(encoding="utf-8").count("if (nabdhToggleHit)") == 2,
@@ -417,8 +417,9 @@ checks = {
     "all selected fonts bundled": all((font_assets / name).is_file() and (font_assets / name).stat().st_size > 10000 for name in font_files + new_font_files),
     "Noto mixed-script custom font fallback installed": all(
         marker in noto_fallback for marker in (
-            "new Typeface.CustomFallbackBuilder(primary)",
-            ".addCustomFallback(arabicFallback)",
+            "new Typeface.CustomFallbackBuilder(",
+            ".addCustomFallback(new android.graphics.fonts.FontFamily.Builder(arabic).build())",
+            "private static final Typeface[] cachedFaces = new Typeface[4]",
             '.setSystemFallback("sans-serif")',
             "Build.VERSION_CODES.Q",
             "fonts/NotoSans.ttf",
@@ -704,29 +705,26 @@ for lang in ("values", "values-ar"):
 # Check the actual patched Telegram source rather than matching only an
 # overlay template. Native ThemeBind must not gray out the branded key.
 keyboard_source = (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
-checks["Backspace is independently themed and never retinted by ThemeBind"] = (
+checks["Keypad uses turquoise pressed state with untouched native gestures"] = (
     "addView(views[11] = backButton);" in keyboard_source
-    and "if (index == 11) {" in keyboard_source
-    and "v.setBackground(getButtonDrawable(11));" in keyboard_source
-    and "if (a == 11)" in keyboard_source
-    and "setButtonBackground(backButton, 11);" in keyboard_source
+    and "v.setBackground(getButtonDrawable(index));" in keyboard_source
+    and "setButtonBackground(v, a);" in keyboard_source
+    and "Theme.setSelectorDrawableColor(v.getBackground(), defaultColor, false);" not in keyboard_source
     and "backButton.setBackground(null)" not in keyboard_source
     and "backButton.setImageResource(R.drawable.nabdh_keypad_delete);" in keyboard_source
+    and "state_pressed" in keyboard_source
+    and "int active = accent;" in keyboard_source
 )
-# One-time diagnostics for centered title and pressed-key theme binding.
-diagnose_files = {
-    "DIALOGS_TITLE": (ui / "DialogsActivity.java", "actionBar.setTitle"),
-    "KEYPAD_THEME": (ui / "Components/CustomPhoneKeyboardView.java", "public void updateColors()"),
-}
-for label, (source_path, needle) in diagnose_files.items():
-    lines = source_path.read_text(encoding="utf-8").splitlines()
-    indexes = [i for i, line in enumerate(lines) if needle in line]
-    for start in indexes[:5]:
-        print(f"NABDH_DIAG_{label}_BEGIN", flush=True)
-        for n in range(max(0, start-12), min(len(lines), start+(72 if label == "KEYPAD_THEME" else 18))):
-            print(f"NABDH_DIAG {source_path.name}:{n+1} {lines[n]}", flush=True)
-        print(f"NABDH_DIAG_{label}_END", flush=True)
-
+# One-time read-only diagnostics: obtain the native ActionBar centering API.
+dialog_lines = (ui / "DialogsActivity.java").read_text(encoding="utf-8").splitlines()
+for n, line in enumerate(dialog_lines):
+    if ('NabdhGram' in line or 'setTitleCentered' in line or 'titleTextView' in line
+            or ('setTitle' in line and n > 3390 and n < 3500)):
+        print(f"NABDH_DIALOGS_TITLE {n+1}: {line}", flush=True)
+actionbar_lines = (ui / "ActionBar/ActionBar.java").read_text(encoding="utf-8").splitlines()
+for n, line in enumerate(actionbar_lines):
+    if ("title" in line.lower() and "center" in line.lower()) or "setTitleCentered" in line:
+        print(f"NABDH_ACTIONBAR_CENTER {n+1}: {line}", flush=True)
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):
