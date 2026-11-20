@@ -276,6 +276,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-dialog-cards.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-selection-toolbar.py Telegram-upstream
 
       - name: Clip pressed dialog selection to Glass card corners
         shell: bash
