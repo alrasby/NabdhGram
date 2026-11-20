@@ -370,12 +370,18 @@ k = replace_once(k,
     private static final class NabdhCircleKey extends android.graphics.drawable.Drawable {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final int resting, active;
+        private final int[] gradientColors;
         private boolean pressed;
         private int alpha = 255;
 
         NabdhCircleKey(int resting, int active) {
+            this(resting, active, null);
+        }
+
+        NabdhCircleKey(int resting, int active, int[] gradientColors) {
             this.resting = resting;
             this.active = active;
+            this.gradientColors = gradientColors;
         }
 
         @Override public boolean isStateful() { return true; }
@@ -398,8 +404,15 @@ k = replace_once(k,
             android.graphics.Rect box = getBounds();
             float radius = Math.max(1f, Math.min(box.width(), box.height()) * .5f - dp(0.5f));
             paint.setColor(pressed ? active : resting);
+            // Gradient is clipped to the SAME true circle as all numeric keys.
+            // A GradientDrawable OVAL would stretch across the 3-column key cell.
+            paint.setShader(gradientColors == null ? null :
+                    new android.graphics.LinearGradient(
+                            box.left, box.top, box.right, box.bottom,
+                            gradientColors, null, android.graphics.Shader.TileMode.CLAMP));
             paint.setAlpha(alpha);
             canvas.drawCircle(box.exactCenterX(), box.exactCenterY(), radius, paint);
+            paint.setShader(null);
         }
         @Override public void setAlpha(int value) { alpha = value; invalidateSelf(); }
         @Override public void setColorFilter(android.graphics.ColorFilter colorFilter) {
@@ -435,17 +448,14 @@ k = k[:key_start] + """    private static Drawable getButtonDrawable(int index) 
                 (android.graphics.Color.blue(base) * 87 + android.graphics.Color.blue(accent) * 13) / 100);
         // The pressed surface uses the REAL app primary/theme accent.
         int active = accent;
-        // The delete key is the second brand control in the login keypad:
-        // a glossy silver/aqua/teal circle, with a white delete glyph.
+        // Key 11 uses a true circular gradient, NOT an oval stretched
+        // across its wide touch cell. Keep native hit target unchanged.
         if (index == 11) {
-            android.graphics.drawable.GradientDrawable delete =
-                    new android.graphics.drawable.GradientDrawable(
-                            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                            new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent});
-            delete.setShape(android.graphics.drawable.GradientDrawable.OVAL);
             return new android.graphics.drawable.RippleDrawable(
                     android.content.res.ColorStateList.valueOf(0x66FFFFFF),
-                    delete, new NabdhCircleKey(android.graphics.Color.WHITE,
+                    new NabdhCircleKey(0xFF20C6BE, accent,
+                            new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent}),
+                    new NabdhCircleKey(android.graphics.Color.WHITE,
                             android.graphics.Color.WHITE));
         }
         int ink = android.graphics.Color.argb(72,
@@ -525,7 +535,10 @@ k = replace_once(k,
 # cyan asset. Keep the existing ImageView, tap handler and key repeat intact.
 k = replace_once(k,
     "backButton.setImageResource(R.drawable.msg_clear_input);",
-    "backButton.setImageResource(R.drawable.nabdh_keypad_delete);",
+    """backButton.setImageResource(R.drawable.nabdh_keypad_delete);
+        // A white delete glyph is provided. The key surface is bound by
+        // setButtonBackground(views[11], 11), never the surrounding keypad.
+        backButton.setColorFilter(android.graphics.Color.WHITE);""",
     "keypad delete glyph")
 # Telegram's stock keypad positions the digit at 25% of the full key cell
 # and its letters at 70%. Once the background becomes a centered circle,
@@ -566,6 +579,34 @@ key_text_after = """            // Both text lines share the exact center of the
             }"""
 k = replace_once(k, key_text_before, key_text_after,
     "center keypad number and letters in the circular surface")
+# Pinned Telegram source verified in PR preflight #337:
+#   views[11] = backButton (ImageView);
+#   constructor loops over views and calls setButtonBackground(v, index);
+#   ThemeBind.selectorBackground() wraps/recolors content with listSelector;
+#   updateColors() recolors and rebinds those backgrounds again.
+# Root fix: the stock ThemeBind selector recolors our pressed state gray.
+# Apply stateful NabdhCircleKey directly to only this login keypad's 12 keys.
+# Rest surfaces and native key gesture listeners remain unchanged.
+selector_anchor = (
+    "ThemeBind.selectorBackground(v, getButtonDrawable(index), "
+    "ThemeBind.of(Theme.key_listSelector), "
+    "ThemeBind.alpha(Theme.key_listSelector, 30));"
+)
+if k.count(selector_anchor) != 1:
+    raise SystemExit("Pinned keyboard selector binding changed")
+k = k.replace(selector_anchor,
+    "v.setBackground(getButtonDrawable(index));", 1)
+# Native theme refresh also retints every existing key on selector changes.
+# Replace only its two tint calls, retaining the code that updates key labels.
+native_theme_tints = """                        Theme.setSelectorDrawableColor(v.getBackground(), defaultColor, false);
+                        Theme.setSelectorDrawableColor(v.getBackground(), pressedColor, true);"""
+if k.count(native_theme_tints) != 1:
+    raise SystemExit("Pinned keyboard theme recolor anchor changed")
+k = k.replace(native_theme_tints,
+    "                        setButtonBackground(v, a);", 1)
+if "ThemeBind.selectorBackground(v, getButtonDrawable(index)" in k:
+    raise SystemExit("Key state tint still controlled by Telegram listSelector")
+
 keyboard.write_text(k, encoding="utf-8")
 delete_icon = root / "TMessagesProj/src/main/res/drawable/nabdh_keypad_delete.xml"
 delete_icon.parent.mkdir(parents=True, exist_ok=True)

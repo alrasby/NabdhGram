@@ -61,8 +61,7 @@ modify("ActionBar/SimpleTextView.java", [
                 || current.equals(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
         if (!standard) {
             for (String filename : new String[]{"ReadexPro.ttf", "Vazirmatn.ttf",
-                    "NotoSansArabic.ttf", "NotoSans.ttf", "Tajawal.ttf", "Rubik.ttf",
-                    "DejaVuSansCondensed.ttf", "DejaVuSansCondensed-Bold.ttf"}) {
+                    "NotoSansArabic.ttf", "NotoSans.ttf", "Tajawal.ttf", "Rubik.ttf"}) {
                 Typeface candidate = AndroidUtilities.getTypeface("fonts/" + filename);
                 if (candidate != null && (current.equals(candidate)
                         || current.equals(Typeface.create(candidate, Typeface.NORMAL))

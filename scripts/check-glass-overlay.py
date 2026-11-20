@@ -27,7 +27,7 @@ font_assets = root / "TMessagesProj/src/main/assets/fonts"
 # These five fonts have explicit legacy name checks in both LaunchActivity and
 # AndroidUtilities; modern composite families are verified separately.
 font_files = ("ReadexPro.ttf", "Vazirmatn.ttf", "NotoSansArabic.ttf", "Tajawal.ttf", "Rubik.ttf")
-new_font_files = ("NotoSans.ttf", "DejaVuSansCondensed.ttf", "DejaVuSansCondensed-Bold.ttf")
+new_font_files = ("NotoSans.ttf",)
 noto_fallback = (root / "TMessagesProj/src/main/java/org/telegram/messenger/NabdhNotoFallback.java").read_text(encoding="utf-8")
 localized = (ui / "NabdhStrings.java").read_text(encoding="utf-8")
 feature = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
@@ -238,13 +238,13 @@ checks = {
         "versionView.setOnLongClickListener(v -> {" in native_settings
         and "presentFragment(new DebugSettingsActivity());" in native_settings
         and "openDebugMenu();" not in native_settings,
-    "generated keypad preserves upstream ThemeBind and cached color declarations":
+    "generated keypad preserves native callbacks and turquoise press tint":
         all(token in (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
             for token in ("private static void setButtonBackground(View v, int index)",
                           "private int lastBackButtonColor, lastButtonsSelectorColor;",
-                          "ThemeBind.selectorBackground(v, getButtonDrawable(index)"))
+                          "v.setBackground(getButtonDrawable(index));"))
         and (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8").count(
-            "setButtonBackground(v, a);") == 2,
+            "setButtonBackground(v, a);") >= 2,
     "data/storage English and Arabic toggles follow actual switch hit area":
         "NabdhToggleHitbox.isToggleTap(view, x)" in (ui / "DataSettingsActivity.java").read_text(encoding="utf-8")
         and (ui / "DataSettingsActivity.java").read_text(encoding="utf-8").count("if (nabdhToggleHit)") == 2,
@@ -417,8 +417,9 @@ checks = {
     "all selected fonts bundled": all((font_assets / name).is_file() and (font_assets / name).stat().st_size > 10000 for name in font_files + new_font_files),
     "Noto mixed-script custom font fallback installed": all(
         marker in noto_fallback for marker in (
-            "new Typeface.CustomFallbackBuilder(primary)",
-            ".addCustomFallback(arabicFallback)",
+            "new Typeface.CustomFallbackBuilder(",
+            ".addCustomFallback(new android.graphics.fonts.FontFamily.Builder(arabic).build())",
+            "private static final Typeface[] cachedFaces = new Typeface[4]",
             '.setSystemFallback("sans-serif")',
             "Build.VERSION_CODES.Q",
             "fonts/NotoSans.ttf",
@@ -426,7 +427,10 @@ checks = {
         )
     ) and '"noto-sans".equals(family)' in typefaces,
     "font options mapped to native renderer": all(name in launch for name in font_files),
-    "font options mapped to Telegram typefaces": all(name in typefaces for name in font_files),
+    "font options mapped to Telegram typefaces": all(
+        name in typefaces for name in font_files if name != "NotoSansArabic.ttf"
+    ) and "NabdhNotoFallback.createArabic(" in typefaces
+      and '"noto-sans-arabic".equals(family)' in typefaces,
     "native font choice restored on resume": "nabdhApplyVisibleFonts();" in launch and 'getString("font_family", "system-default")' in launch,
     "native font scan skips editors": "!(view instanceof android.widget.EditText)" in launch,
     "native font scan only when layout dirty": "nabdhFontLayoutListener = () -> nabdhFontDirty = true;" in launch,
@@ -638,15 +642,19 @@ checks["feature category explanations opt into readable body weight"] = (
 checks["new Glass and Intelligence help texts opt into readable body weight"] = (
     feature.count('note.setTag("nabdh:secondary-text");') >= 2
 )
+checks["main title alignment is controlled by user preference, not forced"] = (
+    'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
+    and 'actionBar.setCenterTitleAndGlass(true);' not in dialogs
+)
 checks["dialogs use NabdhGram title rather than upstream Telegram logo span"] = (
     'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
     and 'actionBar.setTitle(ssb, statusDrawable);' not in dialogs
 )
 
-checks["QR button fits below phone input at 48dp height"] = (
-    "nabdhQrButton.setMinWidth(dp(220));" in login_source
-    and "nabdhQrButton.setPadding(dp(24), 0, dp(24), 0);" in login_source
-    and "LayoutHelper.WRAP_CONTENT, 48, Gravity.CENTER_HORIZONTAL, 28, 12, 28, 4" in login_source
+checks["QR button reserves 92dp trailing FAB clearance and flexible height"] = (
+    "nabdhQrButton.setMaxLines(2);" in login_source
+    and "nabdhQrButton.setPadding(dp(12), dp(6), dp(12), dp(6));" in login_source
+    and "LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 36, 12, 92, 4" in login_source
 )
 checks["AppName and default main title use NabdhGram after navigation"] = (
     '<string name="AppName">NabdhGram</string>' in
@@ -698,6 +706,19 @@ for lang in ("values", "values-ar"):
             print("Nearby resource names: " + repr([e.attrib.get("name") for e in strings.findall("string") if "Glass" in e.attrib.get("name", "")]), flush=True)
         checks[f"{lang}: {name} unique"] = found == 1
 
+# Check the actual patched Telegram source rather than matching only an
+# overlay template. Native ThemeBind must not gray out the branded key.
+keyboard_source = (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
+checks["Keypad uses turquoise pressed state with untouched native gestures"] = (
+    "addView(views[11] = backButton);" in keyboard_source
+    and "v.setBackground(getButtonDrawable(index));" in keyboard_source
+    and "setButtonBackground(v, a);" in keyboard_source
+    and "Theme.setSelectorDrawableColor(v.getBackground(), defaultColor, false);" not in keyboard_source
+    and "backButton.setBackground(null)" not in keyboard_source
+    and "backButton.setImageResource(R.drawable.nabdh_keypad_delete);" in keyboard_source
+    and "state_pressed" in keyboard_source
+    and "int active = accent;" in keyboard_source
+)
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):

@@ -17,49 +17,59 @@ import android.os.Build;
 public final class NabdhNotoFallback {
     private NabdhNotoFallback() {}
 
-    public static Typeface create(Context context, boolean bold, boolean italic) {
-        if (context == null) {
-            return Typeface.DEFAULT;
-        }
+    // Noto Sans Arabic is a variable-width font. A moderately condensed
+    // native width avoids the excessively loose Arabic appearance while
+    // retaining its OpenType shaping, ligatures and standard letter spacing.
+    private static final float ARABIC_WIDTH = 87.5f;
+
+    // Both user choices now share one mixed-script family. Its Arabic
+    // glyphs are controlled by the 'wdth' axis; Latin text keeps Latin metrics.
+    public static Typeface createArabic(Context context, boolean bold, boolean italic) {
+        return create(context, bold, italic);
+    }
+
+    // A single process-wide face per weight/slant. Do not allocate a new
+    // CustomFallbackBuilder for every Settings label or chat row.
+    private static final Typeface[] cachedFaces = new Typeface[4];
+
+    public static synchronized Typeface create(Context context, boolean bold, boolean italic) {
+        if (context == null) return Typeface.DEFAULT;
+        final int index = (bold ? 1 : 0) | (italic ? 2 : 0);
+        if (cachedFaces[index] != null) return cachedFaces[index];
         final int weight = bold ? 700 : 400;
         final int style = (bold ? Typeface.BOLD : Typeface.NORMAL)
                 | (italic ? Typeface.ITALIC : Typeface.NORMAL);
+        Typeface result;
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 android.content.res.AssetManager assets = context.getAssets();
                 android.graphics.fonts.Font latin = new android.graphics.fonts.Font.Builder(
                         assets, "fonts/NotoSans.ttf")
                         .setFontVariationSettings("'wght' " + weight)
-                        .setWeight(weight)
-                        .build();
+                        .setWeight(weight).build();
                 android.graphics.fonts.Font arabic = new android.graphics.fonts.Font.Builder(
                         assets, "fonts/NotoSansArabic.ttf")
-                        .setFontVariationSettings("'wght' " + weight)
-                        .setWeight(weight)
-                        .build();
-                android.graphics.fonts.FontFamily primary =
-                        new android.graphics.fonts.FontFamily.Builder(latin).build();
-                android.graphics.fonts.FontFamily arabicFallback =
-                        new android.graphics.fonts.FontFamily.Builder(arabic).build();
-                return new Typeface.CustomFallbackBuilder(primary)
-                        .addCustomFallback(arabicFallback)
+                        .setFontVariationSettings("'wdth' " + ARABIC_WIDTH + ", 'wght' " + weight)
+                        .setWeight(weight).build();
+                result = new Typeface.CustomFallbackBuilder(
+                        new android.graphics.fonts.FontFamily.Builder(latin).build())
+                        .addCustomFallback(new android.graphics.fonts.FontFamily.Builder(arabic).build())
                         .setSystemFallback("sans-serif")
                         .setStyle(new android.graphics.fonts.FontStyle(weight,
-                                italic
-                                        ? android.graphics.fonts.FontStyle.FONT_SLANT_ITALIC
+                                italic ? android.graphics.fonts.FontStyle.FONT_SLANT_ITALIC
                                         : android.graphics.fonts.FontStyle.FONT_SLANT_UPRIGHT))
                         .build();
+            } else {
+                // API 21-28 cannot build native multi-family fallbacks.
+                Typeface latin = Typeface.createFromAsset(
+                        context.getAssets(), "fonts/NotoSans.ttf");
+                result = Typeface.create(latin, style);
             }
-            // API 21-28: CustomFallbackBuilder is unavailable. Android's native
-            // sans-serif fallback still displays Arabic and other unsupported
-            // scripts, though it may not use the bundled Noto Arabic face.
-            Typeface latin = Typeface.createFromAsset(
-                    context.getAssets(), "fonts/NotoSans.ttf");
-            return Typeface.create(latin, style);
         } catch (java.io.IOException | RuntimeException failure) {
-            // An unavailable/corrupt asset must never crash the app or login UI.
-            // Keep system script coverage intact with native Android fallback.
-            return Typeface.create("sans-serif", style);
+            result = Typeface.create("sans-serif", style);
         }
+        cachedFaces[index] = result;
+        return result;
     }
+
 }

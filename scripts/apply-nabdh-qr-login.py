@@ -27,11 +27,33 @@ fields = """
     private AlertDialog nabdhQrDialog;
     private android.widget.ImageView nabdhQrCodeView;
     private android.widget.TextView nabdhQrStatusView;
+    private android.widget.ProgressBar nabdhQrProgressView;
     private int nabdhQrRequestId = -1;
     private int nabdhQrGeneration;
     private boolean nabdhQrWaiting;
     private boolean nabdhQrApprovalPending;
     private Runnable nabdhQrRefresh;
+
+    private void nabdhSetQrLoading(boolean loading) {
+        if (nabdhQrProgressView != null) {
+            nabdhQrProgressView.setVisibility(loading ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    // Manual Refresh must work even when the previous export has stalled.
+    // Cancel and invalidate that request before making exactly one new one.
+    private void nabdhRetryQrToken() {
+        if (nabdhQrDialog == null || !nabdhQrDialog.isShowing()) return;
+        nabdhQrGeneration++;
+        nabdhCancelQrTimeout();
+        if (nabdhQrRequestId >= 0) {
+            getConnectionsManager().cancelRequest(nabdhQrRequestId, true);
+            nabdhQrRequestId = -1;
+        }
+        nabdhQrWaiting = false;
+        nabdhQrApprovalPending = false;
+        nabdhRequestQrToken();
+    }
     // The server may not answer on restricted networks. Never show an
     // endless loading panel; this watchdog does NOT resend automatically.
     private Runnable nabdhQrRequestTimeout;
@@ -60,6 +82,7 @@ fields = """
                 getConnectionsManager().cancelRequest(expiredRequestId, true);
             }
             nabdhQrCodeView.setImageDrawable(null);
+            nabdhSetQrLoading(false);
             nabdhQrStatusView.setText(R.string.NabdhQrLoginTimeout);
         };
         AndroidUtilities.runOnUIThread(nabdhQrRequestTimeout, NABDH_QR_TIMEOUT_MS);
@@ -85,6 +108,7 @@ fields = """
         nabdhQrApprovalPending = false;
         nabdhQrCodeView = null;
         nabdhQrStatusView = null;
+        nabdhQrProgressView = null;
         nabdhQrDialog = null;
     }
 
@@ -103,7 +127,17 @@ fields = """
         nabdhQrCodeView.setAdjustViewBounds(true);
         nabdhQrCodeView.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
         nabdhQrCodeView.setContentDescription(context.getString(R.string.NabdhQrLoginTitle));
-        panel.addView(nabdhQrCodeView, new android.widget.LinearLayout.LayoutParams(dp(224), dp(224)));
+        // The progress indicator occupies the QR area while the server token
+        // is pending, so the user sees a real loading state, not a blank panel.
+        android.widget.FrameLayout qrStage = new android.widget.FrameLayout(context);
+        qrStage.addView(nabdhQrCodeView, new android.widget.FrameLayout.LayoutParams(
+                dp(224), dp(224), Gravity.CENTER));
+        nabdhQrProgressView = new android.widget.ProgressBar(context);
+        android.widget.FrameLayout.LayoutParams spinnerParams =
+                new android.widget.FrameLayout.LayoutParams(dp(36), dp(36), Gravity.CENTER);
+        qrStage.addView(nabdhQrProgressView, spinnerParams);
+        nabdhQrProgressView.setVisibility(View.GONE);
+        panel.addView(qrStage, new android.widget.LinearLayout.LayoutParams(dp(224), dp(224)));
 
         nabdhQrStatusView = new android.widget.TextView(context);
         nabdhQrStatusView.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 14);
@@ -127,7 +161,7 @@ fields = """
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
         retryParams.topMargin = dp(12);
         panel.addView(retry, retryParams);
-        retry.setOnClickListener(view -> nabdhRequestQrToken());
+        retry.setOnClickListener(view -> nabdhRetryQrToken());
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle(context.getString(R.string.NabdhQrLoginTitle));
@@ -172,12 +206,15 @@ fields = """
         // Manual Refresh works again when connectivity is restored.
         if (!org.telegram.messenger.ApplicationLoader.isNetworkOnline()) {
             nabdhQrStatusView.setText(R.string.NabdhQrLoginOffline);
+            nabdhSetQrLoading(false);
             nabdhQrCodeView.setImageDrawable(null);
             return;
         }
         nabdhQrWaiting = true;
         final int generation = ++nabdhQrGeneration;
         nabdhQrStatusView.setText(R.string.NabdhQrLoginLoading);
+        nabdhQrCodeView.setImageDrawable(null);
+        nabdhSetQrLoading(true);
         getConnectionsManager().checkConnection();
         getConnectionsManager().resumeNetworkMaybe();
         nabdhWatchQrRequest(generation);
@@ -201,6 +238,7 @@ fields = """
                     nabdhCancelQrTimeout();
                     nabdhQrRequestId = -1;
                     nabdhQrWaiting = false;
+                    nabdhSetQrLoading(false);
                     if (nabdhQrApprovalPending && error == null
                             && response instanceof TLRPC.TL_auth_loginToken) {
                         // A scan arrived while the old request was pending;
@@ -232,6 +270,7 @@ fields = """
                 android.graphics.Bitmap bitmap = writer.encode(url, 512, 512, hints, null);
                 if (bitmap == null) throw new IllegalStateException("QR rendering failed");
                 nabdhQrCodeView.setImageBitmap(bitmap);
+                nabdhSetQrLoading(false);
                 nabdhQrStatusView.setText(R.string.NabdhQrLoginInstructions);
             } catch (Exception exception) {
                 // Local QR bitmap failure is distinct from a server timeout.
@@ -265,6 +304,7 @@ fields = """
                         nabdhCancelQrTimeout();
                         nabdhQrRequestId = -1;
                         nabdhQrWaiting = false;
+                        nabdhSetQrLoading(false);
                         nabdhProcessQrToken(result, importError, generation, flags);
                     }), flags);
         } else if (response instanceof TLRPC.TL_auth_loginTokenSuccess) {
@@ -334,12 +374,15 @@ once(
                 TextView nabdhQrButton = new TextView(context);
                 nabdhQrButton.setText(R.string.NabdhQrLoginButton);
                 nabdhQrButton.setGravity(Gravity.CENTER);
-                nabdhQrButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+                nabdhQrButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
                 nabdhQrButton.setTypeface(AndroidUtilities.bold());
+                // Let translated text wrap instead of clipping at larger font scales.
+                nabdhQrButton.setSingleLine(false);
+                nabdhQrButton.setMaxLines(2);
+                nabdhQrButton.setMinHeight(dp(48));
                 nabdhQrButton.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-                // Change horizontal size only: keep its 52dp touch height.
-                nabdhQrButton.setMinWidth(dp(220));
-                nabdhQrButton.setPadding(dp(24), 0, dp(24), 0);
+                // Use the available form width; no fixed 220dp text bottleneck.
+                nabdhQrButton.setPadding(dp(12), dp(6), dp(12), dp(6));
                 nabdhQrButton.setBackground(
                         org.telegram.ui.Components.NabdhGlassRowDecoration.newCardBackground());
                 nabdhQrButton.setContentDescription(context.getString(R.string.NabdhQrLoginButton));
@@ -362,6 +405,8 @@ once(
                                 getString(R.string.NabdhQrLoginError));
                     }
                 });
+                // Reserve the trailing edge for the floating Continue button.
+                // A narrower QR action must never appear behind the FAB.
                 // Keep the phone form's top title/country/number rhythm intact.
                 // The independent QR action sits BELOW the phone number input
                 // as requested, while it never validates that field.
@@ -370,7 +415,7 @@ once(
                     throw new IllegalStateException("Phone input is not attached");
                 }
                 addView(nabdhQrButton, phoneInputIndex + 1, LayoutHelper.createLinear(
-                        LayoutHelper.WRAP_CONTENT, 48, Gravity.CENTER_HORIZONTAL, 28, 12, 28, 4));
+                        LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 36, 12, 92, 4));
             }""",
     "phone form QR button")
 once("    public void onFragmentDestroy() {\n        super.onFragmentDestroy();",

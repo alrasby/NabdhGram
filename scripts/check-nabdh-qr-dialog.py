@@ -28,6 +28,13 @@ def check(text):
         "NABDH_QR_TIMEOUT_MS = 20000L",
         "nabdhCancelQrTimeout();",
         "NabdhQrLoginTimeout",
+        "retry.setOnClickListener(view -> nabdhRetryQrToken());",
+        "private void nabdhRetryQrToken()",
+        "getConnectionsManager().cancelRequest(nabdhQrRequestId, true);",
+        "nabdhQrGeneration++;",
+        "nabdhSetQrLoading(true);",
+        "nabdhSetQrLoading(false);",
+        "qrStage.addView(nabdhQrProgressView, spinnerParams);",
     )
     for marker in required:
         if text.count(marker) < 1:
@@ -63,12 +70,21 @@ def self_test():
         "NABDH_QR_TIMEOUT_MS = 20000L",
         "nabdhCancelQrTimeout();",
         "NabdhQrLoginTimeout",
+        "retry.setOnClickListener(view -> nabdhRetryQrToken());",
+        "private void nabdhRetryQrToken()",
+        "getConnectionsManager().cancelRequest(nabdhQrRequestId, true);",
+        "nabdhQrGeneration++;",
+        "nabdhSetQrLoading(true);",
+        "nabdhSetQrLoading(false);",
+        "qrStage.addView(nabdhQrProgressView, spinnerParams);",
     ))
     check(fixture)
     for bad in (
         fixture.replace("showDialog(dialog, dismissed -> {", "showDialog(dialog);"),
         fixture + "\ndialog.setOnDismissListener(ignored ->",
         fixture + "\nFileLog.d(url)",
+        fixture.replace("retry.setOnClickListener(view -> nabdhRetryQrToken());",
+                        "retry.setOnClickListener(view -> nabdhRequestQrToken());"),
     ):
         try:
             check(bad)

@@ -125,6 +125,12 @@ assert 'backButtonSelectorColor = applySelectorBackground(backButtonView' in log
 assert 'new int[]{0xFFDCF7F6, 0xFF20C6BE, accent}' in login_overlay, "The branded login button must have a silver-to-turquoise gradient"
 assert 'if (index == 11)' in login_overlay and 'new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent}' in login_overlay, "Delete circle does not match the NabdhGram logo palette"
 assert 'backButton.setColorFilter(android.graphics.Color.WHITE);' in login_overlay, "Delete glyph is not theme accent"
+assert '"v.setBackground(getButtonDrawable(index));"' in login_overlay, "Phone keypad must use turquoise pressed-state drawable"
+assert 'Theme.setSelectorDrawableColor(v.getBackground(), defaultColor, false);' in login_overlay, "Theme recoloring source anchor must be explicitly patched"
+assert 'setButtonBackground(v, a);' in login_overlay, "Native theme update must restore direct branded drawables"
+assert 'backButton.setBackground(null)' not in login_overlay, "Regression: white backspace glyph hidden on transparent background"
+assert '((View) parent).setBackground(' not in login_overlay, "Regression: keypad parent must never be restyled"
+assert 'backButton.setImageResource(R.drawable.nabdh_keypad_delete)' in login_overlay, "Backspace glyph missing"
 empty_script = (ROOT / "scripts/apply-nabdh-empty-state.py").read_text(encoding="utf-8")
 assert "branding/approved/nabdhgram-welcome-transparent.png" in empty_script and "R.drawable.nabdh_empty_logo" in empty_script, "Approved empty-chat branding is missing"
 assert "Theme.key_windowBackgroundWhite" in login_overlay, "Keypad surface must follow theme"
@@ -230,6 +236,10 @@ assert "view instanceof org.telegram.ui.Cells.AboutLinkCell" in native_surfaces,
 global_fonts = (ROOT / "scripts/apply-glass-global-textviews.py").read_text(encoding="utf-8")
 assert "nabdhContainsArabic(label.getText())" in global_fonts and "nabdhExpectedTextFaces" in global_fonts, "Arabic settings must follow font changes despite native custom faces"
 assert "nabdhExpectedAnimatedFaces" in global_fonts, "Animated native labels need rebinding drift detection"
+assert 'NabdhNotoFallback.createArabic(' in global_fonts and 'NabdhNotoFallback.create(' in global_fonts, "Visible settings bypass Noto script-aware font fallback"
+assert '"noto-sans-arabic".equals(family) ? "NotoSansArabic.ttf"' not in global_fonts, "Raw Noto Arabic font must not control Latin UI line metrics"
+assert 'if (compositeNoto)' in global_fonts, "Noto composite typeface is reconstructed and may lose fallback"
+
 assert "final boolean telegramTextFace" in global_fonts, "Telegram-native typefaces excluded from UI scale"
 assert '"nabdh:secondary-text".equals(label.getTag())' in global_fonts, "Global bold still destroys explanatory text hierarchy"
 assert 'description.setTag("nabdh:secondary-text");' in (ROOT / "scripts/apply-glass-final-screens.py").read_text(encoding="utf-8"), "Final Settings card builder must preserve readable description weight"
@@ -252,7 +262,7 @@ assert "codeFieldContainer.codeField.length * 45L + 180L" in login_overlay, "Cor
 assert "contentView.setBackground(" in native_surfaces and "listView.adapter.setApplyBackground(false);" in native_surfaces, "Account root must be opaque and native white row fill disabled"
 assert "setNabdhBorderless(boolean enabled)" in finishing_ui and "if (!nabdhBorderless)" in finishing_ui, "Phone and country must use borderless native renderer"
 assert "setNabdhBorderless(true)" in finishing_ui, "Login phone and country must explicitly opt in to borderless fields"
-assert "LayoutHelper.WRAP_CONTENT, 48, Gravity.CENTER_HORIZONTAL, 28, 12, 28, 4" in (ROOT / "scripts/apply-nabdh-qr-login.py").read_text(encoding="utf-8"), "QR login must shrink horizontally"
+assert "LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 36, 12, 92, 4" in (ROOT / "scripts/apply-nabdh-qr-login.py").read_text(encoding="utf-8"), "QR login must shrink horizontally"
 assert '<string name="AppName">NabdhGram</string>' in (ROOT / "scripts/apply-identity.py").read_text(encoding="utf-8"), "In-app AppName remains Telegram"
 assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Main dialogs title still unbranded"
 assert "private void nabdhRestoreChatTitle()" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "MainTabs host can still reintroduce native Telegram title"
