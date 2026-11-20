@@ -701,6 +701,22 @@ for lang in ("values", "values-ar"):
             print("Nearby resource names: " + repr([e.attrib.get("name") for e in strings.findall("string") if "Glass" in e.attrib.get("name", "")]), flush=True)
         checks[f"{lang}: {name} unique"] = found == 1
 
+# TEMPORARY keypad-source diagnosis: inspect the exact pinned/upstream
+# generated Java rather than guessing which native view owns Backspace.
+keyboard_java = (ui / "Components/CustomPhoneKeyboardView.java").read_text(encoding="utf-8")
+keyboard_lines = keyboard_java.splitlines()
+locations = [i for i, line in enumerate(keyboard_lines)
+             if ("backButton" in line or "getButtonDrawable(" in line
+                 or "setButtonBackground(" in line or "lastBackButtonColor" in line)]
+observed = set()
+print("NABDH_KEYPAD_DIAGNOSTIC_BEGIN", flush=True)
+for position in locations[:55]:
+    for i in range(max(0, position-3), min(len(keyboard_lines), position+5)):
+        if i not in observed:
+            print(f"KEYPAD {i+1}: {keyboard_lines[i]}", flush=True)
+            observed.add(i)
+print("NABDH_KEYPAD_DIAGNOSTIC_END", flush=True)
+
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):
