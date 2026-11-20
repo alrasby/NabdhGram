@@ -709,7 +709,7 @@ checks["Backspace is independently themed and never retinted by ThemeBind"] = (
     and "if (index == 11) {" in keyboard_source
     and "v.setBackground(getButtonDrawable(11));" in keyboard_source
     and "if (a == 11)" in keyboard_source
-    and "setButtonBackground(v, 11);" in keyboard_source
+    and "setButtonBackground(backButton, 11);" in keyboard_source
     and "backButton.setBackground(null)" not in keyboard_source
     and "backButton.setImageResource(R.drawable.nabdh_keypad_delete);" in keyboard_source
 )
