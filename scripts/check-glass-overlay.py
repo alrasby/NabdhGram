@@ -751,12 +751,17 @@ checks["opt-in symmetric no-tail card uses real message renderer"] = (
     and "currentType == TYPE_TEXT || currentType == TYPE_MEDIA" in bubble_source
 )
 
-# One-time source probe for native Telegram folder count badge paints.
-folder_source = (ui / "Components/FilterTabsView.java").read_text(encoding="utf-8").splitlines()
-for i, line in enumerate(folder_source):
-    if ("counter" in line.lower() or "badge" in line.lower() or "unread" in line.lower() or "countText" in line):
-        if any(tok in line for tok in ("setColor", "getColor", "drawRoundRect", "drawCircle", "drawText", "Paint(", "getThemedColor", "Theme.key", "counterPaint", "counterText", "badgePaint")):
-            print(f"NABDH_FOLDER_COUNT {i+1}: {line}", flush=True)
+folder_source = (ui / "Components/FilterTabsView.java").read_text(encoding="utf-8")
+checks["native reorder stays inside rounded card without rectangular light gradient"] = (
+    "getPaintReorderGradient();" not in reorder_source[reorder_source.index("if (drawReorder || reorderIconProgress != 0)") :
+                                             reorder_source.index("final float pollVotesMentionsVisibility")]
+    and "for (int dragLine = 0; dragLine < 3; dragLine++)" in reorder_source
+)
+checks["folder counter numerals contrast against current badge fill"] = (
+    "final int badgeFill = counterPaint.getColor();" in folder_source
+    and "textCounterPaint.setColor(Math.abs(badgeLuma - surfaceLuma)" in folder_source
+    and "Theme.key_windowBackgroundWhiteBlackText, resourcesProvider" in folder_source
+)
 
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
