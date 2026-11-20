@@ -126,7 +126,7 @@ assert 'new int[]{0xFFDCF7F6, 0xFF20C6BE, accent}' in login_overlay, "The brande
 assert 'if (index == 11)' in login_overlay and 'new int[]{0xFFEAF9F8, 0xFF1DBFB8, accent}' in login_overlay, "Delete circle does not match the NabdhGram logo palette"
 assert 'backButton.setColorFilter(android.graphics.Color.WHITE);' in login_overlay, "Delete glyph is not theme accent"
 assert 'v.setBackground(getButtonDrawable(11));' in login_overlay, "Backspace must have its branded circle without ThemeBind tinting"
-assert 'if (a == 11)' in login_overlay and 'setButtonBackground(v, 11);' in login_overlay, "Native theme update must exclude the backspace tint"
+assert 'if (a == 11)' in login_overlay and 'setButtonBackground(backButton, 11);' in login_overlay, "Native theme update must exclude the backspace tint"
 assert 'backButton.setBackground(null)' not in login_overlay, "Regression: white backspace glyph hidden on transparent background"
 assert '((View) parent).setBackground(' not in login_overlay, "Regression: keypad parent must never be restyled"
 assert 'backButton.setImageResource(R.drawable.nabdh_keypad_delete)' in login_overlay, "Backspace glyph missing"
