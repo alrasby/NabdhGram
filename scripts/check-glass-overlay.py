@@ -767,14 +767,17 @@ checks["folder counter numerals contrast against current badge fill"] = (
 # and whether notifications already carry Automotive messaging semantics.
 import re
 source_spec = (
-    ("STORY_TITLE", "Stories/DialogStoriesCell.java", r"telegramLogoView\\.|titleView\\.|setAlpha\\(|getTextLogoColor|setVisibility\\(", 3),
-    ("NOTIFY", "../messenger/NotificationsController.java", r"MessagingStyle|RemoteInput|markAsRead|mark.*Read|reply|REPLY|NotificationCompat|setStyle\\(", 2),
-    ("MANIFEST", "../../AndroidManifest.xml", r"android.auto|automotive|car.application|<application", 1),
+    ("STORY_TITLE", "Stories/DialogStoriesCell.java",
+     ("telegramLogoView.", "titleView.", "setAlpha(", "getTextLogoColor", "setVisibility("), 3),
+    ("NOTIFY", "../messenger/NotificationsController.java",
+     ("MessagingStyle", "RemoteInput", "markAsRead", "mark", "reply", "REPLY", "NotificationCompat", "setStyle("), 2),
+    ("MANIFEST", "../../AndroidManifest.xml",
+     ("android.auto", "automotive", "car.application", "<application"), 1),
 )
-for label, rel, regex, span in source_spec:
+for label, rel, needles, span in source_spec:
     path = ui / rel
     lines = path.read_text(encoding="utf-8").splitlines()
-    hits = [j for j, line in enumerate(lines) if re.search(regex, line)]
+    hits = [j for j, line in enumerate(lines) if any(n in line for n in needles)]
     print("NABDH_DIAG_START",label,"hits",len(hits),flush=True)
     shown = set()
     for j in hits[:70]:
