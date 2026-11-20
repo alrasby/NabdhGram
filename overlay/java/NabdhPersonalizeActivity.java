@@ -194,6 +194,12 @@ public final class NabdhPersonalizeActivity extends Activity {
             bubble("Compact", "مضغوطة", 12);
             bubble("Soft rounded", "دائرية ناعمة", 19);
             bubble("Extra rounded", "دائرية واسعة", 24);
+            // Independent, opt-in geometry choice. Existing radius choices,
+            // imported themes and native chat behaviors stay unchanged.
+            toggle("bubble_no_tail", "Full card · no tail",
+                    "بطاقة كاملة بدون ذيل",
+                    "Uniform rounded corners on received and sent messages",
+                    "زوايا موحدة على جميع أطراف الرسائل الواردة والصادرة");
         } else {
             header("Camera2 photo settings", "إعدادات صور Camera2");
             toggle("camera_remember", "Remember last lens", "تذكر آخر عدسة",
