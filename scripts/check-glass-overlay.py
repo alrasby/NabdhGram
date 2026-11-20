@@ -728,23 +728,28 @@ checks["Keypad uses turquoise pressed state with untouched native gestures"] = (
     and "state_pressed" in keyboard_source
     and "int active = accent;" in keyboard_source
 )
-# One-time targeted source inspection for adaptive selection-toolbar tint.
-import re
-for label, relative in (
-    ("ACTION_TINT", "ActionBar/ActionBar.java"),
-    ("DIALOG_TINT", "DialogsActivity.java"),
-):
-    rows = (ui / relative).read_text(encoding="utf-8").splitlines()
-    candidates = [i for i, line in enumerate(rows)
-                  if re.search(r"setItemsColor|itemsActionModeColor|actionBarActionModeDefaultIcon|setActionModeColor|setActionModeTopColor", line)]
-    print("NABDH_COLOR_START", label, len(candidates), flush=True)
-    printed = set()
-    for spot in candidates[:18]:
-        for i in range(max(0,spot-4),min(len(rows),spot+8)):
-            if i not in printed:
-                print(f"NABDH_COLOR {label} {i+1}: {rows[i]}",flush=True)
-                printed.add(i)
-    print("NABDH_COLOR_END", label, flush=True)
+# Verify generated pinned Telegram source rather than only overlay text.
+selection_source = (ui / "DialogsActivity.java").read_text(encoding="utf-8")
+reorder_source = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
+bubble_source = (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
+bubble_settings = (ui / "NabdhPersonalizeActivity.java").read_text(encoding="utf-8")
+checks["selection toolbar icon and count colors adapt to light/dark themes"] = (
+    "ThemeBind.actionBarItemsColor(actionBar, Theme.key_windowBackgroundWhiteBlackText, getResourceProvider(), true);" in selection_source
+    and "ThemeBind.colorFilter(actionModeCloseView, Theme.key_windowBackgroundWhiteBlackText" in selection_source
+    and selection_source.count("selectedDialogsCountTextView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText))") == 2
+)
+checks["pinned chat reorder grip theme-aware and does not change drag callbacks"] = (
+    "for (int dragLine = 0; dragLine < 3; dragLine++)" in reorder_source
+    and "Theme.key_windowBackgroundWhiteBlueText, resourcesProvider" in reorder_source
+    and "Theme.dialogs_reorderDrawable.draw(canvas);" not in reorder_source
+)
+checks["opt-in symmetric no-tail card uses real message renderer"] = (
+    '"bubble_no_tail"' in bubble_settings
+    and '"bubble_no_tail"' in bubble_source
+    and "nabdhNoTailBounds.set(bounds.left + dp(2)" in bubble_source
+    and "canvas.drawRoundRect(nabdhNoTailBounds, radius, radius, nabdhNoTailPaint);" in bubble_source
+    and "currentType == TYPE_TEXT || currentType == TYPE_MEDIA" in bubble_source
+)
 
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
