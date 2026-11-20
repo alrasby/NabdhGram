@@ -621,17 +621,24 @@ for at in range(brace_open, len(k)):
 if update_end < 0:
     raise SystemExit("Pinned updateColors method body missing")
 update_block = k[update_start:update_end]
-loop_anchor = "for (int a = 0; a < views.length; a++) {"
-null_anchor = "if (v == null) continue;"
-if update_block.count(loop_anchor) != 1 or update_block.count(null_anchor) != 1:
-    raise SystemExit("Pinned updateColors key iteration changed")
-update_block = update_block.replace(null_anchor,
-    null_anchor + """
-                if (a == 11) {
-                    // Restore only Backspace's branded circle after theme changes.
-                    setButtonBackground(v, 11);
-                    continue;
-                }""", 1)
+# The native loop's spacing and null-guard form differ between pinned
+# revisions. Locate its semantic for-loop, not a brittle text literal.
+import re
+loop_matches = list(re.finditer(
+    r"for\\s*\\(\\s*int\\s+a\\s*=\\s*0\\s*;\\s*a\\s*<\\s*views\\.length\\s*;\\s*a\\+\\+\\s*\\)\\s*\\{",
+    update_block))
+if len(loop_matches) != 1:
+    raise SystemExit("Pinned updateColors views loop changed: " +
+                     repr(update_block[:1800]))
+loop_close = loop_matches[0].end()
+update_block = (update_block[:loop_close] + """
+            // Backspace is intentionally not passed through listSelector
+            // recoloring; preserve its original icon/touch callbacks.
+            if (a == 11) {
+                setButtonBackground(backButton, 11);
+                continue;
+            }
+""" + update_block[loop_close:])
 k = k[:update_start] + update_block + k[update_end:]
 if k.count("if (index == 11)") < 2 or "if (a == 11)" not in update_block:
     raise SystemExit("Backspace theme exemption failed")
