@@ -713,6 +713,20 @@ checks["Backspace is independently themed and never retinted by ThemeBind"] = (
     and "backButton.setBackground(null)" not in keyboard_source
     and "backButton.setImageResource(R.drawable.nabdh_keypad_delete);" in keyboard_source
 )
+# One-time diagnostics for centered title and pressed-key theme binding.
+diagnose_files = {
+    "DIALOGS_TITLE": (ui / "DialogsActivity.java", "actionBar.setTitle"),
+    "KEYPAD_THEME": (ui / "Components/CustomPhoneKeyboardView.java", "public void updateColors()"),
+}
+for label, (source_path, needle) in diagnose_files.items():
+    lines = source_path.read_text(encoding="utf-8").splitlines()
+    indexes = [i for i, line in enumerate(lines) if needle in line]
+    for start in indexes[:5]:
+        print(f"NABDH_DIAG_{label}_BEGIN", flush=True)
+        for n in range(max(0, start-12), min(len(lines), start+(72 if label == "KEYPAD_THEME" else 18))):
+            print(f"NABDH_DIAG {source_path.name}:{n+1} {lines[n]}", flush=True)
+        print(f"NABDH_DIAG_{label}_END", flush=True)
+
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):
