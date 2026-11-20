@@ -20,15 +20,15 @@ replacement = """                // A badge's fill is animated between active/in
                             Theme.key_windowBackgroundWhite, resourcesProvider);
                     final int themeInk = Theme.getColor(
                             Theme.key_windowBackgroundWhiteBlackText, resourcesProvider);
-                    final float badgeLuma = (Color.red(badgeFill) * 0.2126f
-                            + Color.green(badgeFill) * 0.7152f
-                            + Color.blue(badgeFill) * 0.0722f);
-                    final float surfaceLuma = (Color.red(themeSurface) * 0.2126f
-                            + Color.green(themeSurface) * 0.7152f
-                            + Color.blue(themeSurface) * 0.0722f);
-                    final float inkLuma = (Color.red(themeInk) * 0.2126f
-                            + Color.green(themeInk) * 0.7152f
-                            + Color.blue(themeInk) * 0.0722f);
+                    final float badgeLuma = (android.graphics.Color.red(badgeFill) * 0.2126f
+                            + android.graphics.Color.green(badgeFill) * 0.7152f
+                            + android.graphics.Color.blue(badgeFill) * 0.0722f);
+                    final float surfaceLuma = (android.graphics.Color.red(themeSurface) * 0.2126f
+                            + android.graphics.Color.green(themeSurface) * 0.7152f
+                            + android.graphics.Color.blue(themeSurface) * 0.0722f);
+                    final float inkLuma = (android.graphics.Color.red(themeInk) * 0.2126f
+                            + android.graphics.Color.green(themeInk) * 0.7152f
+                            + android.graphics.Color.blue(themeInk) * 0.0722f);
                     textCounterPaint.setColor(Math.abs(badgeLuma - surfaceLuma)
                             > Math.abs(badgeLuma - inkLuma) ? themeSurface : themeInk);
                 }
