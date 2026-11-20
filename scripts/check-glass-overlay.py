@@ -642,6 +642,10 @@ checks["feature category explanations opt into readable body weight"] = (
 checks["new Glass and Intelligence help texts opt into readable body weight"] = (
     feature.count('note.setTag("nabdh:secondary-text");') >= 2
 )
+checks["main title is geometrically centered with native ActionBar"] = (
+    dialogs.count('actionBar.setCenterTitleAndGlass(true);') == 2
+    and 'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
+)
 checks["dialogs use NabdhGram title rather than upstream Telegram logo span"] = (
     'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
     and 'actionBar.setTitle(ssb, statusDrawable);' not in dialogs
@@ -715,16 +719,6 @@ checks["Keypad uses turquoise pressed state with untouched native gestures"] = (
     and "state_pressed" in keyboard_source
     and "int active = accent;" in keyboard_source
 )
-# One-time read-only diagnostics: obtain the native ActionBar centering API.
-dialog_lines = (ui / "DialogsActivity.java").read_text(encoding="utf-8").splitlines()
-for n, line in enumerate(dialog_lines):
-    if ('NabdhGram' in line or 'setTitleCentered' in line or 'titleTextView' in line
-            or ('setTitle' in line and n > 3390 and n < 3500)):
-        print(f"NABDH_DIALOGS_TITLE {n+1}: {line}", flush=True)
-actionbar_lines = (ui / "ActionBar/ActionBar.java").read_text(encoding="utf-8").splitlines()
-for n, line in enumerate(actionbar_lines):
-    if ("title" in line.lower() and "center" in line.lower()) or "setTitleCentered" in line:
-        print(f"NABDH_ACTIONBAR_CENTER {n+1}: {line}", flush=True)
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):
