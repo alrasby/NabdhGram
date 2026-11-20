@@ -429,17 +429,4 @@ modify("ActionBar/MessageDrawable.java", [
         1
     ),
 ])
-# Center the *main* NabdhGram title in the entire native ActionBar.
-# Telegram's centerTitle() centers only the title TextView's gravity;
-# setCenterTitleAndGlass(true) also centers the actual title layout geometry.
-# Keep selection, archive, search, and contextual titles untouched.
-dialogs = ui / "DialogsActivity.java"
-dialogs_source = dialogs.read_text(encoding="utf-8")
-main_title = 'actionBar.setTitle("NabdhGram", statusDrawable);'
-if dialogs_source.count(main_title) != 2:
-    raise SystemExit("NabdhGram main title anchors changed; refuse to center unrelated screens")
-dialogs_source = dialogs_source.replace(main_title,
-    main_title + '\n                actionBar.setCenterTitleAndGlass(true);')
-dialogs.write_text(dialogs_source, encoding="utf-8")
-
 print("NabdhGram v1: fixed RTL badge placement, native settings Glass, login input surfaces, solid chat bubbles.")
