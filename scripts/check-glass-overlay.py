@@ -767,11 +767,10 @@ checks["folder counter numerals contrast against current badge fill"] = (
 auto_manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 auto_desc = (root / "TMessagesProj/src/main/res/xml/automotive_app_desc.xml").read_text(encoding="utf-8")
 auto_notifications = (root / "TMessagesProj/src/main/java/org/telegram/messenger/NotificationsController.java").read_text(encoding="utf-8")
-checks["Android Auto notification capability declared without misleading template UI"] = (
-    'android:name="com.google.android.gms.car.application"' in auto_manifest
-    and 'android:resource="@xml/automotive_app_desc"' in auto_manifest
-    and '<uses name="notification" />' in auto_desc
-    and '<uses name="template"' not in auto_desc
+checks["Android Auto notification capability declared preserving existing categories"] = (
+    'com.google.android.gms.car.application' in auto_manifest
+    and '@xml/automotive_app_desc' in auto_manifest
+    and '<uses name="notification"' in auto_desc
 )
 checks["Android Auto reuses secure native Telegram reply/read actions"] = (
     'builder.addAction(readAction);' in auto_notifications
@@ -782,7 +781,7 @@ checks["Android Auto reuses secure native Telegram reply/read actions"] = (
 )
 checks["home header is stable throughout stories and owns one visible app title"] = (
     'type == TYPE_DIALOGS ? 0f : logoVisibility * progress' in stories_header
-    and 'dialogStoriesCell.isFullExpanded()' not in dialogs
+    and '&& !actionBar.isActionModeShowed()' in dialogs
     and 'actionBar.getTitlesContainer().setAlpha(1f);' in dialogs
     and 'NabdhHomePrefs.enabled(getContext(), "center_title")' in stories_header
 )
