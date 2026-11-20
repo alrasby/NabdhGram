@@ -732,7 +732,7 @@ checks["Keypad uses turquoise pressed state with untouched native gestures"] = (
 for source_name, rel, pattern, width in (
     ("ACTIONBAR", "ActionBar/ActionBar.java", r"actionMode|ActionMode|actionBarActionModeDefaultIcon|setColorFilter", 4),
     ("DIALOGCELL", "Cells/DialogCell.java", r"reorder|Reorder|pin.*button|draw.*Pin|drag", 6),
-    ("BUBBLEDRAW", "ActionBar/MessageDrawable.java", r"makePath\\(|drawRoundRect|isOut|drawPath|NinePatch|drawRadius|drawBubble", 4),
+    ("BUBBLEDRAW", "ActionBar/MessageDrawable.java", r"makePath\(|drawRoundRect|isOut|drawPath|NinePatch|drawRadius|drawBubble", 4),
 ):
     import re
     src = (ui / rel).read_text(encoding="utf-8").splitlines()
