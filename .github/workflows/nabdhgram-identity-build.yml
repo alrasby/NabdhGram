@@ -550,6 +550,13 @@ jobs:
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-security-hardening.py
           python3 nabdhgram/scripts/apply-nabdh-security-hardening.py Telegram-upstream
 
+      - name: Enable secure Android Auto notification messaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-android-auto.py
+          python3 nabdhgram/scripts/apply-nabdh-android-auto.py Telegram-upstream
+
       - name: Verify NabdhGram Glass overlays before Gradle
         shell: bash
         run: |
