@@ -515,6 +515,7 @@ jobs:
           set -euo pipefail
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-personalization.py
           python3 nabdhgram/scripts/apply-nabdh-personalization.py Telegram-upstream
+          python3 nabdhgram/scripts/apply-nabdh-folder-badge-contrast.py Telegram-upstream
 
       - name: Hide unready V1 feature tiles without deleting future implementation
         shell: bash
