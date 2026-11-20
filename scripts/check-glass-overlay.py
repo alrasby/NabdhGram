@@ -642,9 +642,9 @@ checks["feature category explanations opt into readable body weight"] = (
 checks["new Glass and Intelligence help texts opt into readable body weight"] = (
     feature.count('note.setTag("nabdh:secondary-text");') >= 2
 )
-checks["main title is geometrically centered with native ActionBar"] = (
-    dialogs.count('actionBar.setCenterTitleAndGlass(true);') == 2
-    and 'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
+checks["main title alignment is controlled by user preference, not forced"] = (
+    'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
+    and 'actionBar.setCenterTitleAndGlass(true);' not in dialogs
 )
 checks["dialogs use NabdhGram title rather than upstream Telegram logo span"] = (
     'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
