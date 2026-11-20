@@ -75,5 +75,12 @@ s = s.replace(anchor, """        canvas.restore();
 
         updateHelper.updateAnimationValues();""", 1)
 
+# Exact pinned native DialogCell reorder drawing (source verified in preflight).
+original_reorder = "                Theme.dialogs_reorderDrawable.setAlpha((int) (reorderIconProgress * 255));\n                setDrawableBounds(Theme.dialogs_reorderDrawable, pinLeft, pinTop);\n                Theme.dialogs_reorderDrawable.draw(canvas);"
+branded_reorder = "                // Glass-friendly drag grip on pinned chat cards only.\n                // Native reordering hit targets and sorting remain unchanged.\n                final int dragAccent = Theme.getColor(\n                        Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);\n                nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);\n                nabdhCardPaint.setStrokeCap(android.graphics.Paint.Cap.ROUND);\n                nabdhCardPaint.setStrokeWidth(dp(2));\n                nabdhCardPaint.setColor(dragAccent);\n                nabdhCardPaint.setAlpha((int) (reorderIconProgress * 235));\n                final float dragX = pinLeft + dp(4);\n                for (int dragLine = 0; dragLine < 3; dragLine++) {\n                    final float dragY = pinTop + dp(5 + dragLine * 5);\n                    canvas.drawLine(dragX, dragY, dragX + dp(13), dragY, nabdhCardPaint);\n                }\n                nabdhCardPaint.setAlpha(255);\n                nabdhCardPaint.setStrokeCap(android.graphics.Paint.Cap.BUTT);\n                nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);"
+if s.count(original_reorder) != 1:
+    raise SystemExit("Pinned DialogCell reorder drawing changed")
+s = s.replace(original_reorder, branded_reorder, 1)
+
 p.write_text(s, encoding="utf-8")
 print("NabdhGram Glass dialog card drawing overlay installed.")
