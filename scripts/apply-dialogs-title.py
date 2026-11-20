@@ -178,6 +178,11 @@ def main():
                 nabdhLogoX = Math.max(minX, Math.min(desired, Math.max(minX, maxX)));
             }
             telegramLogoView.setTranslationX(nabdhLogoX);
+            // Never inherit Telegram's shrinking status-wordmark animation:
+            // the user-facing NabdhGram name must remain readable while
+            // stories expand, collapse or the home tab is restored.
+            telegramLogoView.setScaleX(1f);
+            telegramLogoView.setScaleY(1f);
             telegramLogoView.setTranslationY(bottomY - barOffset + dp(14 + FAKE_TOP_PADDING + 4.333f) + translationOffset /*titleView.getTranslationY() + dpf2(37.33f)*/);
 
             emojiStatusView.setTranslationX(nabdhLogoX + telegramLogoView.getMeasuredWidth() + dp(4));""",
