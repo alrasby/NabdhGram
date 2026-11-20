@@ -848,6 +848,17 @@ jobs:
           "$AAPT" dump resources "$APK" > apk-resources.txt
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > apk-manifest-tree.txt
           "$AAPT" dump permissions "$APK" > apk-permissions.txt
+          # Android Auto support must survive variant merge, R8 and packaging.
+          # Checking only the source manifest previously produced false positives.
+          grep -Fq "com.google.android.gms.car.application" apk-manifest-tree.txt || {
+            echo "::error::Final APK has no Android Auto application metadata"
+            exit 1
+          }
+          grep -Fq "automotive_app_desc" apk-resources.txt || {
+            echo "::error::Final APK has no packaged Android Auto descriptor"
+            exit 1
+          }
+          echo "PASS: actual APK contains Android Auto capability metadata and descriptor"
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then
             grep -q "android:dataExtractionRules" apk-manifest-tree.txt || {
               echo "::error::Release manifest is missing Android data-extraction rules"; exit 1;
