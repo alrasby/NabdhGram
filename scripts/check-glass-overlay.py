@@ -763,6 +763,27 @@ checks["folder counter numerals contrast against current badge fill"] = (
     and "Theme.key_windowBackgroundWhiteBlackText, resourcesProvider" in folder_source
 )
 
+# One-time pinned-source review: why stories header hides its own title,
+# and whether notifications already carry Automotive messaging semantics.
+import re
+source_spec = (
+    ("STORY_TITLE", "Stories/DialogStoriesCell.java", r"telegramLogoView\\.|titleView\\.|setAlpha\\(|getTextLogoColor|setVisibility\\(", 3),
+    ("NOTIFY", "../messenger/NotificationsController.java", r"MessagingStyle|RemoteInput|markAsRead|mark.*Read|reply|REPLY|NotificationCompat|setStyle\\(", 2),
+    ("MANIFEST", "../../AndroidManifest.xml", r"android.auto|automotive|car.application|<application", 1),
+)
+for label, rel, regex, span in source_spec:
+    path = ui / rel
+    lines = path.read_text(encoding="utf-8").splitlines()
+    hits = [j for j, line in enumerate(lines) if re.search(regex, line)]
+    print("NABDH_DIAG_START",label,"hits",len(hits),flush=True)
+    shown = set()
+    for j in hits[:70]:
+        for k in range(max(0,j-span),min(len(lines),j+span+1)):
+            if k not in shown:
+                print(f"NABDH_DIAG {label} {k+1}: {lines[k]}",flush=True)
+                shown.add(k)
+    print("NABDH_DIAG_END",label,flush=True)
+
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):
