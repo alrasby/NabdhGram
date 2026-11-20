@@ -44,12 +44,11 @@ def main():
     s = s.replace(fade_end, """        }
         if (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect
                 && folderId == 0 && communityId == 0 && actionBar != null
-                && dialogStoriesCell != null
-                && dialogStoriesCell.getVisibility() == View.VISIBLE
-                && dialogStoriesCell.isFullExpanded() && !actionBar.isActionModeShowed()
+                && !actionBar.isActionModeShowed()
                 && searchAnimationProgress < 0.01f) {
-            // Expanded stories: native wordmark alpha is zero; keep the
-            // branded ActionBar title at real size, never at 0.4 scale.
+            // Keep ONE real ActionBar title through every stories animation
+            // frame. The previous isFullExpanded() check left an entire
+            // transition window with BOTH native titles faded out.
             actionBar.getTitlesContainer().setScaleX(1f);
             actionBar.getTitlesContainer().setScaleY(1f);
             actionBar.getTitlesContainer().setAlpha(1f);
@@ -156,6 +155,16 @@ def main():
         "        telegramLogoView.setColorFilter(getTextLogoColor(), PorterDuff.Mode.MULTIPLY);",
         "        telegramLogoView.setTextColor(getTextLogoColor());",
         "wordmark theme updates"
+    )
+    # The native stories logo deliberately fades to zero during expansion.
+    # On main chats, rendering both this logo and ActionBar title creates
+    # either a duplicate name or a missing name in mid-transition.
+    # The main screen has exactly one owner: ActionBar. Keep stories labels,
+    # story avatars and Premium emoji overlays otherwise untouched.
+    story = story_once(
+        """        final float logoAlpha = logoVisibility * progress;""",
+        """        final float logoAlpha = type == TYPE_DIALOGS ? 0f : logoVisibility * progress;""",
+        "suppress duplicate stories wordmark on main chats"
     )
     story = story_once(
         """            telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));
