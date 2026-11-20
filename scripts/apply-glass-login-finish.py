@@ -584,8 +584,9 @@ k = replace_once(k, key_text_before, key_text_after,
 #   constructor loops over views and calls setButtonBackground(v, index);
 #   ThemeBind.selectorBackground() wraps/recolors content with listSelector;
 #   updateColors() recolors and rebinds those backgrounds again.
-# Root fix: never theme-bind the brand Backspace key. Keep other 11 keys
-# untouched and preserve ImageView click/long-press behavior.
+# Root fix: the stock ThemeBind selector recolors our pressed state gray.
+# Apply stateful NabdhCircleKey directly to only this login keypad's 12 keys.
+# Rest surfaces and native key gesture listeners remain unchanged.
 selector_anchor = (
     "ThemeBind.selectorBackground(v, getButtonDrawable(index), "
     "ThemeBind.of(Theme.key_listSelector), "
@@ -593,55 +594,18 @@ selector_anchor = (
 )
 if k.count(selector_anchor) != 1:
     raise SystemExit("Pinned keyboard selector binding changed")
-k = k.replace(selector_anchor, """if (index == 11) {
-            // Backspace is the real views[11] ImageView. Never pass its custom
-            // turquoise drawable through ThemeBind, which tints its fill gray.
-            v.setBackground(getButtonDrawable(11));
-            return;
-        }
-        """ + selector_anchor, 1)
-
-# updateColors() iterates all key backgrounds and recolors them in place.
-# Prevent that process from retinting Backspace or changing its fill on
-# light/dark theme switches; still update each of the 11 numeric keys.
-update_start = k.find("    public void updateColors() {")
-if update_start < 0:
-    raise SystemExit("Pinned keyboard updateColors missing")
-brace_open = k.find("{", update_start)
-depth = 0
-update_end = -1
-for at in range(brace_open, len(k)):
-    if k[at] == "{":
-        depth += 1
-    elif k[at] == "}":
-        depth -= 1
-        if depth == 0:
-            update_end = at + 1
-            break
-if update_end < 0:
-    raise SystemExit("Pinned updateColors method body missing")
-update_block = k[update_start:update_end]
-# The native loop's spacing and null-guard form differ between pinned
-# revisions. Locate its semantic for-loop, not a brittle text literal.
-import re
-loop_matches = list(re.finditer(
-    r"for\s*\(\s*int\s+a\s*=\s*0\s*;\s*a\s*<\s*views\.length\s*;\s*a\+\+\s*\)\s*\{",
-    update_block))
-if len(loop_matches) != 1:
-    raise SystemExit("Pinned updateColors views loop changed: " +
-                     repr(update_block[:1800]))
-loop_close = loop_matches[0].end()
-update_block = (update_block[:loop_close] + """
-            // Backspace is intentionally not passed through listSelector
-            // recoloring; preserve its original icon/touch callbacks.
-            if (a == 11) {
-                setButtonBackground(backButton, 11);
-                continue;
-            }
-""" + update_block[loop_close:])
-k = k[:update_start] + update_block + k[update_end:]
-if k.count("if (index == 11)") < 2 or "if (a == 11)" not in update_block:
-    raise SystemExit("Backspace theme exemption failed")
+k = k.replace(selector_anchor,
+    "v.setBackground(getButtonDrawable(index));", 1)
+# Native theme refresh also retints every existing key on selector changes.
+# Replace only its two tint calls, retaining the code that updates key labels.
+native_theme_tints = """                        Theme.setSelectorDrawableColor(v.getBackground(), defaultColor, false);
+                        Theme.setSelectorDrawableColor(v.getBackground(), pressedColor, true);"""
+if k.count(native_theme_tints) != 1:
+    raise SystemExit("Pinned keyboard theme recolor anchor changed")
+k = k.replace(native_theme_tints,
+    "                        setButtonBackground(v, a);", 1)
+if "ThemeBind.selectorBackground(v, getButtonDrawable(index)" in k:
+    raise SystemExit("Key state tint still controlled by Telegram listSelector")
 
 keyboard.write_text(k, encoding="utf-8")
 delete_icon = root / "TMessagesProj/src/main/res/drawable/nabdh_keypad_delete.xml"
