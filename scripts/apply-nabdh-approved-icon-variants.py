@@ -94,7 +94,7 @@ addition = ',\n'.join(
     'R.mipmap.nabdh_icon_' + slug + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
-java = java.replace(anchor, anchor + '\n' + addition + ',', 1)
+java = java.replace(branded_default, branded_default + '\n' + addition + ',', 1)
 # Some Android launchers immediately terminate an app when its currently
 # enabled launcher alias is disabled, even with DONT_KILL_APP. First enable
 # the target component, then disable old aliases; leave the selected one
