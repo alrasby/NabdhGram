@@ -48,8 +48,9 @@ def check(root):
         "Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q",
         "fonts/NotoSans.ttf",
         "fonts/NotoSansArabic.ttf",
-        "new Typeface.CustomFallbackBuilder(primary)",
-        ".addCustomFallback(arabicFallback)",
+        "new Typeface.CustomFallbackBuilder(",
+        ".addCustomFallback(new android.graphics.fonts.FontFamily.Builder(arabic).build())",
+        "private static final Typeface[] cachedFaces = new Typeface[4]",
         '.setSystemFallback("sans-serif")',
         "Typeface.createFromAsset(",
     ):
