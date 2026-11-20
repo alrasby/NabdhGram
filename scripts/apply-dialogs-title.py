@@ -162,11 +162,15 @@ def main():
             telegramLogoView.setTranslationY(bottomY - barOffset + dp(14 + FAKE_TOP_PADDING + 4.333f) + translationOffset /*titleView.getTranslationY() + dpf2(37.33f)*/);
 
             emojiStatusView.setTranslationX(titleView.getTranslationX() - dpf2(3.33f) + telegramLogoView.getMeasuredWidth());""",
-        """            float nabdhLogoX = titleView.getTranslationX() + dp(1);
+        """            // The secondary stories wordmark must not inherit titleView's
+            // animation translation. That offset oscillates on expand/collapse
+            // and leaves a tiny "NabdhGram" at the extreme left after returning
+            // from Settings, even when Center title is disabled.
+            // Keep the same stable avatar-safe START anchor as the home title.
+            float nabdhLogoX = dp(72);
             if (type == TYPE_DIALOGS &&
                     org.telegram.ui.Components.NabdhHomePrefs.enabled(getContext(), "center_title")) {
-                // Center the visible stories-header title, not only the ActionBar
-                // underneath. Keep space for the avatar, toolbar and status icon.
+                // Center ONLY when the user explicitly enabled that option.
                 float desired = (getWidth() - telegramLogoView.getMeasuredWidth()) / 2f;
                 float minX = dp(72);
                 float maxX = getWidth() - actionBar.menu.getVisibleItemsMeasuredWidthWithAlpha()
