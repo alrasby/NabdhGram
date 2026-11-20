@@ -763,13 +763,29 @@ checks["folder counter numerals contrast against current badge fill"] = (
     and "Theme.key_windowBackgroundWhiteBlackText, resourcesProvider" in folder_source
 )
 
-# Targeted pinned Telegram notification action source validation.
-source = (ui / "../messenger/NotificationsController.java").read_text(encoding="utf-8").splitlines()
-for lo, hi in ((5250,5305), (5635,5725)):
-    for n in range(lo-1, min(hi,len(source))):
-        print(f"NABDH_AUTO_SOURCE {n+1}: {source[n]}",flush=True)
-manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
-print("NABDH_AUTO_MANIFEST_HEAD",manifest[:900],flush=True)
+# Assert generated native sources, not overlay promises.
+auto_manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+auto_desc = (root / "TMessagesProj/src/main/res/xml/automotive_app_desc.xml").read_text(encoding="utf-8")
+auto_notifications = (root / "TMessagesProj/src/main/java/org/telegram/messenger/NotificationsController.java").read_text(encoding="utf-8")
+checks["Android Auto notification capability declared without misleading template UI"] = (
+    'android:name="com.google.android.gms.car.application"' in auto_manifest
+    and 'android:resource="@xml/automotive_app_desc"' in auto_manifest
+    and '<uses name="notification" />' in auto_desc
+    and '<uses name="template"' not in auto_desc
+)
+checks["Android Auto reuses secure native Telegram reply/read actions"] = (
+    'builder.addAction(readAction);' in auto_notifications
+    and 'builder.addAction(wearReplyAction);' in auto_notifications
+    and '!DialogObject.isEncryptedDialog(dialogId)' in auto_notifications
+    and '!waitingForPasscode && !SharedConfig.isWaitingForPasscodeEnter' in auto_notifications
+    and 'RemoteInput remoteInputWear = new RemoteInput.Builder(EXTRA_VOICE_REPLY)' in auto_notifications
+)
+checks["home header is stable throughout stories and owns one visible app title"] = (
+    'type == TYPE_DIALOGS ? 0f : logoVisibility * progress' in stories_header
+    and 'dialogStoriesCell.isFullExpanded()' not in dialogs
+    and 'actionBar.getTitlesContainer().setAlpha(1f);' in dialogs
+    and 'NabdhHomePrefs.enabled(getContext(), "center_title")' in stories_header
+)
 
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
