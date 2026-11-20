@@ -763,29 +763,13 @@ checks["folder counter numerals contrast against current badge fill"] = (
     and "Theme.key_windowBackgroundWhiteBlackText, resourcesProvider" in folder_source
 )
 
-# One-time pinned-source review: why stories header hides its own title,
-# and whether notifications already carry Automotive messaging semantics.
-import re
-source_spec = (
-    ("STORY_TITLE", "Stories/DialogStoriesCell.java",
-     ("telegramLogoView.", "titleView.", "setAlpha(", "getTextLogoColor", "setVisibility("), 3),
-    ("NOTIFY", "../messenger/NotificationsController.java",
-     ("MessagingStyle", "RemoteInput", "markAsRead", "mark", "reply", "REPLY", "NotificationCompat", "setStyle("), 2),
-    ("MANIFEST", "../../AndroidManifest.xml",
-     ("android.auto", "automotive", "car.application", "<application"), 1),
-)
-for label, rel, needles, span in source_spec:
-    path = ui / rel
-    lines = path.read_text(encoding="utf-8").splitlines()
-    hits = [j for j, line in enumerate(lines) if any(n in line for n in needles)]
-    print("NABDH_DIAG_START",label,"hits",len(hits),flush=True)
-    shown = set()
-    for j in hits[:70]:
-        for k in range(max(0,j-span),min(len(lines),j+span+1)):
-            if k not in shown:
-                print(f"NABDH_DIAG {label} {k+1}: {lines[k]}",flush=True)
-                shown.add(k)
-    print("NABDH_DIAG_END",label,flush=True)
+# Targeted pinned Telegram notification action source validation.
+source = (ui / "../messenger/NotificationsController.java").read_text(encoding="utf-8").splitlines()
+for lo, hi in ((5250,5305), (5635,5725)):
+    for n in range(lo-1, min(hi,len(source))):
+        print(f"NABDH_AUTO_SOURCE {n+1}: {source[n]}",flush=True)
+manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+print("NABDH_AUTO_MANIFEST_HEAD",manifest[:900],flush=True)
 
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
