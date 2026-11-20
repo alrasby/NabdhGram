@@ -82,5 +82,14 @@ if s.count(original_reorder) != 1:
     raise SystemExit("Pinned DialogCell reorder drawing changed")
 s = s.replace(original_reorder, branded_reorder, 1)
 
+# Native Telegram paints a light full-width rectangular gradient behind the
+# reorder handle. It escapes the rounded Glass card and appears as a white box.
+# Delete only that legacy overlay, keeping drawReorder, reorderIconProgress,
+# native drag events, and the new branded lines untouched.
+reorder_gradient = "                if (!LocaleController.isRTL) {\n                    final Paint reorderGradientPaint = getPaintReorderGradient();\n                    reorderGradientPaint.setAlpha((int) (reorderIconProgress * 255));\n                    canvas.save();\n                    canvas.translate(pinLeft - dp(24), pinTop);\n                    canvas.drawRect(0, 0, getMeasuredWidth() - (pinLeft - dp(24)), dp(24), reorderGradientPaint);\n                    canvas.restore();\n                }"
+if s.count(reorder_gradient) != 1:
+    raise SystemExit("Pinned reorder gradient anchor changed")
+s = s.replace(reorder_gradient, "", 1)
+
 p.write_text(s, encoding="utf-8")
 print("NabdhGram Glass dialog card drawing overlay installed.")
