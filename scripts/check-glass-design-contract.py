@@ -85,7 +85,7 @@ for stage_name in expensive_stages:
     )
 credits_script = (ROOT / "scripts/apply-nabdhgram-settings.py").read_text(encoding="utf-8")
 assert "APP_VERSION_NAME=" in credits_script and "APP_VERSION_CODE=" in credits_script and '"NabdhGramCredits": branded_credits' in credits_script, "NabdhGram credits must match pinned Telegram version"
-assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") == 2, "Text/media design is inconsistent"
+assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") >= 2 and '"bubble_no_tail"' in bubble, "Text/media and opt-in tail-free design is inconsistent"
 assert "!themePreview && !isSelected" in bubble, "Selection or preview protection was removed"
 assert finishing.count("if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected)") == 2, "Final overlay no longer matches text/media anchor"
 assert "0x330098A3" not in profile, "Hard-coded profile press color returned"
