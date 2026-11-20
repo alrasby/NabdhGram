@@ -536,10 +536,8 @@ k = replace_once(k,
 k = replace_once(k,
     "backButton.setImageResource(R.drawable.msg_clear_input);",
     """backButton.setImageResource(R.drawable.nabdh_keypad_delete);
-        // The icon MUST keep a non-null branded background: white glyph
-        // on a null/white background was invisible in the physical screenshot.
-        // Never touch the parent: it may own the entire keypad layout.
-        backButton.setBackground(getButtonDrawable(11));
+        // A white delete glyph is provided. The key surface is bound by
+        // setButtonBackground(views[11], 11), never the surrounding keypad.
         backButton.setColorFilter(android.graphics.Color.WHITE);""",
     "keypad delete glyph")
 # Telegram's stock keypad positions the digit at 25% of the full key cell
@@ -581,17 +579,63 @@ key_text_after = """            // Both text lines share the exact center of the
             }"""
 k = replace_once(k, key_text_before, key_text_after,
     "center keypad number and letters in the circular surface")
-# ThemeBind may restore native key colors after the first frame. Keep the
-# actual Backspace touch-cell surface branded on subsequent theme changes.
-# Do not replace its click/repeat listeners or change numeric keys.
-theme_anchor = "final int backColor = android.graphics.Color.WHITE;"
-if k.count(theme_anchor) != 1:
-    raise SystemExit("Backspace theme update anchor changed")
-k = k.replace(theme_anchor, theme_anchor + """
-        // Themed drawable may be rebound by the native keyboard during a
-        // theme change; restore the branded surface on the icon itself.
-        backButton.setBackground(getButtonDrawable(11));
-        backButton.setColorFilter(android.graphics.Color.WHITE);""", 1)
+# Pinned Telegram source verified in PR preflight #337:
+#   views[11] = backButton (ImageView);
+#   constructor loops over views and calls setButtonBackground(v, index);
+#   ThemeBind.selectorBackground() wraps/recolors content with listSelector;
+#   updateColors() recolors and rebinds those backgrounds again.
+# Root fix: never theme-bind the brand Backspace key. Keep other 11 keys
+# untouched and preserve ImageView click/long-press behavior.
+selector_anchor = (
+    "ThemeBind.selectorBackground(v, getButtonDrawable(index), "
+    "ThemeBind.of(Theme.key_listSelector), "
+    "ThemeBind.alpha(Theme.key_listSelector, 30));"
+)
+if k.count(selector_anchor) != 1:
+    raise SystemExit("Pinned keyboard selector binding changed")
+k = k.replace(selector_anchor, """if (index == 11) {
+            // Backspace is the real views[11] ImageView. Never pass its custom
+            // turquoise drawable through ThemeBind, which tints its fill gray.
+            v.setBackground(getButtonDrawable(11));
+            return;
+        }
+        """ + selector_anchor, 1)
+
+# updateColors() iterates all key backgrounds and recolors them in place.
+# Prevent that process from retinting Backspace or changing its fill on
+# light/dark theme switches; still update each of the 11 numeric keys.
+update_start = k.find("    public void updateColors() {")
+if update_start < 0:
+    raise SystemExit("Pinned keyboard updateColors missing")
+brace_open = k.find("{", update_start)
+depth = 0
+update_end = -1
+for at in range(brace_open, len(k)):
+    if k[at] == "{":
+        depth += 1
+    elif k[at] == "}":
+        depth -= 1
+        if depth == 0:
+            update_end = at + 1
+            break
+if update_end < 0:
+    raise SystemExit("Pinned updateColors method body missing")
+update_block = k[update_start:update_end]
+loop_anchor = "for (int a = 0; a < views.length; a++) {"
+null_anchor = "if (v == null) continue;"
+if update_block.count(loop_anchor) != 1 or update_block.count(null_anchor) != 1:
+    raise SystemExit("Pinned updateColors key iteration changed")
+update_block = update_block.replace(null_anchor,
+    null_anchor + """
+                if (a == 11) {
+                    // Restore only Backspace's branded circle after theme changes.
+                    setButtonBackground(v, 11);
+                    continue;
+                }""", 1)
+k = k[:update_start] + update_block + k[update_end:]
+if k.count("if (index == 11)") < 2 or "if (a == 11)" not in update_block:
+    raise SystemExit("Backspace theme exemption failed")
+
 keyboard.write_text(k, encoding="utf-8")
 delete_icon = root / "TMessagesProj/src/main/res/drawable/nabdh_keypad_delete.xml"
 delete_icon.parent.mkdir(parents=True, exist_ok=True)
