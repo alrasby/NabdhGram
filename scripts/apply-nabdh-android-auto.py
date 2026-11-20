@@ -33,7 +33,7 @@ if xml.exists():
         raise SystemExit("Existing automotive descriptor is malformed")
     if '<uses name="notification"' not in existing:
         existing = existing.replace("</automotiveApp>",
-                                    '    <uses name="notification" />\\n</automotiveApp>', 1)
+                                    '    <uses name="notification" />' + chr(10) + '</automotiveApp>', 1)
         xml.write_text(existing, encoding="utf-8")
 else:
     xml.write_text('''<?xml version="1.0" encoding="utf-8"?>
