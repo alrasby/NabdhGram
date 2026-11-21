@@ -51,15 +51,67 @@ def compose_icon(slug):
         raise SystemExit("User icon must have fully transparent outer pixels")
     return image
 
+# On Android 8+ the launcher normalizes legacy transparent PNG activity-alias
+# icons and may draw a white rounded-square backplate (Samsung One UI).
+# Supply an explicit adaptive resource for each alias instead. Its foreground
+# is the owner's unmodified artwork placed in the adaptive safe zone and its
+# opaque background is sampled from the artwork itself, never system white.
+# The OS still controls its OUTER mask, so a physically circular home icon
+# cannot be guaranteed on all launchers.
+adaptive_dir = res / "mipmap-anydpi-v26"
+adaptive_dir.mkdir(parents=True, exist_ok=True)
+adaptive_drawable_dir = res / "drawable-nodpi"
+adaptive_drawable_dir.mkdir(parents=True, exist_ok=True)
+colors_dir = res / "values"
+colors_dir.mkdir(parents=True, exist_ok=True)
+adaptive_colors = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
+
+for slug, _, _, _, _ in VARIANTS:
+    icon = compose_icon(slug)
+    # Preserve original transparent PNGs for older Android versions and for
+    # chooser artwork; modern launchers resolve the same mipmap to adaptive XML.
+    opaque = [icon.getpixel((x, y)) for x, y in
+              ((96, 8), (96, 16), (96, 24), (8, 96), (184, 96),
+               (96, 168), (96, 176), (96, 184))
+              if icon.getpixel((x, y))[3] >= 230]
+    if opaque:
+        # Use the darkest edge sample to avoid introducing a bright border.
+        edge = min(opaque, key=lambda p: sum(p[:3]))
+        bg = edge[:3]
+    else:
+        bg = (4, 37, 42)
+    color_name = "nabdh_adaptive_bg_" + slug
+    adaptive_colors.append(
+        '    <color name="' + color_name + '">#%02X%02X%02X</color>' % bg)
+    foreground = Image.new("RGBA", (1080, 1080), (0, 0, 0, 0))
+    # Android adaptive safe zone diameter is approximately 66/108.
+    size = 648
+    foreground.alpha_composite(icon.resize((size, size), Image.Resampling.LANCZOS),
+                               ((1080 - size) // 2, (1080 - size) // 2))
+    fg_name = "nabdh_adaptive_fg_" + slug
+    foreground.save(adaptive_drawable_dir / (fg_name + ".png"),
+                    format="PNG", optimize=True)
+    (adaptive_dir / ("nabdh_icon_" + slug + ".xml")).write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\\n'
+        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\\n'
+        '    <background android:drawable="@color/' + color_name + '" />\\n'
+        '    <foreground android:drawable="@drawable/' + fg_name + '" />\\n'
+        '</adaptive-icon>\\n', encoding="utf-8")
+adaptive_colors.append('</resources>')
+(colors_dir / "nabdh_adaptive_icon_colors.xml").write_text(
+    "\\n".join(adaptive_colors) + "\\n", encoding="utf-8")
+
 for slug, _, _, _, _ in VARIANTS:
     icon = compose_icon(slug)
     for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
                             ("xxhdpi", 144), ("xxxhdpi", 192)):
         directory = res / ("mipmap-" + density)
         directory.mkdir(parents=True, exist_ok=True)
-        icon.resize((pixels, pixels), Image.Resampling.LANCZOS).save(
-            directory / ("nabdh_icon_" + slug + ".png"),
-            format="PNG", optimize=True)
+        scaled = icon.resize((pixels, pixels), Image.Resampling.LANCZOS)
+        scaled.save(directory / ("nabdh_icon_" + slug + ".png"),
+                    format="PNG", optimize=True)
+        scaled.save(directory / ("nabdh_icon_preview_" + slug + ".png"),
+                    format="PNG", optimize=True)
 
 # The app's DefaultIcon alias has already been branded by apply-brand-icons.py,
 # but Telegram's upstream enum STILL uses Telegram icon_background_sa and
@@ -93,7 +145,7 @@ branded_default = '        DEFAULT("DefaultIcon", R.drawable.nabdh_icon_preview_
 java = java.replace(anchor, branded_default, 1)
 addition = ',\n'.join(
     '        NABDH_' + slug.upper() + '("' + alias + '", R.drawable.nabdh_icon_preview_background, '
-    'R.mipmap.nabdh_icon_' + slug + ', R.string.' + string_name + ')'
+    'R.mipmap.nabdh_icon_preview_' + slug + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
 java = java.replace(branded_default, branded_default + '\n' + addition + ',', 1)
