@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install exactly three owner-selected circular launcher variants.
+"""Install the owner-approved launcher icon variants without changing their artwork.
 
 Only the outside of the original circular disks is transparency-masked;
 the internal NabdhGram monogram and artwork are never repainted or recolored.
@@ -21,12 +21,13 @@ controller = root / "TMessagesProj/src/main/java/org/telegram/ui/LauncherIconCon
 if not manifest.is_file() or not controller.is_file():
     raise SystemExit("Pinned Telegram icon sources are missing")
 
-# All three circles were provided by the owner: 44.png, 55.png, 33.png.
-# Older Samsung/translucent/square/turquoise choices are retired, not offered.
+# Keep the three existing circles and restore the previously approved rounded-square
+# iPhone Glass choice. Never change the underlying user-supplied artwork.
 VARIANTS = (
     ("silver", "NabdhSilverCircleIcon", "NabdhIconSilverCircle", "Silver Circle", "الدائرية الفضية"),
     ("dark", "NabdhDarkCircleIcon", "NabdhIconDarkCircle", "Dark Circle", "الدائرية الداكنة"),
     ("glass", "NabdhGlassCircleIcon", "NabdhIconGlassCircle", "Glass Circle", "الدائرية الزجاجية"),
+    ("iphone", "NabdhIphoneIcon", "NabdhIconIphone", "iPhone Glass", "الزجاجية المستديرة"),
 )
 RETIRED = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon",
            "NabdhOriginalIcon", "NabdhCircularIcon")
@@ -34,6 +35,7 @@ USER_SOURCES = {
     "silver": repository / "branding/approved/nabdh-icon-silver-circle.webp",
     "dark": repository / "branding/approved/nabdh-icon-dark-circle.webp",
     "glass": repository / "branding/approved/nabdh-icon-glass-circle.webp",
+    "iphone": repository / "branding/approved/nabdh-icon-iphone.webp",
 }
 # These WebP sources are 192px owner artwork with transparent exterior only.
 def compose_icon(slug):
@@ -83,7 +85,7 @@ for density in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"):
     image.save(destination / "nabdh_icon_default.png", format="PNG", optimize=True)
 
 java = controller.read_text(encoding="utf-8")
-# Keep the approved Default first and the three distinct Nabdh circles next.
+# Keep approved Default first, then the three circles and the restored rounded-square choice.
 anchor = '        DEFAULT("DefaultIcon", R.drawable.icon_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconDefault),'
 if java.count(anchor) != 1:
     raise SystemExit("Pinned LauncherIconController enum anchor changed")
