@@ -63,6 +63,11 @@ adaptive = app_res / "mipmap-anydpi-v26/nabdhgram_launcher.xml"
 assert adaptive.is_file(), "Default adaptive launcher resource missing"
 assert "<adaptive-icon" in adaptive.read_text(encoding="utf-8"), (
     "Default launcher lost Android adaptive behavior")
+for alias in ("ic_launcher.xml", "ic_launcher_round.xml"):
+    fallback = app_res / "mipmap-anydpi-v26" / alias
+    assert fallback.is_file(), "Modern first-install fallback missing: " + alias
+    assert fallback.read_bytes() == adaptive.read_bytes(), (
+        "Modern default launcher fallback still differs from NabdhGram: " + alias)
 # Both release and debug config manifests must use branded resources.
 config_root = root / "TMessagesProj/config"
 for config_manifest in config_root.rglob("AndroidManifest*.xml"):
