@@ -781,12 +781,14 @@ checks["Android Auto reuses secure native Telegram reply/read actions"] = (
     and '!waitingForPasscode && !SharedConfig.isWaitingForPasscodeEnter' in auto_notifications
     and 'RemoteInput remoteInputWear = new RemoteInput.Builder(EXTRA_VOICE_REPLY)' in auto_notifications
 )
-checks["header uses upstream title fade without additional overlays"] = (
+header_overlay_source = (base / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8")
+checks["header native transitions preserved without extra NabdhGram overlays"] = (
     'final float logoAlpha = logoVisibility * progress;' in stories_header
-    and 'actionBar.getTitlesContainer().setAlpha(1f);' not in dialogs
-    and 'actionBar.getTitlesContainer().setScaleX(1f);' not in dialogs
-    and 'telegramLogoView.setScaleX(1f);' not in stories_header
+    and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
     and 'telegramLogoView.setText("NabdhGram");' in stories_header
+    and 'getTitlesContainer().setAlpha(1f)' not in header_overlay_source
+    and 'getTitlesContainer().setScaleX(1f)' not in header_overlay_source
+    and 'nabdhRestoreChatTitle' not in header_overlay_source
 )
 
 for name, okay in checks.items():
