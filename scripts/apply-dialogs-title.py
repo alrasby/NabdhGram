@@ -47,7 +47,6 @@ def main():
         private final android.graphics.Paint textPaint =
                 new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         private final String wordmark = "NabdhGram";
-        private int opacity = 255;
         NabdhNativeWordmarkDrawable() {
             textPaint.setTypeface(android.graphics.Typeface.create(
                     "sans-serif", android.graphics.Typeface.BOLD));
@@ -61,16 +60,14 @@ def main():
             // Fit the word inside Telegram's original 90dp ImageView so it
             // never draws over the stories avatars, action buttons or status.
             float fitScale = Math.min(1f, bounds.width() / naturalWidth);
-            float baseline = bounds.centerY() -
-                    (textPaint.ascent() + textPaint.descent()) * 0.5f * fitScale;
+            float baseline = -0.5f * (textPaint.ascent() + textPaint.descent());
             canvas.save();
-            canvas.translate(bounds.left, 0);
-            canvas.scale(fitScale, fitScale, 0, bounds.centerY());
+            canvas.translate(bounds.left, bounds.centerY());
+            canvas.scale(fitScale, fitScale);
             canvas.drawText(wordmark, 0, baseline, textPaint);
             canvas.restore();
         }
         @Override public void setAlpha(int alpha) {
-            opacity = alpha;
             textPaint.setAlpha(alpha);
             invalidateSelf();
         }
