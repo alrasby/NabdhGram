@@ -781,7 +781,7 @@ checks["Android Auto reuses secure native Telegram reply/read actions"] = (
     and '!waitingForPasscode && !SharedConfig.isWaitingForPasscodeEnter' in auto_notifications
     and 'RemoteInput remoteInputWear = new RemoteInput.Builder(EXTRA_VOICE_REPLY)' in auto_notifications
 )
-header_overlay_source = (base / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8")
+header_overlay_source = (Path(__file__).resolve().parent / "apply-dialogs-title.py").read_text(encoding="utf-8")
 checks["header native transitions preserved without extra NabdhGram overlays"] = (
     'final float logoAlpha = logoVisibility * progress;' in stories_header
     and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
