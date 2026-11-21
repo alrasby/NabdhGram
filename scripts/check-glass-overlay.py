@@ -641,8 +641,8 @@ checks["new Glass and Intelligence help texts opt into readable body weight"] = 
 )
 stories_header = (ui / "Stories/DialogStoriesCell.java").read_text(encoding="utf-8")
 checks["native stories wordmark keeps Telegram original animation"] = (
-    'telegramLogoView = new TextView(context);' in stories_header
-    and 'telegramLogoView.setText("NabdhGram");' in stories_header
+    'telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in stories_header
+    and 'private static final class NabdhNativeWordmarkDrawable' in stories_header
     and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
     and 'final float logoAlpha = logoVisibility * progress;' in stories_header
     and 'telegramLogoView.setScaleX(1f);' not in stories_header
@@ -785,7 +785,7 @@ header_overlay_source = (Path(__file__).resolve().parent / "apply-dialogs-title.
 checks["header native transitions preserved without extra NabdhGram overlays"] = (
     'final float logoAlpha = logoVisibility * progress;' in stories_header
     and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
-    and 'telegramLogoView.setText("NabdhGram");' in stories_header
+    and 'private static final class NabdhNativeWordmarkDrawable' in stories_header
     and 'getTitlesContainer().setAlpha(1f)' not in header_overlay_source
     and 'getTitlesContainer().setScaleX(1f)' not in header_overlay_source
     and 'nabdhRestoreChatTitle' not in header_overlay_source
