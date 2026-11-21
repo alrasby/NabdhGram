@@ -31,8 +31,8 @@ for anchor in ('"hide_stories"', '"hide_fab"', '"hide_search"',
 # Native Telegram owns both alternating title views. The branding changes
 # the image wordmark in place and does not override alpha, scale or motion.
 title_overlay = (base / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8")
-check('telegramLogoView = new TextView(context);' in title_overlay and
-      'telegramLogoView.setText("NabdhGram");' in title_overlay and
+check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in title_overlay and
+      'private static final class NabdhNativeWordmarkDrawable' in title_overlay and
       'final float logoAlpha = logoVisibility * progress;' in title_overlay and
       'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in title_overlay and
       'getTitlesContainer().setAlpha' not in title_overlay and
@@ -147,8 +147,8 @@ manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encod
 for token in ("NabdhHomePrefs.folderLabel(", "NabdhHomePrefs.enabled(", "NabdhHomePrefs.applyTitle("):
     check(token in dialogs or token in tabs, "native home hook lost " + token)
 stories_cell = get("Stories/DialogStoriesCell.java")
-check('telegramLogoView = new TextView(context);' in stories_cell and
-      'telegramLogoView.setText("NabdhGram");' in stories_cell and
+check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in stories_cell and
+      'private static final class NabdhNativeWordmarkDrawable' in stories_cell and
       'telegramLogoView.setImageResource(R.drawable.telegram_logo_2);' not in stories_cell and
       'telegramLogoView.setTextColor(getTextLogoColor());' in stories_cell and
       "final float logoAlpha = logoVisibility * progress;" in stories_cell and
