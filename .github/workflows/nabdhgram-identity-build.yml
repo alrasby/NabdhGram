@@ -801,7 +801,7 @@ jobs:
           # Inspect the merged application manifest before costly Java/NDK
           # compilation. The former build spent ~40 minutes before revealing
           # that its Automotive metadata had not survived the app merge.
-          manifest_path=$(find TMessagesProj_App/build/intermediates/merged_manifests -type f -name AndroidManifest.xml -print | grep -E '/afat(Debug|Release)/' | head -n 1 || true)
+          manifest_path=$(find TMessagesProj_App/build/intermediates -type f -name AndroidManifest.xml -path '*afat*' -print 2>/dev/null | grep -E '/(merged_manifest|merged_manifests)/' | head -n 1 || true)
           if [[ -z "$manifest_path" ]] || ! grep -Fq 'com.google.android.gms.car.application' "$manifest_path"; then
             echo "::error::AFAT merged application manifest missing Android Auto metadata"
             exit 1
