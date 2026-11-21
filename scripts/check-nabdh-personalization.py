@@ -35,6 +35,8 @@ check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in
       'private static final class NabdhNativeWordmarkDrawable' in title_overlay and
       'final float logoAlpha = logoVisibility * progress;' in title_overlay and
       'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in title_overlay and
+      'LayoutHelper.createFrame(132, 22)' in title_overlay and
+      '0.8f + 0.2f * containersAlpha' in title_overlay and
       'getTitlesContainer().setAlpha' not in title_overlay and
       'nabdhRestoreChatTitle' not in title_overlay and
       'setScaleX(1f)' not in title_overlay and
