@@ -28,50 +28,74 @@ def main():
              "native dialogs ActionBar title")
     dialogs.write_text(d, encoding="utf-8")
 
-    # Telegram separately shows an image wordmark inside the EXISTING stories
-    # header view on collapse, and fades/scales it using its own animation.
-    # Replace that specific view in-place with a TextView; DO NOT change the
-    # native alpha, x/y translation, scale, status/proxy, or transition curves.
+    # Preserve Telegram's ORIGINAL ImageView type, 90x22dp layout, native
+    # translation, visibility, alpha and scale. The previous TextView with
+    # WRAP_CONTENT changed its geometry and was clipped during transitions.
+    # Only substitute the image's *content*, with a drawable that renders
+    # the wordmark within the unchanged bounds.
     stories = ui / "Stories/DialogStoriesCell.java"
     s = stories.read_text(encoding="utf-8")
-    s = once(s, "    ImageView telegramLogoView;",
-             "    TextView telegramLogoView;", "native stories wordmark type")
     s = once(s,
-         """        telegramLogoView = new ImageView(context);
-        telegramLogoView.setContentDescription(getString(R.string.AppName));
-        telegramLogoView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        telegramLogoView.setImageResource(R.drawable.telegram_logo_2);
-        telegramLogoView.setColorFilter(getTextLogoColor(), PorterDuff.Mode.MULTIPLY);
-        telegramLogoView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
-        telegramLogoView.setFocusableInTouchMode(true);
-        addView(telegramLogoView, LayoutHelper.createFrame(90, 22));""",
-         """        // Replace artwork inside the original animated Telegram view slot.
-        telegramLogoView = new TextView(context);
-        telegramLogoView.setContentDescription("NabdhGram");
-        telegramLogoView.setText("NabdhGram");
-        telegramLogoView.setSingleLine(true);
-        telegramLogoView.setEllipsize(TextUtils.TruncateAt.END);
-        telegramLogoView.setTextSize(20);
-        telegramLogoView.setTypeface(AndroidUtilities.bold());
-        telegramLogoView.setGravity(Gravity.CENTER_VERTICAL);
-        telegramLogoView.setTextColor(getTextLogoColor());
-        telegramLogoView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
-        telegramLogoView.setFocusableInTouchMode(true);
-        addView(telegramLogoView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 28));""",
-         "native stories wordmark view")
-    s = once(s,
-         "        telegramLogoView.setColorFilter(getTextLogoColor(), PorterDuff.Mode.MULTIPLY);",
-         "        telegramLogoView.setTextColor(getTextLogoColor());",
-         "native stories wordmark theme tint")
-    # Native original uses titleView positions and logoVisibility*progress
-    # alpha; these must remain unmodified. Ensure no third label is created.
+         "        telegramLogoView.setImageResource(R.drawable.telegram_logo_2);",
+         "        telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());",
+         "native ImageView image source")
+    marker = "    ImageView telegramLogoView;"
+    if s.count(marker) != 1:
+        raise SystemExit("Pinned stories logo field changed")
+    impl = """    // Exact native Telegram image slot; no extra View, no separate animation.
+    private static final class NabdhNativeWordmarkDrawable extends android.graphics.drawable.Drawable {
+        private final android.graphics.Paint textPaint =
+                new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final String wordmark = "NabdhGram";
+        private int opacity = 255;
+        NabdhNativeWordmarkDrawable() {
+            textPaint.setTypeface(android.graphics.Typeface.create(
+                    "sans-serif", android.graphics.Typeface.BOLD));
+            textPaint.setTextSize(AndroidUtilities.dp(19));
+            textPaint.setColor(android.graphics.Color.WHITE);
+        }
+        @Override public void draw(android.graphics.Canvas canvas) {
+            android.graphics.Rect bounds = getBounds();
+            float naturalWidth = textPaint.measureText(wordmark);
+            if (naturalWidth <= 0 || bounds.width() <= 0 || bounds.height() <= 0) return;
+            // Fit the word inside Telegram's original 90dp ImageView so it
+            // never draws over the stories avatars, action buttons or status.
+            float fitScale = Math.min(1f, bounds.width() / naturalWidth);
+            float baseline = bounds.centerY() -
+                    (textPaint.ascent() + textPaint.descent()) * 0.5f * fitScale;
+            canvas.save();
+            canvas.translate(bounds.left, 0);
+            canvas.scale(fitScale, fitScale, 0, bounds.centerY());
+            canvas.drawText(wordmark, 0, baseline, textPaint);
+            canvas.restore();
+        }
+        @Override public void setAlpha(int alpha) {
+            opacity = alpha;
+            textPaint.setAlpha(alpha);
+            invalidateSelf();
+        }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) {
+            textPaint.setColorFilter(filter);
+            invalidateSelf();
+        }
+        @Override public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
+        @Override public int getIntrinsicWidth() { return AndroidUtilities.dp(90); }
+        @Override public int getIntrinsicHeight() { return AndroidUtilities.dp(22); }
+    }
+
+"""
+    s = s.replace(marker, impl + marker, 1)
     for native in (
+        "    ImageView telegramLogoView;",
         "telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));",
         "final float logoAlpha = logoVisibility * progress;",
         "telegramLogoView.setTranslationY(bottomY - barOffset",
+        "addView(telegramLogoView, LayoutHelper.createFrame(90, 22));",
     ):
         if native not in s:
-            raise SystemExit(f"Pinned stories animation anchor missing: {native}")
+            raise SystemExit(f"Pinned stories native layout/animation changed: {native}")
     stories.write_text(s, encoding="utf-8")
     print("PASS: native ActionBar and native stories title slots branded without animation overrides")
 
