@@ -794,7 +794,7 @@ checks["header native transitions preserved without extra NabdhGram overlays"] =
 # Temporary pinned-source diagnostics: header scales and compiled alias candidates.
 for label, rel, ranges in (
     ("STORIES", "Stories/DialogStoriesCell.java", [(972,1045), (2258,2285)]),
-    ("DIALOGS", "DialogsActivity.java", []),
+    ("DIALOGS", "DialogsActivity.java", [(1636,1706), (5540,5580)]),
 ):
     lines = (ui / rel).read_text(encoding="utf-8").splitlines()
     if label == "DIALOGS":
