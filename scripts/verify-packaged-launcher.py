@@ -29,11 +29,11 @@ if "adaptive-icon" not in result.stdout:
 # Binary Android XML represents <foreground android:drawable="@..."/> as
 # an E: foreground element followed by A: android:drawable, not an
 # android:foreground attribute on the adaptive-icon parent.
-foreground_element = re.search(r"(?m)^\s*E: foreground\\b[^\\n]*", result.stdout)
+foreground_element = re.search(r"(?m)^\s*E: foreground\b[^\n]*", result.stdout)
 if not foreground_element:
     fail("adaptive foreground element missing in compiled icon")
 fragment = result.stdout[foreground_element.end():foreground_element.end() + 400]
-match = re.search(r"android:drawable[^\\n]*?@0x([0-9a-fA-F]+)", fragment)
+match = re.search(r"android:drawable[^\n]*?@0x([0-9a-fA-F]+)", fragment)
 if not match:
     fail("adaptive foreground drawable resource missing in compiled icon")
 actual_id = "0x" + match.group(1).lower().zfill(8)
