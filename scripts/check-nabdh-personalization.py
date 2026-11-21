@@ -150,7 +150,7 @@ stories_cell = get("Stories/DialogStoriesCell.java")
 check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in stories_cell and
       'private static final class NabdhNativeWordmarkDrawable' in stories_cell and
       'telegramLogoView.setImageResource(R.drawable.telegram_logo_2);' not in stories_cell and
-      'telegramLogoView.setTextColor(getTextLogoColor());' in stories_cell and
+      'telegramLogoView.setColorFilter(getTextLogoColor(), PorterDuff.Mode.MULTIPLY);' in stories_cell and
       "final float logoAlpha = logoVisibility * progress;" in stories_cell and
       "telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));" in stories_cell,
       "stories header must retain native Telegram title animation")
