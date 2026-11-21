@@ -40,7 +40,7 @@ actual_id = "0x" + match.group(1).lower().zfill(8)
 expected = re.search(r"(?:spec )?resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:drawable/nabdhgram_launcher_foreground\b",resources)
 if not expected:
     fail("approved NabdhGram adaptive foreground not in compiled resource table")
-expected_id = "0x" + expected.group(1).lower().zfill(8)
+expected_id = expected.group(1).lower()
 if actual_id != expected_id:
     fail("default icon adaptive foreground is NOT the NabdhGram image; actual "
          + actual_id + " versus approved " + expected_id)
