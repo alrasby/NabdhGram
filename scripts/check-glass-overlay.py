@@ -791,6 +791,24 @@ checks["header native transitions preserved without extra NabdhGram overlays"] =
     and 'nabdhRestoreChatTitle' not in header_overlay_source
 )
 
+# Temporary pinned-source diagnostics: header scales and compiled alias candidates.
+for label, rel, ranges in (
+    ("STORIES", "Stories/DialogStoriesCell.java", [(972,1045), (2258,2285)]),
+    ("DIALOGS", "DialogsActivity.java", []),
+):
+    lines = (ui / rel).read_text(encoding="utf-8").splitlines()
+    if label == "DIALOGS":
+        indexes = [i for i,x in enumerate(lines)
+                   if ("title" in x.lower() or "logo" in x.lower()) and
+                      ("setScale" in x or "setAlpha" in x or "getTitlesContainer" in x)]
+        ranges = [(max(1,i-2),min(len(lines),i+3)) for i in indexes[:20]]
+    seen = set()
+    for lo,hi in ranges:
+        for i in range(lo-1,min(hi,len(lines))):
+            if i not in seen:
+                print(f"NABDH_HEADER_NATIVE {label} {i+1}: {lines[i]}",flush=True)
+                seen.add(i)
+
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):
