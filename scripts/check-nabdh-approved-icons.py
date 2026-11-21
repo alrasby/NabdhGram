@@ -131,6 +131,17 @@ assert "pm.getComponentEnabledSetting(target)" in java, "Launcher switch must ve
 assert "PackageManager.COMPONENT_ENABLED_STATE_ENABLED" in java, "Selected launcher alias must be enabled"
 assert "PackageManager.COMPONENT_ENABLED_STATE_DISABLED" in java, "Previous launcher aliases must be disabled"
 selector = (root / "TMessagesProj/src/main/java/org/telegram/ui/Cells/AppIconsSelectorCell.java").read_text(encoding="utf-8")
+# The chooser must not paint Telegram's uniform rounded card behind owner
+# artwork, including the Default entry; otherwise changing icon only changes
+# an inner picture while the enclosing shape stays fixed.
+assert 'nabdhFrameless = icon.key.startsWith("Nabdh") || "DefaultIcon".equals(icon.key);' in selector, (
+    "Default icon still receives the upstream fixed preview frame")
+assert 'iconView.setOuterPadding(nabdhFrameless ? 0 : AndroidUtilities.dp(5));' in selector, (
+    "Owner icon preview retains fixed container padding")
+assert selector.count('if (!nabdhFrameless) {') >= 2, (
+    "Owner icon preview still paints the selection outline or background")
+assert 'if (!nabdhFrameless || progress > 0.01f)' not in selector, (
+    "Selecting owner icon recreates a fixed rectangular outline")
 assert "if (!LauncherIconController.nabdhSetIconVerified(icon))" in selector, "Chooser still reports success on a failed switch"
 assert 'context.getString(R.string.NabdhIconApplyFailed)' in selector, "Chooser must disclose actual icon-switch failure"
 for locale in ("values", "values-ar"):
