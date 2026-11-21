@@ -302,14 +302,14 @@ replace_selector(
     "Transparent preview backplate")
 replace_selector(
     "            canvas.drawRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(ICONS_ROUND_RADIUS), AndroidUtilities.dp(ICONS_ROUND_RADIUS), outlinePaint);",
-    """            if (!nabdhFrameless || progress > 0.01f) {
+    """            if (!nabdhFrameless) {
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(ICONS_ROUND_RADIUS), AndroidUtilities.dp(ICONS_ROUND_RADIUS), outlinePaint);
             }""",
-    "Transparent preview outline")
+    "Remove redundant preview outline")
 replace_selector(
     "            iconView.setImageResource(icon.background);",
-    """            nabdhFrameless = icon.key.startsWith("Nabdh");
-            iconView.setOuterPadding(icon.key.startsWith("Nabdh") ? 0 : AndroidUtilities.dp(5));
+    """            nabdhFrameless = icon.key.startsWith("Nabdh") || "DefaultIcon".equals(icon.key);
+            iconView.setOuterPadding(nabdhFrameless ? 0 : AndroidUtilities.dp(5));
             iconView.setImageResource(icon.background);""",
     "Native picker transparent drawing")
 # Never tell the user "Icon changed" before PackageManager confirms
