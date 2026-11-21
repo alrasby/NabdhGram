@@ -791,6 +791,12 @@ checks["header native transitions preserved without extra NabdhGram overlays"] =
     and 'nabdhRestoreChatTitle' not in header_overlay_source
 )
 
+# Read-only diagnosis of pinned Telegram title crossfade implementation.
+source_lines = stories_header.splitlines()
+for lo, hi in ((616, 661), (920, 984), (2234, 2284)):
+    for i in range(lo-1, min(hi, len(source_lines))):
+        print(f"NABDH_NATIVE_TITLE {i+1}: {source_lines[i]}", flush=True)
+
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):
