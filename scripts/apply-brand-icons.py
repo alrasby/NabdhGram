@@ -19,11 +19,20 @@ LEGACY_ARTWORK_FRACTION = 0.86
 
 def safe_canvas(artwork, pixels, background):
     from PIL import Image
-    canvas = Image.new("RGBA", (pixels, pixels), background)
+    from PIL import ImageDraw
+    # Legacy launchers and third-party installers may not apply an adaptive
+    # mask. Brand the legacy resource as a rounded square, not an opaque box.
+    canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
+    backdrop = Image.new("RGBA", (pixels, pixels), background)
     side = round(pixels * LEGACY_ARTWORK_FRACTION)
     resized = artwork.copy()
     resized.thumbnail((side, side), Image.Resampling.LANCZOS)
-    canvas.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
+    backdrop.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
+    mask = Image.new("L", (pixels, pixels), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, pixels - 1, pixels - 1),
+                           radius=round(pixels * 0.235), fill=255)
+    canvas.paste(backdrop, (0, 0), mask)
     return canvas
 
 def foreground_canvas(artwork, pixels):
@@ -101,7 +110,11 @@ def main():
             folder = res / f"mipmap-{density}"
             folder.mkdir(parents=True, exist_ok=True)
             scaled = safe_canvas(rgba, px, background)
-            for name in ("nabdhgram_launcher.png", "nabdhgram_launcher_round.png"):
+            # The upstream application/launcher may fall back to ic_launcher
+            # on first install before a user selects a launcher alias. Brand
+            # those resource names too, using exactly the approved source.
+            for name in ("nabdhgram_launcher.png", "nabdhgram_launcher_round.png",
+                         "ic_launcher.png", "ic_launcher_round.png"):
                 scaled.save(folder / name, format="PNG", optimize=True)
         splash_dir = res / "values-v31"
         splash_dir.mkdir(parents=True, exist_ok=True)
