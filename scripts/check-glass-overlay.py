@@ -791,7 +791,6 @@ checks["header native transitions preserved without extra NabdhGram overlays"] =
     and 'nabdhRestoreChatTitle' not in header_overlay_source
 )
 
-
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):
