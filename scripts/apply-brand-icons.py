@@ -149,17 +149,28 @@ def main():
                 '    <foreground android:drawable="@drawable/nabdhgram_launcher_foreground" />\n'
                 '</adaptive-icon>\n', encoding="utf-8"
             )
-        # Point the manifest explicitly to NabdhGram-specific resource names.
-        # The upstream Telegram resources are intentionally left intact.
-        manifest = root / "TMessagesProj" / "config" / "debug" / "AndroidManifest_SDK23.xml"
-        text = manifest.read_text(encoding="utf-8")
+        # Release and Debug use different config manifests. Former releases
+        # branded only config/debug; a signed Release could therefore still
+        # inherit Telegram's ic_launcher. Update every actual config manifest,
+        # and the application-level manifest when it declares launcher art.
         before = 'android:icon="@mipmap/ic_launcher"'
         round_before = 'android:roundIcon="@mipmap/ic_launcher_round"'
-        if text.count(before) != 1 or text.count(round_before) != 1:
-            raise SystemExit("Expected upstream launcher icon references not found exactly once")
-        text = text.replace(before, 'android:icon="@mipmap/nabdhgram_launcher"')
-        text = text.replace(round_before, 'android:roundIcon="@mipmap/nabdhgram_launcher_round"')
-        manifest.write_text(text, encoding="utf-8")
+        configured = []
+        configs = sorted((root / "TMessagesProj" / "config").rglob("AndroidManifest*.xml"))
+        app_manifest = root / "TMessagesProj_App/src/main/AndroidManifest.xml"
+        if app_manifest.is_file():
+            configs.append(app_manifest)
+        for manifest in configs:
+            text = manifest.read_text(encoding="utf-8")
+            if before not in text and round_before not in text:
+                continue
+            text = text.replace(before, 'android:icon="@mipmap/nabdhgram_launcher"')
+            text = text.replace(round_before, 'android:roundIcon="@mipmap/nabdhgram_launcher_round"')
+            manifest.write_text(text, encoding="utf-8")
+            configured.append(str(manifest.relative_to(root)))
+        if not configured:
+            raise SystemExit("No upstream app icon manifest references available to brand")
+        print("Branded all launcher config manifests:", ", ".join(configured))
         # The launcher resolves an enabled activity-alias, not just the
         # application icon. Explicitly brand the enabled DefaultIcon alias.
         library_manifest = root / "TMessagesProj" / "src" / "main" / "AndroidManifest.xml"
