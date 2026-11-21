@@ -26,21 +26,23 @@ for key in ("center_title", "hide_stories", "hide_fab", "hide_search",
 for anchor in ('"hide_stories"', '"hide_fab"', '"hide_search"',
                "filterTabsView.addTab(", "folderLabel(getContext()",
                "updateStoriesVisibility(false)", "updateFilterTabs(true, false)",
-               "applyTitle(bar, getContext())"):
+               "applyTitle(actionBar, getContext())"):
     check(anchor in appearance, "native home layout not actually connected: " + anchor)
-# The main page has two independently rendered title layers in Telegram 13.2.2.
-# Guard both at source level, because an APK can compile while its visible
-# stories header still says Telegram and its hidden ActionBar looks miniature.
+# Native Telegram owns both alternating title views. The branding changes
+# the image wordmark in place and does not override alpha, scale or motion.
 title_overlay = (base / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8")
-check("Stories/DialogStoriesCell.java" in title_overlay and
-      'telegramLogoView.setText("NabdhGram");' in title_overlay and
-      'telegramLogoView = new TextView(context);' in title_overlay and
-      '"center_title"' in title_overlay and
-      "dialogStoriesCell.isFullExpanded()" in title_overlay,
-      "stories header must render NabdhGram and keep expanded title full-size")
-check("title.setTranslationX(target - origin);" in preferences and
-      "title.setTranslationX(target - title.getX());" not in preferences,
-      "center-title offset must be idempotent across resume/scroll")
+check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in title_overlay and
+      'private static final class NabdhNativeWordmarkDrawable' in title_overlay and
+      'final float logoAlpha = logoVisibility * progress;' in title_overlay and
+      'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in title_overlay and
+      'getTitlesContainer().setAlpha' not in title_overlay and
+      'nabdhRestoreChatTitle' not in title_overlay and
+      'setScaleX(1f)' not in title_overlay and
+      'NabdhHomePrefs.applyTitle' not in title_overlay,
+      "branding must reuse Telegram wordmark slot and native story motion")
+check('bar.setCenterTitleAndGlass(enabled(context, "center_title"));' in preferences and
+      'title.setTranslationX(' not in preferences,
+      "optional title centering must use native ActionBar, not manual translations")
 
 check("bubbleRadius = radius" in preferences and
       'putInt("bubbleRadius", radius)' in preferences and
@@ -145,15 +147,17 @@ manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encod
 for token in ("NabdhHomePrefs.folderLabel(", "NabdhHomePrefs.enabled(", "NabdhHomePrefs.applyTitle("):
     check(token in dialogs or token in tabs, "native home hook lost " + token)
 stories_cell = get("Stories/DialogStoriesCell.java")
-check('telegramLogoView = new TextView(context);' in stories_cell and
-      'telegramLogoView.setText("NabdhGram");' in stories_cell and
+check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in stories_cell and
+      'private static final class NabdhNativeWordmarkDrawable' in stories_cell and
       'telegramLogoView.setImageResource(R.drawable.telegram_logo_2);' not in stories_cell and
-      'telegramLogoView.setTextColor(getTextLogoColor());' in stories_cell and
-      '"center_title"' in stories_cell,
-      "packaged stories header still uses Telegram's wordmark or ignores centering")
-check("dialogStoriesCell.isFullExpanded()" in dialogs and
-      "actionBar.getTitlesContainer().setScaleX(1f);" in dialogs,
-      "expanded stories must not render the scaled-down ActionBar name")
+      'telegramLogoView.setColorFilter(getTextLogoColor(), PorterDuff.Mode.MULTIPLY);' in stories_cell and
+      "final float logoAlpha = logoVisibility * progress;" in stories_cell and
+      "telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));" in stories_cell,
+      "stories header must retain native Telegram title animation")
+check('getTitlesContainer().setScaleX(1f)' not in title_overlay and
+      'getTitlesContainer().setAlpha(1f)' not in title_overlay and
+      'nabdhRestoreChatTitle' not in title_overlay,
+      "native Telegram stories/action-bar animation must not be overridden by branding")
 
 check("NabdhPersonalizeActivity.HOME" in settings and
       "NabdhPersonalizeActivity.BUBBLES" in settings and

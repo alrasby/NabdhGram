@@ -224,17 +224,7 @@ d = once(d,
     "native home restoration")
 dialogs.write_text(d, encoding="utf-8")
 
-# MainTabsActivity reasserts its own NabdhGram title on tab switching.
-tabs = ui / "MainTabsActivity.java"
-t = tabs.read_text(encoding="utf-8")
-t = once(t,
-    '''                    ? null : currentTitle.getRightDrawable());
-        }
-    }''',
-    '''                    ? null : currentTitle.getRightDrawable());
-            org.telegram.ui.Components.NabdhHomePrefs.applyTitle(bar, getContext());
-        }
-    }''',
-    "native main-tabs title layout")
-tabs.write_text(t, encoding="utf-8")
-print("PASS: home title, stories/FAB/search, native folder modes, and settings routes installed")
+# MainTabsActivity is deliberately untouched. Telegram itself owns the title
+# across tab changes; adding a second setTitle owner caused proxy/status and
+# stories transitions to fight the existing wordmark.
+print("PASS: native home preferences; upstream title lifecycle preserved")

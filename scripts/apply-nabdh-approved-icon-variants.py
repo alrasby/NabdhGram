@@ -59,21 +59,42 @@ for slug, _, _, _, _ in VARIANTS:
             directory / ("nabdh_icon_" + slug + ".png"),
             format="PNG", optimize=True)
 
-# Use the original Telegram launcher mechanism; three additional, FREE choices
-# are added without replacing DefaultIcon or the pre-existing variants.
+# The app's DefaultIcon alias has already been branded by apply-brand-icons.py,
+# but Telegram's upstream enum STILL uses Telegram icon_background_sa and
+# icon_foreground_sa for the picker preview. This is why the Default tile
+# shows Telegram even when the actual default launcher is NabdhGram.
+#
+# Reuse the exact branded launcher PNGs generated in the app module earlier in
+# the workflow. Copy to the library module under an independent resource name
+# so LauncherIconController (compiled in TMessagesProj) can reference them.
+# Do not repaint the owner-provided artwork or introduce any new default.
+app_mipmaps = root / "TMessagesProj_App/src/main/res"
+for density in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"):
+    source = app_mipmaps / ("mipmap-" + density) / "nabdhgram_launcher.png"
+    if not source.is_file():
+        raise SystemExit("Approved Default launcher missing: " + str(source))
+    with Image.open(source) as branded:
+        branded.load()
+        if branded.format != "PNG" or branded.width != branded.height:
+            raise SystemExit("Invalid approved Default launcher: " + str(source))
+        image = branded.convert("RGBA")
+    destination = res / ("mipmap-" + density)
+    destination.mkdir(parents=True, exist_ok=True)
+    image.save(destination / "nabdh_icon_default.png", format="PNG", optimize=True)
+
 java = controller.read_text(encoding="utf-8")
-# Keep the approved default first, then immediately show both NabdhGram
-# designs in the horizontal picker instead of burying them after Telegram's
-# optional premium icons where users would need to scroll to discover them.
+# Keep the approved Default first and the three distinct Nabdh circles next.
 anchor = '        DEFAULT("DefaultIcon", R.drawable.icon_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconDefault),'
 if java.count(anchor) != 1:
     raise SystemExit("Pinned LauncherIconController enum anchor changed")
+branded_default = '        DEFAULT("DefaultIcon", R.drawable.nabdh_icon_preview_background, R.mipmap.nabdh_icon_default, R.string.AppIconDefault),'
+java = java.replace(anchor, branded_default, 1)
 addition = ',\n'.join(
     '        NABDH_' + slug.upper() + '("' + alias + '", R.drawable.nabdh_icon_preview_background, '
     'R.mipmap.nabdh_icon_' + slug + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
-java = java.replace(anchor, anchor + '\n' + addition + ',', 1)
+java = java.replace(branded_default, branded_default + '\n' + addition + ',', 1)
 # Some Android launchers immediately terminate an app when its currently
 # enabled launcher alias is disabled, even with DONT_KILL_APP. First enable
 # the target component, then disable old aliases; leave the selected one

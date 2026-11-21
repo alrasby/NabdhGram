@@ -37,38 +37,13 @@ public final class NabdhHomePrefs {
                 symbols[1 + ((id & Integer.MAX_VALUE) % (symbols.length - 1))];
         return mode == 2 ? symbol : symbol + " " + name;
     }
-    /** Center only the main chats title; preserve the action buttons. */
+    /** Native Telegram owns layout and animations; never reposition the label. */
     public static void applyTitle(org.telegram.ui.ActionBar.ActionBar bar, Context context) {
         if (bar == null || context == null) return;
-        final org.telegram.ui.ActionBar.SimpleTextView title = bar.getTitleTextView();
-        if (title == null) return;
-        final boolean center = enabled(context, "center_title");
-        if (!center) {
-            title.setTranslationX(0);
-            return;
-        }
-        title.post(() -> {
-            if (!enabled(context, "center_title") || bar.getWidth() <= 0 ||
-                    title.getWidth() <= 0) return;
-            // Respect a 56dp safe margin so menus never overlap the title.
-            float safe = 56f * context.getResources().getDisplayMetrics().density;
-            float target = (bar.getWidth() - title.getWidth()) / 2f;
-            target = Math.max(safe, Math.min(target,
-                    Math.max(safe, bar.getWidth() - title.getWidth() - safe)));
-            // View.getX() includes the previous translation. Subtracting it
-            // makes each resume/toggle re-apply the opposite offset, so the
-            // title jumps instead of remaining centered. Resolve its stable
-            // layout origin relative to the ActionBar, excluding this view's
-            // own translation, and apply one idempotent absolute offset.
-            float origin = title.getLeft();
-            android.view.ViewParent parent = title.getParent();
-            while (parent instanceof android.view.View && parent != bar) {
-                android.view.View p = (android.view.View) parent;
-                origin += p.getLeft() + p.getTranslationX();
-                parent = p.getParent();
-            }
-            title.setTranslationX(target - origin);
-        });
+        // The optional user choice is applied to Telegram's existing ActionBar
+        // title container. In the default mode, restore native left alignment.
+        // No direct title translation, scale or alpha overrides.
+        bar.setCenterTitleAndGlass(enabled(context, "center_title"));
     }
     /** Requested recording rate; Camera2 chooses a hardware-supported range. */
     public static int videoFps(Context c) {

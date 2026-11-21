@@ -619,12 +619,9 @@ checks["Glass rows remain independent from the opaque page canvas"] = (
     "newOpaquePageBackground()" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
     and "return new GlassCardLayers();" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
 )
-checks["main-tab host rebrands the actual visible chats title on tab switch and resume"] = (
-    "private void nabdhRestoreChatTitle()" in main_tabs
-    and 'bar.setTitle("NabdhGram", currentTitle == null' in main_tabs
-    and 'currentTitle.getRightDrawable()' in main_tabs
-    and "if (position == POSITION_CHATS) nabdhRestoreChatTitle();" in main_tabs
-    and "if (viewPager != null && viewPager.getCurrentPosition() == POSITION_CHATS)" in main_tabs
+checks["MainTabs leaves title ownership to native Telegram"] = (
+    "nabdhRestoreChatTitle" not in main_tabs
+    and 'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
 )
 checks["global font renderer respects secondary explanatory labels"] = (
     '"nabdh:secondary-text".equals(label.getTag())' in
@@ -641,6 +638,15 @@ checks["feature category explanations opt into readable body weight"] = (
 )
 checks["new Glass and Intelligence help texts opt into readable body weight"] = (
     feature.count('note.setTag("nabdh:secondary-text");') >= 2
+)
+stories_header = (ui / "Stories/DialogStoriesCell.java").read_text(encoding="utf-8")
+checks["native stories wordmark keeps Telegram original animation"] = (
+    'telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in stories_header
+    and 'private static final class NabdhNativeWordmarkDrawable' in stories_header
+    and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
+    and 'final float logoAlpha = logoVisibility * progress;' in stories_header
+    and 'telegramLogoView.setScaleX(1f);' not in stories_header
+    and 'float nabdhLogoX = dp(72);' not in stories_header
 )
 checks["main title alignment is controlled by user preference, not forced"] = (
     'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
@@ -662,7 +668,7 @@ checks["AppName and default main title use NabdhGram after navigation"] = (
     and '<string name="AppNameBeta">NabdhGram Beta</string>' in
     (root / "TMessagesProj/src/main/res/values/strings.xml").read_text(encoding="utf-8")
     and 'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
-    and "&& statusDrawable != null" in dialogs
+    and "nabdhRestoreChatTitle" not in main_tabs
 )
 checks["Account root is opaque with adapter-owned rounded cards"] = (
     "NabdhGlassRowDecoration.newOpaquePageBackground()" in
@@ -719,6 +725,72 @@ checks["Keypad uses turquoise pressed state with untouched native gestures"] = (
     and "state_pressed" in keyboard_source
     and "int active = accent;" in keyboard_source
 )
+# Verify generated pinned Telegram source rather than only overlay text.
+selection_source = (ui / "DialogsActivity.java").read_text(encoding="utf-8")
+reorder_source = (ui / "Cells/DialogCell.java").read_text(encoding="utf-8")
+bubble_source = (ui / "ActionBar/MessageDrawable.java").read_text(encoding="utf-8")
+bubble_settings = (ui / "NabdhPersonalizeActivity.java").read_text(encoding="utf-8")
+checks["selection toolbar icon and count colors adapt to light/dark themes"] = (
+    "ThemeBind.actionBarItemsColor(actionBar, Theme.key_windowBackgroundWhiteBlackText, getResourceProvider(), true);" in selection_source
+    and "ThemeBind.colorFilter(actionModeCloseView, Theme.key_windowBackgroundWhiteBlackText" in selection_source
+    and selection_source.count("selectedDialogsCountTextView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText))") == 2
+)
+checks["pinned chat reorder grip theme-aware and does not change drag callbacks"] = (
+    "for (int dragLine = 0; dragLine < 3; dragLine++)" in reorder_source
+    and "Theme.key_windowBackgroundWhiteBlueText, resourcesProvider" in reorder_source
+    and "Theme.dialogs_reorderDrawable.draw(canvas);" not in reorder_source
+)
+checks["opt-in symmetric no-tail card uses real message renderer"] = (
+    '"bubble_no_tail"' in bubble_settings
+    and '"bubble_no_tail"' in bubble_source
+    and "nabdhNoTailBounds.set(bounds.left + dp(2)" in bubble_source
+    and "canvas.drawRoundRect(nabdhNoTailBounds, radius, radius, nabdhNoTailPaint);" in bubble_source
+    and "currentType == TYPE_TEXT || currentType == TYPE_MEDIA" in bubble_source
+)
+
+folder_source = (ui / "Components/FilterTabsView.java").read_text(encoding="utf-8")
+checks["native reorder stays inside rounded card without rectangular light gradient"] = (
+    "getPaintReorderGradient();" not in reorder_source[reorder_source.index("if (drawReorder || reorderIconProgress != 0)") :
+                                             reorder_source.index("final float pollVotesMentionsVisibility")]
+    and "for (int dragLine = 0; dragLine < 3; dragLine++)" in reorder_source
+)
+checks["folder counter numerals contrast against current badge fill"] = (
+    "final int badgeFill = counterPaint.getColor();" in folder_source
+    and "textCounterPaint.setColor(Math.abs(badgeLuma - surfaceLuma)" in folder_source
+    and "Theme.key_windowBackgroundWhiteBlackText, resourcesProvider" in folder_source
+)
+
+# Assert generated native sources, not overlay promises.
+auto_manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+auto_desc = (root / "TMessagesProj/src/main/res/xml/automotive_app_desc.xml").read_text(encoding="utf-8")
+auto_notifications = (root / "TMessagesProj/src/main/java/org/telegram/messenger/NotificationsController.java").read_text(encoding="utf-8")
+app_auto_manifest = (root / "TMessagesProj_App/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+app_auto_desc = (root / "TMessagesProj_App/src/main/res/xml/automotive_app_desc.xml").read_text(encoding="utf-8")
+checks["Android Auto capability declared in actual AFAT app manifest and resources"] = (
+    'com.google.android.gms.car.application' in auto_manifest
+    and '@xml/automotive_app_desc' in auto_manifest
+    and '<uses name="notification"' in auto_desc
+    and 'com.google.android.gms.car.application' in app_auto_manifest
+    and '@xml/automotive_app_desc' in app_auto_manifest
+    and app_auto_desc == auto_desc
+)
+checks["Android Auto reuses secure native Telegram reply/read actions"] = (
+    'builder.addAction(readAction);' in auto_notifications
+    and 'builder.addAction(wearReplyAction);' in auto_notifications
+    and '!DialogObject.isEncryptedDialog(dialogId)' in auto_notifications
+    and '!waitingForPasscode && !SharedConfig.isWaitingForPasscodeEnter' in auto_notifications
+    and 'RemoteInput remoteInputWear = new RemoteInput.Builder(EXTRA_VOICE_REPLY)' in auto_notifications
+)
+header_overlay_source = (Path(__file__).resolve().parent / "apply-dialogs-title.py").read_text(encoding="utf-8")
+checks["header native transitions preserved without extra NabdhGram overlays"] = (
+    'final float logoAlpha = logoVisibility * progress;' in stories_header
+    and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
+    and 'private static final class NabdhNativeWordmarkDrawable' in stories_header
+    and 'getTitlesContainer().setAlpha(1f)' not in header_overlay_source
+    and 'getTitlesContainer().setScaleX(1f)' not in header_overlay_source
+    and 'nabdhRestoreChatTitle' not in header_overlay_source
+)
+
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
 if not all(checks.values()):

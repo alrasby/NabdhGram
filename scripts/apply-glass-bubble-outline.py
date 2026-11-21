@@ -217,5 +217,56 @@ cached_stroke = """                background.setBounds(bounds);
                 }
                 return;"""
 s = s.replace(cached, cached_stroke, 1)
+# Optional card-shaped bubbles: draw a full rounded rectangle with four
+# symmetric corners instead of the native tail. The default/other modes keep
+# Telegram's existing cached NinePatch, gradients, grouping and outline path.
+# This branch is gated by an explicit user preference, never turned on globally.
+fields = """    private final Paint nabdhNoTailPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF nabdhNoTailBounds = new RectF();
+"""
+fields_anchor = "    private int currentBackgroundHeight;"
+if s.count(fields_anchor) != 1:
+    raise SystemExit("No-tail MessageDrawable field anchor changed")
+s = s.replace(fields_anchor, fields + fields_anchor, 1)
+
+draw_anchor = """        Rect bounds = getBounds();
+        if (paintToUse == null && paint.getStyle() == Paint.Style.FILL"""
+if s.count(draw_anchor) != 1:
+    raise SystemExit("No-tail draw method anchor changed")
+no_tail = """        Rect bounds = getBounds();
+        // User-selected full card: same rounded edges on all four corners,
+        // with no outgoing or incoming tail. Text/media layout and callbacks
+        // remain unchanged; the original drawable path is the default.
+        if (paintToUse == null && !themePreview
+                && (currentType == TYPE_TEXT || currentType == TYPE_MEDIA)
+                && org.telegram.ui.Components.NabdhHomePrefs.enabled(
+                    org.telegram.messenger.ApplicationLoader.applicationContext,
+                    "bubble_no_tail")) {
+            if (bounds.width() > dp(4) && bounds.height() > dp(4)) {
+                float radius = Math.min(dp(SharedConfig.bubbleRadius),
+                        Math.min(bounds.width(), bounds.height()) * 0.5f);
+                nabdhNoTailBounds.set(bounds.left + dp(2), bounds.top + dp(2),
+                        bounds.right - dp(2), bounds.bottom - dp(2));
+                int themeColor = getColor(isOut
+                        ? (isSelected ? Theme.key_chat_outBubbleSelected : Theme.key_chat_outBubble)
+                        : (isSelected ? Theme.key_chat_inBubbleSelected : Theme.key_chat_inBubble));
+                nabdhNoTailPaint.setStyle(Paint.Style.FILL);
+                nabdhNoTailPaint.setColor(themeColor);
+                nabdhNoTailPaint.setAlpha(Color.alpha(themeColor) * alpha / 255);
+                canvas.drawRoundRect(nabdhNoTailBounds, radius, radius, nabdhNoTailPaint);
+                int edgeColor = getColor(isOut
+                        ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow);
+                nabdhNoTailPaint.setStyle(Paint.Style.STROKE);
+                nabdhNoTailPaint.setStrokeWidth(dp(0.8f));
+                nabdhNoTailPaint.setColor(edgeColor);
+                nabdhNoTailPaint.setAlpha(Color.alpha(edgeColor) * alpha / 255);
+                canvas.drawRoundRect(nabdhNoTailBounds, radius, radius, nabdhNoTailPaint);
+                nabdhNoTailPaint.setStyle(Paint.Style.FILL);
+            }
+            return;
+        }
+        if (paintToUse == null && paint.getStyle() == Paint.Style.FILL"""
+s = s.replace(draw_anchor, no_tail, 1)
+
 p.write_text(s, encoding="utf-8")
 print("Glass text/media bubble outlines applied using native Telegram paths.")
