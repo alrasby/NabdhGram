@@ -39,6 +39,14 @@ def main():
          "        telegramLogoView.setImageResource(R.drawable.telegram_logo_2);",
          "        telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());",
          "native ImageView image source")
+    # Telegram's 90dp logo was artwork, not a ten-letter word. The old code
+    # compressed 19sp NabdhGram into 90dp, then native stories animation could
+    # shrink its container to 40%, producing the microscopic title on screen.
+    # Give the SAME native ImageView enough intrinsic width (no new view).
+    s = once(s,
+         "addView(telegramLogoView, LayoutHelper.createFrame(132, 22));",
+         "addView(telegramLogoView, LayoutHelper.createFrame(132, 22));",
+         "native wordmark width for longer app name")
     marker = "    ImageView telegramLogoView;"
     if s.count(marker) != 1:
         raise SystemExit("Pinned stories logo field changed")
@@ -78,7 +86,7 @@ def main():
         @Override public int getOpacity() {
             return android.graphics.PixelFormat.TRANSLUCENT;
         }
-        @Override public int getIntrinsicWidth() { return AndroidUtilities.dp(90); }
+        @Override public int getIntrinsicWidth() { return AndroidUtilities.dp(132); }
         @Override public int getIntrinsicHeight() { return AndroidUtilities.dp(22); }
     }
 
