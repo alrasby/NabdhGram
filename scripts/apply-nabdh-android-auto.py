@@ -41,6 +41,29 @@ else:
     <uses name="notification" />
 </automotiveApp>
 ''',encoding="utf-8")
+# Telegram is a two-module build. A declaration that exists only in the
+# TMessagesProj library manifest can be omitted by the AFAT app variant's
+# manifest merge. Place the Auto metadata and descriptor in the FINAL
+# TMessagesProj_App module as well; this is what Android Auto inspects.
+app_manifest = root / "TMessagesProj_App/src/main/AndroidManifest.xml"
+app_xml = app_manifest.read_text(encoding="utf-8")
+if "com.google.android.gms.car.application" not in app_xml:
+    if app_xml.count("</application>") != 1:
+        raise SystemExit("AFAT app manifest application anchor changed")
+    app_xml = app_xml.replace("</application>", metadata + "    </application>", 1)
+    app_manifest.write_text(app_xml, encoding="utf-8")
+else:
+    if app_xml.count("com.google.android.gms.car.application") != 1 or (
+            "@xml/automotive_app_desc" not in app_xml):
+        raise SystemExit("AFAT app existing automotive metadata needs review")
+app_desc = root / "TMessagesProj_App/src/main/res/xml/automotive_app_desc.xml"
+app_desc.parent.mkdir(parents=True, exist_ok=True)
+auto_content = xml.read_text(encoding="utf-8")
+if '<uses name="notification"' not in auto_content:
+    raise SystemExit("Android Auto descriptor lacks messaging notification capability")
+if app_desc.exists() and app_desc.read_text(encoding="utf-8") != auto_content:
+    raise SystemExit("AFAT app automotive descriptor differs from Telegram definition")
+app_desc.write_text(auto_content, encoding="utf-8")
 notification = root / "TMessagesProj/src/main/java/org/telegram/messenger/NotificationsController.java"
 text = notification.read_text(encoding="utf-8")
 # These two native Telegram actions already have proper PendingIntent-backed,
