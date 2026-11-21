@@ -798,6 +798,15 @@ jobs:
           # Resolve transitive AAR manifests before running the expensive
           # native/Java/APK assembly; fail fast with an actionable log.
           ./gradlew "$task" --no-daemon --stacktrace 2>&1 | tee ../nabdhgram-manifest-check.log
+          # Inspect the merged application manifest before costly Java/NDK
+          # compilation. The former build spent ~40 minutes before revealing
+          # that its Automotive metadata had not survived the app merge.
+          manifest_path=$(find TMessagesProj_App/build/intermediates/merged_manifests -type f -name AndroidManifest.xml -print | grep -E '/afat(Debug|Release)/' | head -n 1 || true)
+          if [[ -z "$manifest_path" ]] || ! grep -Fq 'com.google.android.gms.car.application' "$manifest_path"; then
+            echo "::error::AFAT merged application manifest missing Android Auto metadata"
+            exit 1
+          fi
+          echo "PASS: merged AFAT manifest includes Android Auto"
           echo "PASS: merged Android manifest for $task"
       - name: Build branded Android APK
         if: ${{ !inputs.source_preflight_only }}
