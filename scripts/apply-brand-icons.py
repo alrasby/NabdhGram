@@ -31,7 +31,7 @@ def safe_canvas(artwork, pixels, background):
     mask = Image.new("L", (pixels, pixels), 0)
     draw = ImageDraw.Draw(mask)
     draw.rounded_rectangle((0, 0, pixels - 1, pixels - 1),
-                           radius=round(pixels * 0.235), fill=255)
+                           radius=round(pixels * 0.32), fill=255)
     canvas.paste(backdrop, (0, 0), mask)
     return canvas
 
