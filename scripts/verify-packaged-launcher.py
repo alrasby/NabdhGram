@@ -49,7 +49,7 @@ print("PASS: compiled first-install launcher icon foreground is approved NabdhGr
 # Checking only the application icon previously missed the paper-plane when
 # a fresh install entered the app through the activity-alias.
 manifest = manifest_file.read_text(encoding="utf-8")
-blocks = re.split(r"(?m)^\\s*E: activity-alias\\b", manifest)
+blocks = re.split(r"(?m)^\s*E: activity-alias\b", manifest)
 defaults = [b for b in blocks[1:] if "org.telegram.messenger.DefaultIcon" in b]
 if len(defaults) != 1:
     fail("compiled DefaultIcon launcher alias missing or ambiguous")
@@ -58,9 +58,9 @@ for attr, resource_name in (
     ("icon", "mipmap/nabdhgram_launcher"),
     ("roundIcon", "mipmap/nabdhgram_launcher_round"),
 ):
-    ref = re.search(r"android:" + attr + r"\\b[^\\n]*?@0x([0-9a-fA-F]+)", default)
+    ref = re.search(r"android:" + attr + r"\b[^\n]*?@0x([0-9a-fA-F]+)", default)
     expected_ref = re.search(
-        r"(?m)^\\s*spec resource\\s+(0x[0-9a-fA-F]+)\\s+[^\\n]*:"
+        r"(?m)^\s*spec resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:"
         + re.escape(resource_name) + r":", resources)
     if not ref or not expected_ref:
         fail("compiled DefaultIcon missing resource: " + resource_name)
