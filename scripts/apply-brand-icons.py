@@ -141,7 +141,12 @@ def main():
         )
         anydpi = res / "mipmap-anydpi-v26"
         anydpi.mkdir(parents=True, exist_ok=True)
-        for name in ("nabdhgram_launcher.xml", "nabdhgram_launcher_round.xml"):
+        # Android 26+ resolves mipmap-anydpi-v26/ic_launcher.xml before
+        # density-qualified ic_launcher.png. The original upstream adaptive
+        # fallback still contains Telegram even if all PNGs are NabdhGram.
+        # Override BOTH modern fallback XML names in the application module.
+        for name in ("nabdhgram_launcher.xml", "nabdhgram_launcher_round.xml",
+                     "ic_launcher.xml", "ic_launcher_round.xml"):
             (anydpi / name).write_text(
                 '<?xml version="1.0" encoding="utf-8"?>\n'
                 '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
