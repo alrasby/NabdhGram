@@ -791,23 +791,18 @@ checks["header native transitions preserved without extra NabdhGram overlays"] =
     and 'nabdhRestoreChatTitle' not in header_overlay_source
 )
 
-# Temporary pinned-source diagnostics: header scales and compiled alias candidates.
-for label, rel, ranges in (
-    ("STORIES", "Stories/DialogStoriesCell.java", [(972,1045), (2258,2285)]),
-    ("DIALOGS", "DialogsActivity.java", [(1636,1706), (5540,5580)]),
-):
-    lines = (ui / rel).read_text(encoding="utf-8").splitlines()
-    if label == "DIALOGS":
-        indexes = [i for i,x in enumerate(lines)
-                   if ("title" in x.lower() or "logo" in x.lower()) and
-                      ("setScale" in x or "setAlpha" in x or "getTitlesContainer" in x)]
-        ranges = [(max(1,i-2),min(len(lines),i+3)) for i in indexes[:20]]
-    seen = set()
-    for lo,hi in ranges:
-        for i in range(lo-1,min(hi,len(lines))):
-            if i not in seen:
-                print(f"NABDH_HEADER_NATIVE {label} {i+1}: {lines[i]}",flush=True)
-                seen.add(i)
+# Regression: full-size branded name uses the native header owner, not an
+# additional view, and its scale cannot settle at the unreadable 0.4x.
+header_branding = (Path(__file__).resolve().parent / "apply-dialogs-title.py").read_text(encoding="utf-8")
+checks["main header native animation keeps readable NabdhGram text"] = (
+    "0.8f + 0.2f * containersAlpha" in dialogs
+    and "initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect" in dialogs
+    and "nabdhRestoreChatTitle" not in dialogs
+    and "new NabdhNativeWordmarkDrawable()" in stories_header
+    and "LayoutHelper.createFrame(132, 22)" in stories_header
+    and "return AndroidUtilities.dp(132);" in stories_header
+    and "float s = (initialDialogsType == DIALOGS_TYPE_DEFAULT" in header_branding
+)
 
 for name, okay in checks.items():
     print(("PASS" if okay else "FAIL") + " " + name)
