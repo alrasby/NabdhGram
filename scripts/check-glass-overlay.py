@@ -767,10 +767,15 @@ checks["folder counter numerals contrast against current badge fill"] = (
 auto_manifest = (root / "TMessagesProj/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 auto_desc = (root / "TMessagesProj/src/main/res/xml/automotive_app_desc.xml").read_text(encoding="utf-8")
 auto_notifications = (root / "TMessagesProj/src/main/java/org/telegram/messenger/NotificationsController.java").read_text(encoding="utf-8")
-checks["Android Auto notification capability declared preserving existing categories"] = (
+app_auto_manifest = (root / "TMessagesProj_App/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+app_auto_desc = (root / "TMessagesProj_App/src/main/res/xml/automotive_app_desc.xml").read_text(encoding="utf-8")
+checks["Android Auto capability declared in actual AFAT app manifest and resources"] = (
     'com.google.android.gms.car.application' in auto_manifest
     and '@xml/automotive_app_desc' in auto_manifest
     and '<uses name="notification"' in auto_desc
+    and 'com.google.android.gms.car.application' in app_auto_manifest
+    and '@xml/automotive_app_desc' in app_auto_manifest
+    and app_auto_desc == auto_desc
 )
 checks["Android Auto reuses secure native Telegram reply/read actions"] = (
     'builder.addAction(readAction);' in auto_notifications
