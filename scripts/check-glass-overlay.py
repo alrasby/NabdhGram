@@ -619,12 +619,9 @@ checks["Glass rows remain independent from the opaque page canvas"] = (
     "newOpaquePageBackground()" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
     and "return new GlassCardLayers();" in (ui / "Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
 )
-checks["main-tab host rebrands the actual visible chats title on tab switch and resume"] = (
-    "private void nabdhRestoreChatTitle()" in main_tabs
-    and 'bar.setTitle("NabdhGram", currentTitle == null' in main_tabs
-    and 'currentTitle.getRightDrawable()' in main_tabs
-    and "if (position == POSITION_CHATS) nabdhRestoreChatTitle();" in main_tabs
-    and "if (viewPager != null && viewPager.getCurrentPosition() == POSITION_CHATS)" in main_tabs
+checks["MainTabs leaves title ownership to native Telegram"] = (
+    "nabdhRestoreChatTitle" not in main_tabs
+    and 'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
 )
 checks["global font renderer respects secondary explanatory labels"] = (
     '"nabdh:secondary-text".equals(label.getTag())' in
@@ -643,13 +640,13 @@ checks["new Glass and Intelligence help texts opt into readable body weight"] = 
     feature.count('note.setTag("nabdh:secondary-text");') >= 2
 )
 stories_header = (ui / "Stories/DialogStoriesCell.java").read_text(encoding="utf-8")
-checks["stories wordmark stays at stable left anchor unless center enabled"] = (
-    'float nabdhLogoX = dp(72);' in stories_header
-    and 'NabdhHomePrefs.enabled(getContext(), "center_title")' in stories_header
-    and 'float nabdhLogoX = titleView.getTranslationX() + dp(1);' not in stories_header
-    and 'telegramLogoView.setTranslationX(nabdhLogoX);' in stories_header
-    and 'telegramLogoView.setScaleX(1f);' in stories_header
-    and 'telegramLogoView.setScaleY(1f);' in stories_header
+checks["native stories wordmark keeps Telegram original animation"] = (
+    'telegramLogoView = new TextView(context);' in stories_header
+    and 'telegramLogoView.setText("NabdhGram");' in stories_header
+    and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
+    and 'final float logoAlpha = logoVisibility * progress;' in stories_header
+    and 'telegramLogoView.setScaleX(1f);' not in stories_header
+    and 'float nabdhLogoX = dp(72);' not in stories_header
 )
 checks["main title alignment is controlled by user preference, not forced"] = (
     'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
@@ -671,7 +668,7 @@ checks["AppName and default main title use NabdhGram after navigation"] = (
     and '<string name="AppNameBeta">NabdhGram Beta</string>' in
     (root / "TMessagesProj/src/main/res/values/strings.xml").read_text(encoding="utf-8")
     and 'actionBar.setTitle("NabdhGram", statusDrawable);' in dialogs
-    and "&& statusDrawable != null" in dialogs
+    and "nabdhRestoreChatTitle" not in main_tabs
 )
 checks["Account root is opaque with adapter-owned rounded cards"] = (
     "NabdhGlassRowDecoration.newOpaquePageBackground()" in
@@ -784,11 +781,12 @@ checks["Android Auto reuses secure native Telegram reply/read actions"] = (
     and '!waitingForPasscode && !SharedConfig.isWaitingForPasscodeEnter' in auto_notifications
     and 'RemoteInput remoteInputWear = new RemoteInput.Builder(EXTRA_VOICE_REPLY)' in auto_notifications
 )
-checks["home header is stable throughout stories and owns one visible app title"] = (
-    'type == TYPE_DIALOGS ? 0f : logoVisibility * progress' in stories_header
-    and '&& !actionBar.isActionModeShowed()' in dialogs
-    and 'actionBar.getTitlesContainer().setAlpha(1f);' in dialogs
-    and 'NabdhHomePrefs.enabled(getContext(), "center_title")' in stories_header
+checks["header uses upstream title fade without additional overlays"] = (
+    'final float logoAlpha = logoVisibility * progress;' in stories_header
+    and 'actionBar.getTitlesContainer().setAlpha(1f);' not in dialogs
+    and 'actionBar.getTitlesContainer().setScaleX(1f);' not in dialogs
+    and 'telegramLogoView.setScaleX(1f);' not in stories_header
+    and 'telegramLogoView.setText("NabdhGram");' in stories_header
 )
 
 for name, okay in checks.items():
