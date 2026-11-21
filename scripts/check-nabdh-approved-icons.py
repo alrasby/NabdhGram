@@ -111,13 +111,28 @@ with Image.open(iphone_source) as original, Image.open(
 
 for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias
-    assert ('R.mipmap.nabdh_icon_' + slug) in java, "Missing picker image " + slug
+    assert ('R.mipmap.nabdh_icon_preview_' + slug) in java, "Missing distinct original-art picker preview " + slug
+    # Modern Android must resolve this alias to an adaptive XML instead of
+    # wrapping a transparent legacy bitmap in Samsung's white backplate.
+    modern = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
+    assert modern.is_file(), "Missing adaptive alias resource " + slug
+    modern_xml = modern.read_text(encoding="utf-8")
+    assert '<adaptive-icon' in modern_xml and (
+        '@drawable/nabdh_adaptive_fg_' + slug) in modern_xml, "Wrong adaptive foreground " + slug
+    assert ('@color/nabdh_adaptive_bg_' + slug) in modern_xml, "Wrong adaptive background " + slug
+    assert (res / "drawable-nodpi" / ("nabdh_adaptive_fg_" + slug + ".png")).is_file(), (
+        "Missing adaptive safe-zone foreground " + slug)
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
     # Six retired aliases reference surviving silver artwork for safe migration.
     expected = 1 + len(retired) if slug == "silver" else 1
     assert manifest.count('android:icon="@mipmap/nabdh_icon_' + slug + '"') == expected, "Alias icon count mismatch " + slug
     for density, pixels in (("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)):
-        p = res / ("mipmap-" + density) / ("nabdh_icon_" + slug + ".png")
+        original_png = res / ("mipmap-" + density) / ("nabdh_icon_" + slug + ".png")
+        preview_png = res / ("mipmap-" + density) / ("nabdh_icon_preview_" + slug + ".png")
+        with Image.open(original_png) as a, Image.open(preview_png) as b:
+            assert ImageChops.difference(a.convert("RGBA"), b.convert("RGBA")).getbbox() is None, (
+                "Picker preview changed user-approved pixels: " + slug + " " + density)
+        p = original_png
         with Image.open(p) as image:
             image.load()
             assert image.size == (pixels, pixels), "Wrong size for " + str(p)
