@@ -5,9 +5,9 @@ import re
 import subprocess
 import sys
 
-if len(sys.argv) != 5:
-    raise SystemExit("Usage: verify-packaged-launcher.py APK BADGING RESOURCES AAPT")
-apk, badging_file, resources_file, tool = map(Path, sys.argv[1:])
+if len(sys.argv) != 6:
+    raise SystemExit("Usage: verify-packaged-launcher.py APK BADGING RESOURCES MANIFEST AAPT")
+apk, badging_file, resources_file, manifest_file, tool = map(Path, sys.argv[1:])
 badging = badging_file.read_text(encoding="utf-8")
 resources = resources_file.read_text(encoding="utf-8")
 
@@ -45,3 +45,26 @@ if actual_id != expected_id:
     fail("default icon adaptive foreground is NOT the NabdhGram image; actual "
          + actual_id + " versus approved " + expected_id)
 print("PASS: compiled first-install launcher icon foreground is approved NabdhGram adaptive artwork")
+# The launchable DefaultIcon activity alias has its OWN icon attribute.
+# Checking only the application icon previously missed the paper-plane when
+# a fresh install entered the app through the activity-alias.
+manifest = manifest_file.read_text(encoding="utf-8")
+blocks = re.split(r"(?m)^\\s*E: activity-alias\\b", manifest)
+defaults = [b for b in blocks[1:] if "org.telegram.messenger.DefaultIcon" in b]
+if len(defaults) != 1:
+    fail("compiled DefaultIcon launcher alias missing or ambiguous")
+default = defaults[0]
+for attr, resource_name in (
+    ("icon", "mipmap/nabdhgram_launcher"),
+    ("roundIcon", "mipmap/nabdhgram_launcher_round"),
+):
+    ref = re.search(r"android:" + attr + r"\\b[^\\n]*?@0x([0-9a-fA-F]+)", default)
+    expected_ref = re.search(
+        r"(?m)^\\s*spec resource\\s+(0x[0-9a-fA-F]+)\\s+[^\\n]*:"
+        + re.escape(resource_name) + r":", resources)
+    if not ref or not expected_ref:
+        fail("compiled DefaultIcon missing resource: " + resource_name)
+    if int(ref.group(1), 16) != int(expected_ref.group(1), 16):
+        fail("compiled DefaultIcon " + attr + " resolves to Telegram, not " + resource_name)
+print("PASS: compiled DefaultIcon activity-alias uses owner NabdhGram standard and round launcher")
+
