@@ -26,6 +26,20 @@ def main():
                 actionBar.setTitle(ssb, statusDrawable);""",
              """                actionBar.setTitle("NabdhGram", statusDrawable);""",
              "native dialogs ActionBar title")
+    # Root of the microscopic header: native DialogsActivity scales its
+    # ActionBar title to 0.4x when containersAlpha approaches zero. With
+    # ten-letter NabdhGram (rather than Telegram's 90dp logo) the name becomes
+    # illegible for long-lived partially-collapsed states. Keep Telegram's
+    # native fade, position and state transition, but raise the scale floor
+    # in the MAIN chat header only. This changes one native animation owner;
+    # no title duplicates, no post-layout forced translations or views.
+    d = once(d,
+         "            float s = 0.4f + 0.6f * containersAlpha;",
+         """            float s = (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect
+                    && folderId == 0 && communityId == 0)
+                    ? 0.8f + 0.2f * containersAlpha
+                    : 0.4f + 0.6f * containersAlpha;""",
+         "native main header title scale floor")
     dialogs.write_text(d, encoding="utf-8")
 
     # Preserve Telegram's ORIGINAL ImageView type, 90x22dp layout, native
