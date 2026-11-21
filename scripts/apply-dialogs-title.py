@@ -111,7 +111,7 @@ def main():
         "telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));",
         "final float logoAlpha = logoVisibility * progress;",
         "telegramLogoView.setTranslationY(bottomY - barOffset",
-        "addView(telegramLogoView, LayoutHelper.createFrame(90, 22));",
+        "addView(telegramLogoView, LayoutHelper.createFrame(132, 22));",
     ):
         if native not in s:
             raise SystemExit(f"Pinned stories native layout/animation changed: {native}")
