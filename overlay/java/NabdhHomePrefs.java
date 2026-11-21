@@ -37,40 +37,13 @@ public final class NabdhHomePrefs {
                 symbols[1 + ((id & Integer.MAX_VALUE) % (symbols.length - 1))];
         return mode == 2 ? symbol : symbol + " " + name;
     }
-    /** Position the single main chats title outside the stories avatars. */
+    /** Native Telegram owns layout and animations; never reposition the label. */
     public static void applyTitle(org.telegram.ui.ActionBar.ActionBar bar, Context context) {
         if (bar == null || context == null) return;
-        final org.telegram.ui.ActionBar.SimpleTextView title = bar.getTitleTextView();
-        if (title == null) return;
-        if (bar.getWidth() <= 0 || title.getWidth() <= 0) {
-            // Initial layout is asynchronous. This is only a one-off deferral:
-            // do not post repeatedly on every stories animation frame.
-            return;
-        }
-        final float dp = context.getResources().getDisplayMetrics().density;
-        final boolean center = enabled(context, "center_title");
-        final float safeStart = 72f * dp;
-        final float safeEnd = 56f * dp;
-        final float textWidth = title.getWidth();
-        final float target = center
-                ? Math.max(safeStart, Math.min((bar.getWidth() - textWidth) * 0.5f,
-                        bar.getWidth() - textWidth - safeEnd))
-                : safeStart;
-        // Convert the desired ActionBar-local position into the title view's
-        // own coordinates, accounting for parent layout and translations.
-        // Resetting translation to zero exposed the first characters behind
-        // the two stories avatars when their collapsed row was visible.
-        float origin = title.getLeft();
-        android.view.ViewParent parent = title.getParent();
-        while (parent instanceof android.view.View && parent != bar) {
-            android.view.View p = (android.view.View) parent;
-            origin += p.getLeft() + p.getTranslationX();
-            parent = p.getParent();
-        }
-        final float translation = target - origin;
-        if (Math.abs(title.getTranslationX() - translation) > 0.5f) {
-            title.setTranslationX(translation);
-        }
+        // The optional user choice is applied to Telegram's existing ActionBar
+        // title container. In the default mode, restore native left alignment.
+        // No direct title translation, scale or alpha overrides.
+        bar.setCenterTitleAndGlass(enabled(context, "center_title"));
     }
     /** Requested recording rate; Camera2 chooses a hardware-supported range. */
     public static int videoFps(Context c) {
