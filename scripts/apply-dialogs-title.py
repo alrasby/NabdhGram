@@ -26,18 +26,18 @@ def main():
                 actionBar.setTitle(ssb, statusDrawable);""",
              """                actionBar.setTitle("NabdhGram", statusDrawable);""",
              "native dialogs ActionBar title")
-    # Root of the microscopic header: native DialogsActivity scales its
-    # ActionBar title to 0.4x when containersAlpha approaches zero. With
-    # ten-letter NabdhGram (rather than Telegram's 90dp logo) the name becomes
-    # illegible for long-lived partially-collapsed states. Keep Telegram's
-    # native fade, position and state transition, but raise the scale floor
-    # in the MAIN chat header only. This changes one native animation owner;
-    # no title duplicates, no post-layout forced translations or views.
+    # Keep the native main-header title at full text scale while preserving
+    # upstream alpha, translation and visibility transitions. The original
+    # native logo was artwork, but NabdhGram is legible text and must not
+    # inherit its shrink-to-40%-size animation.
+    # No extra View or independent overlay may compete for ownership.
+    # Restrict the exception to the main chats title only.
+
     d = once(d,
          "            float s = 0.4f + 0.6f * containersAlpha;",
          """            float s = (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect
                     && folderId == 0 && communityId == 0)
-                    ? 0.8f + 0.2f * containersAlpha
+                    ? 1.0f
                     : 0.4f + 0.6f * containersAlpha;""",
          "native main header title scale floor")
     dialogs.write_text(d, encoding="utf-8")
@@ -49,6 +49,14 @@ def main():
     # the wordmark in the same animated slot at its text-appropriate width.
     stories = ui / "Stories/DialogStoriesCell.java"
     s = stories.read_text(encoding="utf-8")
+    # The original logo ImageView was allowed to shrink into a tiny emblem.
+    # The text replacement must stay readable even when Telegram changes
+    # scaleX/scaleY during a stories-to-toolbar transition. Keep this within
+    # the same native slot rather than creating a competing overlay.
+    s = once(s,
+         "telegramLogoView = new ImageView(context);",
+         "telegramLogoView = new NabdhStableWordmarkView(context);",
+         "native stories logo view constructor")
     s = once(s,
          "        telegramLogoView.setImageResource(R.drawable.telegram_logo_2);",
          "        telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());",
@@ -61,6 +69,21 @@ def main():
          "addView(telegramLogoView, LayoutHelper.createFrame(90, 22));",
          "addView(telegramLogoView, LayoutHelper.createFrame(132, 22));",
          "native wordmark width for longer app name")
+    # The layout still owns the ImageView and all visibility/translation.
+    # Only protect the text glyphs against native logo-only shrink animation.
+    logo_view_impl = """    private static final class NabdhStableWordmarkView extends ImageView {
+        NabdhStableWordmarkView(android.content.Context context) {
+            super(context);
+        }
+        @Override public void setScaleX(float value) {
+            super.setScaleX(Math.max(0.85f, value));
+        }
+        @Override public void setScaleY(float value) {
+            super.setScaleY(Math.max(0.85f, value));
+        }
+    }
+
+"""
     marker = "    ImageView telegramLogoView;"
     if s.count(marker) != 1:
         raise SystemExit("Pinned stories logo field changed")
@@ -105,7 +128,7 @@ def main():
     }
 
 """
-    s = s.replace(marker, impl + marker, 1)
+    s = s.replace(marker, impl + logo_view_impl + marker, 1)
     for native in (
         "    ImageView telegramLogoView;",
         "telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));",
