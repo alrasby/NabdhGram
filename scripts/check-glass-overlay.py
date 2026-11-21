@@ -643,6 +643,9 @@ stories_header = (ui / "Stories/DialogStoriesCell.java").read_text(encoding="utf
 checks["native stories wordmark keeps Telegram original animation"] = (
     'telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in stories_header
     and 'private static final class NabdhNativeWordmarkDrawable' in stories_header
+    and 'private static final class NabdhStableWordmarkView extends ImageView' in stories_header
+    and 'telegramLogoView = new NabdhStableWordmarkView(context);' in stories_header
+    and 'Math.max(0.85f, value)' in stories_header
     and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
     and 'final float logoAlpha = logoVisibility * progress;' in stories_header
     and 'telegramLogoView.setScaleX(1f);' not in stories_header
@@ -795,7 +798,8 @@ checks["header native transitions preserved without extra NabdhGram overlays"] =
 # additional view, and its scale cannot settle at the unreadable 0.4x.
 header_branding = (Path(__file__).resolve().parent / "apply-dialogs-title.py").read_text(encoding="utf-8")
 checks["main header native animation keeps readable NabdhGram text"] = (
-    "0.8f + 0.2f * containersAlpha" in dialogs
+    "float s = (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect" in dialogs
+    and "? 1.0f" in dialogs
     and "initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect" in dialogs
     and "nabdhRestoreChatTitle" not in dialogs
     and "new NabdhNativeWordmarkDrawable()" in stories_header
