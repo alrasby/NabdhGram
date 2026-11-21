@@ -42,11 +42,11 @@ def main():
          "native main header title scale floor")
     dialogs.write_text(d, encoding="utf-8")
 
-    # Preserve Telegram's ORIGINAL ImageView type, 90x22dp layout, native
+    # Preserve Telegram's ORIGINAL ImageView type, native
     # translation, visibility, alpha and scale. The previous TextView with
     # WRAP_CONTENT changed its geometry and was clipped during transitions.
     # Only substitute the image's *content*, with a drawable that renders
-    # the wordmark within the unchanged bounds.
+    # the wordmark in the same animated slot at its text-appropriate width.
     stories = ui / "Stories/DialogStoriesCell.java"
     s = stories.read_text(encoding="utf-8")
     s = once(s,
@@ -58,7 +58,7 @@ def main():
     # shrink its container to 40%, producing the microscopic title on screen.
     # Give the SAME native ImageView enough intrinsic width (no new view).
     s = once(s,
-         "addView(telegramLogoView, LayoutHelper.createFrame(132, 22));",
+         "addView(telegramLogoView, LayoutHelper.createFrame(90, 22));",
          "addView(telegramLogoView, LayoutHelper.createFrame(132, 22));",
          "native wordmark width for longer app name")
     marker = "    ImageView telegramLogoView;"
@@ -79,7 +79,7 @@ def main():
             android.graphics.Rect bounds = getBounds();
             float naturalWidth = textPaint.measureText(wordmark);
             if (naturalWidth <= 0 || bounds.width() <= 0 || bounds.height() <= 0) return;
-            // Fit the word inside Telegram's original 90dp ImageView so it
+            // Fit the word inside the existing animated ImageView so it
             // never draws over the stories avatars, action buttons or status.
             float fitScale = Math.min(1f, bounds.width() / naturalWidth);
             float baseline = -0.5f * (textPaint.ascent() + textPaint.descent());
