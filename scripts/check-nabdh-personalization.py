@@ -154,10 +154,10 @@ check('telegramLogoView = new TextView(context);' in stories_cell and
       "final float logoAlpha = logoVisibility * progress;" in stories_cell and
       "telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));" in stories_cell,
       "stories header must retain native Telegram title animation")
-check("actionBar.getTitlesContainer().setScaleX(1f);" not in dialogs and
-      "actionBar.getTitlesContainer().setAlpha(1f);" not in dialogs and
-      "nabdhRestoreChatTitle" not in tabs,
-      "native Telegram stories/action-bar animation must not be overridden")
+check('getTitlesContainer().setScaleX(1f)' not in title_overlay and
+      'getTitlesContainer().setAlpha(1f)' not in title_overlay and
+      'nabdhRestoreChatTitle' not in title_overlay,
+      "native Telegram stories/action-bar animation must not be overridden by branding")
 
 check("NabdhPersonalizeActivity.HOME" in settings and
       "NabdhPersonalizeActivity.BUBBLES" in settings and
