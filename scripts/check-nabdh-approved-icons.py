@@ -50,10 +50,27 @@ for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
         assert a.size == b.size == (pixels, pixels)
         assert ImageChops.difference(a.convert("RGBA"), b.convert("RGBA")).getbbox() is None, (
             "Default picker differs from the actual NabdhGram launcher: " + density)
+        # Legacy installer/launcher fallback must already display our rounded
+        # logo even before the user ever opens Settings -> App Icon.
+        fallback = app_res / ("mipmap-" + density) / "ic_launcher.png"
+        with Image.open(fallback) as first_install:
+            assert ImageChops.difference(
+                first_install.convert("RGBA"), b.convert("RGBA")).getbbox() is None, (
+                "Initial launcher still uses Telegram artwork: " + density)
+        assert b.convert("RGBA").getpixel((0, 0))[3] == 0, (
+            "Legacy icon has opaque square corners: " + density)
 adaptive = app_res / "mipmap-anydpi-v26/nabdhgram_launcher.xml"
 assert adaptive.is_file(), "Default adaptive launcher resource missing"
 assert "<adaptive-icon" in adaptive.read_text(encoding="utf-8"), (
     "Default launcher lost Android adaptive behavior")
+# Both release and debug config manifests must use branded resources.
+config_root = root / "TMessagesProj/config"
+for config_manifest in config_root.rglob("AndroidManifest*.xml"):
+    content = config_manifest.read_text(encoding="utf-8")
+    assert 'android:icon="@mipmap/ic_launcher"' not in content, (
+        "Unbranded launcher left in config manifest: " + str(config_manifest))
+    assert 'android:roundIcon="@mipmap/ic_launcher_round"' not in content, (
+        "Unbranded round launcher left in config manifest: " + str(config_manifest))
 
 
 # Source hashes prevent future builds silently replacing the user's logos.
