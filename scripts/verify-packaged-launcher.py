@@ -70,14 +70,16 @@ print("PASS: compiled DefaultIcon activity-alias uses owner NabdhGram standard a
 
 
 
-# Check the installed resources for EVERY user-selectable launcher alias.
+# Check installed resources for the original user-selectable aliases.
+# Experimental V2 aliases are retained for migration only and deliberately
+# point to fallback artwork; they must not be checked as selectable entries.
 # A correct in-app preview is not enough: the launcher uses each alias's
 # android:icon/roundIcon from the packaged merged manifest.
 for activity, mipmap in (
-    ("NabdhSilverCircleV2Icon", "nabdh_icon_silver"),
-    ("NabdhDarkCircleV2Icon", "nabdh_icon_dark"),
-    ("NabdhGlassCircleV2Icon", "nabdh_icon_glass"),
-    ("NabdhIphoneV2Icon", "nabdh_icon_iphone"),
+    ("NabdhSilverCircleIcon", "nabdh_icon_silver"),
+    ("NabdhDarkCircleIcon", "nabdh_icon_dark"),
+    ("NabdhGlassCircleIcon", "nabdh_icon_glass"),
+    ("NabdhIphoneIcon", "nabdh_icon_iphone"),
 ):
     matches = [b for b in blocks[1:] if
                ("org.telegram.messenger." + activity) in b]
