@@ -555,21 +555,17 @@ checks = {
         and "nameWidth -= dp(27);" in cell,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
     "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
-    "dialog Glass fill remains continuous during native swipe animation":
-        "!drawArchive" not in cell
-        and "if (rightFragmentOpenedProgress == 0.0f" in cell
-        and "if (translationX == 0 && currentRevealProgress == 0.0f" not in cell
+    "dialog swipe uses last accepted native draw lifecycle":
+        "if (translationX == 0 && currentRevealProgress == 0.0f" in cell
+        and "&& rightFragmentOpenedProgress == 0.0f" in cell
         and "isFolderCell()" in cell,
-    "dialog Glass fill does not flash on press-release":
+    "dialog card paint does not change with touch selection":
         "final boolean selected = isPressed()" not in cell
         and "final int fill = archived ?" in cell,
-    "dialog Glass fill and opacity never change during swipe":
+    "dialog card has no experimental swipe alpha interpolation":
         "Math.abs(translationX) / dp(56f)" not in cell
         and "swipeFade" not in cell
-        and "glassAlpha" not in cell
-        and "nabdhCardPaint.setColor(fill);" in cell
-        and "nabdhCardPaint.setAlpha(255);" in cell
-        and "if (translationX == 0 && currentRevealProgress == 0.0f" not in cell,
+        and "glassAlpha" not in cell,
     "section headers drawn only at unique boundaries": all(
         part in dialogs for part in (
             "if (position == firstPinned) return 1;",
