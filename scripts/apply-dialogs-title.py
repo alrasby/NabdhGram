@@ -35,10 +35,13 @@ def main():
 
     d = once(d,
          "            float s = 0.4f + 0.6f * containersAlpha;",
-         """            float s = (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect
-                    && folderId == 0 && communityId == 0)
-                    ? 1.0f
-                    : 0.4f + 0.6f * containersAlpha;""",
+         """            // The home header identity is its actual visible title, not
+            // a particular dialog constructor mode or folder state. MainTabs
+            // may restore the same NabdhGram title in another DialogsActivity
+            // instance; the previous initialDialogsType/folder guard then
+            // allowed Telegram's 0.4x logo animation to shrink real text.
+            float s = "NabdhGram".equals(actionBar.getTitle())
+                    ? 1.0f : 0.4f + 0.6f * containersAlpha;""",
          "native main header title scale floor")
     dialogs.write_text(d, encoding="utf-8")
 
