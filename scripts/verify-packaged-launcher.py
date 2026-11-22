@@ -68,3 +68,29 @@ for attr, resource_name in (
         fail("compiled DefaultIcon " + attr + " resolves to Telegram, not " + resource_name)
 print("PASS: compiled DefaultIcon activity-alias uses owner NabdhGram standard and round launcher")
 
+
+
+# Check the installed resources for EVERY user-selectable launcher alias.
+# A correct in-app preview is not enough: the launcher uses each alias's
+# android:icon/roundIcon from the packaged merged manifest.
+for activity, mipmap in (
+    ("NabdhSilverCircleV2Icon", "nabdh_icon_silver"),
+    ("NabdhDarkCircleV2Icon", "nabdh_icon_dark"),
+    ("NabdhGlassCircleV2Icon", "nabdh_icon_glass"),
+    ("NabdhIphoneV2Icon", "nabdh_icon_iphone"),
+):
+    matches = [b for b in blocks[1:] if
+               ("org.telegram.messenger." + activity) in b]
+    if len(matches) != 1:
+        fail("missing or duplicate selectable launcher alias: " + activity)
+    for attr in ("icon", "roundIcon"):
+        icon_ref = re.search(r"android:" + attr + r"\b[^\n]*?@0x([0-9a-fA-F]+)",
+                             matches[0])
+        expected_ref = re.search(
+            r"(?m)^\s*spec resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:"
+            + re.escape("mipmap/" + mipmap) + r":", resources)
+        if not icon_ref or not expected_ref:
+            fail(activity + ": compiled launcher icon resource missing: " + attr)
+        if int(icon_ref.group(1), 16) != int(expected_ref.group(1), 16):
+            fail(activity + ": launcher maps to wrong resource " + attr)
+print("PASS: all four selected launcher aliases resolve to their own approved icons")
