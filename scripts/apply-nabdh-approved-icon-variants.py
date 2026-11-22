@@ -51,55 +51,31 @@ def compose_icon(slug):
         raise SystemExit("User icon must have fully transparent outer pixels")
     return image
 
-# On Android 8+ the launcher normalizes legacy transparent PNG activity-alias
-# icons and may draw a white rounded-square backplate (Samsung One UI).
-# Supply an explicit adaptive resource for each alias instead. Its foreground
-# is the owner's unmodified artwork placed in the adaptive safe zone and its
-# opaque background is sampled from the artwork itself, never system white.
-# The OS still controls its OUTER mask, so a physically circular home icon
-# cannot be guaranteed on all launchers.
+# Keep a transparent launcher background: an opaque second layer makes the
+# owner-supplied circle appear inside a square. Keep the circular/square
+# silhouette exclusively in the approved artwork foreground.
+# Android controls the final adaptive mask, but the app itself must never
+# introduce an extra colored/white backing for these alternate icons.
 adaptive_dir = res / "mipmap-anydpi-v26"
 adaptive_dir.mkdir(parents=True, exist_ok=True)
 adaptive_drawable_dir = res / "drawable-nodpi"
 adaptive_drawable_dir.mkdir(parents=True, exist_ok=True)
-colors_dir = res / "values"
-colors_dir.mkdir(parents=True, exist_ok=True)
-adaptive_colors = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
-
 for slug, _, _, _, _ in VARIANTS:
     icon = compose_icon(slug)
-    # Preserve original transparent PNGs for older Android versions and for
-    # chooser artwork; modern launchers resolve the same mipmap to adaptive XML.
-    opaque = [icon.getpixel((x, y)) for x, y in
-              ((96, 8), (96, 16), (96, 24), (8, 96), (184, 96),
-               (96, 168), (96, 176), (96, 184))
-              if icon.getpixel((x, y))[3] >= 230]
-    if opaque:
-        # Use the darkest edge sample to avoid introducing a bright border.
-        edge = min(opaque, key=lambda p: sum(p[:3]))
-        bg = edge[:3]
-    else:
-        bg = (4, 37, 42)
-    color_name = "nabdh_adaptive_bg_" + slug
-    adaptive_colors.append(
-        '    <color name="' + color_name + '">#%02X%02X%02X</color>' % bg)
     foreground = Image.new("RGBA", (1080, 1080), (0, 0, 0, 0))
-    # Android adaptive safe zone diameter is approximately 66/108.
-    size = 648
-    foreground.alpha_composite(icon.resize((size, size), Image.Resampling.LANCZOS),
-                               ((1080 - size) // 2, (1080 - size) // 2))
+    # Keep all of the original silhouette inside the adaptive safe area.
+    side = 648
+    foreground.alpha_composite(icon.resize((side, side), Image.Resampling.LANCZOS),
+                               ((1080 - side) // 2, (1080 - side) // 2))
     fg_name = "nabdh_adaptive_fg_" + slug
     foreground.save(adaptive_drawable_dir / (fg_name + ".png"),
                     format="PNG", optimize=True)
     (adaptive_dir / ("nabdh_icon_" + slug + ".xml")).write_text(
-        '<?xml version="1.0" encoding="utf-8"?>\\n'
-        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\\n'
-        '    <background android:drawable="@color/' + color_name + '" />\\n'
-        '    <foreground android:drawable="@drawable/' + fg_name + '" />\\n'
-        '</adaptive-icon>\\n', encoding="utf-8")
-adaptive_colors.append('</resources>')
-(colors_dir / "nabdh_adaptive_icon_colors.xml").write_text(
-    "\\n".join(adaptive_colors) + "\\n", encoding="utf-8")
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+        '    <background android:drawable="@android:color/transparent" />\n'
+        '    <foreground android:drawable="@drawable/' + fg_name + '" />\n'
+        '</adaptive-icon>\n', encoding="utf-8")
 
 for slug, _, _, _, _ in VARIANTS:
     icon = compose_icon(slug)
