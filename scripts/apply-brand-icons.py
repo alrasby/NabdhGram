@@ -17,22 +17,17 @@ ARTWORK_FRACTION = 0.60
 ADAPTIVE_ARTWORK_FRACTION = 0.60
 LEGACY_ARTWORK_FRACTION = 0.86
 
-def safe_canvas(artwork, pixels, background):
+def safe_canvas(artwork, pixels):
     from PIL import Image
-    from PIL import ImageDraw
-    # Legacy launchers and third-party installers may not apply an adaptive
-    # mask. Brand the legacy resource as a rounded square, not an opaque box.
+    # Preserve the approved logo's transparency. The previous version
+    # composited it over an opaque rounded-square backdrop, creating an
+    # unwanted second container around the original artwork.
     canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
-    backdrop = Image.new("RGBA", (pixels, pixels), background)
     side = round(pixels * LEGACY_ARTWORK_FRACTION)
     resized = artwork.copy()
     resized.thumbnail((side, side), Image.Resampling.LANCZOS)
-    backdrop.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
-    mask = Image.new("L", (pixels, pixels), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.rounded_rectangle((0, 0, pixels - 1, pixels - 1),
-                           radius=round(pixels * 0.32), fill=255)
-    canvas.paste(backdrop, (0, 0), mask)
+    canvas.alpha_composite(resized, ((pixels - resized.width) // 2,
+                                     (pixels - resized.height) // 2))
     return canvas
 
 def foreground_canvas(artwork, pixels):
@@ -101,15 +96,10 @@ def main():
                 print("Logo crop skipped: source corners are not uniformly dark")
         print(f"Effective artwork dimensions: {rgba.width}x{rgba.height}")
         res = root / "TMessagesProj_App" / "src" / "main" / "res"
-        # Derive a neutral edge color from the approved source itself.
-        # The full artwork is preserved, but inset to the Android safe zone.
-        background = rgba.getpixel((0, 0))
-        if background[3] != 255:
-            background = (4, 37, 42, 255)
         for density, px in SIZES.items():
             folder = res / f"mipmap-{density}"
             folder.mkdir(parents=True, exist_ok=True)
-            scaled = safe_canvas(rgba, px, background)
+            scaled = safe_canvas(rgba, px)
             # The upstream application/launcher may fall back to ic_launcher
             # on first install before a user selects a launcher alias. Brand
             # those resource names too, using exactly the approved source.
@@ -132,13 +122,6 @@ def main():
         foreground_canvas(rgba, 1080).save(
             drawable / "nabdhgram_launcher_foreground.png", format="PNG", optimize=True
         )
-        values = res / "values"
-        values.mkdir(parents=True, exist_ok=True)
-        (values / "nabdhgram_launcher_colors.xml").write_text(
-            '<?xml version="1.0" encoding="utf-8"?>\n'
-            '<resources><color name="nabdhgram_launcher_background">#%02X%02X%02X</color></resources>\n'
-            % background[:3], encoding="utf-8"
-        )
         anydpi = res / "mipmap-anydpi-v26"
         anydpi.mkdir(parents=True, exist_ok=True)
         # Android 26+ resolves mipmap-anydpi-v26/ic_launcher.xml before
@@ -150,7 +133,7 @@ def main():
             (anydpi / name).write_text(
                 '<?xml version="1.0" encoding="utf-8"?>\n'
                 '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                '    <background android:drawable="@color/nabdhgram_launcher_background" />\n'
+                '    <background android:drawable="@android:color/transparent" />\n'
                 '    <foreground android:drawable="@drawable/nabdhgram_launcher_foreground" />\n'
                 '</adaptive-icon>\n', encoding="utf-8"
             )
