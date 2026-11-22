@@ -24,15 +24,17 @@ if not manifest.is_file() or not controller.is_file():
 # Keep the three existing circles and restore the previously approved rounded-square
 # iPhone Glass choice. Never change the underlying user-supplied artwork.
 VARIANTS = (
-    ("silver", "NabdhSilverCircleV2Icon", "NabdhIconSilverCircle", "Silver Circle", "الدائرية الفضية"),
-    ("dark", "NabdhDarkCircleV2Icon", "NabdhIconDarkCircle", "Dark Circle", "الدائرية الداكنة"),
-    ("glass", "NabdhGlassCircleV2Icon", "NabdhIconGlassCircle", "Glass Circle", "الدائرية الزجاجية"),
-    ("iphone", "NabdhIphoneV2Icon", "NabdhIconIphone", "iPhone Glass", "الزجاجية المستديرة"),
+    ("silver", "NabdhSilverCircleIcon", "NabdhIconSilverCircle", "Silver Circle", "الدائرية الفضية"),
+    ("dark", "NabdhDarkCircleIcon", "NabdhIconDarkCircle", "Dark Circle", "الدائرية الداكنة"),
+    ("glass", "NabdhGlassCircleIcon", "NabdhIconGlassCircle", "Glass Circle", "الدائرية الزجاجية"),
+    ("iphone", "NabdhIphoneIcon", "NabdhIconIphone", "iPhone Glass", "الزجاجية المستديرة"),
 )
+# Restore the alias identities that previously worked on the user's device.
+# Retire the experimental V2 identities, not the approved original aliases.
 RETIRED = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon",
            "NabdhOriginalIcon", "NabdhCircularIcon",
-           "NabdhSilverCircleIcon", "NabdhDarkCircleIcon",
-           "NabdhGlassCircleIcon", "NabdhIphoneIcon")
+           "NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
+           "NabdhGlassCircleV2Icon", "NabdhIphoneV2Icon")
 USER_SOURCES = {
     "silver": repository / "branding/approved/nabdh-icon-silver-circle.webp",
     "dark": repository / "branding/approved/nabdh-icon-dark-circle.webp",
@@ -132,8 +134,8 @@ migration = """
         String[] retired = {"NabdhDarkIcon", "NabdhLightIcon",
                 "NabdhTealIcon", "NabdhHexIcon",
                 "NabdhOriginalIcon", "NabdhCircularIcon",
-                "NabdhSilverCircleIcon", "NabdhDarkCircleIcon",
-                "NabdhGlassCircleIcon", "NabdhIphoneIcon"};
+                "NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
+                "NabdhGlassCircleV2Icon", "NabdhIphoneV2Icon"};
         boolean needsMigration = false;
         for (String alias : retired) {
             ComponentName component = new ComponentName(ctx.getPackageName(),
@@ -144,10 +146,10 @@ migration = """
                 // under a stable ComponentName. Enable the fresh alias before
                 // retiring the old one, keeping the user's selected design.
                 LauncherIcon replacement = null;
-                if ("NabdhSilverCircleIcon".equals(alias)) replacement = LauncherIcon.NABDH_SILVER;
-                else if ("NabdhDarkCircleIcon".equals(alias)) replacement = LauncherIcon.NABDH_DARK;
-                else if ("NabdhGlassCircleIcon".equals(alias)) replacement = LauncherIcon.NABDH_GLASS;
-                else if ("NabdhIphoneIcon".equals(alias)) replacement = LauncherIcon.NABDH_IPHONE;
+                if ("NabdhSilverCircleV2Icon".equals(alias)) replacement = LauncherIcon.NABDH_SILVER;
+                else if ("NabdhDarkCircleV2Icon".equals(alias)) replacement = LauncherIcon.NABDH_DARK;
+                else if ("NabdhGlassCircleV2Icon".equals(alias)) replacement = LauncherIcon.NABDH_GLASS;
+                else if ("NabdhIphoneV2Icon".equals(alias)) replacement = LauncherIcon.NABDH_IPHONE;
                 if (replacement != null) {
                     pm.setComponentEnabledSetting(replacement.getComponentName(ctx),
                             PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
