@@ -71,15 +71,38 @@ def main():
          "native wordmark width for longer app name")
     # The layout still owns the ImageView and all visibility/translation.
     # Only protect the text glyphs against native logo-only shrink animation.
+    # The native logo Drawable is scaled a second time by ImageView's image
+    # matrix (CENTER_INSIDE), and can collapse to a microscopic glyph when the
+    # title slots switch. Draw the wordmark directly in the existing measured
+    # view: no intrinsic-size matrix, no duplicate overlay or extra animation.
     logo_view_impl = """    private static final class NabdhStableWordmarkView extends ImageView {
+        private final android.graphics.Paint wordmarkPaint =
+                new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         NabdhStableWordmarkView(android.content.Context context) {
             super(context);
+            wordmarkPaint.setTypeface(android.graphics.Typeface.create(
+                    "sans-serif", android.graphics.Typeface.BOLD));
+            wordmarkPaint.setTextSize(AndroidUtilities.dp(19));
+            wordmarkPaint.setColor(android.graphics.Color.WHITE);
+            setScaleType(ImageView.ScaleType.FIT_XY);
+        }
+        @Override protected void onDraw(android.graphics.Canvas canvas) {
+            if (getWidth() <= 0 || getHeight() <= 0) return;
+            wordmarkPaint.setTextSize(AndroidUtilities.dp(19));
+            android.graphics.Paint.FontMetrics fm = wordmarkPaint.getFontMetrics();
+            float baseline = (getHeight() - fm.ascent - fm.descent) / 2f;
+            canvas.drawText("NabdhGram", 0f, baseline, wordmarkPaint);
+        }
+        @Override public void setColorFilter(int color, android.graphics.PorterDuff.Mode mode) {
+            super.setColorFilter(color, mode);
+            wordmarkPaint.setColor(color);
+            invalidate();
         }
         @Override public void setScaleX(float value) {
-            super.setScaleX(Math.max(0.85f, value));
+            super.setScaleX(1f);
         }
         @Override public void setScaleY(float value) {
-            super.setScaleY(Math.max(0.85f, value));
+            super.setScaleY(1f);
         }
     }
 
