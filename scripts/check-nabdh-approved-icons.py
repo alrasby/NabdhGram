@@ -2,7 +2,7 @@
 """Verify the approved launcher variants and their Android activity aliases."""
 from pathlib import Path
 import sys
-from PIL import Image, ImageChops
+from PIL import Image
 import hashlib
 
 if len(sys.argv) != 2:
@@ -49,14 +49,13 @@ for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
         a.load()
         b.load()
         assert a.size == b.size == (pixels, pixels)
-        assert ImageChops.difference(a.convert("RGBA"), b.convert("RGBA")).getbbox() is None, (
+        assert a.convert("RGBA").tobytes() == b.convert("RGBA").tobytes(), (
             "Default picker differs from the actual NabdhGram launcher: " + density)
         # Legacy installer/launcher fallback must already display our rounded
         # logo even before the user ever opens Settings -> App Icon.
         fallback = app_res / ("mipmap-" + density) / "ic_launcher.png"
         with Image.open(fallback) as first_install:
-            assert ImageChops.difference(
-                first_install.convert("RGBA"), b.convert("RGBA")).getbbox() is None, (
+            assert first_install.convert("RGBA").tobytes() == b.convert("RGBA").tobytes(), (
                 "Initial launcher still uses Telegram artwork: " + density)
         assert b.convert("RGBA").getpixel((0, 0))[3] == 0, (
             "Legacy icon has opaque square corners: " + density)
@@ -95,7 +94,7 @@ for slug, (name, expected_hash) in approved.items():
         rgba = image.convert("RGBA")
         assert rgba.getchannel("A").getextrema() == (0, 255), "Icon transparency lost: " + name
         with Image.open(res / "mipmap-xxxhdpi" / ("nabdh_icon_" + slug + ".png")) as built:
-            assert ImageChops.difference(rgba, built.convert("RGBA")).getbbox() is None, "Android icon changed from supplied source: " + name
+            assert rgba.tobytes() == built.convert("RGBA").tobytes(), "Android icon changed from supplied source: " + name
 
 # Confirm the restored rounded-square icon keeps the original transparent
 # corners and all pixels of the owner-provided image.
@@ -106,32 +105,16 @@ with Image.open(iphone_source) as original, Image.open(
     packaged.load()
     assert original.size == (192, 192) and original.format == "WEBP"
     assert original.convert("RGBA").getpixel((0, 0))[3] == 0, "Rounded-square corner became opaque"
-    assert ImageChops.difference(original.convert("RGBA"), packaged.convert("RGBA")).getbbox() is None, (
+    assert original.convert("RGBA").tobytes() == packaged.convert("RGBA").tobytes(), (
         "Rounded-square icon artwork was altered")
 
 for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias
     assert ('R.mipmap.nabdh_icon_preview_' + slug) in java, "Missing distinct original-art picker preview " + slug
-    # Modern Android must resolve this alias to an adaptive XML instead of
-    # wrapping a transparent legacy bitmap in Samsung's white backplate.
+    # Restore the last working transparent launcher alias resources.
+    # A generated adaptive icon must never replace the approved source PNG.
     modern = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
-    assert modern.is_file(), "Missing adaptive alias resource " + slug
-    modern_xml = modern.read_text(encoding="utf-8")
-    assert '<adaptive-icon' in modern_xml and (
-        '@drawable/nabdh_adaptive_fg_' + slug) in modern_xml, "Wrong adaptive foreground " + slug
-    assert 'android:drawable="@android:color/transparent"' in modern_xml, (
-        "Extra nontransparent square background in launcher " + slug)
-    assert '@color/nabdh_adaptive_bg_' not in modern_xml, (
-        "Old opaque icon backplate still embedded " + slug)
-    assert "\\n" not in modern_xml, "Launcher XML contains escaped newline literals"
-    with Image.open(res / "drawable-nodpi" / ("nabdh_adaptive_fg_" + slug + ".png")) as fg:
-        fg.load()
-        assert fg.size == (1080, 1080) and fg.mode == "RGBA"
-        assert all(fg.getpixel(corner)[3] == 0 for corner in (
-            (0, 0), (1079, 0), (0, 1079), (1079, 1079))), (
-            "Adaptive foreground has a nontransparent extra container " + slug)
-    assert (res / "drawable-nodpi" / ("nabdh_adaptive_fg_" + slug + ".png")).is_file(), (
-        "Missing adaptive safe-zone foreground " + slug)
+    assert not modern.exists(), "Unexpected adaptive icon replaced the original PNG: " + slug
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
     # Six retired aliases reference surviving silver artwork for safe migration.
     expected = 1 + len(retired) if slug == "silver" else 1
@@ -140,7 +123,7 @@ for slug, alias, label in names:
         original_png = res / ("mipmap-" + density) / ("nabdh_icon_" + slug + ".png")
         preview_png = res / ("mipmap-" + density) / ("nabdh_icon_preview_" + slug + ".png")
         with Image.open(original_png) as a, Image.open(preview_png) as b:
-            assert ImageChops.difference(a.convert("RGBA"), b.convert("RGBA")).getbbox() is None, (
+            assert a.convert("RGBA").tobytes() == b.convert("RGBA").tobytes(), (
                 "Picker preview changed user-approved pixels: " + slug + " " + density)
         p = original_png
         with Image.open(p) as image:
