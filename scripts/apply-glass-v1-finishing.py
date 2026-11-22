@@ -73,6 +73,18 @@ modify("ActionBar/SimpleTextView.java", [
         }
         // Never replace icon, math, code or specialty fonts.
         if (!standard) return;
+        // ActionBar creates SimpleTextView before its first onMeasure(), where
+        // Telegram assigns the real 17/20dp native title size. A font refresh
+        // during that unmeasured window previously memorized 0px, then
+        // repeatedly forced the title down to 1px after navigation.
+        // Do not capture or reapply a size until the native owner has
+        // initialized its paint. This also repairs an already-poisoned view.
+        if (textPaint.getTextSize() <= 0f || nabdhOriginalTextPx == 0f) {
+            if (nabdhOriginalTextPx == 0f) {
+                nabdhOriginalTextPx = -1f;
+            }
+            return;
+        }
         if (nabdhOriginalTextPx < 0f) {
             nabdhOriginalTextPx = textPaint.getTextSize();
             nabdhOriginalTextStyle = current.getStyle();
