@@ -563,6 +563,11 @@ checks = {
     "dialog Glass fill does not flash on press-release":
         "final boolean selected = isPressed()" not in cell
         and "final int fill = archived ?" in cell,
+    "dialog Glass opacity follows swipe translation smoothly":
+        "Math.abs(translationX) / dp(56f)" in cell
+        and "nabdhCardPaint.setAlpha(glassAlpha);" in cell
+        and "nabdhCardPaint.setAlpha(255);" in cell
+        and "if (translationX == 0 && currentRevealProgress == 0.0f" not in cell,
     "section headers drawn only at unique boundaries": all(
         part in dialogs for part in (
             "if (position == firstPinned) return 1;",
