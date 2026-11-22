@@ -44,15 +44,18 @@ measure_old = """                firstTab.setTitle(LocaleController.getString(R.
                 int prevWidth = additionalTabWidth;
                 additionalTabWidth = trueTabsWidth < width ? (width - trueTabsWidth) / tabs.size() : 0;
                 if (prevWidth != additionalTabWidth) {"""
-measure_new = """                firstTab.setTitle(LocaleController.getString(R.string.FilterAllChats), null, false);
+measure_new = """                final String previousTitle = firstTab.title.toString();
+                firstTab.setTitle(LocaleController.getString(R.string.FilterAllChats), null, false);
                 int fullTabsWidth = 0;
                 for (int i = 0; i < tabs.size(); i++) {
                     fullTabsWidth += tabs.get(i).getWidth(false) + dp(TAB_PADDING_WIDTH);
                 }
                 final boolean needsShortTitle = fullTabsWidth > width;
-                final boolean changedTitle = firstTab.setTitle(needsShortTitle
+                firstTab.setTitle(needsShortTitle
                         ? LocaleController.getString(R.string.FilterAllChatsShort)
                         : LocaleController.getString(R.string.FilterAllChats), null, false);
+                final boolean changedTitle = !android.text.TextUtils.equals(
+                        previousTitle, firstTab.title);
                 int trueTabsWidth = 0;
                 for (int i = 0; i < tabs.size(); i++) {
                     trueTabsWidth += tabs.get(i).getWidth(false) + dp(TAB_PADDING_WIDTH);
