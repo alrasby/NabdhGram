@@ -805,14 +805,14 @@ checks["header native transitions preserved without extra NabdhGram overlays"] =
 # additional view, and its scale cannot settle at the unreadable 0.4x.
 header_branding = (Path(__file__).resolve().parent / "apply-dialogs-title.py").read_text(encoding="utf-8")
 checks["main header native animation keeps readable NabdhGram text"] = (
-    "float s = (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect" in dialogs
+    "float s = \"NabdhGram\".equals(actionBar.getTitle())" in dialogs
     and "? 1.0f" in dialogs
-    and "initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect" in dialogs
+    and "float s = (initialDialogsType == DIALOGS_TYPE_DEFAULT" not in dialogs
     and "nabdhRestoreChatTitle" not in dialogs
     and "new NabdhNativeWordmarkDrawable()" in stories_header
     and "LayoutHelper.createFrame(132, 22)" in stories_header
     and "return AndroidUtilities.dp(132);" in stories_header
-    and "float s = (initialDialogsType == DIALOGS_TYPE_DEFAULT" in header_branding
+    and 'float s = "NabdhGram".equals(actionBar.getTitle())' in header_branding
 )
 
 for name, okay in checks.items():
