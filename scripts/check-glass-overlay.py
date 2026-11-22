@@ -559,9 +559,10 @@ checks = {
         "if (translationX == 0 && currentRevealProgress == 0.0f" in cell
         and "&& rightFragmentOpenedProgress == 0.0f" in cell
         and "isFolderCell()" in cell,
-    "dialog card paint does not change with touch selection":
-        "final boolean selected = isPressed()" not in cell
-        and "final int fill = archived ?" in cell,
+    "dialog cards restored to the last user-accepted native rendering":
+        "final boolean selected = isPressed() || isSelected || isSelected();" in cell
+        and "final int fill = selected" in cell
+        and "if (translationX == 0 && currentRevealProgress == 0.0f" in cell,
     "dialog card has no experimental swipe alpha interpolation":
         "Math.abs(translationX) / dp(56f)" not in cell
         and "swipeFade" not in cell
