@@ -44,6 +44,7 @@ check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in
       'final float logoAlpha = logoVisibility * progress;' in title_overlay and
       'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in title_overlay and
       'LayoutHelper.createFrame(132, 22)' in title_overlay and
+      'float s = "NabdhGram".equals(actionBar.getTitle())' in title_overlay and
       '? 1.0f' in title_overlay and
       'NabdhStableWordmarkView extends ImageView' in title_overlay and
       'canvas.drawText("NabdhGram", 0f, baseline, wordmarkPaint);' in title_overlay and
