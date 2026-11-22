@@ -52,10 +52,10 @@ s = s.replace(anchor, """        canvas.restore();
             final int alternate = Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider);
             final boolean archived = isFolderCell();
             final boolean pinned = getIsPinned();
-            // Keep the existing Glass palette while a touch begins/ends.
-            // The separate native selector already provides touch feedback;
-            // switching this fill on press created a visible color flash.
-            final int fill = archived ? nabdhBlendThemeColor(surface, alternate, 0.67f)
+            final boolean selected = isPressed() || isSelected || isSelected();
+            final int fill = selected
+                    ? nabdhBlendThemeColor(surface, accent, 0.23f)
+                    : archived ? nabdhBlendThemeColor(surface, alternate, 0.67f)
                     : pinned ? nabdhBlendThemeColor(surface, accent, 0.19f)
                     : nabdhBlendThemeColor(surface, alternate, 0.55f);
             // Keep Telegram's selection feedback, but confine our Glass
