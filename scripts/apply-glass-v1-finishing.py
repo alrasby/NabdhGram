@@ -78,12 +78,18 @@ modify("ActionBar/SimpleTextView.java", [
         // during that unmeasured window previously memorized 0px, then
         // repeatedly forced the title down to 1px after navigation.
         // Do not capture or reapply a size until the native owner has
-        // initialized its paint. This also repairs an already-poisoned view.
-        if (textPaint.getTextSize() <= 0f || nabdhOriginalTextPx == 0f) {
-            if (nabdhOriginalTextPx == 0f) {
-                nabdhOriginalTextPx = -1f;
+        // initialized its paint. The source remains authoritative for its initial font size.
+        if (nabdhOriginalTextPx < 0f) {
+            // A freshly constructed TextPaint can already report a small
+            // default *nonzero* pixel size (e.g. 12px) before ActionBar lays
+            // out its title. Capturing that value is just as wrong as 0px.
+            // Only gate the actual NabdhGram home title, and allow native
+            // ActionBar.onMeasure() to establish its 17dp+ font first.
+            if (android.text.TextUtils.equals(getText(), "NabdhGram")
+                    && textPaint.getTextSize() < dp(16)) {
+                return;
             }
-            return;
+            if (textPaint.getTextSize() <= 0f) return;
         }
         if (nabdhOriginalTextPx < 0f) {
             nabdhOriginalTextPx = textPaint.getTextSize();
