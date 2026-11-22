@@ -48,6 +48,10 @@ modify("ActionBar/SimpleTextView.java", [
     private boolean nabdhNativeTextApplied;
 
     public void nabdhRefreshSelectedFont() {
+        // The main home title is sized on every pass by ActionBar.onMeasure().
+        // Generic font refresh must never cache/restore an earlier Paint size
+        // onto this native title, including after reopening the dialogs.
+        if (android.text.TextUtils.equals(getText(), "NabdhGram")) return;
         Typeface current = textPaint.getTypeface();
         if (current == null) return;
         boolean standard = nabdhNativeTextApplied
@@ -73,24 +77,9 @@ modify("ActionBar/SimpleTextView.java", [
         }
         // Never replace icon, math, code or specialty fonts.
         if (!standard) return;
-        // ActionBar creates SimpleTextView before its first onMeasure(), where
-        // Telegram assigns the real 17/20dp native title size. A font refresh
-        // during that unmeasured window previously memorized 0px, then
-        // repeatedly forced the title down to 1px after navigation.
-        // Do not capture or reapply a size until the native owner has
-        // initialized its paint. The source remains authoritative for its initial font size.
-        if (nabdhOriginalTextPx < 0f) {
-            // A freshly constructed TextPaint can already report a small
-            // default *nonzero* pixel size (e.g. 12px) before ActionBar lays
-            // out its title. Capturing that value is just as wrong as 0px.
-            // Only gate the actual NabdhGram home title, and allow native
-            // ActionBar.onMeasure() to establish its 17dp+ font first.
-            if (android.text.TextUtils.equals(getText(), "NabdhGram")
-                    && textPaint.getTextSize() < dp(16)) {
-                return;
-            }
-            if (textPaint.getTextSize() <= 0f) return;
-        }
+        // Ignore uninitialized Paint sizes for ordinary SimpleTextView items.
+        // The main NabdhGram ActionBar title was already excluded above.
+        if (nabdhOriginalTextPx < 0f && textPaint.getTextSize() <= 0f) return;
         if (nabdhOriginalTextPx < 0f) {
             nabdhOriginalTextPx = textPaint.getTextSize();
             nabdhOriginalTextStyle = current.getStyle();
