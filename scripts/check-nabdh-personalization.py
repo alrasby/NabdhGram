@@ -39,6 +39,9 @@ check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in
       '? 1.0f' in title_overlay and
       'NabdhStableWordmarkView extends ImageView' in title_overlay and
       'canvas.drawText("NabdhGram", 0f, baseline, wordmarkPaint);' in title_overlay and
+      'private final class NabdhStableWordmarkView extends ImageView' in title_overlay and
+      'wordmarkPaint.setColor(getTextLogoColor());' in title_overlay and
+      'public void setColorFilter(int color' not in title_overlay and
       'getTitlesContainer().setAlpha' not in title_overlay and
       'nabdhRestoreChatTitle' not in title_overlay and
       'super.setScaleX(1f);' in title_overlay and
