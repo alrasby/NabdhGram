@@ -119,7 +119,17 @@ for slug, alias, label in names:
     modern_xml = modern.read_text(encoding="utf-8")
     assert '<adaptive-icon' in modern_xml and (
         '@drawable/nabdh_adaptive_fg_' + slug) in modern_xml, "Wrong adaptive foreground " + slug
-    assert ('@color/nabdh_adaptive_bg_' + slug) in modern_xml, "Wrong adaptive background " + slug
+    assert 'android:drawable="@android:color/transparent"' in modern_xml, (
+        "Extra nontransparent square background in launcher " + slug)
+    assert '@color/nabdh_adaptive_bg_' not in modern_xml, (
+        "Old opaque icon backplate still embedded " + slug)
+    assert "\\n" not in modern_xml, "Launcher XML contains escaped newline literals"
+    with Image.open(res / "drawable-nodpi" / ("nabdh_adaptive_fg_" + slug + ".png")) as fg:
+        fg.load()
+        assert fg.size == (1080, 1080) and fg.mode == "RGBA"
+        assert all(fg.getpixel(corner)[3] == 0 for corner in (
+            (0, 0), (1079, 0), (0, 1079), (1079, 1079))), (
+            "Adaptive foreground has a nontransparent extra container " + slug)
     assert (res / "drawable-nodpi" / ("nabdh_adaptive_fg_" + slug + ".png")).is_file(), (
         "Missing adaptive safe-zone foreground " + slug)
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
