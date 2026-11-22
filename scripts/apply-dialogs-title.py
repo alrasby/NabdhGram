@@ -75,7 +75,7 @@ def main():
     # matrix (CENTER_INSIDE), and can collapse to a microscopic glyph when the
     # title slots switch. Draw the wordmark directly in the existing measured
     # view: no intrinsic-size matrix, no duplicate overlay or extra animation.
-    logo_view_impl = """    private static final class NabdhStableWordmarkView extends ImageView {
+    logo_view_impl = """    private final class NabdhStableWordmarkView extends ImageView {
         private final android.graphics.Paint wordmarkPaint =
                 new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         NabdhStableWordmarkView(android.content.Context context) {
@@ -89,14 +89,10 @@ def main():
         @Override protected void onDraw(android.graphics.Canvas canvas) {
             if (getWidth() <= 0 || getHeight() <= 0) return;
             wordmarkPaint.setTextSize(AndroidUtilities.dp(19));
+            wordmarkPaint.setColor(getTextLogoColor());
             android.graphics.Paint.FontMetrics fm = wordmarkPaint.getFontMetrics();
             float baseline = (getHeight() - fm.ascent - fm.descent) / 2f;
             canvas.drawText("NabdhGram", 0f, baseline, wordmarkPaint);
-        }
-        @Override public void setColorFilter(int color, android.graphics.PorterDuff.Mode mode) {
-            super.setColorFilter(color, mode);
-            wordmarkPaint.setColor(color);
-            invalidate();
         }
         @Override public void setScaleX(float value) {
             super.setScaleX(1f);
