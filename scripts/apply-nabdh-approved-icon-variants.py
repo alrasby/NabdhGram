@@ -51,32 +51,11 @@ def compose_icon(slug):
         raise SystemExit("User icon must have fully transparent outer pixels")
     return image
 
-# Keep a transparent launcher background: an opaque second layer makes the
-# owner-supplied circle appear inside a square. Keep the circular/square
-# silhouette exclusively in the approved artwork foreground.
-# Android controls the final adaptive mask, but the app itself must never
-# introduce an extra colored/white backing for these alternate icons.
-adaptive_dir = res / "mipmap-anydpi-v26"
-adaptive_dir.mkdir(parents=True, exist_ok=True)
-adaptive_drawable_dir = res / "drawable-nodpi"
-adaptive_drawable_dir.mkdir(parents=True, exist_ok=True)
-for slug, _, _, _, _ in VARIANTS:
-    icon = compose_icon(slug)
-    foreground = Image.new("RGBA", (1080, 1080), (0, 0, 0, 0))
-    # Keep all of the original silhouette inside the adaptive safe area.
-    side = 648
-    foreground.alpha_composite(icon.resize((side, side), Image.Resampling.LANCZOS),
-                               ((1080 - side) // 2, (1080 - side) // 2))
-    fg_name = "nabdh_adaptive_fg_" + slug
-    foreground.save(adaptive_drawable_dir / (fg_name + ".png"),
-                    format="PNG", optimize=True)
-    (adaptive_dir / ("nabdh_icon_" + slug + ".xml")).write_text(
-        '<?xml version="1.0" encoding="utf-8"?>\n'
-        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-        '    <background android:drawable="@android:color/transparent" />\n'
-        '    <foreground android:drawable="@drawable/' + fg_name + '" />\n'
-        '</adaptive-icon>\n', encoding="utf-8")
-
+# Restore the last proven launcher pipeline: activity-alias icons are the
+# owner-approved transparent PNGs, with no adaptive XML or synthesized
+# background. This is exactly how the three original circles were installed
+# before the launcher regression. Android resolves @mipmap/nabdh_icon_* to
+# the density PNG and displays its own intrinsic transparent silhouette.
 for slug, _, _, _, _ in VARIANTS:
     icon = compose_icon(slug)
     for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
