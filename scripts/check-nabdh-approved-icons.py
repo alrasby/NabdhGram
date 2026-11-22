@@ -57,12 +57,18 @@ for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
         with Image.open(fallback) as first_install:
             assert first_install.convert("RGBA").tobytes() == b.convert("RGBA").tobytes(), (
                 "Initial launcher still uses Telegram artwork: " + density)
-        assert b.convert("RGBA").getpixel((0, 0))[3] == 0, (
-            "Legacy icon has opaque square corners: " + density)
+        rgba = b.convert("RGBA")
+        assert all(rgba.getpixel(point)[3] == 0 for point in (
+            (0, 0), (pixels - 1, 0), (0, pixels - 1),
+            (pixels - 1, pixels - 1),
+            (pixels // 2, 1), (1, pixels // 2))), (
+            "Default logo still has a synthetic rounded-square backplate: " + density)
 adaptive = app_res / "mipmap-anydpi-v26/nabdhgram_launcher.xml"
 assert adaptive.is_file(), "Default adaptive launcher resource missing"
 assert "<adaptive-icon" in adaptive.read_text(encoding="utf-8"), (
     "Default launcher lost Android adaptive behavior")
+assert '<background android:drawable="@android:color/transparent" />' in adaptive.read_text(encoding="utf-8"), (
+    "Default adaptive icon still adds an opaque square background")
 for alias in ("ic_launcher.xml", "ic_launcher_round.xml"):
     fallback = app_res / "mipmap-anydpi-v26" / alias
     assert fallback.is_file(), "Modern first-install fallback missing: " + alias
