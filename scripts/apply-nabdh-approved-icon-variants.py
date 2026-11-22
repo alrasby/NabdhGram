@@ -24,13 +24,15 @@ if not manifest.is_file() or not controller.is_file():
 # Keep the three existing circles and restore the previously approved rounded-square
 # iPhone Glass choice. Never change the underlying user-supplied artwork.
 VARIANTS = (
-    ("silver", "NabdhSilverCircleIcon", "NabdhIconSilverCircle", "Silver Circle", "الدائرية الفضية"),
-    ("dark", "NabdhDarkCircleIcon", "NabdhIconDarkCircle", "Dark Circle", "الدائرية الداكنة"),
-    ("glass", "NabdhGlassCircleIcon", "NabdhIconGlassCircle", "Glass Circle", "الدائرية الزجاجية"),
-    ("iphone", "NabdhIphoneIcon", "NabdhIconIphone", "iPhone Glass", "الزجاجية المستديرة"),
+    ("silver", "NabdhSilverCircleV2Icon", "NabdhIconSilverCircle", "Silver Circle", "الدائرية الفضية"),
+    ("dark", "NabdhDarkCircleV2Icon", "NabdhIconDarkCircle", "Dark Circle", "الدائرية الداكنة"),
+    ("glass", "NabdhGlassCircleV2Icon", "NabdhIconGlassCircle", "Glass Circle", "الدائرية الزجاجية"),
+    ("iphone", "NabdhIphoneV2Icon", "NabdhIconIphone", "iPhone Glass", "الزجاجية المستديرة"),
 )
 RETIRED = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon",
-           "NabdhOriginalIcon", "NabdhCircularIcon")
+           "NabdhOriginalIcon", "NabdhCircularIcon",
+           "NabdhSilverCircleIcon", "NabdhDarkCircleIcon",
+           "NabdhGlassCircleIcon", "NabdhIphoneIcon")
 USER_SOURCES = {
     "silver": repository / "branding/approved/nabdh-icon-silver-circle.webp",
     "dark": repository / "branding/approved/nabdh-icon-dark-circle.webp",
@@ -129,13 +131,28 @@ migration = """
         PackageManager pm = ctx.getPackageManager();
         String[] retired = {"NabdhDarkIcon", "NabdhLightIcon",
                 "NabdhTealIcon", "NabdhHexIcon",
-                "NabdhOriginalIcon", "NabdhCircularIcon"};
+                "NabdhOriginalIcon", "NabdhCircularIcon",
+                "NabdhSilverCircleIcon", "NabdhDarkCircleIcon",
+                "NabdhGlassCircleIcon", "NabdhIphoneIcon"};
         boolean needsMigration = false;
         for (String alias : retired) {
             ComponentName component = new ComponentName(ctx.getPackageName(),
                     "org.telegram.messenger." + alias);
             if (pm.getComponentEnabledSetting(component) ==
                     PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
+                // Existing home-screen launchers may cache the old white icon
+                // under a stable ComponentName. Enable the fresh alias before
+                // retiring the old one, keeping the user's selected design.
+                LauncherIcon replacement = null;
+                if ("NabdhSilverCircleIcon".equals(alias)) replacement = LauncherIcon.NABDH_SILVER;
+                else if ("NabdhDarkCircleIcon".equals(alias)) replacement = LauncherIcon.NABDH_DARK;
+                else if ("NabdhGlassCircleIcon".equals(alias)) replacement = LauncherIcon.NABDH_GLASS;
+                else if ("NabdhIphoneIcon".equals(alias)) replacement = LauncherIcon.NABDH_IPHONE;
+                if (replacement != null) {
+                    pm.setComponentEnabledSetting(replacement.getComponentName(ctx),
+                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                            PackageManager.DONT_KILL_APP);
+                }
                 needsMigration = true;
                 break;
             }
