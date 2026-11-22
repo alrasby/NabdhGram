@@ -40,9 +40,8 @@ s = s.replace(anchor, """        canvas.restore();
         // NabdhGram Glass: draw only for normal dialog rows, after Telegram
         // backgrounds and before message content. Do not interfere with archive,
         // swipe-to-reveal, tablet slide effects, or transient edit animations.
-        // Keep this card painted while translated; upstream canvas already
-        // translates and clips its content during the native swipe animation.
-        if (rightFragmentOpenedProgress == 0.0f
+        if (translationX == 0 && currentRevealProgress == 0.0f
+                && rightFragmentOpenedProgress == 0.0f
                 // drawArchive defaults to true for ordinary Telegram dialogs;
                 // it is NOT an archive-row test. Use folder ID instead.
                 && !isTopic
@@ -53,29 +52,25 @@ s = s.replace(anchor, """        canvas.restore();
             final int alternate = Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider);
             final boolean archived = isFolderCell();
             final boolean pinned = getIsPinned();
-            // A swipe must not replace the card color: the native selector
-            // already handles pressed/selected feedback above this surface.
-            // Preserve the same fill throughout drag, release and reveal.
+            // Keep the existing Glass palette while a touch begins/ends.
+            // The separate native selector already provides touch feedback;
+            // switching this fill on press created a visible color flash.
             final int fill = archived ? nabdhBlendThemeColor(surface, alternate, 0.67f)
                     : pinned ? nabdhBlendThemeColor(surface, accent, 0.19f)
                     : nabdhBlendThemeColor(surface, alternate, 0.55f);
-            // The Glass row must keep exactly the same color and opacity
-            // before, during, and after swipe/release. Do not couple its
-            // paint alpha or fill to translationX or press state.
+            // Keep Telegram's selection feedback, but confine our Glass
+            // surface to the same rounded bounds for every dialog row.
             nabdhCardPaint.setColor(fill);
-            nabdhCardPaint.setAlpha(255);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
             nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
                     getMeasuredHeight() - dp(3));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             nabdhCardPaint.setColor(nabdhBlendThemeColor(
                     archived ? alternate : surface, accent, pinned ? 0.55f : 0.36f));
-            nabdhCardPaint.setAlpha(255);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
             nabdhCardPaint.setStrokeWidth(dp(1));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
-            nabdhCardPaint.setAlpha(255);
         }
 
         updateHelper.updateAnimationValues();""", 1)
