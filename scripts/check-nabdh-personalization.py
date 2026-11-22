@@ -38,10 +38,10 @@ check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in
       'LayoutHelper.createFrame(132, 22)' in title_overlay and
       '? 1.0f' in title_overlay and
       'NabdhStableWordmarkView extends ImageView' in title_overlay and
-      'Math.max(0.85f, value)' in title_overlay and
+      'canvas.drawText("NabdhGram", 0f, baseline, wordmarkPaint);' in title_overlay and
       'getTitlesContainer().setAlpha' not in title_overlay and
       'nabdhRestoreChatTitle' not in title_overlay and
-      'setScaleX(1f)' not in title_overlay and
+      'super.setScaleX(1f);' in title_overlay and
       'NabdhHomePrefs.applyTitle' not in title_overlay,
       "branding must reuse Telegram wordmark slot and native story motion")
 check('bar.setCenterTitleAndGlass(enabled(context, "center_title"));' in preferences and
