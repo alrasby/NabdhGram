@@ -28,6 +28,15 @@ for anchor in ('"hide_stories"', '"hide_fab"', '"hide_search"',
                "updateStoriesVisibility(false)", "updateFilterTabs(true, false)",
                "applyTitle(actionBar, getContext())"):
     check(anchor in appearance, "native home layout not actually connected: " + anchor)
+# The normal ActionBar assigns the title font size only during onMeasure.
+# Font refresh must not memorize Paint's default 12px and turn the home title
+# microscopic when navigating back or when the font preference is refreshed.
+font_overlay = (base / "scripts/apply-glass-v1-finishing.py").read_text(encoding="utf-8")
+check('android.text.TextUtils.equals(getText(), "NabdhGram")' in font_overlay and
+      'textPaint.getTextSize() < dp(16)' in font_overlay and
+      'if (textPaint.getTextSize() <= 0f) return;' in font_overlay and
+      'nabdhOriginalTextPx = textPaint.getTextSize();' in font_overlay,
+      "home title captures its uninitialized native font size")
 # Native Telegram owns both alternating title views. The branding changes
 # the image wordmark in place and does not override alpha, scale or motion.
 title_overlay = (base / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8")
