@@ -643,7 +643,7 @@ stories_header = (ui / "Stories/DialogStoriesCell.java").read_text(encoding="utf
 checks["native stories wordmark keeps Telegram original animation"] = (
     'telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in stories_header
     and 'private static final class NabdhNativeWordmarkDrawable' in stories_header
-    and 'private static final class NabdhStableWordmarkView extends ImageView' in stories_header
+    and 'private final class NabdhStableWordmarkView extends ImageView' in stories_header
     and 'telegramLogoView = new NabdhStableWordmarkView(context);' in stories_header
     and 'canvas.drawText("NabdhGram", 0f, baseline, wordmarkPaint);' in stories_header
     and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
