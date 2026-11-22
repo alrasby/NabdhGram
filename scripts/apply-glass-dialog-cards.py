@@ -61,17 +61,28 @@ s = s.replace(anchor, """        canvas.restore();
                     : nabdhBlendThemeColor(surface, alternate, 0.55f);
             // Keep Telegram's selection feedback, but confine our Glass
             // surface to the same rounded bounds for every dialog row.
+            // Let the moving row reveal Telegram's swipe-action surface
+            // gradually. A fully opaque Glass card during translation was
+            // clipped by Telegram's rectangular swipe canvas, producing a
+            // bright square slab at the card edge. Never toggle visibility
+            // abruptly at translationX == 0: cross-fade as the row moves.
+            final float swipeFade = Math.max(0f, 1f
+                    - Math.min(1f, Math.abs(translationX) / dp(56f)));
+            final int glassAlpha = Math.round(255f * swipeFade);
             nabdhCardPaint.setColor(fill);
+            nabdhCardPaint.setAlpha(glassAlpha);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
             nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
                     getMeasuredHeight() - dp(3));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             nabdhCardPaint.setColor(nabdhBlendThemeColor(
                     archived ? alternate : surface, accent, pinned ? 0.55f : 0.36f));
+            nabdhCardPaint.setAlpha(glassAlpha);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
             nabdhCardPaint.setStrokeWidth(dp(1));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
+            nabdhCardPaint.setAlpha(255);
         }
 
         updateHelper.updateAnimationValues();""", 1)
