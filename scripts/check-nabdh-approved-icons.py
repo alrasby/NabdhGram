@@ -101,23 +101,20 @@ with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
     assert actual.size == picker.size == (1080, 1080)
     launcher = actual.convert("RGBA")
     selected = picker.convert("RGBA")
+    assert selected.tobytes() == launcher.tobytes(), (
+        "Default picker and real launcher foreground must be identical")
+    # The transparent rounded corners prevent a square when Samsung
+    # switches to foreground-only styles, while the center and side edges
+    # retain the original teal plate and logo.
     for corner in ((0, 0), (1079, 0), (0, 1079), (1079, 1079)):
-        assert selected.getpixel(corner)[3] == 0, (
-            "Picker exposes the square adaptive foreground corner")
-    for interior in ((540, 540), (540, 10), (10, 540)):
-        assert selected.getpixel(interior) == launcher.getpixel(interior), (
-            "Picker altered the approved artwork outside rounded corners")
-    assert launcher.getchannel("A").getextrema() == (255, 255)
-    # Brand backplate is baked into the Default adaptive foreground itself.
-    # Some Samsung icon styles use only this layer; its edge must never be
-    # transparent, black, or different from the declared adaptive background.
-    rgba = actual.convert("RGBA")
-    assert rgba.getchannel("A").getextrema() == (255, 255), (
-        "Default launcher foreground loses its background in One UI")
-    for point in ((0, 0), (1079, 0), (0, 1079), (1079, 1079),
-                  (540, 10), (10, 540)):
-        assert rgba.getpixel(point) == (7, 86, 93, 255), (
-            "Default adaptive foreground edge differs from brand color")
+        assert launcher.getpixel(corner)[3] == 0, (
+            "Actual Launcher still has square opaque corners")
+    for point in ((540, 10), (10, 540), (1070, 540), (540, 1070)):
+        assert launcher.getpixel(point) == (7, 86, 93, 255), (
+            "Rounded launcher lost its branded teal plate")
+    assert launcher.getpixel((540, 540))[3] == 255
+    assert launcher.getpixel((100, 100))[3] == 0, (
+        "Launcher backplate is not sufficiently rounded")
 with Image.open(app_res / "drawable-nodpi/nabdhgram_launcher_foreground.png") as splash:
     assert splash.size == (1080, 1080)
     assert splash.convert("RGBA").tobytes() != actual.convert("RGBA").tobytes(), (
