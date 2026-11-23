@@ -297,7 +297,7 @@ default_preview_background = res / "drawable/nabdh_icon_default_background.xml"
 default_preview_background.parent.mkdir(parents=True, exist_ok=True)
 default_preview_background.write_text(
     '<shape xmlns:android="http://schemas.android.com/apk/res/android" '
-    'android:shape="rectangle"><solid android:color="#07565D"/></shape>\\n',
+    'android:shape="rectangle"><solid android:color="#07565D"/></shape>\n',
     encoding="utf-8")
 
 preview = res / "drawable/nabdh_icon_preview_background.xml"
