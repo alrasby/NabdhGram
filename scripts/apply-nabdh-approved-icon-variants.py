@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Install the owner-approved launcher icon variants without changing their artwork.
+"""Build only NabdhGram's five approved launcher choices.
 
-Only the outside of the original circular disks is transparency-masked;
-the internal NabdhGram monogram and artwork are never repainted or recolored.
-Old launcher aliases remain for safe upgrades but are hidden from the picker.
+No public releases or third-party installations exist yet. Legacy and
+experimental aliases are intentionally removed, not migrated.
 """
 from pathlib import Path
 import sys
@@ -28,12 +27,6 @@ VARIANTS = (
     ("glass", "NabdhGlassCircleIcon", "NabdhIconGlassCircle", "Glass Circle", "الدائرية الزجاجية"),
     ("iphone", "NabdhIphoneIcon", "NabdhIconIphone", "iPhone Glass", "الزجاجية المستديرة"),
 )
-# Restore the alias identities that previously worked on the user's device.
-# Retire the experimental V2 identities, not the approved original aliases.
-RETIRED = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon",
-           "NabdhOriginalIcon", "NabdhCircularIcon",
-           "NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
-           "NabdhGlassCircleV2Icon", "NabdhIphoneV2Icon")
 USER_SOURCES = {
     "silver": repository / "branding/approved/nabdh-icon-silver-circle.webp",
     "dark": repository / "branding/approved/nabdh-icon-dark-circle.webp",
@@ -130,9 +123,8 @@ addition = ',\n'.join(
     'R.mipmap.nabdh_icon_preview_' + slug + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
-# Telegram's bundled decorative aliases remain in AndroidManifest for
-# upgrades, but are not offered in the NabdhGram icon picker. The five
-# selectable entries have one explicit owner-approved design each.
+# Do not expose any Telegram icon choices; the Manifest entries are removed
+# below, because this pre-publication application has no migration contract.
 native_variants = """        VINTAGE("VintageIcon", R.drawable.icon_6_background_sa, R.mipmap.icon_6_foreground_sa, R.string.AppIconVintage),
         AQUA("AquaIcon", R.drawable.icon_4_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconAqua),
         PREMIUM("PremiumIcon", R.drawable.icon_3_background_sa, R.mipmap.icon_3_foreground_sa, R.string.AppIconPremium, true),
@@ -154,72 +146,6 @@ new_switch = """        // Preserve the original void method for every upstream 
 if java.count(old_switch) != 1:
     raise SystemExit("Pinned launcher component switching changed")
 java = java.replace(old_switch, new_switch, 1)
-# When the user upgrades from an old icon alias, keep that launcher entry
-# available long enough to enable DefaultIcon before retiring the old alias.
-recovery = "    public static void tryFixLauncherIconIfNeeded() {"
-if java.count(recovery) != 1:
-    raise SystemExit("Upstream launcher recovery method changed")
-migration = """
-    private static void nabdhRetireOldAliases() {
-        Context ctx = ApplicationLoader.applicationContext;
-        if (ctx == null) return;
-        PackageManager pm = ctx.getPackageManager();
-        String[] retired = {"NabdhDarkIcon", "NabdhLightIcon",
-                "NabdhTealIcon", "NabdhHexIcon",
-                "NabdhOriginalIcon", "NabdhCircularIcon",
-                "NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
-                "NabdhGlassCircleV2Icon", "NabdhIphoneV2Icon",
-                "VintageIcon", "AquaIcon", "PremiumIcon",
-                "TurboIcon", "NoxIcon"};
-        boolean needsMigration = false;
-        for (String alias : retired) {
-            ComponentName component = new ComponentName(ctx.getPackageName(),
-                    "org.telegram.messenger." + alias);
-            if (pm.getComponentEnabledSetting(component) ==
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
-                // Existing home-screen launchers may cache the old white icon
-                // under a stable ComponentName. Enable the fresh alias before
-                // retiring the old one, keeping the user's selected design.
-                LauncherIcon replacement = null;
-                if ("NabdhSilverCircleV2Icon".equals(alias)) replacement = LauncherIcon.NABDH_SILVER;
-                else if ("NabdhDarkCircleV2Icon".equals(alias)) replacement = LauncherIcon.NABDH_DARK;
-                else if ("NabdhGlassCircleV2Icon".equals(alias)) replacement = LauncherIcon.NABDH_GLASS;
-                else if ("NabdhIphoneV2Icon".equals(alias)) replacement = LauncherIcon.NABDH_IPHONE;
-                if (replacement != null) {
-                    pm.setComponentEnabledSetting(replacement.getComponentName(ctx),
-                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                            PackageManager.DONT_KILL_APP);
-                }
-                needsMigration = true;
-                break;
-            }
-        }
-        if (!needsMigration) return;
-        boolean validLauncher = false;
-        for (LauncherIcon icon : LauncherIcon.values()) {
-            if (isEnabled(icon)) {
-                validLauncher = true;
-                break;
-            }
-        }
-        if (!validLauncher) {
-            pm.setComponentEnabledSetting(LauncherIcon.DEFAULT.getComponentName(ctx),
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    PackageManager.DONT_KILL_APP);
-        }
-        for (String alias : retired) {
-            ComponentName component = new ComponentName(ctx.getPackageName(),
-                    "org.telegram.messenger." + alias);
-            pm.setComponentEnabledSetting(component,
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    PackageManager.DONT_KILL_APP);
-        }
-    }
-
-"""
-java = java.replace(recovery,
-                    migration + recovery + """
-        nabdhRetireOldAliases();""", 1)
 # The selected alias is disabled in the manifest before its first use.
 # PackageManager.getActivityInfo(component, 0) excludes disabled aliases:
 # this formerly returned early without enabling the icon, while the picker
@@ -289,22 +215,23 @@ for slug, alias, _, _, _ in VARIANTS:
     replacement = replacement.replace("@mipmap/icon_6_launcher",
                                       "@mipmap/nabdh_icon_" + slug)
     new_aliases.append(replacement)
-# Hidden compatibility aliases keep upgrades safe; V2 identities retain
-# their matching artwork until the selection is migrated.
-for legacy in RETIRED:
-    old_alias = template.replace("org.telegram.messenger.VintageIcon",
-                                 "org.telegram.messenger." + legacy)
-    legacy_slug = next((slug for slug, _, _, _, _ in VARIANTS
-                        if legacy == ("Nabdh" + slug.title()
-                                      + ("CircleV2Icon" if slug != "iphone"
-                                         else "V2Icon"))), None)
-    fallback = ("nabdh_icon_" + legacy_slug) if legacy_slug else "nabdh_icon_default"
-    old_alias = old_alias.replace("@mipmap/icon_6_launcher_round",
-                                  "@mipmap/" + fallback)
-    old_alias = old_alias.replace("@mipmap/icon_6_launcher",
-                                  "@mipmap/" + fallback)
-    new_aliases.append(old_alias)
 xml = xml[:end] + "\n\n" + "\n\n".join(new_aliases) + xml[end:]
+# The original pinned Telegram Manifest defines five more launcher aliases.
+# Remove those completely, not merely from the settings picker. Retain the
+# native DefaultIcon and the four approved NabdhGram aliases above.
+for old_name in ("VintageIcon", "AquaIcon", "PremiumIcon", "TurboIcon", "NoxIcon"):
+    pattern = (r"(?m)^[ \\t]*<activity-alias\\b(?:(?!</activity-alias>)[\\s\\S])*?"
+               + r'android:name="org\\.telegram\\.messenger\\.' + old_name
+               + r'"(?:(?!</activity-alias>)[\\s\\S])*?</activity-alias>[ \\t]*\\n?')
+    import re
+    xml, removed = re.subn(pattern, "", xml)
+    if removed != 1:
+        raise SystemExit("Unexpected upstream launcher alias: " + old_name)
+for obsolete in ("V2Icon", "NabdhDarkIcon", "NabdhLightIcon",
+                 "NabdhTealIcon", "NabdhHexIcon", "NabdhOriginalIcon",
+                 "NabdhCircularIcon"):
+    if 'android:name="org.telegram.messenger.' + obsolete + '"' in xml:
+        raise SystemExit("Obsolete launcher alias survived cleanup: " + obsolete)
 manifest.write_text(xml, encoding="utf-8")
 
 preview = res / "drawable/nabdh_icon_preview_background.xml"
@@ -419,4 +346,4 @@ bulletin_src = bulletin_src.replace(bulletin_method,
 bulletin.write_text(bulletin_src, encoding="utf-8")
 
 
-print("PASS: four adaptive approved owner icons, API <26 PNG fallbacks and safe alias migration")
+print("PASS: five approved choices only; no obsolete launcher aliases or migration")
