@@ -223,9 +223,9 @@ xml = xml[:end] + "\n\n" + "\n\n".join(new_aliases) + xml[end:]
 for old_name in ("VintageIcon", "AquaIcon", "PremiumIcon", "TurboIcon", "NoxIcon"):
     # Match the alias name inside the opening tag; never match beyond another
     # activity-alias while looking for a name.
-    pattern = (r'(?s)\\n[ \\t]*<activity-alias\\b'
-               + r'(?=[^>]*android:name="org\\.telegram\\.messenger\\.'
-               + re.escape(old_name) + r'")[\\s\\S]*?</activity-alias>')
+    pattern = (r'(?ms)^[ \t]*<activity-alias\b'
+               + r'(?=[^>]*android:name="org\.telegram\.messenger\.'
+               + re.escape(old_name) + r'")[\s\S]*?</activity-alias>')
     xml, removed = re.subn(pattern, "", xml)
     if removed != 1:
         raise SystemExit("Unexpected upstream launcher alias: " + old_name)
