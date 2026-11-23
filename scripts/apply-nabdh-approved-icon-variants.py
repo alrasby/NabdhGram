@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Build only NabdhGram's five approved launcher choices.
+"""Build five NabdhGram icon choices alongside five native Telegram choices.
 
 No public releases or third-party installations exist yet. Legacy and
 experimental aliases are intentionally removed, not migrated.
 """
 from pathlib import Path
-import re
 import sys
 from PIL import Image
 
@@ -124,8 +123,7 @@ addition = ',\n'.join(
     'R.mipmap.nabdh_icon_preview_' + slug + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
-# Do not expose any Telegram icon choices; the Manifest entries are removed
-# below, because this pre-publication application has no migration contract.
+# Restore upstream Telegram's five original icons as selectable choices.
 native_variants = """        VINTAGE("VintageIcon", R.drawable.icon_6_background_sa, R.mipmap.icon_6_foreground_sa, R.string.AppIconVintage),
         AQUA("AquaIcon", R.drawable.icon_4_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconAqua),
         PREMIUM("PremiumIcon", R.drawable.icon_3_background_sa, R.mipmap.icon_3_foreground_sa, R.string.AppIconPremium, true),
@@ -133,7 +131,7 @@ native_variants = """        VINTAGE("VintageIcon", R.drawable.icon_6_background
         NOX("NoxIcon", R.mipmap.icon_2_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconNox, true);"""
 if java.count(native_variants) != 1:
     raise SystemExit("Pinned Telegram built-in launcher variants changed")
-java = java.replace(native_variants, addition + ";", 1)
+java = java.replace(native_variants, addition + ",\n" + native_variants, 1)
 # Some Android launchers immediately terminate an app when its currently
 # enabled launcher alias is disabled, even with DONT_KILL_APP. First enable
 # the target component, then disable old aliases; leave the selected one
@@ -217,23 +215,14 @@ for slug, alias, _, _, _ in VARIANTS:
                                       "@mipmap/nabdh_icon_" + slug)
     new_aliases.append(replacement)
 xml = xml[:end] + "\n\n" + "\n\n".join(new_aliases) + xml[end:]
-# The original pinned Telegram Manifest defines five more launcher aliases.
-# Remove those completely, not merely from the settings picker. Retain the
-# native DefaultIcon and the four approved NabdhGram aliases above.
-for old_name in ("VintageIcon", "AquaIcon", "PremiumIcon", "TurboIcon", "NoxIcon"):
-    # Match the alias name inside the opening tag; never match beyond another
-    # activity-alias while looking for a name.
-    pattern = (r'(?ms)^[ \t]*<activity-alias\b'
-               + r'(?=[^>]*android:name="org\.telegram\.messenger\.'
-               + re.escape(old_name) + r'")[\s\S]*?</activity-alias>')
-    xml, removed = re.subn(pattern, "", xml)
-    if removed != 1:
-        raise SystemExit("Unexpected upstream launcher alias: " + old_name)
-for obsolete in ("V2Icon", "NabdhDarkIcon", "NabdhLightIcon",
-                 "NabdhTealIcon", "NabdhHexIcon", "NabdhOriginalIcon",
-                 "NabdhCircularIcon"):
+# Preserve native Telegram launchers directly from pinned Manifest.
+# Reject only retired experimental NabdhGram aliases.
+for obsolete in ("NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
+                 "NabdhGlassCircleV2Icon", "NabdhIphoneV2Icon",
+                 "NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon",
+                 "NabdhHexIcon", "NabdhOriginalIcon", "NabdhCircularIcon"):
     if 'android:name="org.telegram.messenger.' + obsolete + '"' in xml:
-        raise SystemExit("Obsolete launcher alias survived cleanup: " + obsolete)
+        raise SystemExit("Obsolete NabdhGram alias survived: " + obsolete)
 manifest.write_text(xml, encoding="utf-8")
 
 preview = res / "drawable/nabdh_icon_preview_background.xml"
@@ -348,4 +337,4 @@ bulletin_src = bulletin_src.replace(bulletin_method,
 bulletin.write_text(bulletin_src, encoding="utf-8")
 
 
-print("PASS: five approved choices only; no obsolete launcher aliases or migration")
+print("PASS: five branded and five native Telegram icons; no legacy V2 aliases")
