@@ -163,20 +163,27 @@ for density in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"):
     destination = res / ("mipmap-" + density)
     destination.mkdir(parents=True, exist_ok=True)
     image.save(destination / "nabdh_icon_default.png", format="PNG", optimize=True)
-# Use the same DEFAULT home-screen foreground (76%) in its chooser tile.
-# Do not reuse the splash foreground: that intentionally remains 60%.
+# Preview is a composited representation of the real adaptive foreground
+# and teal background, while the launcher foreground itself stays transparent.
 source_fg = app_mipmaps / "drawable-nodpi/nabdhgram_launcher_icon_foreground.png"
 if not source_fg.is_file():
-    raise SystemExit("Default 76% adaptive foreground missing: " + str(source_fg))
+    raise SystemExit("Default adaptive foreground missing: " + str(source_fg))
 with Image.open(source_fg) as master_foreground:
     master_foreground.load()
     if master_foreground.size != (1080, 1080):
         raise SystemExit("Invalid default adaptive foreground canvas")
-    # Preview and actual launcher foreground must be pixel-identical:
-    # never hide an opaque Launcher square using a picker-only clipping mask.
-    master_foreground.save(
-        res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png",
-        format="PNG", optimize=True)
+    # A static settings tile cannot invoke the launcher's adaptive mask;
+    # render its rounded teal preview from the exact same foreground pixels.
+    from PIL import ImageDraw
+    from PIL import ImageChops
+    preview = Image.new("RGBA", (1080, 1080), (7, 86, 93, 255))
+    preview.alpha_composite(master_foreground.convert("RGBA"))
+    rounded = Image.new("L", (1080, 1080), 0)
+    ImageDraw.Draw(rounded).rounded_rectangle(
+        (0, 0, 1079, 1079), radius=255, fill=255)
+    preview.putalpha(ImageChops.multiply(preview.getchannel("A"), rounded))
+    preview.save(res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png",
+                 format="PNG", optimize=True)
 
 java = controller.read_text(encoding="utf-8")
 # Keep approved Default first, then the three circles and the restored rounded-square choice.
