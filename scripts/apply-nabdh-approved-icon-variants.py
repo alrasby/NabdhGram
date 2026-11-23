@@ -55,11 +55,16 @@ def compose_icon(slug):
         raise SystemExit("User icon must have fully transparent outer pixels")
     return image
 
-# Restore the last proven launcher pipeline: activity-alias icons are the
-# owner-approved transparent PNGs, with no adaptive XML or synthesized
-# background. This is exactly how the three original circles were installed
-# before the launcher regression. Android resolves @mipmap/nabdh_icon_* to
-# the density PNG and displays its own intrinsic transparent silhouette.
+# The picker receives the original owner-approved disk. Android 26+
+# receives a distinct adaptive drawable instead of letting the launcher
+# normalize a legacy PNG onto an opaque square backplate.
+# The approved artwork is never repainted or recolored.
+ADAPTIVE_CANVAS = 1080
+ADAPTIVE_SAFE_FRACTION = 0.60
+modern = res / "mipmap-anydpi-v26"
+modern.mkdir(parents=True, exist_ok=True)
+drawable = res / "drawable-nodpi"
+drawable.mkdir(parents=True, exist_ok=True)
 for slug, _, _, _, _ in VARIANTS:
     icon = compose_icon(slug)
     for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
@@ -69,8 +74,27 @@ for slug, _, _, _, _ in VARIANTS:
         scaled = icon.resize((pixels, pixels), Image.Resampling.LANCZOS)
         scaled.save(directory / ("nabdh_icon_" + slug + ".png"),
                     format="PNG", optimize=True)
+        # Distinct preview resource prevents adaptive masks in the chooser.
         scaled.save(directory / ("nabdh_icon_preview_" + slug + ".png"),
                     format="PNG", optimize=True)
+
+    side = round(ADAPTIVE_CANVAS * ADAPTIVE_SAFE_FRACTION)
+    foreground = Image.new("RGBA", (ADAPTIVE_CANVAS, ADAPTIVE_CANVAS),
+                           (0, 0, 0, 0))
+    artwork = icon.resize((side, side), Image.Resampling.LANCZOS)
+    foreground.alpha_composite(
+        artwork, ((ADAPTIVE_CANVAS - side) // 2,
+                  (ADAPTIVE_CANVAS - side) // 2))
+    foreground.save(drawable / ("nabdh_icon_" + slug + "_foreground.png"),
+                    format="PNG", optimize=True)
+    (modern / ("nabdh_icon_" + slug + ".xml")).write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\\n'
+        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\\n'
+        '    <background android:drawable="@android:color/transparent" />\\n'
+        '    <foreground android:drawable="@drawable/nabdh_icon_'
+        + slug + '_foreground" />\\n'
+        '</adaptive-icon>\\n',
+        encoding="utf-8")
 
 # The app's DefaultIcon alias has already been branded by apply-brand-icons.py,
 # but Telegram's upstream enum STILL uses Telegram icon_background_sa and
@@ -254,15 +278,20 @@ for slug, alias, _, _, _ in VARIANTS:
     replacement = replacement.replace("@mipmap/icon_6_launcher",
                                       "@mipmap/nabdh_icon_" + slug)
     new_aliases.append(replacement)
-# Compatibility-only aliases: hidden from picker, all branded using
-# the surviving silver circle. Retire enabled legacy choice at startup.
+# Hidden compatibility aliases keep upgrades safe; V2 identities retain
+# their matching artwork until the selection is migrated.
 for legacy in RETIRED:
     old_alias = template.replace("org.telegram.messenger.VintageIcon",
                                  "org.telegram.messenger." + legacy)
+    legacy_slug = next((slug for slug, _, _, _, _ in VARIANTS
+                        if legacy == ("Nabdh" + slug.title()
+                                      + ("CircleV2Icon" if slug != "iphone"
+                                         else "V2Icon"))), None)
+    fallback = ("nabdh_icon_" + legacy_slug) if legacy_slug else "nabdh_icon_default"
     old_alias = old_alias.replace("@mipmap/icon_6_launcher_round",
-                                  "@mipmap/nabdh_icon_silver")
+                                  "@mipmap/" + fallback)
     old_alias = old_alias.replace("@mipmap/icon_6_launcher",
-                                  "@mipmap/nabdh_icon_silver")
+                                  "@mipmap/" + fallback)
     new_aliases.append(old_alias)
 xml = xml[:end] + "\n\n" + "\n\n".join(new_aliases) + xml[end:]
 manifest.write_text(xml, encoding="utf-8")
@@ -379,4 +408,4 @@ bulletin_src = bulletin_src.replace(bulletin_method,
 bulletin.write_text(bulletin_src, encoding="utf-8")
 
 
-print("PASS: three circular owner icons, safe deprecated-alias migration and localized labels")
+print("PASS: four adaptive approved owner icons, API <26 PNG fallbacks and safe alias migration")
