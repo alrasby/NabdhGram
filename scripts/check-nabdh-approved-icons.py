@@ -183,7 +183,16 @@ assert 'context.getString(R.string.NabdhIconApplyFailed)' in selector, "Chooser 
 for locale in ("values", "values-ar"):
     localized = (res / locale / "nabdhgram_icon_variants.xml").read_text(encoding="utf-8")
     assert 'name="NabdhIconApplyFailed"' in localized, "Missing localized icon change failure"
-assert all(("NABDH_" + slug.upper()) in java for slug in ("silver", "dark", "glass", "iphone")) and "NOX" in java, "Approved owner choices and Telegram originals must remain"
+assert all(("NABDH_" + slug.upper()) in java for slug in ("silver", "dark", "glass", "iphone")), (
+    "Missing one of the four approved alternatives")
+enum = java[java.index("public enum LauncherIcon"):]
+for old_key in ("VINTAGE(", "AQUA(", "PREMIUM(", "TURBO(", "NOX("):
+    assert old_key not in enum, "Retired Telegram launcher remains selectable: " + old_key
+for old_alias in ("VintageIcon", "AquaIcon", "PremiumIcon", "TurboIcon", "NoxIcon"):
+    assert ('android:name="org.telegram.messenger.' + old_alias + '"') in manifest, (
+        "Existing Telegram launcher alias cannot be migrated: " + old_alias)
+    assert ('"' + old_alias + '"') in java[:java.index("public enum LauncherIcon")], (
+        "Upstream alias not covered by upgrade recovery: " + old_alias)
 assert java.index('NABDH_SILVER("NabdhSilverCircleIcon"') > java.index('DEFAULT("DefaultIcon"'), "First circular choice should follow default"
 assert java.index('NABDH_GLASS("NabdhGlassCircleIcon"') < java.index('VINTAGE("VintageIcon"'), "Three circular choices must be visible before Telegram icons"
 # The Android 12+ OS startup animation uses Theme.TMessages.Start from
