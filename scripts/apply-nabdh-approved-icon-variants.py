@@ -172,8 +172,15 @@ with Image.open(source_fg) as master_foreground:
     master_foreground.load()
     if master_foreground.size != (1080, 1080):
         raise SystemExit("Invalid default adaptive foreground canvas")
-    master_foreground.save(res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png",
-                           format="PNG", optimize=True)
+    # Clip ONLY the picker bitmap to match Android's rounded-square mask.
+    # The actual adaptive launcher stays opaque for One UI compatibility.
+    from PIL import ImageDraw, ImageChops
+    preview = master_foreground.convert("RGBA")
+    mask = Image.new("L", preview.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, 1079, 1079), radius=255, fill=255)
+    preview.putalpha(ImageChops.multiply(preview.getchannel("A"), mask))
+    preview.save(res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png",
+                 format="PNG", optimize=True)
 
 java = controller.read_text(encoding="utf-8")
 # Keep approved Default first, then the three circles and the restored rounded-square choice.
@@ -291,13 +298,13 @@ for obsolete in ("NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
         raise SystemExit("Obsolete NabdhGram alias survived: " + obsolete)
 manifest.write_text(xml, encoding="utf-8")
 
-# Default preview uses the exact same teal surface as the actual
-# launcher background. Only the mask shape can vary with One UI.
+# The picker foreground contains the teal surface and its rounded mask.
+# An opaque second background would bring the square corners back.
 default_preview_background = res / "drawable/nabdh_icon_default_background.xml"
 default_preview_background.parent.mkdir(parents=True, exist_ok=True)
 default_preview_background.write_text(
     '<shape xmlns:android="http://schemas.android.com/apk/res/android" '
-    'android:shape="rectangle"><solid android:color="#07565D"/></shape>\n',
+    'android:shape="rectangle"><solid android:color="#00000000"/></shape>\n',
     encoding="utf-8")
 
 preview = res / "drawable/nabdh_icon_preview_background.xml"
