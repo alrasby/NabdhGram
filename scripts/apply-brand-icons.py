@@ -119,6 +119,14 @@ def main():
         foreground_canvas(rgba, 1080).save(
             drawable / "nabdhgram_launcher_foreground.png", format="PNG", optimize=True
         )
+        # Samsung One UI can supply a dark backplate for transparent adaptive
+        # icons. Give the Default launcher a single explicit brand background.
+        colors = res / "values"
+        colors.mkdir(parents=True, exist_ok=True)
+        (colors / "nabdhgram_launcher_background.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\\n'
+            '<resources><color name="nabdhgram_launcher_background">#04252A</color></resources>\\n',
+            encoding="utf-8")
         anydpi = res / "mipmap-anydpi-v26"
         anydpi.mkdir(parents=True, exist_ok=True)
         # Android 26+ resolves mipmap-anydpi-v26/ic_launcher.xml before
@@ -130,7 +138,7 @@ def main():
             (anydpi / name).write_text(
                 '<?xml version="1.0" encoding="utf-8"?>\n'
                 '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                '    <background android:drawable="@android:color/transparent" />\n'
+                '    <background android:drawable="@color/nabdhgram_launcher_background" />\n'
                 '    <foreground android:drawable="@drawable/nabdhgram_launcher_foreground" />\n'
                 '</adaptive-icon>\n', encoding="utf-8"
             )
