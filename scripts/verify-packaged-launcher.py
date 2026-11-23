@@ -48,13 +48,13 @@ if actual_id != expected_id:
 print("PASS: compiled first-install launcher icon foreground is approved NabdhGram adaptive artwork")
 # Verify Samsung cannot supply a black fallback for an unspecified
 # transparent adaptive background. This must reference our branded teal color.
-background_element = re.search(r"(?m)^\\s*E: background\\b[^\\n]*", result.stdout)
+background_element = re.search(r"(?m)^\s*E: background\b[^\n]*", result.stdout)
 if not background_element:
     fail("Default adaptive icon has no background element")
 back_fragment = result.stdout[background_element.end():background_element.end() + 360]
-background_ref = re.search(r"android:drawable[^\\n]*?@0x([0-9a-fA-F]+)", back_fragment)
+background_ref = re.search(r"android:drawable[^\n]*?@0x([0-9a-fA-F]+)", back_fragment)
 branded_ref = re.search(
-    r"(?:spec )?resource\\s+(0x[0-9a-fA-F]+)\\s+[^\\n]*:color/nabdhgram_launcher_background\\b",
+    r"(?:spec )?resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:color/nabdhgram_launcher_background\b",
     resources)
 if not background_ref or not branded_ref:
     fail("Default adaptive icon does not resolve the explicit dark-teal background")
