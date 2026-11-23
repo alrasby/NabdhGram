@@ -94,13 +94,20 @@ assert color_root.find("./color[@name='nabdhgram_icon_background']").text.strip(
 picker_background = res / "drawable/nabdh_icon_default_background.xml"
 picker_xml = picker_background.read_text(encoding="utf-8")
 ElementTree.fromstring(picker_xml)
-assert '<solid android:color="#07565D"/>' in picker_xml
+assert '<solid android:color="#00000000"/>' in picker_xml
 app_fg = app_res / "drawable-nodpi/nabdhgram_launcher_icon_foreground.png"
 picker_fg = res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png"
 with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
     assert actual.size == picker.size == (1080, 1080)
-    assert actual.convert("RGBA").tobytes() == picker.convert("RGBA").tobytes(), (
-        "Default chooser and Android adaptive launcher have different foregrounds")
+    launcher = actual.convert("RGBA")
+    selected = picker.convert("RGBA")
+    for corner in ((0, 0), (1079, 0), (0, 1079), (1079, 1079)):
+        assert selected.getpixel(corner)[3] == 0, (
+            "Picker exposes the square adaptive foreground corner")
+    for interior in ((540, 540), (540, 10), (10, 540)):
+        assert selected.getpixel(interior) == launcher.getpixel(interior), (
+            "Picker altered the approved artwork outside rounded corners")
+    assert launcher.getchannel("A").getextrema() == (255, 255)
     # Brand backplate is baked into the Default adaptive foreground itself.
     # Some Samsung icon styles use only this layer; its edge must never be
     # transparent, black, or different from the declared adaptive background.
