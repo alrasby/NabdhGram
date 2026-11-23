@@ -33,8 +33,18 @@ def foreground_canvas(artwork, pixels, fraction=ADAPTIVE_ARTWORK_FRACTION):
     from PIL import Image
     canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
     side = round(pixels * fraction)
-    resized = artwork.copy()
-    resized.thumbnail((side, side), Image.Resampling.LANCZOS)
+    # thumbnail() never enlarges. On the approved cropped logo (roughly
+    # 426px wide), 60% and 76% both previously produced the SAME pixels.
+    # Preserve the old splash at its original intrinsic size; only the
+    # launcher gets genuine scale-to-fit upsampling for the 76% experiment.
+    if fraction == ADAPTIVE_ARTWORK_FRACTION:
+        resized = artwork.copy()
+        resized.thumbnail((side, side), Image.Resampling.LANCZOS)
+    else:
+        scale = min(side / artwork.width, side / artwork.height)
+        width = max(1, round(artwork.width * scale))
+        height = max(1, round(artwork.height * scale))
+        resized = artwork.resize((width, height), Image.Resampling.LANCZOS)
     canvas.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
     return canvas
 
