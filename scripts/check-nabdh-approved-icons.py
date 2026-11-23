@@ -101,12 +101,22 @@ with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
     assert actual.size == picker.size == (1080, 1080)
     assert actual.convert("RGBA").tobytes() == picker.convert("RGBA").tobytes(), (
         "Default chooser and Android adaptive launcher have different foregrounds")
-    bounds = actual.convert("RGBA").getchannel("A").getbbox()
-    assert bounds is not None and bounds[0] >= 120 and bounds[2] <= 960
+    # Brand backplate is baked into the Default adaptive foreground itself.
+    # Some Samsung icon styles use only this layer; its edge must never be
+    # transparent, black, or different from the declared adaptive background.
+    rgba = actual.convert("RGBA")
+    assert rgba.getchannel("A").getextrema() == (255, 255), (
+        "Default launcher foreground loses its background in One UI")
+    for point in ((0, 0), (1079, 0), (0, 1079), (1079, 1079),
+                  (540, 10), (10, 540)):
+        assert rgba.getpixel(point) == (7, 86, 93, 255), (
+            "Default adaptive foreground edge differs from brand color")
 with Image.open(app_res / "drawable-nodpi/nabdhgram_launcher_foreground.png") as splash:
     assert splash.size == (1080, 1080)
     assert splash.convert("RGBA").tobytes() != actual.convert("RGBA").tobytes(), (
         "Launcher enlargement unintentionally changed the splash icon")
+    assert splash.convert("RGBA").getpixel((0, 0))[3] == 0, (
+        "Default launcher changed the transparent Android splash")
 for alias in ("ic_launcher.xml", "ic_launcher_round.xml"):
     fallback = app_res / "mipmap-anydpi-v26" / alias
     assert fallback.is_file(), "Modern first-install fallback missing: " + alias
