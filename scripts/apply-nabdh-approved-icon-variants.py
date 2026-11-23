@@ -5,6 +5,7 @@ No public releases or third-party installations exist yet. Legacy and
 experimental aliases are intentionally removed, not migrated.
 """
 from pathlib import Path
+import re
 import sys
 from PIL import Image
 
@@ -220,10 +221,11 @@ xml = xml[:end] + "\n\n" + "\n\n".join(new_aliases) + xml[end:]
 # Remove those completely, not merely from the settings picker. Retain the
 # native DefaultIcon and the four approved NabdhGram aliases above.
 for old_name in ("VintageIcon", "AquaIcon", "PremiumIcon", "TurboIcon", "NoxIcon"):
-    pattern = (r"(?m)^[ \\t]*<activity-alias\\b(?:(?!</activity-alias>)[\\s\\S])*?"
-               + r'android:name="org\\.telegram\\.messenger\\.' + old_name
-               + r'"(?:(?!</activity-alias>)[\\s\\S])*?</activity-alias>[ \\t]*\\n?')
-    import re
+    # Match the alias name inside the opening tag; never match beyond another
+    # activity-alias while looking for a name.
+    pattern = (r'(?s)\\n[ \\t]*<activity-alias\\b'
+               + r'(?=[^>]*android:name="org\\.telegram\\.messenger\\.'
+               + re.escape(old_name) + r'")[\\s\\S]*?</activity-alias>')
     xml, removed = re.subn(pattern, "", xml)
     if removed != 1:
         raise SystemExit("Unexpected upstream launcher alias: " + old_name)
