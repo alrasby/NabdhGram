@@ -137,8 +137,7 @@ native_variants = """        VINTAGE("VintageIcon", R.drawable.icon_6_background
         AQUA("AquaIcon", R.drawable.icon_4_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconAqua),
         PREMIUM("PremiumIcon", R.drawable.icon_3_background_sa, R.mipmap.icon_3_foreground_sa, R.string.AppIconPremium, true),
         TURBO("TurboIcon", R.drawable.icon_5_background_sa, R.mipmap.icon_5_foreground_sa, R.string.AppIconTurbo, true),
-        NOX("NoxIcon", R.mipmap.icon_2_background_sa, R.mipmap/icon_foreground_sa, R.string.AppIconNox, true);""".replace(
-    "R.mipmap/icon_foreground_sa", "R.mipmap.icon_foreground_sa")
+        NOX("NoxIcon", R.mipmap.icon_2_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconNox, true);"""
 if java.count(native_variants) != 1:
     raise SystemExit("Pinned Telegram built-in launcher variants changed")
 java = java.replace(native_variants, addition + ";", 1)
