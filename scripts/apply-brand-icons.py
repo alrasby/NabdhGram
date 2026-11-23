@@ -29,9 +29,14 @@ def safe_canvas(artwork, pixels):
                                      (pixels - resized.height) // 2))
     return canvas
 
-def foreground_canvas(artwork, pixels, fraction=ADAPTIVE_ARTWORK_FRACTION):
+def foreground_canvas(artwork, pixels, fraction=ADAPTIVE_ARTWORK_FRACTION,
+                      backing=None):
     from PIL import Image
-    canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
+    # Keep the splash transparent. For the Default LAUNCHER only, render its
+    # brand surface into the foreground as well as adaptive background, so
+    # a launcher that displays the foreground alone cannot drop the backdrop.
+    canvas = Image.new("RGBA", (pixels, pixels),
+                       backing if backing is not None else (0, 0, 0, 0))
     side = round(pixels * fraction)
     # thumbnail() never enlarges. On the approved cropped logo (roughly
     # 426px wide), 60% and 76% both previously produced the SAME pixels.
@@ -133,7 +138,8 @@ def main():
         )
         # Separate the launcher drawable from the splash drawable so enlarging
         # the home-screen icon never changes the app's launch animation.
-        foreground_canvas(rgba, 1080, DEFAULT_LAUNCHER_ARTWORK_FRACTION).save(
+        foreground_canvas(rgba, 1080, DEFAULT_LAUNCHER_ARTWORK_FRACTION,
+                          backing=(7, 86, 93, 255)).save(
             drawable / "nabdhgram_launcher_icon_foreground.png",
             format="PNG", optimize=True
         )
