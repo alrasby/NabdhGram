@@ -12,7 +12,7 @@ SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 # The approved source can include an opaque dark surround, so crop its visible
 # logo first rather than enlarging a padded square and letting Android clip it.
 ADAPTIVE_ARTWORK_FRACTION = 0.60
-DEFAULT_LAUNCHER_ARTWORK_FRACTION = 0.76
+DEFAULT_LAUNCHER_ARTWORK_FRACTION = 0.61
 # The native splash keeps its existing 60% foreground size.
 LEGACY_ARTWORK_FRACTION = 0.86
 
@@ -32,26 +32,15 @@ def safe_canvas(artwork, pixels):
 def foreground_canvas(artwork, pixels, fraction=ADAPTIVE_ARTWORK_FRACTION,
                       backing=None):
     from PIL import Image
-    # Splash stays transparent. Default launcher foreground includes a rounded
-    # teal plate, not an opaque square, for Samsung foreground-only icon styles.
-    canvas = Image.new("RGBA", (pixels, pixels),
-                       backing if backing is not None else (0, 0, 0, 0))
-    if backing is not None:
-        # A branded rounded-square plate survives Samsung modes that show
-        # only the foreground. Keep the standard solid teal adaptive
-        # background separately for normal Android icon masks.
-        from PIL import ImageDraw
-        antialias = 4
-        mask = Image.new("L", (pixels * antialias, pixels * antialias), 0)
-        ImageDraw.Draw(mask).rounded_rectangle(
-            (0, 0, pixels * antialias - 1, pixels * antialias - 1),
-            radius=round(pixels * 255 / 1080) * antialias, fill=255)
-        canvas.putalpha(mask.resize((pixels, pixels), Image.Resampling.LANCZOS))
+    # Adaptive foreground has only the owner-approved mark. Android applies
+    # the mask to its separate solid teal background. Never pre-mask or bake
+    # a square/squircle plate into the Android foreground itself.
+    canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
     side = round(pixels * fraction)
     # thumbnail() never enlarges. On the approved cropped logo (roughly
     # 426px wide), 60% and 76% both previously produced the SAME pixels.
     # Preserve the old splash at its original intrinsic size; only the
-    # launcher gets genuine scale-to-fit upsampling for the 76% experiment.
+    # launcher gets genuine scale-to-fit upsampling inside the 66/108 safe zone.
     if fraction == ADAPTIVE_ARTWORK_FRACTION:
         resized = artwork.copy()
         resized.thumbnail((side, side), Image.Resampling.LANCZOS)
@@ -148,8 +137,7 @@ def main():
         )
         # Separate the launcher drawable from the splash drawable so enlarging
         # the home-screen icon never changes the app's launch animation.
-        foreground_canvas(rgba, 1080, DEFAULT_LAUNCHER_ARTWORK_FRACTION,
-                          backing=(7, 86, 93, 255)).save(
+        foreground_canvas(rgba, 1080, DEFAULT_LAUNCHER_ARTWORK_FRACTION).save(
             drawable / "nabdhgram_launcher_icon_foreground.png",
             format="PNG", optimize=True
         )
