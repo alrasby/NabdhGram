@@ -46,22 +46,6 @@ if actual_id != expected_id:
     fail("default icon adaptive foreground is NOT the NabdhGram image; actual "
          + actual_id + " versus approved " + expected_id)
 print("PASS: compiled first-install launcher icon foreground is approved NabdhGram adaptive artwork")
-# Verify Samsung cannot supply a black fallback for an unspecified
-# transparent adaptive background. This must reference our branded teal color.
-background_element = re.search(r"(?m)^\s*E: background\b[^\n]*", result.stdout)
-if not background_element:
-    fail("Default adaptive icon has no background element")
-back_fragment = result.stdout[background_element.end():background_element.end() + 360]
-background_ref = re.search(r"android:drawable[^\n]*?@0x([0-9a-fA-F]+)", back_fragment)
-branded_ref = re.search(
-    r"(?:spec )?resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:color/nabdhgram_launcher_background\b",
-    resources)
-if not background_ref or not branded_ref:
-    fail("Default adaptive icon does not resolve the explicit dark-teal background")
-if int(background_ref.group(1), 16) != int(branded_ref.group(1), 16):
-    fail("Default adaptive launcher background is not the brand color")
-print("PASS: compiled Default adaptive icon uses explicit NabdhGram dark-teal background")
-
 # The launchable DefaultIcon activity alias has its OWN icon attribute.
 # Checking only the application icon previously missed the paper-plane when
 # a fresh install entered the app through the activity-alias.
@@ -112,16 +96,28 @@ for activity, mipmap in (
             fail(activity + ": compiled launcher icon resource missing: " + attr)
         if int(icon_ref.group(1), 16) != int(expected_ref.group(1), 16):
             fail(activity + ": launcher maps to wrong resource " + attr)
-    # The home launcher must resolve a real PNG for every approved alternate
-    # icon, not a transparent adaptive XML whose background is supplied by One UI.
+    # Inspect the ACTUAL compiled icon XML: verifying only the resource ID
+    # previously passed even when the launcher used an unexpected image.
     with ZipFile(apk) as package:
-        entries = package.namelist()
-        unexpected = [entry for entry in entries
-                      if entry.endswith("/" + mipmap + ".xml")]
-        pngs = [entry for entry in entries
-                if entry.endswith("/" + mipmap + ".png")]
-    if unexpected:
-        fail(activity + ": obsolete adaptive icon XML still packaged")
-    if not pngs:
-        fail(activity + ": no direct transparent launcher PNG packaged")
-print("PASS: four selectable NabdhGram aliases use direct PNGs without adaptive backplates")
+        modern = [entry for entry in package.namelist()
+                  if entry.endswith("/" + mipmap + ".xml")]
+    if len(modern) != 1:
+        fail(activity + ": packaged adaptive icon XML missing or ambiguous")
+    compiled = subprocess.run([str(tool), "dump", "xmltree",
+                               str(apk), modern[0]],
+                              capture_output=True, text=True, timeout=40)
+    if compiled.returncode or "E: adaptive-icon" not in compiled.stdout:
+        fail(activity + ": invalid compiled adaptive icon XML")
+    fg = re.search(r"(?m)^\s*E: foreground\b[\s\S]*?(?=^\s*E: |\Z)",
+                   compiled.stdout)
+    if not fg:
+        fail(activity + ": adaptive foreground missing")
+    fg_ref = re.search(r"android:drawable[^\n]*?@0x([0-9a-fA-F]+)", fg.group(0))
+    expected_fg = re.search(
+        r"(?m)^\s*spec resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:"
+        + re.escape("drawable/" + mipmap + "_foreground") + r":", resources)
+    if not fg_ref or not expected_fg:
+        fail(activity + ": adaptive foreground resource cannot be checked")
+    if int(fg_ref.group(1), 16) != int(expected_fg.group(1), 16):
+        fail(activity + ": adaptive foreground points to the wrong design")
+print("PASS: all four selectable aliases resolve to their own approved adaptive artwork")

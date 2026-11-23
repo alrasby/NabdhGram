@@ -42,7 +42,7 @@ assert len([x for x in expected_aliases if x in visible_aliases]) == 10
 # Default MUST be NabdhGram as well, not Telegram's native paper-plane.
 # The chooser thumbnail and enabled DefaultIcon launcher must refer to the
 # same approved artwork; all Android densities must have matching pixels.
-assert ('DEFAULT("DefaultIcon", R.drawable.nabdh_icon_default_background, '
+assert ('DEFAULT("DefaultIcon", R.drawable.nabdh_icon_preview_background, '
         'R.mipmap.nabdh_icon_default, R.string.AppIconDefault)') in java, (
         "Default icon picker is still showing Telegram")
 assert ('DEFAULT("DefaultIcon", R.drawable.icon_background_sa, '
@@ -82,22 +82,8 @@ adaptive = app_res / "mipmap-anydpi-v26/nabdhgram_launcher.xml"
 assert adaptive.is_file(), "Default adaptive launcher resource missing"
 assert "<adaptive-icon" in adaptive.read_text(encoding="utf-8"), (
     "Default launcher lost Android adaptive behavior")
-assert '<background android:drawable="@color/nabdhgram_launcher_background" />' in adaptive.read_text(encoding="utf-8"), (
-    "Default adaptive launcher must use the branded background resource")
-from xml.etree import ElementTree
-brand = app_res / "values/nabdhgram_launcher_background.xml"
-assert brand.is_file(), "Default launcher background color missing"
-brand_tree = ElementTree.parse(brand)
-assert brand_tree.find("./color[@name='nabdhgram_launcher_background']").text.strip().upper() == "#04252A", (
-    "Default launcher color differs from approved brand dark teal")
-picker_background = res / "drawable/nabdh_icon_default_background.xml"
-assert picker_background.is_file(), "Default picker backdrop missing"
-picker_xml = picker_background.read_text(encoding="utf-8")
-ElementTree.fromstring(picker_xml)
-assert '<solid android:color="#04252A"/>' in picker_xml, (
-    "Default picker does not match default launcher background")
-assert 'R.drawable.nabdh_icon_preview_background' in java, (
-    "Other NabdhGram icon previews unexpectedly lost transparent background")
+assert '<background android:drawable="@android:color/transparent" />' in adaptive.read_text(encoding="utf-8"), (
+    "Default adaptive icon still adds an opaque square background")
 for alias in ("ic_launcher.xml", "ic_launcher_round.xml"):
     fallback = app_res / "mipmap-anydpi-v26" / alias
     assert fallback.is_file(), "Modern first-install fallback missing: " + alias
@@ -146,12 +132,28 @@ with Image.open(iphone_source) as original, Image.open(
 for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias
     assert ('R.mipmap.nabdh_icon_preview_' + slug) in java, "Missing distinct original-art picker preview " + slug
-    # The alternate icon MUST be a density PNG on Android 26+ too. Otherwise
-    # One UI may insert a dark background behind a transparent adaptive layer.
+    # Modern launchers must get an adaptive resource with a transparent
+    # background; Android <26 continues using the unmodified legacy PNG.
     modern = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
+    assert modern.is_file(), "Missing adaptive icon for modern launchers: " + slug
+    modern_xml = modern.read_text(encoding="utf-8")
+    assert '<adaptive-icon' in modern_xml
+    assert '<background android:drawable="@android:color/transparent" />' in modern_xml, (
+        "Unexpected solid/synthesized launcher background: " + slug)
+    assert ('<foreground android:drawable="@drawable/nabdh_icon_' + slug +
+            '_foreground" />') in modern_xml, "Wrong adaptive foreground: " + slug
+    from xml.etree import ElementTree
+    ElementTree.fromstring(modern_xml)
     foreground = res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
-    assert not modern.exists(), "Unexpected adaptive backplate: " + slug
-    assert not foreground.exists(), "Stale adaptive foreground: " + slug
+    with Image.open(foreground) as art:
+        art.load()
+        rgba = art.convert("RGBA")
+        assert rgba.size == (1080, 1080), "Wrong adaptive canvas: " + slug
+        bounds = rgba.getchannel("A").getbbox()
+        assert bounds is not None, "Empty adaptive artwork: " + slug
+        assert bounds[0] >= 210 and bounds[1] >= 210 and bounds[2] <= 870 and bounds[3] <= 870, (
+            "Adaptive foreground extends outside mask-safe area: " + slug)
+        assert rgba.getpixel((0, 0))[3] == 0, "Opaque adaptive corner: " + slug
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
     # No historical aliases: exactly one selectable launcher uses this icon.
     assert manifest.count('android:icon="@mipmap/nabdh_icon_' + slug + '"') == 1, (
@@ -227,4 +229,4 @@ manifest_start = 'android:theme="@style/Theme.TMessages.Start"'
 assert manifest_start in manifest, "Native Telegram launch theme no longer applied"
 app_style = (root / "TMessagesProj_App/src/main/res/values-v31/nabdhgram_splash.xml").read_text(encoding="utf-8")
 assert '@drawable/nabdhgram_launcher_foreground' in app_style, "App-level Android 12 style reverts startup icon"
-print("PASS: direct transparent icon assets and all ten icon choices; no alternate adaptive backplates")
+print("PASS: five approved NabdhGram and five Telegram options, no stale V2 aliases")
