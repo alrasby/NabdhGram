@@ -91,6 +91,10 @@ def clean_edge_fringe(image):
 # The approved artwork is never repainted or recolored.
 ADAPTIVE_CANVAS = 1080
 ADAPTIVE_SAFE_FRACTION = 0.60
+# Silver-only diagnostic: the full decorative circle (not the monogram)
+# occupies more of Samsung's adaptive mask. Do not change other variants
+# until a device-side visual comparison shows that its edge is not clipped.
+SILVER_EXPERIMENT_FRACTION = 0.76
 modern = res / "mipmap-anydpi-v26"
 modern.mkdir(parents=True, exist_ok=True)
 drawable = res / "drawable-nodpi"
@@ -108,7 +112,8 @@ for slug, _, _, _, _ in VARIANTS:
         scaled.save(directory / ("nabdh_icon_preview_" + slug + ".png"),
                     format="PNG", optimize=True)
 
-    side = round(ADAPTIVE_CANVAS * ADAPTIVE_SAFE_FRACTION)
+    side = round(ADAPTIVE_CANVAS * (
+        SILVER_EXPERIMENT_FRACTION if slug == "silver" else ADAPTIVE_SAFE_FRACTION))
     foreground = Image.new("RGBA", (ADAPTIVE_CANVAS, ADAPTIVE_CANVAS),
                            (0, 0, 0, 0))
     artwork = clean_edge_fringe(icon).resize((side, side), Image.Resampling.LANCZOS)
