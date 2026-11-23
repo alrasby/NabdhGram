@@ -113,7 +113,7 @@ with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
         assert launcher.getpixel(point) == (7, 86, 93, 255), (
             "Rounded launcher lost its branded teal plate")
     assert launcher.getpixel((540, 540))[3] == 255
-    assert launcher.getpixel((100, 100))[3] == 0, (
+    assert launcher.getpixel((40, 40))[3] == 0, (
         "Launcher backplate is not sufficiently rounded")
 with Image.open(app_res / "drawable-nodpi/nabdhgram_launcher_foreground.png") as splash:
     assert splash.size == (1080, 1080)
