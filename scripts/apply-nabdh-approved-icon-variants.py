@@ -98,7 +98,7 @@ java = controller.read_text(encoding="utf-8")
 anchor = '        DEFAULT("DefaultIcon", R.drawable.icon_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconDefault),'
 if java.count(anchor) != 1:
     raise SystemExit("Pinned LauncherIconController enum anchor changed")
-branded_default = '        DEFAULT("DefaultIcon", R.drawable.nabdh_icon_preview_background, R.mipmap.nabdh_icon_default, R.string.AppIconDefault),'
+branded_default = '        DEFAULT("DefaultIcon", R.drawable.nabdh_icon_default_background, R.mipmap.nabdh_icon_default, R.string.AppIconDefault),'
 java = java.replace(anchor, branded_default, 1)
 addition = ',\n'.join(
     '        NABDH_' + slug.upper() + '("' + alias + '", R.drawable.nabdh_icon_preview_background, '
@@ -206,6 +206,16 @@ for obsolete in ("NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
     if 'android:name="org.telegram.messenger.' + obsolete + '"' in xml:
         raise SystemExit("Obsolete NabdhGram alias survived: " + obsolete)
 manifest.write_text(xml, encoding="utf-8")
+
+# Only Default receives the branded dark-teal card in the chooser; alternate
+# owners' icons keep transparent previews without synthesized backgrounds.
+default_backplate = res / "drawable/nabdh_icon_default_background.xml"
+default_backplate.parent.mkdir(parents=True, exist_ok=True)
+default_backplate.write_text(
+    '<shape xmlns:android="http://schemas.android.com/apk/res/android" '
+    'android:shape="rectangle"><solid android:color="#04252A"/>'
+    '<corners android:radius="18dp"/></shape>\\n',
+    encoding="utf-8")
 
 preview = res / "drawable/nabdh_icon_preview_background.xml"
 preview.parent.mkdir(parents=True, exist_ok=True)
