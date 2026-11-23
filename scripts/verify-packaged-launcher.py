@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+from zipfile import ZipFile
 
 if len(sys.argv) != 6:
     raise SystemExit("Usage: verify-packaged-launcher.py APK BADGING RESOURCES MANIFEST AAPT")
@@ -95,4 +96,28 @@ for activity, mipmap in (
             fail(activity + ": compiled launcher icon resource missing: " + attr)
         if int(icon_ref.group(1), 16) != int(expected_ref.group(1), 16):
             fail(activity + ": launcher maps to wrong resource " + attr)
-print("PASS: all four selected launcher aliases resolve to their own approved icons")
+    # Inspect the ACTUAL compiled icon XML: verifying only the resource ID
+    # previously passed even when the launcher used an unexpected image.
+    with ZipFile(apk) as package:
+        modern = [entry for entry in package.namelist()
+                  if entry.endswith("/" + mipmap + ".xml")]
+    if len(modern) != 1:
+        fail(activity + ": packaged adaptive icon XML missing or ambiguous")
+    compiled = subprocess.run([str(tool), "dump", "xmltree",
+                               str(apk), modern[0]],
+                              capture_output=True, text=True, timeout=40)
+    if compiled.returncode or "E: adaptive-icon" not in compiled.stdout:
+        fail(activity + ": invalid compiled adaptive icon XML")
+    fg = re.search(r"(?m)^\\s*E: foreground\\b[\\s\\S]*?(?=^\\s*E: |\\Z)",
+                   compiled.stdout)
+    if not fg:
+        fail(activity + ": adaptive foreground missing")
+    fg_ref = re.search(r"android:drawable[^\\n]*?@0x([0-9a-fA-F]+)", fg.group(0))
+    expected_fg = re.search(
+        r"(?m)^\\s*spec resource\\s+(0x[0-9a-fA-F]+)\\s+[^\\n]*:"
+        + re.escape("drawable/" + mipmap + "_foreground") + r":", resources)
+    if not fg_ref or not expected_fg:
+        fail(activity + ": adaptive foreground resource cannot be checked")
+    if int(fg_ref.group(1), 16) != int(expected_fg.group(1), 16):
+        fail(activity + ": adaptive foreground points to the wrong design")
+print("PASS: all four selectable aliases resolve to their own approved adaptive artwork")
