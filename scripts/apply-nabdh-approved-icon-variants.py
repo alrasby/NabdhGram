@@ -47,54 +47,10 @@ def compose_icon(slug):
         raise SystemExit("User icon must have fully transparent outer pixels")
     return image
 
-# Remove only dark, low-alpha interpolation fringes from generated
-# adaptive foregrounds. Source WebP and picker/legacy PNGs stay byte-for-byte
-# equivalent in visible pixels. Never touch opaque content or artwork geometry.
-def clean_edge_fringe(image):
-    corrected = image.copy()
-    source = image.load()
-    target = corrected.load()
-    width, height = image.size
-    for y in range(height):
-        for x in range(width):
-            red, green, blue, alpha = source[x, y]
-            if alpha == 0 or alpha >= 96:
-                continue
-            brightness = (red * 2126 + green * 7152 + blue * 722) // 10000
-            if brightness >= 75:
-                continue
-            nearest = None
-            for radius in range(1, 5):
-                for yy in range(max(0, y - radius), min(height, y + radius + 1)):
-                    for xx in range(max(0, x - radius), min(width, x + radius + 1)):
-                        if max(abs(xx - x), abs(yy - y)) != radius:
-                            continue
-                        neighbour = source[xx, yy]
-                        if neighbour[3] < 192:
-                            continue
-                        n_bright = (neighbour[0] * 2126 + neighbour[1] * 7152
-                                    + neighbour[2] * 722) // 10000
-                        if n_bright > brightness + 35:
-                            nearest = neighbour
-                            break
-                    if nearest:
-                        break
-                if nearest:
-                    break
-            if nearest:
-                target[x, y] = (*nearest[:3], alpha)
-    return corrected
-
-# The picker receives the original owner-approved disk. Android 26+
-# receives a distinct adaptive drawable instead of letting the launcher
-# normalize a legacy PNG onto an opaque square backplate.
-# The approved artwork is never repainted or recolored.
-ADAPTIVE_CANVAS = 1080
-ADAPTIVE_SAFE_FRACTION = 0.60
-modern = res / "mipmap-anydpi-v26"
-modern.mkdir(parents=True, exist_ok=True)
-drawable = res / "drawable-nodpi"
-drawable.mkdir(parents=True, exist_ok=True)
+# The chooser and Android launcher now consume the same transparent artwork.
+# No adaptive-icon XML for these four alternate designs: Samsung One UI was
+# supplying a dark backplate to their transparent adaptive background layer.
+# Keep the default NabdhGram adaptive launcher unchanged.
 for slug, _, _, _, _ in VARIANTS:
     icon = compose_icon(slug)
     for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
@@ -104,27 +60,15 @@ for slug, _, _, _, _ in VARIANTS:
         scaled = icon.resize((pixels, pixels), Image.Resampling.LANCZOS)
         scaled.save(directory / ("nabdh_icon_" + slug + ".png"),
                     format="PNG", optimize=True)
-        # Distinct preview resource prevents adaptive masks in the chooser.
         scaled.save(directory / ("nabdh_icon_preview_" + slug + ".png"),
                     format="PNG", optimize=True)
 
-    side = round(ADAPTIVE_CANVAS * ADAPTIVE_SAFE_FRACTION)
-    foreground = Image.new("RGBA", (ADAPTIVE_CANVAS, ADAPTIVE_CANVAS),
-                           (0, 0, 0, 0))
-    artwork = clean_edge_fringe(icon).resize((side, side), Image.Resampling.LANCZOS)
-    foreground.alpha_composite(
-        artwork, ((ADAPTIVE_CANVAS - side) // 2,
-                  (ADAPTIVE_CANVAS - side) // 2))
-    foreground.save(drawable / ("nabdh_icon_" + slug + "_foreground.png"),
-                    format="PNG", optimize=True)
-    (modern / ("nabdh_icon_" + slug + ".xml")).write_text(
-        '<?xml version="1.0" encoding="utf-8"?>\n'
-        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-        '    <background android:drawable="@android:color/transparent" />\n'
-        '    <foreground android:drawable="@drawable/nabdh_icon_'
-        + slug + '_foreground" />\n'
-        '</adaptive-icon>\n',
-        encoding="utf-8")
+    # Fail closed if this overlay is ever applied to a checkout containing
+    # remnants of the former adaptive variants (rather than shadowing PNG).
+    modern = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
+    foreground = res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
+    if modern.exists() or foreground.exists():
+        raise SystemExit("Stale alternate adaptive icon resource: " + slug)
 
 # The app's DefaultIcon alias has already been branded by apply-brand-icons.py,
 # but Telegram's upstream enum STILL uses Telegram icon_background_sa and
@@ -375,4 +319,4 @@ bulletin_src = bulletin_src.replace(bulletin_method,
 bulletin.write_text(bulletin_src, encoding="utf-8")
 
 
-print("PASS: five branded and five native Telegram icons; no legacy V2 aliases")
+print("PASS: four transparent launcher PNG variants, five native Telegram icons and no adaptive backplates")
