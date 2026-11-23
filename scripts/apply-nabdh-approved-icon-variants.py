@@ -88,12 +88,12 @@ for slug, _, _, _, _ in VARIANTS:
     foreground.save(drawable / ("nabdh_icon_" + slug + "_foreground.png"),
                     format="PNG", optimize=True)
     (modern / ("nabdh_icon_" + slug + ".xml")).write_text(
-        '<?xml version="1.0" encoding="utf-8"?>\\n'
-        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\\n'
-        '    <background android:drawable="@android:color/transparent" />\\n'
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+        '    <background android:drawable="@android:color/transparent" />\n'
         '    <foreground android:drawable="@drawable/nabdh_icon_'
-        + slug + '_foreground" />\\n'
-        '</adaptive-icon>\\n',
+        + slug + '_foreground" />\n'
+        '</adaptive-icon>\n',
         encoding="utf-8")
 
 # The app's DefaultIcon alias has already been branded by apply-brand-icons.py,
