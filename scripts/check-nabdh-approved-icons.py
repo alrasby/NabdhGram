@@ -31,7 +31,7 @@ for legacy in obsolete:
         "Obsolete icon mapping remains in controller: " + legacy)
 assert "nabdhRetireOldAliases" not in java, "Unneeded migration routine still exists"
 import re
-visible_aliases = re.findall(r'<activity-alias\\b[^>]*android:name="org\\.telegram\\.messenger\\.([^"]+)"',
+visible_aliases = re.findall(r'<activity-alias\b[^>]*android:name="org\.telegram\.messenger\.([^"]+)"',
                              manifest, re.S)
 assert set(visible_aliases) & set(obsolete) == set(), (
     "Deprecated launcher aliases remain in the manifest")
