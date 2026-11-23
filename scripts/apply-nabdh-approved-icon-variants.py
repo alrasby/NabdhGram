@@ -47,6 +47,44 @@ def compose_icon(slug):
         raise SystemExit("User icon must have fully transparent outer pixels")
     return image
 
+# Remove only dark, low-alpha interpolation fringes from generated
+# adaptive foregrounds. Source WebP and picker/legacy PNGs stay byte-for-byte
+# equivalent in visible pixels. Never touch opaque content or artwork geometry.
+def clean_edge_fringe(image):
+    corrected = image.copy()
+    source = image.load()
+    target = corrected.load()
+    width, height = image.size
+    for y in range(height):
+        for x in range(width):
+            red, green, blue, alpha = source[x, y]
+            if alpha == 0 or alpha >= 96:
+                continue
+            brightness = (red * 2126 + green * 7152 + blue * 722) // 10000
+            if brightness >= 75:
+                continue
+            nearest = None
+            for radius in range(1, 5):
+                for yy in range(max(0, y - radius), min(height, y + radius + 1)):
+                    for xx in range(max(0, x - radius), min(width, x + radius + 1)):
+                        if max(abs(xx - x), abs(yy - y)) != radius:
+                            continue
+                        neighbour = source[xx, yy]
+                        if neighbour[3] < 192:
+                            continue
+                        n_bright = (neighbour[0] * 2126 + neighbour[1] * 7152
+                                    + neighbour[2] * 722) // 10000
+                        if n_bright > brightness + 35:
+                            nearest = neighbour
+                            break
+                    if nearest:
+                        break
+                if nearest:
+                    break
+            if nearest:
+                target[x, y] = (*nearest[:3], alpha)
+    return corrected
+
 # The picker receives the original owner-approved disk. Android 26+
 # receives a distinct adaptive drawable instead of letting the launcher
 # normalize a legacy PNG onto an opaque square backplate.
@@ -73,7 +111,7 @@ for slug, _, _, _, _ in VARIANTS:
     side = round(ADAPTIVE_CANVAS * ADAPTIVE_SAFE_FRACTION)
     foreground = Image.new("RGBA", (ADAPTIVE_CANVAS, ADAPTIVE_CANVAS),
                            (0, 0, 0, 0))
-    artwork = icon.resize((side, side), Image.Resampling.LANCZOS)
+    artwork = clean_edge_fringe(icon).resize((side, side), Image.Resampling.LANCZOS)
     foreground.alpha_composite(
         artwork, ((ADAPTIVE_CANVAS - side) // 2,
                   (ADAPTIVE_CANVAS - side) // 2))
