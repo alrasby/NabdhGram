@@ -151,16 +151,17 @@ for slug, alias, label in names:
         assert rgba.size == (1080, 1080), "Wrong adaptive canvas: " + slug
         bounds = rgba.getchannel("A").getbbox()
         assert bounds is not None, "Empty adaptive artwork: " + slug
-        # Silver is an isolated One UI visual experiment: only the circular
-        # decorative rim may extend beyond the strict 66/108 logo-safe region.
-        # All other icons retain the previously verified 60% bounds.
-        margin = 120 if slug == "silver" else 210
+        # Preserve the successful Silver experiment byte-for-byte, and
+        # extend the same foreground diameter only to Dark/Glass circles.
+        # iPhone stays at the original safe 60%; Default is untouched.
+        circular = slug in ("silver", "dark", "glass")
+        margin = 120 if circular else 210
         assert bounds[0] >= margin and bounds[1] >= margin and (
             bounds[2] <= 1080 - margin and bounds[3] <= 1080 - margin), (
             "Adaptive icon artwork exceeds the experiment bounds: " + slug)
-        if slug == "silver":
-            assert bounds[0] < 170 and bounds[2] > 910, (
-                "Silver test did not reduce the launcher backplate gap")
+        if circular:
+            assert bounds[0] < 175 and bounds[2] > 905, (
+                "Circular launcher still leaves the old broad backplate gap: " + slug)
         assert rgba.getpixel((0, 0))[3] == 0, "Opaque adaptive corner: " + slug
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
     # No historical aliases: exactly one selectable launcher uses this icon.
