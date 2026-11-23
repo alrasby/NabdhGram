@@ -6,7 +6,6 @@ the internal NabdhGram monogram and artwork are never repainted or recolored.
 Old launcher aliases remain for safe upgrades but are hidden from the picker.
 """
 from pathlib import Path
-import re
 import sys
 from PIL import Image
 
@@ -131,7 +130,18 @@ addition = ',\n'.join(
     'R.mipmap.nabdh_icon_preview_' + slug + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
-java = java.replace(branded_default, branded_default + '\n' + addition + ',', 1)
+# Telegram's bundled decorative aliases remain in AndroidManifest for
+# upgrades, but are not offered in the NabdhGram icon picker. The five
+# selectable entries have one explicit owner-approved design each.
+native_variants = """        VINTAGE("VintageIcon", R.drawable.icon_6_background_sa, R.mipmap.icon_6_foreground_sa, R.string.AppIconVintage),
+        AQUA("AquaIcon", R.drawable.icon_4_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconAqua),
+        PREMIUM("PremiumIcon", R.drawable.icon_3_background_sa, R.mipmap.icon_3_foreground_sa, R.string.AppIconPremium, true),
+        TURBO("TurboIcon", R.drawable.icon_5_background_sa, R.mipmap.icon_5_foreground_sa, R.string.AppIconTurbo, true),
+        NOX("NoxIcon", R.mipmap.icon_2_background_sa, R.mipmap/icon_foreground_sa, R.string.AppIconNox, true);""".replace(
+    "R.mipmap/icon_foreground_sa", "R.mipmap.icon_foreground_sa")
+if java.count(native_variants) != 1:
+    raise SystemExit("Pinned Telegram built-in launcher variants changed")
+java = java.replace(native_variants, addition + ";", 1)
 # Some Android launchers immediately terminate an app when its currently
 # enabled launcher alias is disabled, even with DONT_KILL_APP. First enable
 # the target component, then disable old aliases; leave the selected one
@@ -159,7 +169,9 @@ migration = """
                 "NabdhTealIcon", "NabdhHexIcon",
                 "NabdhOriginalIcon", "NabdhCircularIcon",
                 "NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
-                "NabdhGlassCircleV2Icon", "NabdhIphoneV2Icon"};
+                "NabdhGlassCircleV2Icon", "NabdhIphoneV2Icon",
+                "VintageIcon", "AquaIcon", "PremiumIcon",
+                "TurboIcon", "NoxIcon"};
         boolean needsMigration = false;
         for (String alias : retired) {
             ComponentName component = new ComponentName(ctx.getPackageName(),
