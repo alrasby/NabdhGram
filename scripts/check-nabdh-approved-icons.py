@@ -194,7 +194,7 @@ for old_alias in ("VintageIcon", "AquaIcon", "PremiumIcon", "TurboIcon", "NoxIco
     assert ('"' + old_alias + '"') in java[:java.index("public enum LauncherIcon")], (
         "Upstream alias not covered by upgrade recovery: " + old_alias)
 assert java.index('NABDH_SILVER("NabdhSilverCircleIcon"') > java.index('DEFAULT("DefaultIcon"'), "First circular choice should follow default"
-assert java.index('NABDH_GLASS("NabdhGlassCircleIcon"') < java.index('VINTAGE("VintageIcon"'), "Three circular choices must be visible before Telegram icons"
+assert java.index('NABDH_SILVER("NabdhSilverCircleIcon"') < java.index('NABDH_DARK("NabdhDarkCircleIcon"') < java.index('NABDH_GLASS("NabdhGlassCircleIcon"') < java.index('NABDH_IPHONE("NabdhIphoneIcon"'), "Approved icon picker order changed"
 # The Android 12+ OS startup animation uses Theme.TMessages.Start from
 # TMessagesProj/res/values-v31/styles.xml, not a launcher alias. Keep it
 # branded even on cold start after the app icon picker changes alias.
