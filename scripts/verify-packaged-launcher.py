@@ -48,13 +48,13 @@ if actual_id != expected_id:
 print("PASS: compiled first-install launcher icon foreground is approved NabdhGram adaptive artwork")
 # The selected Default alias and the application fallback must share the teal
 # adaptive background; reject transparent/black platform fallback resources.
-background_element = re.search(r"(?m)^\\s*E: background\\b[^\\n]*", result.stdout)
+background_element = re.search(r"(?m)^\s*E: background\b[^\n]*", result.stdout)
 if not background_element:
     fail("Default adaptive icon missing branded background layer")
 fragment = result.stdout[background_element.end():background_element.end() + 400]
-background_value = re.search(r"android:drawable[^\\n]*?@0x([0-9a-fA-F]+)", fragment)
+background_value = re.search(r"android:drawable[^\n]*?@0x([0-9a-fA-F]+)", fragment)
 expected_color = re.search(
-    r"(?:spec )?resource\\s+(0x[0-9a-fA-F]+)\\s+[^\\n]*:color/nabdhgram_icon_background\\b",
+    r"(?:spec )?resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:color/nabdhgram_icon_background\b",
     resources)
 if not background_value or not expected_color:
     fail("Default adaptive icon background is not a named brand-color resource")
