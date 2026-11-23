@@ -8,9 +8,6 @@ from pathlib import Path
 import sys
 
 SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
-# Android's adaptive-icon safe region is the central 66/108 of the canvas.
-# Keep the complete approved artwork inside that region for all launcher masks.
-ARTWORK_FRACTION = 0.60
 # Keep the visible mark inside Android's 66/108 adaptive safe circle.
 # The approved source can include an opaque dark surround, so crop its visible
 # logo first rather than enlarging a padded square and letting Android clip it.
