@@ -108,13 +108,13 @@ for activity, mipmap in (
                               capture_output=True, text=True, timeout=40)
     if compiled.returncode or "E: adaptive-icon" not in compiled.stdout:
         fail(activity + ": invalid compiled adaptive icon XML")
-    fg = re.search(r"(?m)^\\s*E: foreground\\b[\\s\\S]*?(?=^\\s*E: |\\Z)",
+    fg = re.search(r"(?m)^\s*E: foreground\b[\s\S]*?(?=^\s*E: |\Z)",
                    compiled.stdout)
     if not fg:
         fail(activity + ": adaptive foreground missing")
-    fg_ref = re.search(r"android:drawable[^\\n]*?@0x([0-9a-fA-F]+)", fg.group(0))
+    fg_ref = re.search(r"android:drawable[^\n]*?@0x([0-9a-fA-F]+)", fg.group(0))
     expected_fg = re.search(
-        r"(?m)^\\s*spec resource\\s+(0x[0-9a-fA-F]+)\\s+[^\\n]*:"
+        r"(?m)^\s*spec resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:"
         + re.escape("drawable/" + mipmap + "_foreground") + r":", resources)
     if not fg_ref or not expected_fg:
         fail(activity + ": adaptive foreground resource cannot be checked")
