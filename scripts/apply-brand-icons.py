@@ -12,6 +12,8 @@ SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 # The approved source can include an opaque dark surround, so crop its visible
 # logo first rather than enlarging a padded square and letting Android clip it.
 ADAPTIVE_ARTWORK_FRACTION = 0.60
+DEFAULT_LAUNCHER_ARTWORK_FRACTION = 0.76
+# The native splash keeps its existing 60% foreground size.
 LEGACY_ARTWORK_FRACTION = 0.86
 
 def safe_canvas(artwork, pixels):
@@ -27,10 +29,10 @@ def safe_canvas(artwork, pixels):
                                      (pixels - resized.height) // 2))
     return canvas
 
-def foreground_canvas(artwork, pixels):
+def foreground_canvas(artwork, pixels, fraction=ADAPTIVE_ARTWORK_FRACTION):
     from PIL import Image
     canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
-    side = round(pixels * ADAPTIVE_ARTWORK_FRACTION)
+    side = round(pixels * fraction)
     resized = artwork.copy()
     resized.thumbnail((side, side), Image.Resampling.LANCZOS)
     canvas.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
@@ -119,6 +121,20 @@ def main():
         foreground_canvas(rgba, 1080).save(
             drawable / "nabdhgram_launcher_foreground.png", format="PNG", optimize=True
         )
+        # Separate the launcher drawable from the splash drawable so enlarging
+        # the home-screen icon never changes the app's launch animation.
+        foreground_canvas(rgba, 1080, DEFAULT_LAUNCHER_ARTWORK_FRACTION).save(
+            drawable / "nabdhgram_launcher_icon_foreground.png",
+            format="PNG", optimize=True
+        )
+        # Match the owner's teal-backed adaptive icon concept rather than
+        # delegating transparent pixels to One UI's black fallback.
+        colors = res / "values"
+        colors.mkdir(parents=True, exist_ok=True)
+        (colors / "nabdhgram_icon_background.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\\n'
+            '<resources><color name="nabdhgram_icon_background">#07565D</color></resources>\\n',
+            encoding="utf-8")
         anydpi = res / "mipmap-anydpi-v26"
         anydpi.mkdir(parents=True, exist_ok=True)
         # Android 26+ resolves mipmap-anydpi-v26/ic_launcher.xml before
@@ -130,8 +146,8 @@ def main():
             (anydpi / name).write_text(
                 '<?xml version="1.0" encoding="utf-8"?>\n'
                 '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                '    <background android:drawable="@android:color/transparent" />\n'
-                '    <foreground android:drawable="@drawable/nabdhgram_launcher_foreground" />\n'
+                '    <background android:drawable="@color/nabdhgram_icon_background" />\n'
+                '    <foreground android:drawable="@drawable/nabdhgram_launcher_icon_foreground" />\n'
                 '</adaptive-icon>\n', encoding="utf-8"
             )
         # Release and Debug use different config manifests. Former releases
