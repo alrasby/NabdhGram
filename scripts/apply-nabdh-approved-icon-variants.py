@@ -214,7 +214,7 @@ default_backplate.parent.mkdir(parents=True, exist_ok=True)
 default_backplate.write_text(
     '<shape xmlns:android="http://schemas.android.com/apk/res/android" '
     'android:shape="rectangle"><solid android:color="#04252A"/>'
-    '<corners android:radius="18dp"/></shape>\\n',
+    '<corners android:radius="18dp"/></shape>\n',
     encoding="utf-8")
 
 preview = res / "drawable/nabdh_icon_preview_background.xml"
