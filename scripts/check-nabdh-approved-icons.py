@@ -101,20 +101,30 @@ with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
     assert actual.size == picker.size == (1080, 1080)
     launcher = actual.convert("RGBA")
     selected = picker.convert("RGBA")
-    assert selected.tobytes() == launcher.tobytes(), (
-        "Default picker and real launcher foreground must be identical")
-    # The transparent rounded corners prevent a square when Samsung
-    # switches to foreground-only styles, while the center and side edges
-    # retain the original teal plate and logo.
-    for corner in ((0, 0), (1079, 0), (0, 1079), (1079, 1079)):
-        assert launcher.getpixel(corner)[3] == 0, (
-            "Actual Launcher still has square opaque corners")
-    for point in ((540, 10), (10, 540), (1070, 540), (540, 1070)):
-        assert launcher.getpixel(point) == (7, 86, 93, 255), (
-            "Rounded launcher lost its branded teal plate")
-    assert launcher.getpixel((540, 540))[3] == 255
-    assert launcher.getpixel((40, 40))[3] == 0, (
-        "Launcher backplate is not sufficiently rounded")
+    # Every pixel outside the logo's 61% safe canvas must remain
+    # transparent, including side edges; otherwise One UI can expose a
+    # baked-in square or duplicate backplate.
+    for point in ((0, 0), (1079, 0), (0, 1079), (1079, 1079),
+                  (540, 10), (10, 540), (1070, 540), (540, 1070),
+                  (100, 100)):
+        assert launcher.getpixel(point)[3] == 0, (
+            "Launcher foreground contains a backplate outside safe area")
+    bounds = launcher.getchannel("A").getbbox()
+    assert bounds is not None
+    assert bounds[0] >= 210 and bounds[1] >= 210 and (
+        bounds[2] <= 870 and bounds[3] <= 870), (
+        "Launcher mark extends beyond Android's adaptive safe region")
+    # Preview is the approved foreground over the exact adaptive teal,
+    # clipped into a rounded square only in the in-app selector.
+    from PIL import ImageDraw, ImageChops
+    expected = Image.new("RGBA", (1080, 1080), (7, 86, 93, 255))
+    expected.alpha_composite(launcher)
+    mask = Image.new("L", (1080, 1080), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, 1079, 1079),
+                                           radius=255, fill=255)
+    expected.putalpha(ImageChops.multiply(expected.getchannel("A"), mask))
+    assert selected.tobytes() == expected.tobytes(), (
+        "Default preview does not match composited Android adaptive layers")
 with Image.open(app_res / "drawable-nodpi/nabdhgram_launcher_foreground.png") as splash:
     assert splash.size == (1080, 1080)
     assert splash.convert("RGBA").tobytes() != actual.convert("RGBA").tobytes(), (
