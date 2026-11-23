@@ -42,8 +42,8 @@ assert len([x for x in expected_aliases if x in visible_aliases]) == 10
 # Default MUST be NabdhGram as well, not Telegram's native paper-plane.
 # The chooser thumbnail and enabled DefaultIcon launcher must refer to the
 # same approved artwork; all Android densities must have matching pixels.
-assert ('DEFAULT("DefaultIcon", R.drawable.nabdh_icon_preview_background, '
-        'R.mipmap.nabdh_icon_default, R.string.AppIconDefault)') in java, (
+assert ('DEFAULT("DefaultIcon", R.drawable.nabdh_icon_default_background, '
+        'R.drawable.nabdh_icon_default_picker_foreground, R.string.AppIconDefault)') in java, (
         "Default icon picker is still showing Telegram")
 assert ('DEFAULT("DefaultIcon", R.drawable.icon_background_sa, '
         'R.mipmap.icon_foreground_sa') not in java, (
@@ -82,8 +82,31 @@ adaptive = app_res / "mipmap-anydpi-v26/nabdhgram_launcher.xml"
 assert adaptive.is_file(), "Default adaptive launcher resource missing"
 assert "<adaptive-icon" in adaptive.read_text(encoding="utf-8"), (
     "Default launcher lost Android adaptive behavior")
-assert '<background android:drawable="@android:color/transparent" />' in adaptive.read_text(encoding="utf-8"), (
-    "Default adaptive icon still adds an opaque square background")
+assert '<background android:drawable="@color/nabdhgram_icon_background" />' in adaptive.read_text(encoding="utf-8"), (
+    "Default launcher should use dark-teal adaptive background")
+assert '<foreground android:drawable="@drawable/nabdhgram_launcher_icon_foreground" />' in adaptive.read_text(encoding="utf-8"), (
+    "Default launcher should use its own 76% foreground")
+from xml.etree import ElementTree
+color_file = app_res / "values/nabdhgram_icon_background.xml"
+assert color_file.is_file(), "Adaptive background missing"
+color_root = ElementTree.parse(color_file)
+assert color_root.find("./color[@name='nabdhgram_icon_background']").text.strip().upper() == "#07565D"
+picker_background = res / "drawable/nabdh_icon_default_background.xml"
+picker_xml = picker_background.read_text(encoding="utf-8")
+ElementTree.fromstring(picker_xml)
+assert '<solid android:color="#07565D"/>' in picker_xml
+app_fg = app_res / "drawable-nodpi/nabdhgram_launcher_icon_foreground.png"
+picker_fg = res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png"
+with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
+    assert actual.size == picker.size == (1080, 1080)
+    assert actual.convert("RGBA").tobytes() == picker.convert("RGBA").tobytes(), (
+        "Default chooser and Android adaptive launcher have different foregrounds")
+    bounds = actual.convert("RGBA").getchannel("A").getbbox()
+    assert bounds is not None and bounds[0] >= 120 and bounds[2] <= 960
+with Image.open(app_res / "drawable-nodpi/nabdhgram_launcher_foreground.png") as splash:
+    assert splash.size == (1080, 1080)
+    assert splash.convert("RGBA").tobytes() != actual.convert("RGBA").tobytes(), (
+        "Launcher enlargement unintentionally changed the splash icon")
 for alias in ("ic_launcher.xml", "ic_launcher_round.xml"):
     fallback = app_res / "mipmap-anydpi-v26" / alias
     assert fallback.is_file(), "Modern first-install fallback missing: " + alias
@@ -131,7 +154,9 @@ with Image.open(iphone_source) as original, Image.open(
 
 for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias
-    assert ('R.mipmap.nabdh_icon_preview_' + slug) in java, "Missing distinct original-art picker preview " + slug
+    preview_reference = ('R.drawable.nabdh_icon_iphone_picker_foreground'
+                         if slug == "iphone" else 'R.mipmap.nabdh_icon_preview_' + slug)
+    assert preview_reference in java, "Wrong picker foreground: " + slug
     # Modern launchers must get an adaptive resource with a transparent
     # background; Android <26 continues using the unmodified legacy PNG.
     modern = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
@@ -155,13 +180,17 @@ for slug, alias, label in names:
         # extend the same foreground diameter only to Dark/Glass circles.
         # iPhone stays at the original safe 60%; Default is untouched.
         circular = slug in ("silver", "dark", "glass")
-        margin = 120 if circular else 210
+        margin = 120 if circular or slug == "iphone" else 210
         assert bounds[0] >= margin and bounds[1] >= margin and (
             bounds[2] <= 1080 - margin and bounds[3] <= 1080 - margin), (
             "Adaptive icon artwork exceeds the experiment bounds: " + slug)
-        if circular:
+        if circular or slug == "iphone":
             assert bounds[0] < 175 and bounds[2] > 905, (
-                "Circular launcher still leaves the old broad backplate gap: " + slug)
+                "Adaptive foreground still leaves the old broad black gap: " + slug)
+        if slug == "iphone":
+            picker_foreground = res / "drawable-nodpi/nabdh_icon_iphone_picker_foreground.png"
+            assert picker_foreground.read_bytes() == foreground.read_bytes(), (
+                "iPhone chooser must use the same foreground as the adaptive launcher")
         assert rgba.getpixel((0, 0))[3] == 0, "Opaque adaptive corner: " + slug
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
     # No historical aliases: exactly one selectable launcher uses this icon.
