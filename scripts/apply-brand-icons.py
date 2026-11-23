@@ -132,8 +132,8 @@ def main():
         colors = res / "values"
         colors.mkdir(parents=True, exist_ok=True)
         (colors / "nabdhgram_icon_background.xml").write_text(
-            '<?xml version="1.0" encoding="utf-8"?>\\n'
-            '<resources><color name="nabdhgram_icon_background">#07565D</color></resources>\\n',
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<resources><color name="nabdhgram_icon_background">#07565D</color></resources>\n',
             encoding="utf-8")
         anydpi = res / "mipmap-anydpi-v26"
         anydpi.mkdir(parents=True, exist_ok=True)
