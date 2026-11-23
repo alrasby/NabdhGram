@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the three owner-approved icons as a deterministic downloadable Android ZIP.
+"""Export all four approved launchers and their adaptive layers as a reproducible ZIP.
 
 Run after apply-nabdh-approved-icon-variants.py. Every actual mipmap resource
 is copied from the generated Telegram source: no image redesign, no badges.
@@ -16,7 +16,10 @@ from zipfile import ZipFile, ZIP_DEFLATED, ZipInfo
 from PIL import Image
 
 SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
-SLUGS = ("silver", "dark", "glass")
+SOURCES = {"silver": "nabdh-icon-silver-circle.webp",
+           "dark": "nabdh-icon-dark-circle.webp",
+           "glass": "nabdh-icon-glass-circle.webp",
+           "iphone": "nabdh-icon-iphone.webp"}
 
 
 def export(root: Path, target: Path) -> None:
@@ -25,8 +28,7 @@ def export(root: Path, target: Path) -> None:
     payload = {}
     manifest = {"format": "NabdhGram Android launcher icons v1",
                 "variants": {}, "densities": SIZES}
-    for slug in SLUGS:
-        filename = "nabdh-icon-" + slug + "-circle.webp"
+    for slug, filename in SOURCES.items():
         original = sources / filename
         if not original.is_file():
             raise ValueError("Missing approved artwork: " + filename)
@@ -52,16 +54,26 @@ def export(root: Path, target: Path) -> None:
             location = "res/mipmap-" + density + "/" + filename_png
             payload[location] = raw
             hashes[location] = hashlib.sha256(raw).hexdigest()
+        # Include the actual API 26+ files. Previously this export contained
+        # legacy PNGs only, which could not reproduce what Samsung renders.
+        adaptive = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
+        foreground = res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
+        for path in (adaptive, foreground):
+            if not path.is_file():
+                raise ValueError("Missing adaptive launcher resource: " + str(path))
+            location = "res/" + path.relative_to(res).as_posix()
+            payload[location] = path.read_bytes()
+            hashes[location] = hashlib.sha256(payload[location]).hexdigest()
         manifest["variants"][slug] = hashes
     payload["manifest.json"] = (json.dumps(manifest, ensure_ascii=False,
                            indent=2, sort_keys=True) + "\n").encode("utf-8")
     payload["README.txt"] = (
         "NabdhGram approved icon package\\n"
-        "silver: owner image 44; dark: 55; glass: 33.\\n"
+        "silver: owner image 44; dark: 55; glass: 33; iPhone Glass: approved.\\n"
         "Copy the res/mipmap-* resource directories into an Android project.\\n"
-        "These resources are exactly the launcher images used in NabdhGram.\\n"
+        "The archive includes both legacy PNG and Android 26+ adaptive XML/artwork.\\n"
         "The source image is also provided under approved/.\\n"
-        "All five density tiers included; no Telegram default icon modified.\\n"
+        "All five density tiers and adaptive resources included.\\n"
     ).replace("\\n", "\n").encode("utf-8")
     target.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(target, "w", ZIP_DEFLATED, compresslevel=9) as archive:
@@ -75,7 +87,7 @@ def export(root: Path, target: Path) -> None:
         if archive.testzip():
             raise ValueError("Export archive checksum invalid")
         assert set(archive.namelist()) == set(payload)
-    print("PASS: icon archive contains all 15 Android density assets, originals, and SHA-256 hashes")
+    print("PASS: icon archive includes all 20 density assets, four adaptive layers and SHA-256 hashes")
     print("ZIP:", target)
 
 
