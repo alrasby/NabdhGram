@@ -38,7 +38,7 @@ match = re.search(r"android:drawable[^\n]*?@0x([0-9a-fA-F]+)", fragment)
 if not match:
     fail("adaptive foreground drawable resource missing in compiled icon")
 actual_id = "0x" + match.group(1).lower().zfill(8)
-expected = re.search(r"(?:spec )?resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:drawable/nabdhgram_launcher_foreground\b",resources)
+expected = re.search(r"(?:spec )?resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:drawable/nabdhgram_launcher_icon_foreground\b",resources)
 if not expected:
     fail("approved NabdhGram adaptive foreground not in compiled resource table")
 expected_id = expected.group(1).lower()
@@ -46,6 +46,22 @@ if actual_id != expected_id:
     fail("default icon adaptive foreground is NOT the NabdhGram image; actual "
          + actual_id + " versus approved " + expected_id)
 print("PASS: compiled first-install launcher icon foreground is approved NabdhGram adaptive artwork")
+# The selected Default alias and the application fallback must share the teal
+# adaptive background; reject transparent/black platform fallback resources.
+background_element = re.search(r"(?m)^\\s*E: background\\b[^\\n]*", result.stdout)
+if not background_element:
+    fail("Default adaptive icon missing branded background layer")
+fragment = result.stdout[background_element.end():background_element.end() + 400]
+background_value = re.search(r"android:drawable[^\\n]*?@0x([0-9a-fA-F]+)", fragment)
+expected_color = re.search(
+    r"(?:spec )?resource\\s+(0x[0-9a-fA-F]+)\\s+[^\\n]*:color/nabdhgram_icon_background\\b",
+    resources)
+if not background_value or not expected_color:
+    fail("Default adaptive icon background is not a named brand-color resource")
+if int(background_value.group(1), 16) != int(expected_color.group(1), 16):
+    fail("Default launcher background resolves to the wrong resource")
+print("PASS: compiled Default launcher has the explicit teal adaptive background")
+
 # The launchable DefaultIcon activity alias has its OWN icon attribute.
 # Checking only the application icon previously missed the paper-plane when
 # a fresh install entered the app through the activity-alias.
