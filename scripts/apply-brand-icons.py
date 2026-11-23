@@ -32,11 +32,21 @@ def safe_canvas(artwork, pixels):
 def foreground_canvas(artwork, pixels, fraction=ADAPTIVE_ARTWORK_FRACTION,
                       backing=None):
     from PIL import Image
-    # Keep the splash transparent. For the Default LAUNCHER only, render its
-    # brand surface into the foreground as well as adaptive background, so
-    # a launcher that displays the foreground alone cannot drop the backdrop.
+    # Splash stays transparent. Default launcher foreground includes a rounded
+    # teal plate, not an opaque square, for Samsung foreground-only icon styles.
     canvas = Image.new("RGBA", (pixels, pixels),
                        backing if backing is not None else (0, 0, 0, 0))
+    if backing is not None:
+        # A branded rounded-square plate survives Samsung modes that show
+        # only the foreground. Keep the standard solid teal adaptive
+        # background separately for normal Android icon masks.
+        from PIL import ImageDraw
+        antialias = 4
+        mask = Image.new("L", (pixels * antialias, pixels * antialias), 0)
+        ImageDraw.Draw(mask).rounded_rectangle(
+            (0, 0, pixels * antialias - 1, pixels * antialias - 1),
+            radius=round(pixels * 255 / 1080) * antialias, fill=255)
+        canvas.putalpha(mask.resize((pixels, pixels), Image.Resampling.LANCZOS))
     side = round(pixels * fraction)
     # thumbnail() never enlarges. On the approved cropped logo (roughly
     # 426px wide), 60% and 76% both previously produced the SAME pixels.
