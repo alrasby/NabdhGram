@@ -172,15 +172,11 @@ with Image.open(source_fg) as master_foreground:
     master_foreground.load()
     if master_foreground.size != (1080, 1080):
         raise SystemExit("Invalid default adaptive foreground canvas")
-    # Clip ONLY the picker bitmap to match Android's rounded-square mask.
-    # The actual adaptive launcher stays opaque for One UI compatibility.
-    from PIL import ImageDraw, ImageChops
-    preview = master_foreground.convert("RGBA")
-    mask = Image.new("L", preview.size, 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, 1079, 1079), radius=255, fill=255)
-    preview.putalpha(ImageChops.multiply(preview.getchannel("A"), mask))
-    preview.save(res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png",
-                 format="PNG", optimize=True)
+    # Preview and actual launcher foreground must be pixel-identical:
+    # never hide an opaque Launcher square using a picker-only clipping mask.
+    master_foreground.save(
+        res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png",
+        format="PNG", optimize=True)
 
 java = controller.read_text(encoding="utf-8")
 # Keep approved Default first, then the three circles and the restored rounded-square choice.
