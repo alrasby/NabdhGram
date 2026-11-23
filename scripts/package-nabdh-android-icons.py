@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export all four approved launchers and their adaptive layers as a reproducible ZIP.
+"""Export four approved launcher icons as a reproducible ZIP without backplates.
 
 Run after apply-nabdh-approved-icon-variants.py. Every actual mipmap resource
 is copied from the generated Telegram source: no image redesign, no badges.
@@ -54,16 +54,8 @@ def export(root: Path, target: Path) -> None:
             location = "res/mipmap-" + density + "/" + filename_png
             payload[location] = raw
             hashes[location] = hashlib.sha256(raw).hexdigest()
-        # Include the actual API 26+ files. Previously this export contained
-        # legacy PNGs only, which could not reproduce what Samsung renders.
-        adaptive = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
-        foreground = res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
-        for path in (adaptive, foreground):
-            if not path.is_file():
-                raise ValueError("Missing adaptive launcher resource: " + str(path))
-            location = "res/" + path.relative_to(res).as_posix()
-            payload[location] = path.read_bytes()
-            hashes[location] = hashlib.sha256(payload[location]).hexdigest()
+        # The actual Android launcher uses these PNGs even on API 26+.
+        # Do not export synthetic adaptive overlays absent from the app.
         manifest["variants"][slug] = hashes
     payload["manifest.json"] = (json.dumps(manifest, ensure_ascii=False,
                            indent=2, sort_keys=True) + "\n").encode("utf-8")
@@ -71,9 +63,9 @@ def export(root: Path, target: Path) -> None:
         "NabdhGram approved icon package\\n"
         "silver: owner image 44; dark: 55; glass: 33; iPhone Glass: approved.\\n"
         "Copy the res/mipmap-* resource directories into an Android project.\\n"
-        "The archive includes both legacy PNG and Android 26+ adaptive XML/artwork.\\n"
+        "Android 26+ also uses these transparent PNGs, without adaptive backplates.\\n"
         "The source image is also provided under approved/.\\n"
-        "All five density tiers and adaptive resources included.\\n"
+        "All five density tiers included.\\n"
     ).replace("\\n", "\n").encode("utf-8")
     target.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(target, "w", ZIP_DEFLATED, compresslevel=9) as archive:
@@ -87,7 +79,7 @@ def export(root: Path, target: Path) -> None:
         if archive.testzip():
             raise ValueError("Export archive checksum invalid")
         assert set(archive.namelist()) == set(payload)
-    print("PASS: icon archive includes all 20 density assets, four adaptive layers and SHA-256 hashes")
+    print("PASS: icon archive includes all 20 direct density assets and SHA-256 hashes")
     print("ZIP:", target)
 
 
