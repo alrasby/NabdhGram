@@ -298,12 +298,32 @@ cell = replace_once(cell,
     "opposite swipe reveal")
 
 cell = replace_once(cell,
+    "    private boolean drawPinBackground;",
+    """    // One haptic tick per gesture; resets only after the row returns to rest.
+    private boolean nabdhSwipeHapticTriggered;
+    private boolean drawPinBackground;""",
+    "single-tick haptic state")
+cell = replace_once(cell,
+    """            currentRevealProgress = 0f;
+            drawRevealBackground = false;
+        }
+        if (isSliding && !swipeCanceled) {""",
+    """            currentRevealProgress = 0f;
+            drawRevealBackground = false;
+            nabdhSwipeHapticTriggered = false;
+        }
+        if (isSliding && !swipeCanceled) {""",
+    "reset haptic at rest")
+
+cell = replace_once(cell,
     """            if (prevValue != drawRevealBackground && archiveHidden == SharedConfig.archiveHidden) {
                 try {
                     performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);""",
-    """            if (!prevValue && drawRevealBackground && archiveHidden == SharedConfig.archiveHidden) {
+    """            if (!prevValue && drawRevealBackground && !nabdhSwipeHapticTriggered
+                    && archiveHidden == SharedConfig.archiveHidden) {
+                nabdhSwipeHapticTriggered = true;
                 try {
-                    // Respect system vibration preferences; one tick on threshold entry only.
+                    // Respect system vibration preferences; one tick per gesture.
                     performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);""",
     "haptic threshold")
 
