@@ -93,11 +93,40 @@ The new AI integration is not shipped yet.
   It is not implemented by this document and must not delay the current
   owner-signed v1 / Google Play internal-testing gate.
 
-## v1.5 — Advanced intelligence (future)
-- Opt-in advanced AI summaries, semantic retrieval, better task/decision extraction.
-- More sophisticated scam classification and reduced false positives.
-- Smart Alerts / Media Guardian improvements if not completed in v1.0.
-- Optional Arabic-aware semantic search and richer File Finder.
+## v1.5 — Advanced Intelligence & Productivity (approved 2026-11-24)
+
+Owner approved all fifteen workstreams below. This is planned scope, not implementation or test evidence. Preserve v1.0 acceptance gates and existing functionality; extend native Telegram capabilities rather than duplicate them.
+
+| # | Workstream | Approved scope |
+|---|---|---|
+| 1 | Nabdh Translate | Incoming/outgoing and conversation translation, language detection, independent target language, optional offline engines where permitted. |
+| 2 | Nabdh Forward Pro | Multi-recipient forwarding, permitted source hiding, caption editing and scheduled forwarding; respect protected content. |
+| 3 | Nabdh Download Center | Pause/resume, priorities, categories, duplicates, storage and history. |
+| 4 | Nabdh Smart Contacts | Favorites, encrypted local notes, categories and follow-up shortcuts. |
+| 5 | Nabdh Smart Search | Arabic-aware search, date/sender/file filters, in-chat search and richer File Finder; semantic retrieval subject to compliance review. |
+| 6 | Nabdh Smart Reminders | Reply/chat reminders, snooze, recurrence, unified center and contextual chat-card actions. |
+| 7 | Nabdh Privacy Center | Locked chats, notification previews, sessions, permissions and recents protection. |
+| 8 | Nabdh Smart Replies | Custom quick replies, templates, text shortcuts and categories without mandatory AI. |
+| 9 | Focus Lens 2.0 | Local rule-based extraction of dates, questions, links, files, tasks and decisions with source navigation. |
+| 10 | Message Workspace | Notes, tasks, checklists, deadlines and source-message links. |
+| 11 | Catch Me Up | Local rule-based unread activity digest, mentions, replies and important updates. |
+| 12 | NabdhShield 2.0 | Suspicious links, pre-open file checks, misleading extensions, scam signals, trustworthy permitted hash sources and reduced false positives. |
+| 13 | Voice Clarity | Playback clarity, leveling, noise reduction, speech enhancement and speed controls. |
+| 14 | Media Guardian | Metadata privacy, optional location removal on sharing, cache and duplicate management, local media privacy. |
+| 15 | Network Intelligence | Allowed transfer optimization, data controls, connection-aware downloads, caching and background battery efficiency. |
+
+### Delivery sequence
+1. Translate, Forward Pro, Smart Replies.
+2. Download Center, Smart Search, Smart Contacts.
+3. Smart Reminders, Focus Lens, Message Workspace, Catch Me Up.
+4. Privacy Center, NabdhShield.
+5. Voice Clarity, Media Guardian, Network Intelligence.
+6. Regression, security, performance, physical-device testing and signed release.
+
+Smart Alerts remains in scope through contextual notifications and reminders. Preserve Arabic/English and RTL, native UI integration, accessibility, local-first privacy, and no mandatory paid services. Hide unfinished features. Verify existing native capabilities before implementation; respect Telegram API, licensing and Google Play rules. Measure memory, battery, responsiveness and false positives where applicable. No feature is shipped until tested in a downloadable build.
+
+### NabdhAI — deferred independent research
+Owner explicitly deferred NabdhAI on 2026-11-24 to study a distinctive, correct implementation. Retain the research scope (advanced AI summaries, semantic retrieval, task/decision extraction and optional on-device models), but exclude AI-dependent functionality from mandatory v1.5 release gates until separately approved. Keep unfinished AI UI hidden. Local execution alone does not establish Telegram API compliance; review applicable terms, data permissions, privacy, licensing, model quality, device compatibility and resource costs before implementation. Do not remove existing approved research plans or claim AI is shipped.
 
 ## v2.0 — NabdhTools (future; **not v1.0**)
 - Extract still images from video; trim and compress video; extract audio.
