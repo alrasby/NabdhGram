@@ -85,17 +85,14 @@ def clean_edge_fringe(image):
                 target[x, y] = (*nearest[:3], alpha)
     return corrected
 
-# The picker receives the original owner-approved disk. Android 26+
-# receives a distinct adaptive drawable instead of letting the launcher
-# normalize a legacy PNG onto an opaque square backplate.
-# The approved artwork is never repainted or recolored.
+# The picker retains the untouched approved artwork. On Android 26+,
+# the launcher masks adaptive icons inside the central safe circle.
+# A 76% circular artwork spills outside that circle and its edge is clipped
+# into a squircle; keep each round design within the safe diameter instead.
 ADAPTIVE_CANVAS = 1080
-ADAPTIVE_SAFE_FRACTION = 0.60
-# The successful Silver test is frozen exactly at 76%.
-# Test Dark and Glass at the same scale while preserving their original
-# circular artwork and leaving iPhone and Default entirely unchanged.
-SILVER_EXPERIMENT_FRACTION = 0.76
-CIRCULAR_EXPERIMENT_FRACTION = 0.76
+ADAPTIVE_SAFE_FRACTION = 0.62
+CIRCULAR_SAFE_FRACTION = 0.62
+# iPhone is intentionally rounded-square artwork and keeps its own geometry.
 IPHONE_EXPERIMENT_FRACTION = 0.76
 modern = res / "mipmap-anydpi-v26"
 modern.mkdir(parents=True, exist_ok=True)
@@ -114,8 +111,7 @@ for slug, _, _, _, _ in VARIANTS:
         scaled.save(directory / ("nabdh_icon_preview_" + slug + ".png"),
                     format="PNG", optimize=True)
 
-    fraction = (SILVER_EXPERIMENT_FRACTION if slug == "silver"
-                else CIRCULAR_EXPERIMENT_FRACTION if slug in ("dark", "glass")
+    fraction = (CIRCULAR_SAFE_FRACTION if slug in ("silver", "dark", "glass")
                 else IPHONE_EXPERIMENT_FRACTION if slug == "iphone"
                 else ADAPTIVE_SAFE_FRACTION)
     side = round(ADAPTIVE_CANVAS * fraction)
