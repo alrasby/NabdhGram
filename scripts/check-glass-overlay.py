@@ -520,7 +520,8 @@ checks = {
     "dialog selector rounded clipping installed": "selectorView instanceof org.telegram.ui.Cells.DialogCell" in selector
         and "canvas.clipPath(nabdhDialogSelectorPath)" in selector
         and "selectorRect.left + 7f * density" in selector
-        and "selectorRect.bottom - 3f * density" in selector,
+        and "selectorRect.bottom - 3f * density" in selector
+        and "17f * density, 17f * density" in selector,
     "selector canvas state restored": "if (nabdhCard) {" in selector and "canvas.restore();" in selector,
     "all section labels honor normal-weight selected typography":
         'labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf"))' in dialogs,
@@ -555,14 +556,23 @@ checks = {
         and "nameWidth -= dp(27);" in cell,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
     "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
-    "dialog swipe uses last accepted native draw lifecycle":
-        "if (translationX == 0 && currentRevealProgress == 0.0f" in cell
-        and "&& rightFragmentOpenedProgress == 0.0f" in cell
-        and "isFolderCell()" in cell,
-    "dialog cards restored to the last user-accepted native rendering":
-        "final boolean selected = isPressed() || isSelected || isSelected();" in cell
+    "dialog surface remains drawn during swipe and reveal":
+        "if (translationX == 0 && currentRevealProgress == 0.0f" not in cell
+        and "if (!isTopic" in cell
+        and "canvas.drawRoundRect(nabdhCardBounds" in cell
+        and cell.index("canvas.translate(translationX, 0);") < cell.index(
+            "canvas.drawRoundRect(nabdhCardBounds")
+        and cell.index("rect.set(getMeasuredWidth() - dp(64)") < cell.index(
+            "canvas.drawRoundRect(nabdhCardBounds"),
+    "dialog card selection uses native state and matching rounded bounds":
+        "final boolean selected = isSelected;" in cell
+        and "isPressed() || isSelected || isSelected()" not in cell
         and "final int fill = selected" in cell
-        and "if (translationX == 0 && currentRevealProgress == 0.0f" in cell,
+        and "rect.set(dp(7), dp(3), getMeasuredWidth() - dp(7)," in cell
+        and "canvas.drawRoundRect(rect, dp(17), dp(17), Theme.dialogs_tabletSeletedPaint);" in cell,
+    "dialog borders use subtle theme-aware stroke":
+        "pinned ? 0.34f : 0.22f" in cell
+        and "nabdhCardPaint.setAlpha(176);" in cell,
     "dialog card has no experimental swipe alpha interpolation":
         "Math.abs(translationX) / dp(56f)" not in cell
         and "swipeFade" not in cell
