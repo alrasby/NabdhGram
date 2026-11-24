@@ -81,6 +81,10 @@ checks = {
         and "isDialogPinned(current), current.folder_id != 0" in dialogs
         and '"Unmute"' in cell and '"Unpin"' in cell and '"Unarchive"' in cell
         and "nabdhSetSmartSwipeActions(NabdhSmartAction callback," in cell,
+    "native READ reveal clipped to same rounded Glass card":
+        "nabdhSwipeRevealClip.reset();" in cell
+        and "canvas.clipPath(nabdhSwipeRevealClip);" in cell
+        and "nabdhCardBounds.set(dp(7), dp(3)" in cell,
     "four independent rounded pill backgrounds and Android ripple":
         "new android.graphics.drawable.RippleDrawable" in cell
         and "lp.setMargins(dp(2), dp(3), dp(2), dp(3));" in cell

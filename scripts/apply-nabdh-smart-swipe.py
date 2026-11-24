@@ -535,6 +535,8 @@ cell = once(cell, "    private boolean drawPinBackground;",
         nabdhSmartBar.setVisibility(android.view.View.GONE);
     }
 
+    private final android.graphics.Path nabdhSwipeRevealClip =
+            new android.graphics.Path();
     private boolean drawPinBackground;""",
     "four interactive card buttons")
 
@@ -578,8 +580,17 @@ cell = once(cell,
             canvas.translate(0, -translateY);""",
     """        if (translationX < 0 || cornerProgress != 0.0f) {
             canvas.save();
-            canvas.translate(0, -translateY);""",
-    "keep native LEFT reveal away from RIGHT tray")
+            canvas.translate(0, -translateY);
+            // Native Telegram's rectangular READ reveal previously bled
+            // beyond the rounded Glass surface. Clip its canvas to the same
+            // bounds without allocating a Path on each frame.
+            nabdhSwipeRevealClip.reset();
+            nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
+                    getMeasuredHeight() - dp(3));
+            nabdhSwipeRevealClip.addRoundRect(nabdhCardBounds, dp(17), dp(17),
+                    android.graphics.Path.Direction.CW);
+            canvas.clipPath(nabdhSwipeRevealClip);""",
+    "clip original LEFT reveal to rounded Glass card")
 
 cell = once(cell,
     """            if (prevValue != drawRevealBackground && archiveHidden == SharedConfig.archiveHidden) {
