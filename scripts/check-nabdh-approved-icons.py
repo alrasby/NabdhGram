@@ -201,20 +201,13 @@ for slug, alias, label in names:
         bounds = rgba.getchannel("A").getbbox()
         assert bounds is not None, "Empty adaptive artwork: " + slug
         circular = slug in ("silver", "dark", "glass")
-        margin = 200 if circular else 120
-        assert bounds[0] >= margin and bounds[1] >= margin and (
-            bounds[2] <= 1080 - margin and bounds[3] <= 1080 - margin), (
-            "Adaptive artwork exceeds approved layout bounds: " + slug)
-        if circular:
-            # A circular design must fit the central 66/108 Android safe
-            # diameter, otherwise Samsung's adaptive mask cuts its edges
-            # and a circular chooser entry becomes a squircle on Home.
-            assert bounds[0] >= 180 and bounds[2] <= 900 and (
-                bounds[1] >= 180 and bounds[3] <= 900), (
-                "Circular launcher icon extends outside Android safe circle: " + slug)
-        else:
-            assert bounds[0] < 175 and bounds[2] > 905, (
-                "iPhone foreground no longer has the approved scale")
+        # Restored user-verified 76% foreground for all three circles
+        # and iPhone; Default uses a separate size in apply-brand-icons.py.
+        assert bounds[0] >= 120 and bounds[1] >= 120 and (
+            bounds[2] <= 960 and bounds[3] <= 960), (
+            "Approved adaptive icon bounds were exceeded: " + slug)
+        assert bounds[0] < 175 and bounds[2] > 905, (
+            "Approved icon scaling was unexpectedly reduced: " + slug)
         if slug == "iphone":
             picker_foreground = res / "drawable-nodpi/nabdh_icon_iphone_picker_foreground.png"
             assert picker_foreground.read_bytes() == foreground.read_bytes(), (
