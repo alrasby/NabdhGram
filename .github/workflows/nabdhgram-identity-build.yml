@@ -586,6 +586,8 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-compact-settings.py Telegram-upstream
           python3 -m py_compile nabdhgram/scripts/check-nabdh-appearance-pack.py
           python3 nabdhgram/scripts/check-nabdh-appearance-pack.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/check-nabdh-theme-previews.py
+          python3 nabdhgram/scripts/check-nabdh-theme-previews.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-personalization.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-v1-visibility.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-security-hardening.py Telegram-upstream
