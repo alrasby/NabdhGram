@@ -272,5 +272,182 @@ replace_cell(
                     outDrawable.draw(canvas);
                 }""",
     "mini chat preview")
+
+# V2 gallery: ONLY the four owned assets open a non-destructive preview.
+# Other Telegram/third-party themes retain the stock one-tap behavior.
+replace_cell(
+    """        setOnItemClickListener((view1, position) -> {
+            selectTheme(((InnerThemeView) view1).themeInfo, view1);""",
+    """        setOnItemClickListener((view1, position) -> {
+            Theme.ThemeInfo tapped = ((InnerThemeView) view1).themeInfo;
+            if (tapped != null && tapped.assetName != null
+                    && tapped.assetName.startsWith("nabdh_")) {
+                nabdhPreviewBundledTheme(tapped, view1);
+                return; // A preview tap must never silently apply the theme.
+            }
+            selectTheme(tapped, view1);""",
+    "preview owned themes without changing Telegram's native selection")
+
+replace_cell(
+    """    public void selectTheme(Theme.ThemeInfo themeInfo) {
+        selectTheme(themeInfo, null);
+    }""",
+    """    // Bundled cards are previewed without changing Telegram theme state.
+    // Telegram's stock themeconfig and saveCustomTheme flow remains the only
+    // way to apply changes; previous selection is stored as a stable key.
+    private void nabdhPreviewBundledTheme(Theme.ThemeInfo selected, View tapped) {
+        if (fragment == null || fragment.getParentActivity() == null) {
+            return;
+        }
+        final android.content.Context context = fragment.getParentActivity();
+        final boolean arabic = LocaleController.isRTL;
+        final int background = selected.getPreviewBackgroundColor();
+        final int incoming = selected.getPreviewInColor();
+        final int outgoing = selected.getPreviewOutColor();
+        final boolean night = currentType == ThemeActivity.THEME_TYPE_NIGHT;
+        final SharedPreferences prefs = ApplicationLoader.applicationContext
+                .getSharedPreferences("nabdh_theme_gallery", Activity.MODE_PRIVATE);
+        final String key = night ? "previousNightTheme" : "previousDayTheme";
+        final Theme.ThemeInfo previous = Theme.getTheme(prefs.getString(key, ""));
+        android.widget.LinearLayout content = new android.widget.LinearLayout(context);
+        content.setOrientation(android.widget.LinearLayout.VERTICAL);
+        content.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(10),
+                AndroidUtilities.dp(16), AndroidUtilities.dp(10));
+        content.setLayoutDirection(arabic ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        final int foreground = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);
+        final int dim = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
+
+        // Palette fields come from the same verified ThemeInfo registration as
+        // the actual .attheme; no fabricated wallpaper is added to the preview.
+        android.widget.TextView header = new android.widget.TextView(context);
+        header.setText("NabdhGram   •   " + selected.name);
+        header.setTextSize(15);
+        header.setSingleLine(false);
+        header.setMaxLines(2);
+        header.setTextColor(foreground);
+        header.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(8),
+                AndroidUtilities.dp(10), AndroidUtilities.dp(8));
+        content.addView(header, new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        android.widget.LinearLayout mock = new android.widget.LinearLayout(context);
+        mock.setOrientation(android.widget.LinearLayout.VERTICAL);
+        mock.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12),
+                AndroidUtilities.dp(12), AndroidUtilities.dp(12));
+        android.graphics.drawable.GradientDrawable surface = new android.graphics.drawable.GradientDrawable();
+        surface.setColor(background);
+        surface.setCornerRadius(AndroidUtilities.dp(16));
+        mock.setBackground(surface);
+        android.widget.LinearLayout.LayoutParams block =
+                new android.widget.LinearLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        block.setMargins(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
+        content.addView(mock, block);
+
+        android.widget.TextView chatTitle = new android.widget.TextView(context);
+        chatTitle.setText(arabic ? "المحادثات  •  معاينة" : "Chats  •  Preview");
+        chatTitle.setTextSize(14);
+        chatTitle.setTextColor(nabdhThemePreviewInk(background));
+        chatTitle.setPadding(AndroidUtilities.dp(9), AndroidUtilities.dp(5),
+                AndroidUtilities.dp(9), AndroidUtilities.dp(12));
+        mock.addView(chatTitle);
+
+        android.widget.TextView row = new android.widget.TextView(context);
+        row.setText(arabic ? "◉  محادثة تجريبية\n      آخر رسالة" : "◉  Sample conversation\n      Last message");
+        row.setTextSize(13);
+        row.setTextColor(nabdhThemePreviewInk(background));
+        row.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
+                AndroidUtilities.dp(12), AndroidUtilities.dp(10));
+        android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
+        card.setColor(incoming);
+        card.setCornerRadius(AndroidUtilities.dp(13));
+        row.setBackground(card);
+        mock.addView(row, new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        android.widget.TextView received = new android.widget.TextView(context);
+        received.setText(arabic ? "رسالة واردة" : "Incoming message");
+        received.setTextSize(13);
+        received.setTextColor(nabdhThemePreviewInk(incoming));
+        received.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
+                AndroidUtilities.dp(12), AndroidUtilities.dp(10));
+        android.graphics.drawable.GradientDrawable receiveBg = new android.graphics.drawable.GradientDrawable();
+        receiveBg.setColor(incoming);
+        receiveBg.setCornerRadius(AndroidUtilities.dp(13));
+        received.setBackground(receiveBg);
+        android.widget.LinearLayout.LayoutParams receivedParams =
+                new android.widget.LinearLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        receivedParams.setMargins(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(4));
+        mock.addView(received, receivedParams);
+
+        android.widget.TextView sent = new android.widget.TextView(context);
+        sent.setText(arabic ? "رسالة صادرة ✓✓" : "Outgoing message ✓✓");
+        sent.setTextSize(13);
+        sent.setTextColor(nabdhThemePreviewInk(outgoing));
+        sent.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
+                AndroidUtilities.dp(12), AndroidUtilities.dp(10));
+        android.graphics.drawable.GradientDrawable sendBg = new android.graphics.drawable.GradientDrawable();
+        sendBg.setColor(outgoing);
+        sendBg.setCornerRadius(AndroidUtilities.dp(13));
+        sent.setBackground(sendBg);
+        android.widget.LinearLayout.LayoutParams sentParams =
+                new android.widget.LinearLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        sentParams.gravity = arabic ? android.view.Gravity.LEFT : android.view.Gravity.RIGHT;
+        sentParams.setMargins(0, AndroidUtilities.dp(4), 0, AndroidUtilities.dp(12));
+        mock.addView(sent, sentParams);
+
+        android.widget.TextView settings = new android.widget.TextView(context);
+        settings.setText(arabic ? "⚙  الإعدادات    •    الملف الشخصي" :
+                "⚙  Settings    •    Profile");
+        settings.setTextColor(nabdhThemePreviewInk(background));
+        settings.setTextSize(13);
+        settings.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(9),
+                AndroidUtilities.dp(10), AndroidUtilities.dp(9));
+        mock.addView(settings);
+        android.widget.TextView hint = new android.widget.TextView(context);
+        hint.setText(arabic
+                ? "معاينة ألوان فقط. ستظهر الخلفية الفعلية بعد تطبيق الثيم."
+                : "Color preview only. The actual wallpaper appears when applied.");
+        hint.setTextColor(dim);
+        hint.setTextSize(12);
+        content.addView(hint);
+
+        org.telegram.ui.ActionBar.AlertDialog.Builder dialog =
+                new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
+                        .setTitle(selected.name)
+                        .setView(content)
+                        .setPositiveButton(arabic ? "تطبيق" : "Apply", (d, which) -> {
+                            Theme.ThemeInfo before = night ?
+                                    Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
+                            if (before != null && before != selected) {
+                                prefs.edit().putString(key, before.getKey()).apply();
+                            }
+                            selectTheme(selected, tapped); // Native commit + instant update.
+                        }).setNegativeButton(arabic ? "إغلاق" : "Close", null);
+        if (previous != null && previous != selected) {
+            dialog.setNeutralButton(arabic ? "الثيم السابق" : "Previous theme",
+                    (d, which) -> selectTheme(previous, null));
+        }
+        fragment.showDialog(dialog.create());
+    }
+
+    private static int nabdhThemePreviewInk(int color) {
+        final int luminance = (Color.red(color) * 299
+                + Color.green(color) * 587 + Color.blue(color) * 114);
+        return luminance > 150000 ? 0xFF26343C : 0xFFF6FAFA;
+    }
+
+    public void selectTheme(Theme.ThemeInfo themeInfo) {
+        selectTheme(themeInfo, null);
+    }""",
+    "bundled four-theme preview with deliberate apply and previous-theme restore")
+
 cell.write_text(cell_src, encoding="utf-8")
 print("PASS: NabdhGram theme cards show mini chats and readable two-line labels")
