@@ -37,7 +37,7 @@ dialogs = once(dialogs,
             viewPage.itemTouchhelper = new ItemTouchHelper(viewPage.swipeController);""",
     "independent listener before native ItemTouchHelper")
 
-palette = """ 
+palette = """
     private void nabdhRunSmartAction(long dialogId, int action) {
         if (getParentActivity() == null || actionBar.isActionModeShowed()) return;
         TLRPC.Dialog dialog = getMessagesController().dialogs_dict.get(dialogId);
