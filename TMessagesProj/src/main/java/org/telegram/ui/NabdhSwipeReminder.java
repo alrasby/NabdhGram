@@ -139,7 +139,10 @@ public final class NabdhSwipeReminder extends BroadcastReceiver {
                 .setData(identity(account, dialogId))
                 .putExtra("currentAccount", account)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        if (dialogId > 0) {
+        if (org.telegram.messenger.DialogObject.isEncryptedDialog(dialogId)) {
+            open.putExtra("encId",
+                    org.telegram.messenger.DialogObject.getEncryptedChatId(dialogId));
+        } else if (dialogId > 0) {
             open.putExtra("userId", dialogId);
         } else {
             open.putExtra("chatId", -dialogId);
