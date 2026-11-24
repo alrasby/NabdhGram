@@ -47,6 +47,19 @@ def resolve_verified_theme(spec, data):
     digest = hashlib.sha256(data).hexdigest()
     updated_digest, updated_bg, updated_in, updated_out = UPDATED_THEME_SPECS[filename]
     if digest == updated_digest:
+        # The updated assets use embedded WPS JPEGs, including Sand which
+        # previously referenced a WLS remote wallpaper. Verify the bytes
+        # before replacing anything in the Telegram build checkout.
+        from PIL import Image
+        from io import BytesIO
+        marker = data.find(b"WPS\\n")
+        if marker < 0 or data[marker + 4:marker + 7] != b"\\xff\\xd8\\xff":
+            raise SystemExit("Missing embedded JPEG wallpaper: " + filename)
+        try:
+            with Image.open(BytesIO(data[marker + 4:])) as wallpaper:
+                wallpaper.verify()
+        except Exception as error:
+            raise SystemExit("Invalid bundled wallpaper " + filename + ": " + str(error))
         return filename, name, updated_bg, updated_in, updated_out, updated_digest
     if digest == old_digest:
         return spec
