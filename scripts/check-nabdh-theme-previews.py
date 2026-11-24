@@ -61,4 +61,24 @@ assert "getPreviewBackgroundColor()" in preview
 assert "getPreviewInColor()" in preview
 assert "getPreviewOutColor()" in preview
 assert "AlertsCreator.createThemeCreateDialog" not in preview  # existing creation entry remains in ThemeActivity
+# Phase 2: full preview with real local embedded asset wallpaper,
+# bounded decode, explicit clone, and native persistent theme selection.
+assert "nabdhBundledWallpaper(context, selected)" in preview
+assert "context.getAssets().open(theme.assetName)" in preview
+assert "total > 5 * 1024 * 1024" in preview
+assert "android.graphics.BitmapFactory.decodeByteArray" in preview
+assert "mock.setClipToOutline(true);" in preview
+assert "new android.widget.ScrollView(context)" in preview
+assert "shown[0] = dialog.create();" in preview
+assert '"Personal copy"' in preview
+assert "Theme.getAssetFile(selected.assetName)" in preview
+assert "Theme.applyThemeFile(" in preview
+assert "new org.telegram.ui.Components.ThemeEditorView()" in preview
+assert '"previousNightTheme" : "previousDayTheme"' in preview
+assert "selectTheme(previous, null)" in preview
+assert '"themeconfig"' in preview, "native Telegram themeconfig must remain the persistence source"
+assert '"lastDarkTheme" : "lastDayTheme"' in preview
+assert "Theme.switchThemeWithReveal(themeInfo, false, -1, from)" in preview
+assert "Theme.setCurrentNightTheme(themeInfo)" in preview
+assert "EmojiThemes.saveCustomTheme(themeInfo, themeInfo.currentAccentId)" in preview
 print("PASS: exactly four owned themes retained, previews use stable palette and cached Paint; native selection preserved")
