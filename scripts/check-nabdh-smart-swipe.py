@@ -95,6 +95,12 @@ checks = {
     "native reveal does not run when spring keeps stale corner progress on RIGHT":
         "if (translationX < 0)" in cell
         and "drawRevealBackground = translationX < 0" in cell,
+    "RIGHT reveal surface stationary and separate from translated card":
+        "if (translationX > 0 && !isTopic" in cell
+        and "nabdhBlendThemeColor(surface, accent, 0.67f)" in cell
+        and cell.index("nabdhBlendThemeColor(surface, accent, 0.67f)") <
+            cell.index("canvas.translate(translationX, 0);")
+        and "nabdhCardBounds.set(dp(7), dp(3)" in cell,
     "native RIGHT white backing suppressed without changing LEFT":
         "if (translationX < 0 || (translationX == 0 && cornerProgress != 0.0f))" in cell
         and "Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite" in cell,
