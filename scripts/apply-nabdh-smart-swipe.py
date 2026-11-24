@@ -37,7 +37,20 @@ dialogs = once(dialogs,
             viewPage.itemTouchhelper = new ItemTouchHelper(viewPage.swipeController);""",
     "independent listener before native ItemTouchHelper")
 
+dialogs = once(dialogs,
+    "            viewPage.listView.setOnItemClickListener((view, position, x, y) -> {",
+    """            viewPage.listView.setOnItemClickListener((view, position, x, y) -> {
+                // The chat-row click handler must not consume a just-finished
+                // action-tray tap or horizontal swipe.
+                if (android.os.SystemClock.uptimeMillis() < nabdhIgnoreItemClicksUntil
+                        || view instanceof DialogCell
+                        && ((DialogCell) view).getTranslationX() > dp(8)) {
+                    return;
+                }""", "suppress chat opening immediately after Smart Swipe")
+
 palette = """
+    private long nabdhIgnoreItemClicksUntil;
+
     private void nabdhRunSmartAction(long dialogId, int action) {
         if (getParentActivity() == null || actionBar.isActionModeShowed()) return;
         TLRPC.Dialog dialog = getMessagesController().dialogs_dict.get(dialogId);
@@ -157,6 +170,8 @@ palette = """
                         // The list owns click/long-press handlers even when buttons
                         // are children of DialogCell. Fully consume tray touches.
                         page.listView.cancelClickRunnables(true);
+                        nabdhIgnoreItemClicksUntil =
+                                android.os.SystemClock.uptimeMillis() + 450L;
                         consumedDown = true;
                         actionDownX = event.getX();
                         actionDownY = event.getY();
@@ -199,6 +214,8 @@ palette = """
                             && Math.abs(dx) > Math.abs(dy) * 1.5f
                             && Math.abs(dy) < dp(36)) {
                         dragging = true;
+                        nabdhIgnoreItemClicksUntil =
+                                android.os.SystemClock.uptimeMillis() + 450L;
                         page.listView.cancelClickRunnables(true);
                         if (spring != null) spring.cancel();
                         recycler.getParent().requestDisallowInterceptTouchEvent(true);

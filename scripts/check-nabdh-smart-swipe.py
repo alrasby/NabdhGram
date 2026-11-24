@@ -63,6 +63,10 @@ checks = {
     "opposite-direction reveal skips native Telegram circle animation":
         "drawRevealBackground = translationX < 0" in cell
         and "translationX >= dp(70)" in cell,
+    "guard against delayed RecyclerListView chat opening":
+        "nabdhIgnoreItemClicksUntil" in dialogs
+        and "android.os.SystemClock.uptimeMillis() + 450L" in dialogs
+        and "page.listView.cancelClickRunnables(true);" in dialogs,
     "expanded tray consumes DOWN-UP without opening background chat":
         "page.listView.cancelClickRunnables(true);" in dialogs
         and "consumedDown = true;" in dialogs
