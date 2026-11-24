@@ -30,6 +30,10 @@ checks = {
         and "SharedPreferences" in receiver,
     "permission respected": "POST_NOTIFICATIONS" in receiver
         and "POST_NOTIFICATIONS" in dialogs,
+    "rightward short reveal is cancellable": "return 1.1f;" in dialogs
+        and "peek.getTranslationX() > peek.getMeasuredWidth() * 0.22f" in dialogs
+        and "showNabdhSmartSwipeActions(peekDialogId)" in dialogs
+        and "translationX > 0 ? 0.22f : 0.45f" in cell,
     "rounded tray and translated card": "NabdhGram Smart Swipe: LEFT side action tray" in cell
         and "nabdhCardBounds.set(dp(7), dp(3)" in cell,
     "haptics respect device preference": "performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);" in cell,
