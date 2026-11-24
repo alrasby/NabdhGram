@@ -555,11 +555,18 @@ checks = {
         and "nameWidth -= dp(27);" in cell,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
     "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
-    "dialog card excludes swipe/archive without hiding all rows": "!drawArchive" not in cell
-        and "currentRevealProgress == 0.0f" in cell
-        and "translationX == 0" in cell
+    "dialog swipe uses last accepted native draw lifecycle":
+        "if (translationX == 0 && currentRevealProgress == 0.0f" in cell
+        and "&& rightFragmentOpenedProgress == 0.0f" in cell
         and "isFolderCell()" in cell,
-    "dialog selection feedback": "isPressed() || isSelected || isSelected()" in cell,
+    "dialog cards restored to the last user-accepted native rendering":
+        "final boolean selected = isPressed() || isSelected || isSelected();" in cell
+        and "final int fill = selected" in cell
+        and "if (translationX == 0 && currentRevealProgress == 0.0f" in cell,
+    "dialog card has no experimental swipe alpha interpolation":
+        "Math.abs(translationX) / dp(56f)" not in cell
+        and "swipeFade" not in cell
+        and "glassAlpha" not in cell,
     "section headers drawn only at unique boundaries": all(
         part in dialogs for part in (
             "if (position == firstPinned) return 1;",
@@ -643,6 +650,9 @@ stories_header = (ui / "Stories/DialogStoriesCell.java").read_text(encoding="utf
 checks["native stories wordmark keeps Telegram original animation"] = (
     'telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in stories_header
     and 'private static final class NabdhNativeWordmarkDrawable' in stories_header
+    and 'private final class NabdhStableWordmarkView extends ImageView' in stories_header
+    and 'telegramLogoView = new NabdhStableWordmarkView(context);' in stories_header
+    and 'canvas.drawText("NabdhGram", 0f, baseline, wordmarkPaint);' in stories_header
     and 'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in stories_header
     and 'final float logoAlpha = logoVisibility * progress;' in stories_header
     and 'telegramLogoView.setScaleX(1f);' not in stories_header
@@ -789,6 +799,20 @@ checks["header native transitions preserved without extra NabdhGram overlays"] =
     and 'getTitlesContainer().setAlpha(1f)' not in header_overlay_source
     and 'getTitlesContainer().setScaleX(1f)' not in header_overlay_source
     and 'nabdhRestoreChatTitle' not in header_overlay_source
+)
+
+# Regression: full-size branded name uses the native header owner, not an
+# additional view, and its scale cannot settle at the unreadable 0.4x.
+header_branding = (Path(__file__).resolve().parent / "apply-dialogs-title.py").read_text(encoding="utf-8")
+checks["main header native animation keeps readable NabdhGram text"] = (
+    "float s = \"NabdhGram\".equals(actionBar.getTitle())" in dialogs
+    and "? 1.0f" in dialogs
+    and "float s = (initialDialogsType == DIALOGS_TYPE_DEFAULT" not in dialogs
+    and "nabdhRestoreChatTitle" not in dialogs
+    and "new NabdhNativeWordmarkDrawable()" in stories_header
+    and "LayoutHelper.createFrame(132, 22)" in stories_header
+    and "return AndroidUtilities.dp(132);" in stories_header
+    and 'float s = "NabdhGram".equals(actionBar.getTitle())' in header_branding
 )
 
 for name, okay in checks.items():

@@ -8,30 +8,47 @@ from pathlib import Path
 import sys
 
 SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
-# Android's adaptive-icon safe region is the central 66/108 of the canvas.
-# Keep the complete approved artwork inside that region for all launcher masks.
-ARTWORK_FRACTION = 0.60
 # Keep the visible mark inside Android's 66/108 adaptive safe circle.
 # The approved source can include an opaque dark surround, so crop its visible
 # logo first rather than enlarging a padded square and letting Android clip it.
 ADAPTIVE_ARTWORK_FRACTION = 0.60
+DEFAULT_LAUNCHER_ARTWORK_FRACTION = 0.62
+# The native splash keeps its existing 60% foreground size.
 LEGACY_ARTWORK_FRACTION = 0.86
 
-def safe_canvas(artwork, pixels, background):
+def safe_canvas(artwork, pixels):
     from PIL import Image
-    canvas = Image.new("RGBA", (pixels, pixels), background)
+    # Preserve the approved logo's transparency. The previous version
+    # composited it over an opaque rounded-square backdrop, creating an
+    # unwanted second container around the original artwork.
+    canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
     side = round(pixels * LEGACY_ARTWORK_FRACTION)
     resized = artwork.copy()
     resized.thumbnail((side, side), Image.Resampling.LANCZOS)
-    canvas.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
+    canvas.alpha_composite(resized, ((pixels - resized.width) // 2,
+                                     (pixels - resized.height) // 2))
     return canvas
 
-def foreground_canvas(artwork, pixels):
+def foreground_canvas(artwork, pixels, fraction=ADAPTIVE_ARTWORK_FRACTION,
+                      backing=None):
     from PIL import Image
+    # Adaptive foreground has only the owner-approved mark. Android applies
+    # the mask to its separate solid teal background. Never pre-mask or bake
+    # a square/squircle plate into the Android foreground itself.
     canvas = Image.new("RGBA", (pixels, pixels), (0, 0, 0, 0))
-    side = round(pixels * ADAPTIVE_ARTWORK_FRACTION)
-    resized = artwork.copy()
-    resized.thumbnail((side, side), Image.Resampling.LANCZOS)
+    side = round(pixels * fraction)
+    # thumbnail() never enlarges. On the approved cropped logo (roughly
+    # 426px wide), 60% and 76% both previously produced the SAME pixels.
+    # Preserve the old splash at its original intrinsic size; only the
+    # launcher gets genuine scale-to-fit upsampling inside the 66/108 safe zone.
+    if fraction == ADAPTIVE_ARTWORK_FRACTION:
+        resized = artwork.copy()
+        resized.thumbnail((side, side), Image.Resampling.LANCZOS)
+    else:
+        scale = min(side / artwork.width, side / artwork.height)
+        width = max(1, round(artwork.width * scale))
+        height = max(1, round(artwork.height * scale))
+        resized = artwork.resize((width, height), Image.Resampling.LANCZOS)
     canvas.alpha_composite(resized, ((pixels - resized.width) // 2, (pixels - resized.height) // 2))
     return canvas
 
@@ -92,16 +109,15 @@ def main():
                 print("Logo crop skipped: source corners are not uniformly dark")
         print(f"Effective artwork dimensions: {rgba.width}x{rgba.height}")
         res = root / "TMessagesProj_App" / "src" / "main" / "res"
-        # Derive a neutral edge color from the approved source itself.
-        # The full artwork is preserved, but inset to the Android safe zone.
-        background = rgba.getpixel((0, 0))
-        if background[3] != 255:
-            background = (4, 37, 42, 255)
         for density, px in SIZES.items():
             folder = res / f"mipmap-{density}"
             folder.mkdir(parents=True, exist_ok=True)
-            scaled = safe_canvas(rgba, px, background)
-            for name in ("nabdhgram_launcher.png", "nabdhgram_launcher_round.png"):
+            scaled = safe_canvas(rgba, px)
+            # The upstream application/launcher may fall back to ic_launcher
+            # on first install before a user selects a launcher alias. Brand
+            # those resource names too, using exactly the approved source.
+            for name in ("nabdhgram_launcher.png", "nabdhgram_launcher_round.png",
+                         "ic_launcher.png", "ic_launcher_round.png"):
                 scaled.save(folder / name, format="PNG", optimize=True)
         splash_dir = res / "values-v31"
         splash_dir.mkdir(parents=True, exist_ok=True)
@@ -119,34 +135,57 @@ def main():
         foreground_canvas(rgba, 1080).save(
             drawable / "nabdhgram_launcher_foreground.png", format="PNG", optimize=True
         )
-        values = res / "values"
-        values.mkdir(parents=True, exist_ok=True)
-        (values / "nabdhgram_launcher_colors.xml").write_text(
-            '<?xml version="1.0" encoding="utf-8"?>\n'
-            '<resources><color name="nabdhgram_launcher_background">#%02X%02X%02X</color></resources>\n'
-            % background[:3], encoding="utf-8"
+        # Separate the launcher drawable from the splash drawable so enlarging
+        # the home-screen icon never changes the app's launch animation.
+        foreground_canvas(rgba, 1080, DEFAULT_LAUNCHER_ARTWORK_FRACTION).save(
+            drawable / "nabdhgram_launcher_icon_foreground.png",
+            format="PNG", optimize=True
         )
+        # Match the owner's teal-backed adaptive icon concept rather than
+        # delegating transparent pixels to One UI's black fallback.
+        colors = res / "values"
+        colors.mkdir(parents=True, exist_ok=True)
+        (colors / "nabdhgram_icon_background.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<resources><color name="nabdhgram_icon_background">#07565D</color></resources>\n',
+            encoding="utf-8")
         anydpi = res / "mipmap-anydpi-v26"
         anydpi.mkdir(parents=True, exist_ok=True)
-        for name in ("nabdhgram_launcher.xml", "nabdhgram_launcher_round.xml"):
+        # Android 26+ resolves mipmap-anydpi-v26/ic_launcher.xml before
+        # density-qualified ic_launcher.png. The original upstream adaptive
+        # fallback still contains Telegram even if all PNGs are NabdhGram.
+        # Override BOTH modern fallback XML names in the application module.
+        for name in ("nabdhgram_launcher.xml", "nabdhgram_launcher_round.xml",
+                     "ic_launcher.xml", "ic_launcher_round.xml"):
             (anydpi / name).write_text(
                 '<?xml version="1.0" encoding="utf-8"?>\n'
                 '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                '    <background android:drawable="@color/nabdhgram_launcher_background" />\n'
-                '    <foreground android:drawable="@drawable/nabdhgram_launcher_foreground" />\n'
+                '    <background android:drawable="@color/nabdhgram_icon_background" />\n'
+                '    <foreground android:drawable="@drawable/nabdhgram_launcher_icon_foreground" />\n'
                 '</adaptive-icon>\n', encoding="utf-8"
             )
-        # Point the manifest explicitly to NabdhGram-specific resource names.
-        # The upstream Telegram resources are intentionally left intact.
-        manifest = root / "TMessagesProj" / "config" / "debug" / "AndroidManifest_SDK23.xml"
-        text = manifest.read_text(encoding="utf-8")
+        # Release and Debug use different config manifests. Former releases
+        # branded only config/debug; a signed Release could therefore still
+        # inherit Telegram's ic_launcher. Update every actual config manifest,
+        # and the application-level manifest when it declares launcher art.
         before = 'android:icon="@mipmap/ic_launcher"'
         round_before = 'android:roundIcon="@mipmap/ic_launcher_round"'
-        if text.count(before) != 1 or text.count(round_before) != 1:
-            raise SystemExit("Expected upstream launcher icon references not found exactly once")
-        text = text.replace(before, 'android:icon="@mipmap/nabdhgram_launcher"')
-        text = text.replace(round_before, 'android:roundIcon="@mipmap/nabdhgram_launcher_round"')
-        manifest.write_text(text, encoding="utf-8")
+        configured = []
+        configs = sorted((root / "TMessagesProj" / "config").rglob("AndroidManifest*.xml"))
+        app_manifest = root / "TMessagesProj_App/src/main/AndroidManifest.xml"
+        if app_manifest.is_file():
+            configs.append(app_manifest)
+        for manifest in configs:
+            text = manifest.read_text(encoding="utf-8")
+            if before not in text and round_before not in text:
+                continue
+            text = text.replace(before, 'android:icon="@mipmap/nabdhgram_launcher"')
+            text = text.replace(round_before, 'android:roundIcon="@mipmap/nabdhgram_launcher_round"')
+            manifest.write_text(text, encoding="utf-8")
+            configured.append(str(manifest.relative_to(root)))
+        if not configured:
+            raise SystemExit("No upstream app icon manifest references available to brand")
+        print("Branded all launcher config manifests:", ", ".join(configured))
         # The launcher resolves an enabled activity-alias, not just the
         # application icon. Explicitly brand the enabled DefaultIcon alias.
         library_manifest = root / "TMessagesProj" / "src" / "main" / "AndroidManifest.xml"

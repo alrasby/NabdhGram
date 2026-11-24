@@ -48,6 +48,10 @@ modify("ActionBar/SimpleTextView.java", [
     private boolean nabdhNativeTextApplied;
 
     public void nabdhRefreshSelectedFont() {
+        // The main home title is sized on every pass by ActionBar.onMeasure().
+        // Generic font refresh must never cache/restore an earlier Paint size
+        // onto this native title, including after reopening the dialogs.
+        if (android.text.TextUtils.equals(getText(), "NabdhGram")) return;
         Typeface current = textPaint.getTypeface();
         if (current == null) return;
         boolean standard = nabdhNativeTextApplied
@@ -73,6 +77,9 @@ modify("ActionBar/SimpleTextView.java", [
         }
         // Never replace icon, math, code or specialty fonts.
         if (!standard) return;
+        // Ignore uninitialized Paint sizes for ordinary SimpleTextView items.
+        // The main NabdhGram ActionBar title was already excluded above.
+        if (nabdhOriginalTextPx < 0f && textPaint.getTextSize() <= 0f) return;
         if (nabdhOriginalTextPx < 0f) {
             nabdhOriginalTextPx = textPaint.getTextSize();
             nabdhOriginalTextStyle = current.getStyle();

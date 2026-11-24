@@ -34,5 +34,38 @@ replacement = """                // A badge's fill is animated between active/in
                 }
 """ + anchor
 source = source.replace(anchor, replacement, 1)
+# Keep the folder-strip measurements consistent after title shortening.
+# Never use the cached allTabsWidth to measure a title that just changed.
+measure_old = """                firstTab.setTitle(LocaleController.getString(R.string.FilterAllChats), null, false);
+                int tabWidth = firstTab.getWidth(false);
+                firstTab.setTitle(allTabsWidth > width ? LocaleController.getString(R.string.FilterAllChatsShort) : LocaleController.getString(R.string.FilterAllChats), null, false);
+                int trueTabsWidth = allTabsWidth - tabWidth;
+                trueTabsWidth += firstTab.getWidth(false);
+                int prevWidth = additionalTabWidth;
+                additionalTabWidth = trueTabsWidth < width ? (width - trueTabsWidth) / tabs.size() : 0;
+                if (prevWidth != additionalTabWidth) {"""
+measure_new = """                final String previousTitle = firstTab.title.toString();
+                firstTab.setTitle(LocaleController.getString(R.string.FilterAllChats), null, false);
+                int fullTabsWidth = 0;
+                for (int i = 0; i < tabs.size(); i++) {
+                    fullTabsWidth += tabs.get(i).getWidth(false) + dp(TAB_PADDING_WIDTH);
+                }
+                final boolean needsShortTitle = fullTabsWidth > width;
+                firstTab.setTitle(needsShortTitle
+                        ? LocaleController.getString(R.string.FilterAllChatsShort)
+                        : LocaleController.getString(R.string.FilterAllChats), null, false);
+                final boolean changedTitle = !android.text.TextUtils.equals(
+                        previousTitle, firstTab.title);
+                int trueTabsWidth = 0;
+                for (int i = 0; i < tabs.size(); i++) {
+                    trueTabsWidth += tabs.get(i).getWidth(false) + dp(TAB_PADDING_WIDTH);
+                }
+                allTabsWidth = trueTabsWidth;
+                int prevWidth = additionalTabWidth;
+                additionalTabWidth = trueTabsWidth < width ? (width - trueTabsWidth) / tabs.size() : 0;
+                if (changedTitle || prevWidth != additionalTabWidth) {"""
+if source.count(measure_old) != 1:
+    raise SystemExit("Pinned FilterTabsView measurement anchor changed")
+source = source.replace(measure_old, measure_new, 1)
 path.write_text(source, encoding="utf-8")
 print("PASS: native folder badge text adapts contrast to current animated badge fill")

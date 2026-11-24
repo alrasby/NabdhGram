@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Fail before Gradle unless all three owner-supplied circular icons are exact."""
+"""Verify the approved launcher variants and their Android activity aliases."""
 from pathlib import Path
 import sys
-from PIL import Image, ImageChops
+from PIL import Image
 import hashlib
 
 if len(sys.argv) != 2:
@@ -15,19 +15,35 @@ names = [
     ("silver", "NabdhSilverCircleIcon", "NabdhIconSilverCircle"),
     ("dark", "NabdhDarkCircleIcon", "NabdhIconDarkCircle"),
     ("glass", "NabdhGlassCircleIcon", "NabdhIconGlassCircle"),
+    ("iphone", "NabdhIphoneIcon", "NabdhIconIphone"),
 ]
-retired = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon",
-           "NabdhOriginalIcon", "NabdhCircularIcon")
-for legacy in retired:
-    assert ('android:name="org.telegram.messenger.' + legacy + '"') in manifest, "Legacy alias migration must preserve installed launchers"
-    assert ('"' + legacy + '"') not in java[java.index("public enum LauncherIcon"):], "Retired launcher must not remain selectable"
-assert "nabdhRetireOldAliases();" in java, "Missing old launcher alias recovery"
-
+# The pre-publication launcher must not contain any superseded Telegram,
+# old experimental or V2 aliases, nor a startup migration routine.
+obsolete = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon",
+            "NabdhHexIcon", "NabdhOriginalIcon", "NabdhCircularIcon",
+            "NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
+            "NabdhGlassCircleV2Icon", "NabdhIphoneV2Icon")
+for legacy in obsolete:
+    assert ('android:name="org.telegram.messenger.' + legacy + '"') not in manifest, (
+        "Obsolete NabdhGram launcher remains: " + legacy)
+    assert ('"' + legacy + '"') not in java, (
+        "Obsolete NabdhGram icon remains selectable: " + legacy)
+assert "nabdhRetireOldAliases" not in java
+import re
+visible_aliases = re.findall(r'<activity-alias\b[^>]*android:name="org\.telegram\.messenger\.([^"]+)"',
+                             manifest, re.S)
+expected_aliases = ("DefaultIcon", "NabdhSilverCircleIcon", "NabdhDarkCircleIcon",
+                    "NabdhGlassCircleIcon", "NabdhIphoneIcon",
+                    "VintageIcon", "AquaIcon", "PremiumIcon", "TurboIcon", "NoxIcon")
+for expected in expected_aliases:
+    assert visible_aliases.count(expected) == 1, "Missing/duplicate launcher " + expected
+assert not set(visible_aliases) & set(obsolete)
+assert len([x for x in expected_aliases if x in visible_aliases]) == 10
 # Default MUST be NabdhGram as well, not Telegram's native paper-plane.
 # The chooser thumbnail and enabled DefaultIcon launcher must refer to the
 # same approved artwork; all Android densities must have matching pixels.
-assert ('DEFAULT("DefaultIcon", R.drawable.nabdh_icon_preview_background, '
-        'R.mipmap.nabdh_icon_default, R.string.AppIconDefault)') in java, (
+assert ('DEFAULT("DefaultIcon", R.drawable.nabdh_icon_default_background, '
+        'R.drawable.nabdh_icon_default_picker_foreground, R.string.AppIconDefault)') in java, (
         "Default icon picker is still showing Telegram")
 assert ('DEFAULT("DefaultIcon", R.drawable.icon_background_sa, '
         'R.mipmap.icon_foreground_sa') not in java, (
@@ -48,12 +64,86 @@ for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
         a.load()
         b.load()
         assert a.size == b.size == (pixels, pixels)
-        assert ImageChops.difference(a.convert("RGBA"), b.convert("RGBA")).getbbox() is None, (
+        assert a.convert("RGBA").tobytes() == b.convert("RGBA").tobytes(), (
             "Default picker differs from the actual NabdhGram launcher: " + density)
+        # Legacy installer/launcher fallback must already display our rounded
+        # logo even before the user ever opens Settings -> App Icon.
+        fallback = app_res / ("mipmap-" + density) / "ic_launcher.png"
+        with Image.open(fallback) as first_install:
+            assert first_install.convert("RGBA").tobytes() == b.convert("RGBA").tobytes(), (
+                "Initial launcher still uses Telegram artwork: " + density)
+        rgba = b.convert("RGBA")
+        assert all(rgba.getpixel(point)[3] == 0 for point in (
+            (0, 0), (pixels - 1, 0), (0, pixels - 1),
+            (pixels - 1, pixels - 1),
+            (pixels // 2, 1), (1, pixels // 2))), (
+            "Default logo still has a synthetic rounded-square backplate: " + density)
 adaptive = app_res / "mipmap-anydpi-v26/nabdhgram_launcher.xml"
 assert adaptive.is_file(), "Default adaptive launcher resource missing"
 assert "<adaptive-icon" in adaptive.read_text(encoding="utf-8"), (
     "Default launcher lost Android adaptive behavior")
+assert '<background android:drawable="@color/nabdhgram_icon_background" />' in adaptive.read_text(encoding="utf-8"), (
+    "Default launcher should use dark-teal adaptive background")
+assert '<foreground android:drawable="@drawable/nabdhgram_launcher_icon_foreground" />' in adaptive.read_text(encoding="utf-8"), (
+    "Default launcher should use its own 76% foreground")
+from xml.etree import ElementTree
+color_file = app_res / "values/nabdhgram_icon_background.xml"
+assert color_file.is_file(), "Adaptive background missing"
+color_root = ElementTree.parse(color_file)
+assert color_root.find("./color[@name='nabdhgram_icon_background']").text.strip().upper() == "#07565D"
+picker_background = res / "drawable/nabdh_icon_default_background.xml"
+picker_xml = picker_background.read_text(encoding="utf-8")
+ElementTree.fromstring(picker_xml)
+assert '<solid android:color="#00000000"/>' in picker_xml
+app_fg = app_res / "drawable-nodpi/nabdhgram_launcher_icon_foreground.png"
+picker_fg = res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png"
+with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
+    assert actual.size == picker.size == (1080, 1080)
+    launcher = actual.convert("RGBA")
+    selected = picker.convert("RGBA")
+    # Every pixel outside the logo's 61% safe canvas must remain
+    # transparent, including side edges; otherwise One UI can expose a
+    # baked-in square or duplicate backplate.
+    for point in ((0, 0), (1079, 0), (0, 1079), (1079, 1079),
+                  (540, 10), (10, 540), (1070, 540), (540, 1070),
+                  (100, 100)):
+        assert launcher.getpixel(point)[3] == 0, (
+            "Launcher foreground contains a backplate outside safe area")
+    bounds = launcher.getchannel("A").getbbox()
+    assert bounds is not None
+    assert bounds[0] >= 200 and bounds[1] >= 200 and (
+        bounds[2] <= 880 and bounds[3] <= 880), (
+        "Launcher mark extends beyond Android's adaptive safe region")
+    # Preview is the approved foreground over the exact adaptive teal,
+    # clipped into a rounded square only in the in-app selector.
+    from PIL import ImageDraw, ImageChops
+    expected = Image.new("RGBA", (1080, 1080), (7, 86, 93, 255))
+    expected.alpha_composite(launcher)
+    mask = Image.new("L", (1080, 1080), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, 1079, 1079),
+                                           radius=255, fill=255)
+    expected.putalpha(ImageChops.multiply(expected.getchannel("A"), mask))
+    assert selected.tobytes() == expected.tobytes(), (
+        "Default preview does not match composited Android adaptive layers")
+with Image.open(app_res / "drawable-nodpi/nabdhgram_launcher_foreground.png") as splash:
+    assert splash.size == (1080, 1080)
+    assert splash.convert("RGBA").tobytes() != actual.convert("RGBA").tobytes(), (
+        "Launcher enlargement unintentionally changed the splash icon")
+    assert splash.convert("RGBA").getpixel((0, 0))[3] == 0, (
+        "Default launcher changed the transparent Android splash")
+for alias in ("ic_launcher.xml", "ic_launcher_round.xml"):
+    fallback = app_res / "mipmap-anydpi-v26" / alias
+    assert fallback.is_file(), "Modern first-install fallback missing: " + alias
+    assert fallback.read_bytes() == adaptive.read_bytes(), (
+        "Modern default launcher fallback still differs from NabdhGram: " + alias)
+# Both release and debug config manifests must use branded resources.
+config_root = root / "TMessagesProj/config"
+for config_manifest in config_root.rglob("AndroidManifest*.xml"):
+    content = config_manifest.read_text(encoding="utf-8")
+    assert 'android:icon="@mipmap/ic_launcher"' not in content, (
+        "Unbranded launcher left in config manifest: " + str(config_manifest))
+    assert 'android:roundIcon="@mipmap/ic_launcher_round"' not in content, (
+        "Unbranded round launcher left in config manifest: " + str(config_manifest))
 
 
 # Source hashes prevent future builds silently replacing the user's logos.
@@ -72,17 +162,68 @@ for slug, (name, expected_hash) in approved.items():
         rgba = image.convert("RGBA")
         assert rgba.getchannel("A").getextrema() == (0, 255), "Icon transparency lost: " + name
         with Image.open(res / "mipmap-xxxhdpi" / ("nabdh_icon_" + slug + ".png")) as built:
-            assert ImageChops.difference(rgba, built.convert("RGBA")).getbbox() is None, "Android icon changed from supplied source: " + name
+            assert rgba.tobytes() == built.convert("RGBA").tobytes(), "Android icon changed from supplied source: " + name
+
+# Confirm the restored rounded-square icon keeps the original transparent
+# corners and all pixels of the owner-provided image.
+iphone_source = Path(__file__).resolve().parents[1] / "branding/approved/nabdh-icon-iphone.webp"
+with Image.open(iphone_source) as original, Image.open(
+        res / "mipmap-xxxhdpi/nabdh_icon_iphone.png") as packaged:
+    original.load()
+    packaged.load()
+    assert original.size == (192, 192) and original.format == "WEBP"
+    assert original.convert("RGBA").getpixel((0, 0))[3] == 0, "Rounded-square corner became opaque"
+    assert original.convert("RGBA").tobytes() == packaged.convert("RGBA").tobytes(), (
+        "Rounded-square icon artwork was altered")
 
 for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias
-    assert ('R.mipmap.nabdh_icon_' + slug) in java, "Missing picker image " + slug
+    preview_reference = ('R.drawable.nabdh_icon_iphone_picker_foreground'
+                         if slug == "iphone" else 'R.mipmap.nabdh_icon_preview_' + slug)
+    assert preview_reference in java, "Wrong picker foreground: " + slug
+    # Modern launchers must get an adaptive resource with a transparent
+    # background; Android <26 continues using the unmodified legacy PNG.
+    modern = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
+    assert modern.is_file(), "Missing adaptive icon for modern launchers: " + slug
+    modern_xml = modern.read_text(encoding="utf-8")
+    assert '<adaptive-icon' in modern_xml
+    assert '<background android:drawable="@android:color/transparent" />' in modern_xml, (
+        "Unexpected solid/synthesized launcher background: " + slug)
+    assert ('<foreground android:drawable="@drawable/nabdh_icon_' + slug +
+            '_foreground" />') in modern_xml, "Wrong adaptive foreground: " + slug
+    from xml.etree import ElementTree
+    ElementTree.fromstring(modern_xml)
+    foreground = res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
+    with Image.open(foreground) as art:
+        art.load()
+        rgba = art.convert("RGBA")
+        assert rgba.size == (1080, 1080), "Wrong adaptive canvas: " + slug
+        bounds = rgba.getchannel("A").getbbox()
+        assert bounds is not None, "Empty adaptive artwork: " + slug
+        circular = slug in ("silver", "dark", "glass")
+        # Restored user-verified 76% foreground for all three circles
+        # and iPhone; Default uses a separate size in apply-brand-icons.py.
+        assert bounds[0] >= 120 and bounds[1] >= 120 and (
+            bounds[2] <= 960 and bounds[3] <= 960), (
+            "Approved adaptive icon bounds were exceeded: " + slug)
+        assert bounds[0] < 175 and bounds[2] > 905, (
+            "Approved icon scaling was unexpectedly reduced: " + slug)
+        if slug == "iphone":
+            picker_foreground = res / "drawable-nodpi/nabdh_icon_iphone_picker_foreground.png"
+            assert picker_foreground.read_bytes() == foreground.read_bytes(), (
+                "iPhone chooser must use the same foreground as the adaptive launcher")
+        assert rgba.getpixel((0, 0))[3] == 0, "Opaque adaptive corner: " + slug
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
-    # Six retired aliases reference surviving silver artwork for safe migration.
-    expected = 1 + len(retired) if slug == "silver" else 1
-    assert manifest.count('android:icon="@mipmap/nabdh_icon_' + slug + '"') == expected, "Alias icon count mismatch " + slug
+    # No historical aliases: exactly one selectable launcher uses this icon.
+    assert manifest.count('android:icon="@mipmap/nabdh_icon_' + slug + '"') == 1, (
+        "Selectable launcher resource count mismatch: " + slug)
     for density, pixels in (("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)):
-        p = res / ("mipmap-" + density) / ("nabdh_icon_" + slug + ".png")
+        original_png = res / ("mipmap-" + density) / ("nabdh_icon_" + slug + ".png")
+        preview_png = res / ("mipmap-" + density) / ("nabdh_icon_preview_" + slug + ".png")
+        with Image.open(original_png) as a, Image.open(preview_png) as b:
+            assert a.convert("RGBA").tobytes() == b.convert("RGBA").tobytes(), (
+                "Picker preview changed user-approved pixels: " + slug + " " + density)
+        p = original_png
         with Image.open(p) as image:
             image.load()
             assert image.size == (pixels, pixels), "Wrong size for " + str(p)
@@ -96,14 +237,29 @@ assert "pm.getComponentEnabledSetting(target)" in java, "Launcher switch must ve
 assert "PackageManager.COMPONENT_ENABLED_STATE_ENABLED" in java, "Selected launcher alias must be enabled"
 assert "PackageManager.COMPONENT_ENABLED_STATE_DISABLED" in java, "Previous launcher aliases must be disabled"
 selector = (root / "TMessagesProj/src/main/java/org/telegram/ui/Cells/AppIconsSelectorCell.java").read_text(encoding="utf-8")
+# The chooser must not paint Telegram's uniform rounded card behind owner
+# artwork, including the Default entry; otherwise changing icon only changes
+# an inner picture while the enclosing shape stays fixed.
+assert 'nabdhFrameless = icon.key.startsWith("Nabdh") || "DefaultIcon".equals(icon.key);' in selector, (
+    "Default icon still receives the upstream fixed preview frame")
+assert 'iconView.setOuterPadding(nabdhFrameless ? 0 : AndroidUtilities.dp(5));' in selector, (
+    "Owner icon preview retains fixed container padding")
+assert selector.count('if (!nabdhFrameless) {') >= 2, (
+    "Owner icon preview still paints the selection outline or background")
+assert 'if (!nabdhFrameless || progress > 0.01f)' not in selector, (
+    "Selecting owner icon recreates a fixed rectangular outline")
 assert "if (!LauncherIconController.nabdhSetIconVerified(icon))" in selector, "Chooser still reports success on a failed switch"
 assert 'context.getString(R.string.NabdhIconApplyFailed)' in selector, "Chooser must disclose actual icon-switch failure"
 for locale in ("values", "values-ar"):
     localized = (res / locale / "nabdhgram_icon_variants.xml").read_text(encoding="utf-8")
     assert 'name="NabdhIconApplyFailed"' in localized, "Missing localized icon change failure"
-assert all(("NABDH_" + slug.upper()) in java for slug in ("silver", "dark", "glass")) and "NOX" in java, "Three owner choices and Telegram originals must remain"
+assert all(("NABDH_" + slug.upper()) in java for slug in ("silver", "dark", "glass", "iphone")), (
+    "Missing one of the four approved alternatives")
+enum = java[java.index("public enum LauncherIcon"):]
+for old_key in ("VINTAGE(", "AQUA(", "PREMIUM(", "TURBO(", "NOX("):
+    assert old_key in enum, "Official Telegram option not selectable: " + old_key
 assert java.index('NABDH_SILVER("NabdhSilverCircleIcon"') > java.index('DEFAULT("DefaultIcon"'), "First circular choice should follow default"
-assert java.index('NABDH_GLASS("NabdhGlassCircleIcon"') < java.index('VINTAGE("VintageIcon"'), "Three circular choices must be visible before Telegram icons"
+assert java.index('NABDH_SILVER("NabdhSilverCircleIcon"') < java.index('NABDH_DARK("NabdhDarkCircleIcon"') < java.index('NABDH_GLASS("NabdhGlassCircleIcon"') < java.index('NABDH_IPHONE("NabdhIphoneIcon"'), "Approved icon picker order changed"
 # The Android 12+ OS startup animation uses Theme.TMessages.Start from
 # TMessagesProj/res/values-v31/styles.xml, not a launcher alias. Keep it
 # branded even on cold start after the app icon picker changes alias.
@@ -132,4 +288,4 @@ manifest_start = 'android:theme="@style/Theme.TMessages.Start"'
 assert manifest_start in manifest, "Native Telegram launch theme no longer applied"
 app_style = (root / "TMessagesProj_App/src/main/res/values-v31/nabdhgram_splash.xml").read_text(encoding="utf-8")
 assert '@drawable/nabdhgram_launcher_foreground' in app_style, "App-level Android 12 style reverts startup icon"
-print("PASS: NabdhGram Default picker matches adaptive launcher and three approved variants retain their artwork")
+print("PASS: five approved NabdhGram and five Telegram options, no stale V2 aliases")

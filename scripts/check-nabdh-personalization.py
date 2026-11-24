@@ -28,6 +28,14 @@ for anchor in ('"hide_stories"', '"hide_fab"', '"hide_search"',
                "updateStoriesVisibility(false)", "updateFilterTabs(true, false)",
                "applyTitle(actionBar, getContext())"):
     check(anchor in appearance, "native home layout not actually connected: " + anchor)
+# The normal ActionBar assigns the title font size only during onMeasure.
+# Font refresh must not memorize Paint's default 12px and turn the home title
+# microscopic when navigating back or when the font preference is refreshed.
+font_overlay = (base / "scripts/apply-glass-v1-finishing.py").read_text(encoding="utf-8")
+check('if (android.text.TextUtils.equals(getText(), "NabdhGram")) return;' in font_overlay and
+      'if (nabdhOriginalTextPx < 0f && textPaint.getTextSize() <= 0f) return;' in font_overlay and
+      'nabdhOriginalTextPx = textPaint.getTextSize();' in font_overlay,
+      "NabdhGram title must bypass generic font cache and preserve native ActionBar sizing")
 # Native Telegram owns both alternating title views. The branding changes
 # the image wordmark in place and does not override alpha, scale or motion.
 title_overlay = (base / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8")
@@ -35,9 +43,17 @@ check('telegramLogoView.setImageDrawable(new NabdhNativeWordmarkDrawable());' in
       'private static final class NabdhNativeWordmarkDrawable' in title_overlay and
       'final float logoAlpha = logoVisibility * progress;' in title_overlay and
       'telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));' in title_overlay and
+      'LayoutHelper.createFrame(132, 22)' in title_overlay and
+      'float s = "NabdhGram".equals(actionBar.getTitle())' in title_overlay and
+      '? 1.0f' in title_overlay and
+      'NabdhStableWordmarkView extends ImageView' in title_overlay and
+      'canvas.drawText("NabdhGram", 0f, baseline, wordmarkPaint);' in title_overlay and
+      'private final class NabdhStableWordmarkView extends ImageView' in title_overlay and
+      'wordmarkPaint.setColor(getTextLogoColor());' in title_overlay and
+      'public void setColorFilter(int color' not in title_overlay and
       'getTitlesContainer().setAlpha' not in title_overlay and
       'nabdhRestoreChatTitle' not in title_overlay and
-      'setScaleX(1f)' not in title_overlay and
+      'super.setScaleX(1f);' in title_overlay and
       'NabdhHomePrefs.applyTitle' not in title_overlay,
       "branding must reuse Telegram wordmark slot and native story motion")
 check('bar.setCenterTitleAndGlass(enabled(context, "center_title"));' in preferences and

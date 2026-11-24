@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Install exactly three owner-selected circular launcher variants.
+"""Build five NabdhGram icon choices alongside five native Telegram choices.
 
-Only the outside of the original circular disks is transparency-masked;
-the internal NabdhGram monogram and artwork are never repainted or recolored.
-Old launcher aliases remain for safe upgrades but are hidden from the picker.
+No public releases or third-party installations exist yet. Legacy and
+experimental aliases are intentionally removed, not migrated.
 """
 from pathlib import Path
-import re
 import sys
 from PIL import Image
 
@@ -21,19 +19,19 @@ controller = root / "TMessagesProj/src/main/java/org/telegram/ui/LauncherIconCon
 if not manifest.is_file() or not controller.is_file():
     raise SystemExit("Pinned Telegram icon sources are missing")
 
-# All three circles were provided by the owner: 44.png, 55.png, 33.png.
-# Older Samsung/translucent/square/turquoise choices are retired, not offered.
+# Keep the three existing circles and restore the previously approved rounded-square
+# iPhone Glass choice. Never change the underlying user-supplied artwork.
 VARIANTS = (
     ("silver", "NabdhSilverCircleIcon", "NabdhIconSilverCircle", "Silver Circle", "الدائرية الفضية"),
     ("dark", "NabdhDarkCircleIcon", "NabdhIconDarkCircle", "Dark Circle", "الدائرية الداكنة"),
     ("glass", "NabdhGlassCircleIcon", "NabdhIconGlassCircle", "Glass Circle", "الدائرية الزجاجية"),
+    ("iphone", "NabdhIphoneIcon", "NabdhIconIphone", "iPhone Glass", "الزجاجية المستديرة"),
 )
-RETIRED = ("NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon", "NabdhHexIcon",
-           "NabdhOriginalIcon", "NabdhCircularIcon")
 USER_SOURCES = {
     "silver": repository / "branding/approved/nabdh-icon-silver-circle.webp",
     "dark": repository / "branding/approved/nabdh-icon-dark-circle.webp",
     "glass": repository / "branding/approved/nabdh-icon-glass-circle.webp",
+    "iphone": repository / "branding/approved/nabdh-icon-iphone.webp",
 }
 # These WebP sources are 192px owner artwork with transparent exterior only.
 def compose_icon(slug):
@@ -49,15 +47,93 @@ def compose_icon(slug):
         raise SystemExit("User icon must have fully transparent outer pixels")
     return image
 
+# Remove only dark, low-alpha interpolation fringes from generated
+# adaptive foregrounds. Source WebP and picker/legacy PNGs stay byte-for-byte
+# equivalent in visible pixels. Never touch opaque content or artwork geometry.
+def clean_edge_fringe(image):
+    corrected = image.copy()
+    source = image.load()
+    target = corrected.load()
+    width, height = image.size
+    for y in range(height):
+        for x in range(width):
+            red, green, blue, alpha = source[x, y]
+            if alpha == 0 or alpha >= 96:
+                continue
+            brightness = (red * 2126 + green * 7152 + blue * 722) // 10000
+            if brightness >= 75:
+                continue
+            nearest = None
+            for radius in range(1, 5):
+                for yy in range(max(0, y - radius), min(height, y + radius + 1)):
+                    for xx in range(max(0, x - radius), min(width, x + radius + 1)):
+                        if max(abs(xx - x), abs(yy - y)) != radius:
+                            continue
+                        neighbour = source[xx, yy]
+                        if neighbour[3] < 192:
+                            continue
+                        n_bright = (neighbour[0] * 2126 + neighbour[1] * 7152
+                                    + neighbour[2] * 722) // 10000
+                        if n_bright > brightness + 35:
+                            nearest = neighbour
+                            break
+                    if nearest:
+                        break
+                if nearest:
+                    break
+            if nearest:
+                target[x, y] = (*nearest[:3], alpha)
+    return corrected
+
+# Restore the user-verified circular launcher geometry. The Android
+# mask may be squircle, but these designs were visually approved at 76%.
+# Do not force circular artwork into a smaller safe-zone square.
+ADAPTIVE_CANVAS = 1080
+ADAPTIVE_SAFE_FRACTION = 0.60
+CIRCULAR_SAFE_FRACTION = 0.76
+IPHONE_EXPERIMENT_FRACTION = 0.76
+modern = res / "mipmap-anydpi-v26"
+modern.mkdir(parents=True, exist_ok=True)
+drawable = res / "drawable-nodpi"
+drawable.mkdir(parents=True, exist_ok=True)
 for slug, _, _, _, _ in VARIANTS:
     icon = compose_icon(slug)
     for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
                             ("xxhdpi", 144), ("xxxhdpi", 192)):
         directory = res / ("mipmap-" + density)
         directory.mkdir(parents=True, exist_ok=True)
-        icon.resize((pixels, pixels), Image.Resampling.LANCZOS).save(
-            directory / ("nabdh_icon_" + slug + ".png"),
-            format="PNG", optimize=True)
+        scaled = icon.resize((pixels, pixels), Image.Resampling.LANCZOS)
+        scaled.save(directory / ("nabdh_icon_" + slug + ".png"),
+                    format="PNG", optimize=True)
+        # Distinct preview resource prevents adaptive masks in the chooser.
+        scaled.save(directory / ("nabdh_icon_preview_" + slug + ".png"),
+                    format="PNG", optimize=True)
+
+    fraction = (CIRCULAR_SAFE_FRACTION if slug in ("silver", "dark", "glass")
+                else IPHONE_EXPERIMENT_FRACTION if slug == "iphone"
+                else ADAPTIVE_SAFE_FRACTION)
+    side = round(ADAPTIVE_CANVAS * fraction)
+    foreground = Image.new("RGBA", (ADAPTIVE_CANVAS, ADAPTIVE_CANVAS),
+                           (0, 0, 0, 0))
+    artwork = clean_edge_fringe(icon).resize((side, side), Image.Resampling.LANCZOS)
+    foreground.alpha_composite(
+        artwork, ((ADAPTIVE_CANVAS - side) // 2,
+                  (ADAPTIVE_CANVAS - side) // 2))
+    foreground.save(drawable / ("nabdh_icon_" + slug + "_foreground.png"),
+                    format="PNG", optimize=True)
+    # iPhone's chooser preview must use the same exact foreground layer as
+    # Android's adaptive icon, instead of a raw 192px icon at another scale.
+    if slug == "iphone":
+        foreground.save(drawable / "nabdh_icon_iphone_picker_foreground.png",
+                        format="PNG", optimize=True)
+    (modern / ("nabdh_icon_" + slug + ".xml")).write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+        '    <background android:drawable="@android:color/transparent" />\n'
+        '    <foreground android:drawable="@drawable/nabdh_icon_'
+        + slug + '_foreground" />\n'
+        '</adaptive-icon>\n',
+        encoding="utf-8")
 
 # The app's DefaultIcon alias has already been branded by apply-brand-icons.py,
 # but Telegram's upstream enum STILL uses Telegram icon_background_sa and
@@ -81,20 +157,51 @@ for density in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"):
     destination = res / ("mipmap-" + density)
     destination.mkdir(parents=True, exist_ok=True)
     image.save(destination / "nabdh_icon_default.png", format="PNG", optimize=True)
+# Preview is a composited representation of the real adaptive foreground
+# and teal background, while the launcher foreground itself stays transparent.
+source_fg = app_mipmaps / "drawable-nodpi/nabdhgram_launcher_icon_foreground.png"
+if not source_fg.is_file():
+    raise SystemExit("Default adaptive foreground missing: " + str(source_fg))
+with Image.open(source_fg) as master_foreground:
+    master_foreground.load()
+    if master_foreground.size != (1080, 1080):
+        raise SystemExit("Invalid default adaptive foreground canvas")
+    # A static settings tile cannot invoke the launcher's adaptive mask;
+    # render its rounded teal preview from the exact same foreground pixels.
+    from PIL import ImageDraw
+    from PIL import ImageChops
+    preview = Image.new("RGBA", (1080, 1080), (7, 86, 93, 255))
+    preview.alpha_composite(master_foreground.convert("RGBA"))
+    rounded = Image.new("L", (1080, 1080), 0)
+    ImageDraw.Draw(rounded).rounded_rectangle(
+        (0, 0, 1079, 1079), radius=255, fill=255)
+    preview.putalpha(ImageChops.multiply(preview.getchannel("A"), rounded))
+    preview.save(res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png",
+                 format="PNG", optimize=True)
 
 java = controller.read_text(encoding="utf-8")
-# Keep the approved Default first and the three distinct Nabdh circles next.
+# Keep approved Default first, then the three circles and the restored rounded-square choice.
 anchor = '        DEFAULT("DefaultIcon", R.drawable.icon_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconDefault),'
 if java.count(anchor) != 1:
     raise SystemExit("Pinned LauncherIconController enum anchor changed")
-branded_default = '        DEFAULT("DefaultIcon", R.drawable.nabdh_icon_preview_background, R.mipmap.nabdh_icon_default, R.string.AppIconDefault),'
+branded_default = '        DEFAULT("DefaultIcon", R.drawable.nabdh_icon_default_background, R.drawable.nabdh_icon_default_picker_foreground, R.string.AppIconDefault),'
 java = java.replace(anchor, branded_default, 1)
 addition = ',\n'.join(
     '        NABDH_' + slug.upper() + '("' + alias + '", R.drawable.nabdh_icon_preview_background, '
-    'R.mipmap.nabdh_icon_' + slug + ', R.string.' + string_name + ')'
+    + ('R.drawable.nabdh_icon_iphone_picker_foreground' if slug == "iphone"
+       else 'R.mipmap.nabdh_icon_preview_' + slug)
+    + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
-java = java.replace(branded_default, branded_default + '\n' + addition + ',', 1)
+# Restore upstream Telegram's five original icons as selectable choices.
+native_variants = """        VINTAGE("VintageIcon", R.drawable.icon_6_background_sa, R.mipmap.icon_6_foreground_sa, R.string.AppIconVintage),
+        AQUA("AquaIcon", R.drawable.icon_4_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconAqua),
+        PREMIUM("PremiumIcon", R.drawable.icon_3_background_sa, R.mipmap.icon_3_foreground_sa, R.string.AppIconPremium, true),
+        TURBO("TurboIcon", R.drawable.icon_5_background_sa, R.mipmap.icon_5_foreground_sa, R.string.AppIconTurbo, true),
+        NOX("NoxIcon", R.mipmap.icon_2_background_sa, R.mipmap.icon_foreground_sa, R.string.AppIconNox, true);"""
+if java.count(native_variants) != 1:
+    raise SystemExit("Pinned Telegram built-in launcher variants changed")
+java = java.replace(native_variants, addition + ",\n" + native_variants, 1)
 # Some Android launchers immediately terminate an app when its currently
 # enabled launcher alias is disabled, even with DONT_KILL_APP. First enable
 # the target component, then disable old aliases; leave the selected one
@@ -108,55 +215,6 @@ new_switch = """        // Preserve the original void method for every upstream 
 if java.count(old_switch) != 1:
     raise SystemExit("Pinned launcher component switching changed")
 java = java.replace(old_switch, new_switch, 1)
-# When the user upgrades from an old icon alias, keep that launcher entry
-# available long enough to enable DefaultIcon before retiring the old alias.
-recovery = "    public static void tryFixLauncherIconIfNeeded() {"
-if java.count(recovery) != 1:
-    raise SystemExit("Upstream launcher recovery method changed")
-migration = """
-    private static void nabdhRetireOldAliases() {
-        Context ctx = ApplicationLoader.applicationContext;
-        if (ctx == null) return;
-        PackageManager pm = ctx.getPackageManager();
-        String[] retired = {"NabdhDarkIcon", "NabdhLightIcon",
-                "NabdhTealIcon", "NabdhHexIcon",
-                "NabdhOriginalIcon", "NabdhCircularIcon"};
-        boolean needsMigration = false;
-        for (String alias : retired) {
-            ComponentName component = new ComponentName(ctx.getPackageName(),
-                    "org.telegram.messenger." + alias);
-            if (pm.getComponentEnabledSetting(component) ==
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
-                needsMigration = true;
-                break;
-            }
-        }
-        if (!needsMigration) return;
-        boolean validLauncher = false;
-        for (LauncherIcon icon : LauncherIcon.values()) {
-            if (isEnabled(icon)) {
-                validLauncher = true;
-                break;
-            }
-        }
-        if (!validLauncher) {
-            pm.setComponentEnabledSetting(LauncherIcon.DEFAULT.getComponentName(ctx),
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    PackageManager.DONT_KILL_APP);
-        }
-        for (String alias : retired) {
-            ComponentName component = new ComponentName(ctx.getPackageName(),
-                    "org.telegram.messenger." + alias);
-            pm.setComponentEnabledSetting(component,
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    PackageManager.DONT_KILL_APP);
-        }
-    }
-
-"""
-java = java.replace(recovery,
-                    migration + recovery + """
-        nabdhRetireOldAliases();""", 1)
 # The selected alias is disabled in the manifest before its first use.
 # PackageManager.getActivityInfo(component, 0) excludes disabled aliases:
 # this formerly returned early without enabling the icon, while the picker
@@ -226,18 +284,25 @@ for slug, alias, _, _, _ in VARIANTS:
     replacement = replacement.replace("@mipmap/icon_6_launcher",
                                       "@mipmap/nabdh_icon_" + slug)
     new_aliases.append(replacement)
-# Compatibility-only aliases: hidden from picker, all branded using
-# the surviving silver circle. Retire enabled legacy choice at startup.
-for legacy in RETIRED:
-    old_alias = template.replace("org.telegram.messenger.VintageIcon",
-                                 "org.telegram.messenger." + legacy)
-    old_alias = old_alias.replace("@mipmap/icon_6_launcher_round",
-                                  "@mipmap/nabdh_icon_silver")
-    old_alias = old_alias.replace("@mipmap/icon_6_launcher",
-                                  "@mipmap/nabdh_icon_silver")
-    new_aliases.append(old_alias)
 xml = xml[:end] + "\n\n" + "\n\n".join(new_aliases) + xml[end:]
+# Preserve native Telegram launchers directly from pinned Manifest.
+# Reject only retired experimental NabdhGram aliases.
+for obsolete in ("NabdhSilverCircleV2Icon", "NabdhDarkCircleV2Icon",
+                 "NabdhGlassCircleV2Icon", "NabdhIphoneV2Icon",
+                 "NabdhDarkIcon", "NabdhLightIcon", "NabdhTealIcon",
+                 "NabdhHexIcon", "NabdhOriginalIcon", "NabdhCircularIcon"):
+    if 'android:name="org.telegram.messenger.' + obsolete + '"' in xml:
+        raise SystemExit("Obsolete NabdhGram alias survived: " + obsolete)
 manifest.write_text(xml, encoding="utf-8")
+
+# The picker foreground contains the teal surface and its rounded mask.
+# An opaque second background would bring the square corners back.
+default_preview_background = res / "drawable/nabdh_icon_default_background.xml"
+default_preview_background.parent.mkdir(parents=True, exist_ok=True)
+default_preview_background.write_text(
+    '<shape xmlns:android="http://schemas.android.com/apk/res/android" '
+    'android:shape="rectangle"><solid android:color="#00000000"/></shape>\n',
+    encoding="utf-8")
 
 preview = res / "drawable/nabdh_icon_preview_background.xml"
 preview.parent.mkdir(parents=True, exist_ok=True)
@@ -300,16 +365,46 @@ replace_selector(
     "Transparent preview backplate")
 replace_selector(
     "            canvas.drawRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(ICONS_ROUND_RADIUS), AndroidUtilities.dp(ICONS_ROUND_RADIUS), outlinePaint);",
-    """            if (!nabdhFrameless || progress > 0.01f) {
+    """            if (!nabdhFrameless) {
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(ICONS_ROUND_RADIUS), AndroidUtilities.dp(ICONS_ROUND_RADIUS), outlinePaint);
             }""",
-    "Transparent preview outline")
+    "Remove redundant preview outline")
 replace_selector(
     "            iconView.setImageResource(icon.background);",
-    """            nabdhFrameless = icon.key.startsWith("Nabdh");
-            iconView.setOuterPadding(icon.key.startsWith("Nabdh") ? 0 : AndroidUtilities.dp(5));
+    """            nabdhFrameless = icon.key.startsWith("Nabdh") || "DefaultIcon".equals(icon.key);
+            iconView.setOuterPadding(nabdhFrameless ? 0 : AndroidUtilities.dp(5));
+            iconView.setNabdhSquircleMask("DefaultIcon".equals(icon.key) || "NabdhIphoneIcon".equals(icon.key));
             iconView.setImageResource(icon.background);""",
     "Native picker transparent drawing")
+# The stock chooser uses a circle for every Android icon preview;
+# match the approximate One UI squircle only for Default and iPhone.
+picker_anchor = "        private int backgroundOuterPadding = AndroidUtilities.dp(42);"
+picker_insert = """        private boolean nabdhSquircleMask;
+
+        public void setNabdhSquircleMask(boolean squircle) {
+            if (nabdhSquircleMask == squircle) return;
+            nabdhSquircleMask = squircle;
+            updatePath();
+            invalidate();
+        }
+
+"""
+replace_selector(picker_anchor, picker_anchor + "\n" + picker_insert,
+                 "One UI-style picker preview mask")
+old_circle = "            path.addCircle(getWidth() / 2f, getHeight() / 2f, Math.min(getWidth() - getPaddingLeft() - getPaddingRight(), getHeight() - getPaddingTop() - getPaddingBottom()) / 2f, Path.Direction.CW);"
+new_circle = """            if (nabdhSquircleMask) {
+                float inset = getPaddingLeft();
+                float radius = AndroidUtilities.dp(16);
+                path.addRoundRect(inset, getPaddingTop(), getWidth() - getPaddingRight(),
+                        getHeight() - getPaddingBottom(), radius, radius, Path.Direction.CW);
+            } else {
+                path.addCircle(getWidth() / 2f, getHeight() / 2f,
+                        Math.min(getWidth() - getPaddingLeft() - getPaddingRight(),
+                                getHeight() - getPaddingTop() - getPaddingBottom()) / 2f,
+                        Path.Direction.CW);
+            }"""
+replace_selector(old_circle, new_circle, "Default and iPhone squircle preview path")
+
 # Never tell the user "Icon changed" before PackageManager confirms
 # the selected alias is enabled. Keep Telegram's original animated chooser.
 on_click = "            LauncherIconController.setIcon(icon);"
@@ -351,4 +446,4 @@ bulletin_src = bulletin_src.replace(bulletin_method,
 bulletin.write_text(bulletin_src, encoding="utf-8")
 
 
-print("PASS: three circular owner icons, safe deprecated-alias migration and localized labels")
+print("PASS: five branded and five native Telegram icons; no legacy V2 aliases")

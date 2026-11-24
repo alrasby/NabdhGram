@@ -144,11 +144,11 @@ jobs:
             exit 1
           fi
 
-      - name: Install three approved circular NabdhGram icon variants
+      - name: Install four approved modern adaptive NabdhGram icon variants
         run: |
           python3 nabdhgram/scripts/apply-nabdh-approved-icon-variants.py Telegram-upstream
 
-      - name: Export and verify three approved Android icon packs
+      - name: Export and verify four approved adaptive Android icon packs
         shell: bash
         run: |
           set -euo pipefail
@@ -157,7 +157,7 @@ jobs:
       - name: Upload downloadable icon ZIP (five Android densities)
         uses: actions/upload-artifact@v4
         with:
-          name: nabdhgram-three-icons-android-${{ github.run_number }}
+          name: nabdhgram-four-icons-android-${{ github.run_number }}
           path: nabdhgram-icons-android.zip
           if-no-files-found: error
           retention-days: 30
@@ -900,6 +900,11 @@ jobs:
             python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "$APK"
           fi
           sha256sum "$APK" > apk-sha256.txt
+          # Verify which adaptive icon is actually attached to the installed
+          # application in the compiled APK. Source-only checks missed the
+          # Telegram paper-plane in the previously signed release #904.
+          python3 nabdhgram/scripts/verify-packaged-launcher.py \
+            "$APK" apk-badging.txt apk-resources.txt apk-manifest-tree.txt "$AAPT"
           echo "::group::Packaged APK identity and launcher"
           grep -E "^(package:|application-label:|launchable-activity:|sdkVersion:|targetSdkVersion:|application-icon)" apk-badging.txt || true
           echo "::endgroup::"
