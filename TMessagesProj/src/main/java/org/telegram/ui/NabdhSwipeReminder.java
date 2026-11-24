@@ -158,6 +158,6 @@ public final class NabdhSwipeReminder extends BroadcastReceiver {
                 .setContentText(arabic ? "اضغط للعودة إلى المحادثة" : "Tap to return to the conversation")
                 .setContentIntent(openPending).setAutoCancel(true)
                 .setCategory(Notification.CATEGORY_REMINDER).build();
-        manager.notify((account * 31 + Long.hashCode(dialogId)) & 0x7fffffff, notification);
+        manager.notify((account * 31 + (int) (dialogId ^ (dialogId >>> 32))) & 0x7fffffff, notification);
     }
 }
