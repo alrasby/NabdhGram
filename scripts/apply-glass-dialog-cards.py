@@ -34,12 +34,15 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
 # Paint the card inside that same translated canvas, after native backdrop
 # preparation and before text. This keeps its surface visible during drag,
 # reveal and spring-back rather than toggling between two backgrounds.
-anchor = "        canvas.restore();\n\n        updateHelper.updateAnimationValues();"
+# Paint after native swipe-edge white backing; the previous early drawing
+# was covered by Telegram when the corner animation became active.
+anchor = """            if (drawNameLock) {
+                setDrawableBounds(Theme.dialogs_lockDrawable, nameLockLeft, nameLockTop);
+                Theme.dialogs_lockDrawable.draw(canvas);
+            }"""
 if s.count(anchor) != 1:
-    raise SystemExit(f"DialogCell card rendering anchor changed: {s.count(anchor)}")
-s = s.replace(anchor, """        canvas.restore();
-
-        // This canvas already carries Telegram's translationX and any
+    raise SystemExit("Pinned Telegram content-stage drawing anchor changed")
+s = s.replace(anchor, """        // This canvas already carries Telegram's translationX and any
         // right-fragment transform. Never hide the card when swiping: native
         // action colors stay behind it, and the same card follows its content.
         // The actual archive folder row is supported; topic/profile rows keep
@@ -52,7 +55,7 @@ s = s.replace(anchor, """        canvas.restore();
             final int alternate = Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider);
             final boolean archived = isFolderCell();
             final boolean pinned = getIsPinned();
-            final boolean selected = isPressed() || isSelected || isSelected();
+            final boolean selected = isSelected;
             final int fill = selected
                     ? nabdhBlendThemeColor(surface, accent, 0.23f)
                     : archived ? nabdhBlendThemeColor(surface, alternate, 0.67f)
@@ -75,7 +78,7 @@ s = s.replace(anchor, """        canvas.restore();
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
         }
 
-        updateHelper.updateAnimationValues();""", 1)
+""" + anchor, 1)
 
 # Telegram paints a full-width rectangular selected background before the
 # card. For dialog rows, restrict it to the SAME 7dp/3dp and 17dp shape as the
