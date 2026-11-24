@@ -669,6 +669,35 @@ cell = once(cell,
         if (isSliding && !swipeCanceled) {""",
     "reset haptic when closed")
 
+# Draw a stationary, theme-aware rounded action surface BEFORE Telegram's
+# content translation. Previous changes removed an opaque backing but left
+# the list's near-white background exposed behind the action pills.
+cell = once(cell,
+    """        if (translationX != 0) {
+            canvas.save();
+            canvas.translate(translationX, 0);
+            gtx += translationX;
+        }""",
+    """        if (translationX > 0 && !isTopic
+                && !(getParent() instanceof ProfileChannelCell)) {
+            // The underlay is fixed; chat content is translated below.
+            // Reuse existing per-DialogCell Paint and RectF allocations.
+            final int surface = Theme.getColor(Theme.key_windowBackgroundWhite,
+                    resourcesProvider);
+            final int accent = Theme.getColor(Theme.key_chats_archiveBackground,
+                    resourcesProvider);
+            nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
+                    getMeasuredHeight() - dp(3));
+            nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
+            nabdhCardPaint.setColor(nabdhBlendThemeColor(surface, accent, 0.67f));
+            canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
+        }
+        if (translationX != 0) {
+            canvas.save();
+            canvas.translate(translationX, 0);
+            gtx += translationX;
+        }""", "stationary rounded RIGHT underlay before native canvas translation")
+
 # The interactive bar overlaps the avatar's original story-touch area.
 # When expanded, those taps must be delivered to the actual child buttons.
 cell = once(cell,
