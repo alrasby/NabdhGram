@@ -63,6 +63,27 @@ checks = {
     "opposite-direction reveal skips native Telegram circle animation":
         "drawRevealBackground = translationX < 0" in cell
         and "translationX >= dp(70)" in cell,
+    "expanded tray consumes DOWN-UP without opening background chat":
+        "page.listView.cancelClickRunnables(true);" in dialogs
+        and "consumedDown = true;" in dialogs
+        and "row.nabdhPerformSmartAction(actionIndex);" in dialogs
+        and "pressedAction = LocaleController.isRTL ? 3 - visual : visual;" in dialogs,
+    "reverse swipe closes the tray without tapping":
+        "expanded.setTranslationX(Math.max(0f, dp(212) + dx));" in dialogs
+        and "row.getTranslationX() < dp(135)" in dialogs,
+    "dynamic labels match actual muted/pinned/archived state":
+        "getMessagesController().isDialogMuted(dialogId, 0)" in dialogs
+        and "isDialogPinned(current), current.folder_id != 0" in dialogs
+        and '"Unmute"' in cell and '"Unpin"' in cell and '"Unarchive"' in cell
+        and "nabdhSetSmartSwipeActions(NabdhSmartAction callback," in cell,
+    "four independent rounded pill backgrounds and Android ripple":
+        "new android.graphics.drawable.RippleDrawable" in cell
+        and "lp.setMargins(dp(2), dp(3), dp(2), dp(3));" in cell
+        and "pill.setCornerRadius(dp(11));" in cell,
+    "reminder action offers settings and confirms schedule/cancel":
+        "nabdhShowReminderConfirmation(when);" in dialogs
+        and "nabdhShowReminderConfirmation(chosen.getTimeInMillis());" in dialogs
+        and "ACTION_APP_NOTIFICATION_SETTINGS" in dialogs,
     "reminder choices and custom date/time":
         "30 * 60_000L" in dialogs and "2 * 60 * 60_000L" in dialogs
         and "Calendar.DAY_OF_YEAR" in dialogs and "DatePickerDialog" in dialogs

@@ -63,7 +63,7 @@ palette = """
             canPinCount = isDialogPinned(dialog) ? 0 : 1;
             performSelectedDialogsAction(selected, pin, true, false);
         } else if (action == 3) {
-            canUnarchiveCount = folderId == 0 ? 0 : 1;
+            canUnarchiveCount = dialog.folder_id == 0 ? 0 : 1;
             performSelectedDialogsAction(selected, archive, true, false);
         }
     }
@@ -77,6 +77,8 @@ palette = """
             private float downX, downY, startingX;
             private boolean dragging;
             private boolean consumedDown;
+            private int pressedAction = -1;
+            private float actionDownX, actionDownY;
             {
                 stopSwipeOnScroll[0] = () -> {
                     if (spring != null) spring.cancel();
@@ -136,6 +138,7 @@ palette = """
                 int action = event.getActionMasked();
                 if (action == android.view.MotionEvent.ACTION_DOWN) {
                     consumedDown = false;
+                    pressedAction = -1;
                     dragging = false;
                     candidate = null;
                     downX = event.getX();
@@ -151,19 +154,24 @@ palette = """
                         return false;
                     }
                     if (expanded != null) {
+                        // The list owns click/long-press handlers even when buttons
+                        // are children of DialogCell. Fully consume tray touches.
+                        page.listView.cancelClickRunnables(true);
+                        consumedDown = true;
+                        actionDownX = event.getX();
+                        actionDownY = event.getY();
                         float cx = event.getX() - expanded.getLeft();
                         float cy = event.getY() - expanded.getTop();
-                        if (cx < dp(7) || cx > dp(219)
-                                || cy < dp(3) || cy > expanded.getHeight() - dp(3)) {
-                            close(); // A tap anywhere outside dismisses without opening chat.
-                            consumedDown = true;
-                            return true;
+                        if (expanded.getParent() != recycler
+                                || cx < dp(7) || cx >= dp(219) || cy < dp(3)
+                                || cy > expanded.getHeight() - dp(3)
+                                || expanded.getTranslationX() < dp(140)) {
+                            close();
+                            return true; // Outside tap dismisses without chat opening.
                         }
-                        // Allow taps on actual buttons; a horizontal reverse
-                        // drag can still close the tray without invoking an action.
-                        candidate = expanded;
-                        startingX = expanded.getTranslationX();
-                        return false;
+                        int visual = Math.min(3, Math.max(0, (int)((cx - dp(7)) / dp(53))));
+                        pressedAction = LocaleController.isRTL ? 3 - visual : visual;
+                        return true;
                     }
                     if (downX <= dp(24)
                             || downX >= recycler.getWidth() - dp(24)) return false;
@@ -191,6 +199,7 @@ palette = """
                             && Math.abs(dx) > Math.abs(dy) * 1.5f
                             && Math.abs(dy) < dp(36)) {
                         dragging = true;
+                        page.listView.cancelClickRunnables(true);
                         if (spring != null) spring.cancel();
                         recycler.getParent().requestDisallowInterceptTouchEvent(true);
                         return true;
@@ -209,9 +218,34 @@ palette = """
                     android.view.MotionEvent event) {
                 int action = event.getActionMasked();
                 if (consumedDown) {
+                    final int slop = android.view.ViewConfiguration.get(
+                            recycler.getContext()).getScaledTouchSlop();
+                    float dx = event.getX() - actionDownX;
+                    float dy = event.getY() - actionDownY;
+                    if (expanded != null && pressedAction >= 0
+                            && action == android.view.MotionEvent.ACTION_MOVE
+                            && dx < -slop) {
+                        if (spring != null) spring.cancel();
+                        expanded.setTranslationX(Math.max(0f, dp(212) + dx));
+                    }
                     if (action == android.view.MotionEvent.ACTION_UP
                             || action == android.view.MotionEvent.ACTION_CANCEL) {
+                        DialogCell row = expanded;
+                        int actionIndex = pressedAction;
+                        boolean click = action == android.view.MotionEvent.ACTION_UP
+                                && Math.abs(dx) < slop && Math.abs(dy) < slop;
                         consumedDown = false;
+                        pressedAction = -1;
+                        if (row != null && row.getParent() == recycler
+                                && actionIndex >= 0 && click) {
+                            // Delegate to a real TextView.performClick(), not to
+                            // RecyclerListView's underlying item click handler.
+                            row.nabdhPerformSmartAction(actionIndex);
+                        } else if (row != null && row.getTranslationX() < dp(135)) {
+                            close();
+                        } else if (row != null) {
+                            settle(row, dp(212));
+                        }
                     }
                     return;
                 }
@@ -232,12 +266,18 @@ palette = """
                         if (expanded != null && expanded != row) close();
                         expanded = row;
                         final long dialogId = row.getDialogId();
+                        TLRPC.Dialog current = getMessagesController().dialogs_dict.get(dialogId);
+                        if (current == null) {
+                            settle(row, 0f);
+                            return;
+                        }
                         row.nabdhSetSmartSwipeActions(index -> {
                             if (row.getDialogId() == dialogId) {
                                 close();
                                 nabdhRunSmartAction(dialogId, index);
                             }
-                        });
+                        }, getMessagesController().isDialogMuted(dialogId, 0),
+                                isDialogPinned(current), current.folder_id != 0);
                         settle(row, dp(212));
                     } else {
                         settle(row, 0f);
@@ -276,7 +316,14 @@ palette = """
                     .setTitle(rtl ? "إذن الإشعارات" : "Notification permission")
                     .setMessage(rtl ? "فعّل إشعارات نبض جرام من إعدادات النظام لاستخدام التذكيرات."
                                     : "Enable NabdhGram notifications in system settings to use reminders.")
-                    .setPositiveButton(rtl ? "حسنًا" : "OK", null).create());
+                    .setPositiveButton(rtl ? "إعدادات الإشعارات" : "Notification settings",
+                            (d, w) -> {
+                        android.content.Intent settings = new android.content.Intent(
+                                android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                        settings.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE,
+                                getParentActivity().getPackageName());
+                        getParentActivity().startActivity(settings);
+                    }).setNegativeButton(rtl ? "إلغاء" : "Cancel", null).create());
             return;
         }
         CharSequence[] times = existing > 0 ? new CharSequence[] {
@@ -296,6 +343,7 @@ palette = """
                 .setItems(times, (dialog, which) -> {
                     if (which == 4) {
                         NabdhSwipeReminder.cancel(getParentActivity(), currentAccount, dialogId);
+                        nabdhShowReminderConfirmation(0L);
                         return;
                     }
                     if (which == 3) {
@@ -318,7 +366,27 @@ palette = """
                     }
                     NabdhSwipeReminder.schedule(getParentActivity(), currentAccount,
                             dialogId, when);
+                    nabdhShowReminderConfirmation(when);
                 }).create());
+    }
+
+    private void nabdhShowReminderConfirmation(long when) {
+        if (getParentActivity() == null) return;
+        final boolean rtl = LocaleController.isRTL;
+        final String message = when == 0L
+                ? (rtl ? "تم إلغاء التذكير." : "Reminder cancelled.")
+                : (rtl ? "تم ضبط التذكير على: " : "Reminder set for: ")
+                + java.text.DateFormat.getDateTimeInstance(
+                        java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
+                        .format(new java.util.Date(when));
+        AndroidUtilities.runOnUIThread(() -> {
+            if (getParentActivity() != null) {
+                showDialog(new AlertDialog.Builder(getParentActivity())
+                        .setTitle(rtl ? "تذكير المحادثة" : "Chat reminder")
+                        .setMessage(message)
+                        .setPositiveButton(rtl ? "تم" : "OK", null).create());
+            }
+        }, 150);
     }
 
     private void showNabdhCustomReminderPicker(long dialogId) {
@@ -338,6 +406,7 @@ palette = """
                 if (chosen.getTimeInMillis() > System.currentTimeMillis()) {
                     NabdhSwipeReminder.schedule(getParentActivity(), currentAccount,
                             dialogId, chosen.getTimeInMillis());
+                    nabdhShowReminderConfirmation(chosen.getTimeInMillis());
                 }
             }, chosen.get(java.util.Calendar.HOUR_OF_DAY),
                     chosen.get(java.util.Calendar.MINUTE), true);
@@ -370,36 +439,78 @@ cell = once(cell, "    private boolean drawPinBackground;",
                 : android.view.View.LAYOUT_DIRECTION_LTR);
         android.graphics.drawable.GradientDrawable surface =
                 new android.graphics.drawable.GradientDrawable();
-        surface.setColor(Theme.getColor(Theme.key_chats_archiveBackground));
+        // Match the rounded Glass row surface; avoid a solid green block.
+        final int glassBase = Theme.getColor(Theme.key_windowBackgroundWhite);
+        surface.setColor(android.graphics.Color.argb(232,
+                android.graphics.Color.red(glassBase),
+                android.graphics.Color.green(glassBase),
+                android.graphics.Color.blue(glassBase)));
         surface.setCornerRadius(dp(17));
         nabdhSmartBar.setBackground(surface);
         final String[] labels = LocaleController.isRTL ?
-                new String[]{"ذكرني", "كتم", "تثبيت", "أرشفة"} :
+                new String[]{"ذكّرني", "كتم", "تثبيت", "أرشفة"} :
                 new String[]{"Remind", "Mute", "Pin", "Archive"};
         for (int i = 0; i < labels.length; i++) {
             final int which = i;
             android.widget.TextView button = new android.widget.TextView(context);
             button.setText(labels[i]);
             button.setTextColor(android.graphics.Color.WHITE);
-            button.setTextSize(10);
+            button.setTextSize(9);
+            button.setMaxLines(2);
             button.setGravity(android.view.Gravity.CENTER);
             button.setContentDescription(labels[i]);
             button.setClickable(true);
+            button.setFocusable(true);
+            // Four independent pill buttons, theme-aware and touch friendly.
+            android.graphics.drawable.GradientDrawable pill =
+                    new android.graphics.drawable.GradientDrawable();
+            pill.setColor(Theme.getColor(Theme.key_chats_archiveBackground));
+            pill.setCornerRadius(dp(11));
+            pill.setStroke(dp(1), android.graphics.Color.argb(95,255,255,255));
+            button.setBackground(new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(
+                            android.graphics.Color.argb(75,255,255,255)),
+                    pill, null));
+            button.setPadding(dp(1), dp(3), dp(1), dp(3));
             button.setOnClickListener(v -> {
                 if (nabdhSmartAction != null) nabdhSmartAction.onAction(which);
             });
-            nabdhSmartBar.addView(button, new android.widget.LinearLayout.LayoutParams(
-                    dp(53), android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+            android.widget.LinearLayout.LayoutParams lp =
+                    new android.widget.LinearLayout.LayoutParams(dp(49),
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT);
+            lp.setMargins(dp(2), dp(3), dp(2), dp(3));
+            nabdhSmartBar.addView(button, lp);
         }
         nabdhSmartBar.setVisibility(android.view.View.GONE);
         addView(nabdhSmartBar);
     }
 
-    public void nabdhSetSmartSwipeActions(NabdhSmartAction callback) {
+    public void nabdhSetSmartSwipeActions(NabdhSmartAction callback,
+            boolean muted, boolean pinned, boolean archived) {
         nabdhSmartAction = callback;
+        final boolean rtl = LocaleController.isRTL;
+        final String[] labels = new String[] {
+                rtl ? "ذكّرني" : "Remind",
+                muted ? (rtl ? "إلغاء الكتم" : "Unmute") : (rtl ? "كتم" : "Mute"),
+                pinned ? (rtl ? "إلغاء التثبيت" : "Unpin") : (rtl ? "تثبيت" : "Pin"),
+                archived ? (rtl ? "إلغاء الأرشفة" : "Unarchive") : (rtl ? "أرشفة" : "Archive")
+        };
+        for (int i = 0; i < labels.length; i++) {
+            android.widget.TextView button =
+                    (android.widget.TextView) nabdhSmartBar.getChildAt(i);
+            button.setText(labels[i]);
+            button.setContentDescription(labels[i]);
+        }
         nabdhSmartBar.bringToFront();
         nabdhSmartBar.setVisibility(android.view.View.VISIBLE);
         nabdhSmartBar.setAlpha(1f);
+    }
+
+    public void nabdhPerformSmartAction(int index) {
+        if (nabdhSmartAction != null && index >= 0 && index < 4) {
+            android.view.View button = nabdhSmartBar.getChildAt(index);
+            if (button != null) button.performClick();
+        }
     }
 
     public void nabdhClearSmartSwipeActions() {
