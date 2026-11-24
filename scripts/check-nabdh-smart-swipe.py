@@ -37,7 +37,10 @@ checks = {
         and "translationX > 0 ? 0.22f : 0.45f" in cell,
     "rounded tray and translated card": "NabdhGram Smart Swipe: LEFT side action tray" in cell
         and "nabdhCardBounds.set(dp(7), dp(3)" in cell,
-    "haptics respect device preference": "performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);" in cell,
+    "haptics respect device preference and fire once per gesture":
+        "performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);" in cell
+        and "nabdhSwipeHapticTriggered = true;" in cell
+        and "nabdhSwipeHapticTriggered = false;" in cell,
     "return animation duration softens": "return 230; // Soft return" in dialogs,
     "receiver registered unexported": any(
         n.attrib.get(android + "name") == "org.telegram.ui.NabdhSwipeReminder"
