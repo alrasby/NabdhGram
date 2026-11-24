@@ -57,6 +57,53 @@ dialogs = replace_once(dialogs, """                if (dialog == null) {
                 if (!getMessagesController().isPromoDialog(dialogId, false)""",
     "onSwiped RIGHT handling")
 
+# Keep RIGHT as a cancellable "peek" instead of ItemTouchHelper's
+# destructive full-width swipe animation. The palette opens on release.
+dialogs = replace_once(dialogs,
+    """        public float getSwipeThreshold(RecyclerView.ViewHolder viewHolder) {
+            return 0.45f;
+        }""",
+    """        public float getSwipeThreshold(RecyclerView.ViewHolder viewHolder) {
+            if (viewHolder.itemView instanceof DialogCell
+                    && ((DialogCell) viewHolder.itemView).getTranslationX() > 0) {
+                // Never complete the opposite direction as an off-screen swipe;
+                // open the action palette after a short, cancellable reveal.
+                return 1.1f;
+            }
+            return 0.45f;
+        }""", "short opposite-direction swipe threshold")
+
+dialogs = replace_once(dialogs,
+    """            currentItemViewHolder = viewHolder;
+            if (viewHolder != null && viewHolder.itemView instanceof DialogCell) {
+                ((DialogCell) viewHolder.itemView).swipeCanceled = false;
+            }
+            super.onSelectedChanged(viewHolder, actionState);""",
+    """            if (viewHolder == null && actionState == ItemTouchHelper.ACTION_STATE_IDLE
+                    && currentItemViewHolder != null
+                    && currentItemViewHolder.itemView instanceof DialogCell) {
+                DialogCell peek = (DialogCell) currentItemViewHolder.itemView;
+                if (peek.getTranslationX() > peek.getMeasuredWidth() * 0.22f) {
+                    final long peekDialogId = peek.getDialogId();
+                    if (!DialogObject.isFolderDialogId(peekDialogId)) {
+                        // ItemTouchHelper recovers the cell to its starting position.
+                        // Delay the sheet until the 230ms recovery has finished.
+                        AndroidUtilities.runOnUIThread(
+                                () -> showNabdhSmartSwipeActions(peekDialogId), 240);
+                    }
+                }
+            }
+            currentItemViewHolder = viewHolder;
+            if (viewHolder != null && viewHolder.itemView instanceof DialogCell) {
+                ((DialogCell) viewHolder.itemView).swipeCanceled = false;
+            }
+            super.onSelectedChanged(viewHolder, actionState);""",
+    "open menu at swipe recovery")
+cell = replace_once(cell,
+    "drawRevealBackground = Math.abs(translationX) >= getMeasuredWidth() * 0.45f;",
+    "drawRevealBackground = Math.abs(translationX) >= getMeasuredWidth() * (translationX > 0 ? 0.22f : 0.45f);",
+    "direction-aware haptic threshold")
+
 dialogs = replace_once(dialogs,
     """            if (animationType == ItemTouchHelper.ANIMATION_TYPE_SWIPE_CANCEL) {
                 return 200;""",
