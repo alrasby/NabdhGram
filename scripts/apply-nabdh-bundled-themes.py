@@ -355,7 +355,7 @@ replace_cell(
         mock.addView(chatTitle);
 
         android.widget.TextView row = new android.widget.TextView(context);
-        row.setText(arabic ? "◉  محادثة تجريبية\n      آخر رسالة" : "◉  Sample conversation\n      Last message");
+        row.setText(arabic ? "◉  محادثة تجريبية\\n      آخر رسالة" : "◉  Sample conversation\\n      Last message");
         row.setTextSize(13);
         row.setTextColor(nabdhThemePreviewInk(background));
         row.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
