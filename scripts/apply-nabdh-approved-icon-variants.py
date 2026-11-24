@@ -85,14 +85,12 @@ def clean_edge_fringe(image):
                 target[x, y] = (*nearest[:3], alpha)
     return corrected
 
-# The picker retains the untouched approved artwork. On Android 26+,
-# the launcher masks adaptive icons inside the central safe circle.
-# A 76% circular artwork spills outside that circle and its edge is clipped
-# into a squircle; keep each round design within the safe diameter instead.
+# Restore the user-verified circular launcher geometry. The Android
+# mask may be squircle, but these designs were visually approved at 76%.
+# Do not force circular artwork into a smaller safe-zone square.
 ADAPTIVE_CANVAS = 1080
-ADAPTIVE_SAFE_FRACTION = 0.62
-CIRCULAR_SAFE_FRACTION = 0.62
-# iPhone is intentionally rounded-square artwork and keeps its own geometry.
+ADAPTIVE_SAFE_FRACTION = 0.60
+CIRCULAR_SAFE_FRACTION = 0.76
 IPHONE_EXPERIMENT_FRACTION = 0.76
 modern = res / "mipmap-anydpi-v26"
 modern.mkdir(parents=True, exist_ok=True)
