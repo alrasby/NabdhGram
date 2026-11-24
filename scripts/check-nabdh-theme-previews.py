@@ -38,4 +38,18 @@ assert "miniPaint.setColor(previewInk);" in preview
 assert "button.setColor(" in preview
 assert "showOptionsForTheme(themeInfo);" in preview
 assert "themesDict.put(themeInfo.getKey(), themeInfo);" in theme_source
+# Phase 1/2: tap on bundled themes opens a preview and only explicit Apply
+# uses Telegram's native selectTheme. Imported and Telegram themes are untouched.
+assert 'tapped.assetName.startsWith("nabdh_")' in preview
+assert "nabdhPreviewBundledTheme(tapped, view1);" in preview
+assert "selectTheme(tapped, view1);" in preview
+assert 'setPositiveButton(arabic ? "تطبيق" : "Apply"' in preview
+assert "selectTheme(selected, tapped);" in preview
+assert "getSharedPreferences(\"nabdh_theme_gallery\"" in preview
+assert "Theme.getTheme(prefs.getString(key, \"\"))" in preview
+assert "selectTheme(previous, null)" in preview
+assert "getPreviewBackgroundColor()" in preview
+assert "getPreviewInColor()" in preview
+assert "getPreviewOutColor()" in preview
+assert "AlertsCreator.createThemeCreateDialog" not in preview  # existing creation entry remains in ThemeActivity
 print("PASS: exactly four owned themes retained, previews use stable palette and cached Paint; native selection preserved")
