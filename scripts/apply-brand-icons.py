@@ -12,7 +12,7 @@ SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 # The approved source can include an opaque dark surround, so crop its visible
 # logo first rather than enlarging a padded square and letting Android clip it.
 ADAPTIVE_ARTWORK_FRACTION = 0.60
-DEFAULT_LAUNCHER_ARTWORK_FRACTION = 0.61
+DEFAULT_LAUNCHER_ARTWORK_FRACTION = 0.62
 # The native splash keeps its existing 60% foreground size.
 LEGACY_ARTWORK_FRACTION = 0.86
 
