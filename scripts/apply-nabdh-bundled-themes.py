@@ -317,8 +317,8 @@ replace_cell(
         final int foreground = Theme.getColor(Theme.key_windowBackgroundWhiteBlackText);
         final int dim = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
 
-        // Palette fields come from the same verified ThemeInfo registration as
-        // the actual .attheme; no fabricated wallpaper is added to the preview.
+        // Colors AND wallpaper both come from the verified bundled .attheme.
+        // No temporary theme changes are made when opening a preview.
         android.widget.TextView header = new android.widget.TextView(context);
         header.setText("NabdhGram   •   " + selected.name);
         header.setTextSize(15);
@@ -344,6 +344,22 @@ replace_cell(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                         android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         block.setMargins(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
+        // Decode a bounded sample of the actual embedded WPS JPEG only when
+        // opening details (never while scrolling the four miniature cards).
+        android.graphics.Bitmap wallpaper = nabdhBundledWallpaper(context, selected);
+        if (wallpaper != null) {
+            android.graphics.drawable.BitmapDrawable actual =
+                    new android.graphics.drawable.BitmapDrawable(context.getResources(), wallpaper);
+            actual.setGravity(android.view.Gravity.FILL);
+            mock.setBackground(actual);
+            mock.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override public void getOutline(View view, android.graphics.Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
+                            AndroidUtilities.dp(16));
+                }
+            });
+            mock.setClipToOutline(true);
+        }
         content.addView(mock, block);
 
         android.widget.TextView chatTitle = new android.widget.TextView(context);
@@ -412,17 +428,47 @@ replace_cell(
                 AndroidUtilities.dp(10), AndroidUtilities.dp(9));
         mock.addView(settings);
         android.widget.TextView hint = new android.widget.TextView(context);
-        hint.setText(arabic
-                ? "معاينة ألوان فقط. ستظهر الخلفية الفعلية بعد تطبيق الثيم."
-                : "Color preview only. The actual wallpaper appears when applied.");
+        hint.setText(wallpaper != null
+                ? (arabic ? "معاينة الخلفية الأصلية مع ألوان الثيم. يمكنك التمرير لعرض التفاصيل."
+                         : "Original embedded wallpaper with theme colors. Scroll for details.")
+                : (arabic ? "معاينة الألوان؛ لم تتوفر خلفية مضمّنة صالحة."
+                          : "Color preview; no readable embedded wallpaper found."));
         hint.setTextColor(dim);
         hint.setTextSize(12);
         content.addView(hint);
 
+        // A separate personal copy is imported under a unique filename by
+        // Telegram. No writes ever target the bundled theme assets.
+        android.widget.TextView copyHint = new android.widget.TextView(context);
+        copyHint.setText(arabic
+                ? "النسخة الشخصية ملف مستقل قابل للتحرير؛ إنشاؤها يطبّقها."
+                : "A personal copy is an independent editable file; creating it applies it.");
+        copyHint.setTextColor(dim);
+        copyHint.setTextSize(12);
+        copyHint.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
+        content.addView(copyHint);
+        final org.telegram.ui.ActionBar.AlertDialog[] shown =
+                new org.telegram.ui.ActionBar.AlertDialog[1];
+        if (previous != null && previous != selected) {
+            android.widget.TextView restore = new android.widget.TextView(context);
+            restore.setText(arabic ? "↶ الرجوع إلى الثيم السابق" : "↶ Restore previous theme");
+            restore.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+            restore.setTextSize(14);
+            restore.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12),
+                    AndroidUtilities.dp(12), AndroidUtilities.dp(12));
+            content.addView(restore);
+            restore.setOnClickListener(v -> {
+                if (shown[0] != null) shown[0].dismiss();
+                selectTheme(previous, null);
+            });
+        }
+        android.widget.ScrollView scrolling = new android.widget.ScrollView(context);
+        scrolling.setFillViewport(false);
+        scrolling.addView(content);
         org.telegram.ui.ActionBar.AlertDialog.Builder dialog =
                 new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
                         .setTitle(selected.name)
-                        .setView(content)
+                        .setView(scrolling)
                         .setPositiveButton(arabic ? "تطبيق" : "Apply", (d, which) -> {
                             Theme.ThemeInfo before = night ?
                                     Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
@@ -430,12 +476,69 @@ replace_cell(
                                 prefs.edit().putString(key, before.getKey()).apply();
                             }
                             selectTheme(selected, tapped); // Native commit + instant update.
-                        }).setNegativeButton(arabic ? "إغلاق" : "Close", null);
-        if (previous != null && previous != selected) {
-            dialog.setNeutralButton(arabic ? "الثيم السابق" : "Previous theme",
-                    (d, which) -> selectTheme(previous, null));
+                        }).setNegativeButton(arabic ? "إغلاق" : "Close", null)
+                        .setNeutralButton(arabic ? "نسخة شخصية" : "Personal copy",
+                                (d, which) -> {
+                                    // Use Telegram's built-in .attheme importer:
+                                    // it copies the original immutable asset to
+                                    // a distinct user-owned file and registers it.
+                                    String copyName = "Nabdh Personal "
+                                            + System.currentTimeMillis() + ".attheme";
+                                    Theme.ThemeInfo copy = Theme.applyThemeFile(
+                                            Theme.getAssetFile(selected.assetName),
+                                            copyName, null, false);
+                                    if (copy != null && fragment.getParentActivity() != null) {
+                                        new org.telegram.ui.Components.ThemeEditorView()
+                                                .show(fragment.getParentActivity(), copy);
+                                    }
+                                });
+        shown[0] = dialog.create();
+        fragment.showDialog(shown[0]);
+    }
+
+    private static android.graphics.Bitmap nabdhBundledWallpaper(
+            android.content.Context context, Theme.ThemeInfo theme) {
+        if (theme.assetName == null || !theme.assetName.startsWith("nabdh_")) {
+            return null;
         }
-        fragment.showDialog(dialog.create());
+        // Bundled files are verified during the overlay step (max 5 MiB).
+        // Keep the same limit here to protect memory on lower-end phones.
+        try (java.io.InputStream input = context.getAssets().open(theme.assetName);
+             java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream()) {
+            byte[] chunk = new byte[8192];
+            int count, total = 0;
+            while ((count = input.read(chunk)) != -1) {
+                total += count;
+                if (total > 5 * 1024 * 1024) return null;
+                output.write(chunk, 0, count);
+            }
+            byte[] data = output.toByteArray();
+            for (int i = 0; i + 7 < data.length; i++) {
+                if (data[i] == 'W' && data[i + 1] == 'P'
+                        && data[i + 2] == 'S' && data[i + 3] == 10
+                        && (data[i + 4] & 255) == 255
+                        && (data[i + 5] & 255) == 216) {
+                    int start = i + 4, length = data.length - start;
+                    android.graphics.BitmapFactory.Options options =
+                            new android.graphics.BitmapFactory.Options();
+                    options.inJustDecodeBounds = true;
+                    android.graphics.BitmapFactory.decodeByteArray(data, start,
+                            length, options);
+                    if (options.outWidth <= 0 || options.outHeight <= 0) return null;
+                    options.inJustDecodeBounds = false;
+                    options.inSampleSize = 1;
+                    while (options.outWidth / options.inSampleSize > 960
+                            || options.outHeight / options.inSampleSize > 1280) {
+                        options.inSampleSize *= 2;
+                    }
+                    return android.graphics.BitmapFactory.decodeByteArray(data,
+                            start, length, options);
+                }
+            }
+        } catch (Exception ignored) {
+            // A malformed or absent embedded wallpaper must not break selection.
+        }
+        return null;
     }
 
     private static int nabdhThemePreviewInk(int color) {
