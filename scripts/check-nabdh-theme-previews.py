@@ -34,6 +34,15 @@ assert "miniPaint.setColor(blend(oldOutColor, outColor));" in preview
 assert "int previewBackground = blend(oldBackColor, backColor);" in preview
 assert "miniPaint.setColor(previewInk);" in preview
 
+# Protect the generated Java against literal newlines inside quoted strings.
+# Python triple-quoted overlay sources must emit Java \\n, not a raw line break.
+assert ('Sample conversation' + chr(92) + 'n      Last message') in preview, \
+    "generated Java preview must contain an escaped newline"
+assert ('محادثة تجريبية' + chr(92) + 'n      آخر رسالة') in preview, \
+    "generated Arabic preview must contain an escaped newline"
+assert ('Sample conversation' + chr(10) + '      Last message') not in preview, \
+    "unclosed Java string literal in generated theme preview"
+
 # Original native Telegram selection and theme edit/create paths must still exist.
 assert "button.setColor(" in preview
 assert "showOptionsForTheme(themeInfo);" in preview
