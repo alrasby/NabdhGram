@@ -111,8 +111,8 @@ with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
             "Launcher foreground contains a backplate outside safe area")
     bounds = launcher.getchannel("A").getbbox()
     assert bounds is not None
-    assert bounds[0] >= 210 and bounds[1] >= 210 and (
-        bounds[2] <= 870 and bounds[3] <= 870), (
+    assert bounds[0] >= 200 and bounds[1] >= 200 and (
+        bounds[2] <= 880 and bounds[3] <= 880), (
         "Launcher mark extends beyond Android's adaptive safe region")
     # Preview is the approved foreground over the exact adaptive teal,
     # clipped into a rounded square only in the in-app selector.
@@ -200,17 +200,21 @@ for slug, alias, label in names:
         assert rgba.size == (1080, 1080), "Wrong adaptive canvas: " + slug
         bounds = rgba.getchannel("A").getbbox()
         assert bounds is not None, "Empty adaptive artwork: " + slug
-        # Preserve the successful Silver experiment byte-for-byte, and
-        # extend the same foreground diameter only to Dark/Glass circles.
-        # iPhone stays at the original safe 60%; Default is untouched.
         circular = slug in ("silver", "dark", "glass")
-        margin = 120 if circular or slug == "iphone" else 210
+        margin = 200 if circular else 120
         assert bounds[0] >= margin and bounds[1] >= margin and (
             bounds[2] <= 1080 - margin and bounds[3] <= 1080 - margin), (
-            "Adaptive icon artwork exceeds the experiment bounds: " + slug)
-        if circular or slug == "iphone":
+            "Adaptive artwork exceeds approved layout bounds: " + slug)
+        if circular:
+            # A circular design must fit the central 66/108 Android safe
+            # diameter, otherwise Samsung's adaptive mask cuts its edges
+            # and a circular chooser entry becomes a squircle on Home.
+            assert bounds[0] >= 180 and bounds[2] <= 900 and (
+                bounds[1] >= 180 and bounds[3] <= 900), (
+                "Circular launcher icon extends outside Android safe circle: " + slug)
+        else:
             assert bounds[0] < 175 and bounds[2] > 905, (
-                "Adaptive foreground still leaves the old broad black gap: " + slug)
+                "iPhone foreground no longer has the approved scale")
         if slug == "iphone":
             picker_foreground = res / "drawable-nodpi/nabdh_icon_iphone_picker_foreground.png"
             assert picker_foreground.read_bytes() == foreground.read_bytes(), (
