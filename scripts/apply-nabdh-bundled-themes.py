@@ -180,6 +180,13 @@ def replace_cell(old, new, label):
         raise SystemExit("Pinned theme selector changed (" + label + "); refusing unsafe patch")
     cell_src = cell_src.replace(old, new, 1)
 
+# Reuse a single preview paint per mini-card instead of allocating per frame.
+replace_cell(
+    "        private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);",
+    """        private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint nabdhPreviewPaint = new Paint(Paint.ANTI_ALIAS_FLAG);""",
+    "cache bundled theme mini-preview paint")
+
 replace_cell(
     """            String text = TextUtils.ellipsize(name, textPaint, maxWidth, TextUtils.TruncateAt.END).toString();
             int width = (int) Math.ceil(textPaint.measureText(text));
@@ -219,34 +226,41 @@ replace_cell(
                     // No personal messages or screenshots are embedded.
                     int saved = canvas.save();
                     canvas.clipRect(rect);
-                    Paint miniPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    Paint miniPaint = nabdhPreviewPaint;
+                    // Match selected theme palette in preview; never hard-code
+                    // light-only chrome on Emerald/Dark Glass themes.
+                    int previewBackground = blend(oldBackColor, backColor);
+                    int previewInk = (Color.red(previewBackground) * 299
+                            + Color.green(previewBackground) * 587
+                            + Color.blue(previewBackground) * 114) > 150000
+                            ? 0xFF33464B : 0xFFF1F6F5;
                     float left = rect.left;
                     float top = rect.top;
                     float dp = AndroidUtilities.density;
-                    miniPaint.setColor(0xDDF7FAFB);
+                    miniPaint.setColor(blend(oldInColor, inColor));
                     canvas.drawRoundRect(left + 3 * dp, top + 3 * dp,
                             left + 73 * dp, top + 24 * dp, 4 * dp, 4 * dp, miniPaint);
-                    miniPaint.setColor(0xFF168E91);
+                    miniPaint.setColor(blend(oldOutColor, outColor));
                     canvas.drawCircle(left + 13 * dp, top + 13 * dp, 6 * dp, miniPaint);
-                    miniPaint.setColor(0xFF3A5558);
+                    miniPaint.setColor(previewInk);
                     canvas.drawRoundRect(left + 24 * dp, top + 9 * dp,
                             left + 55 * dp, top + 12 * dp, 2 * dp, 2 * dp, miniPaint);
                     miniPaint.setColor(blend(oldInColor, inColor));
                     canvas.drawRoundRect(left + 5 * dp, top + 30 * dp,
                             left + 56 * dp, top + 49 * dp, 6 * dp, 6 * dp, miniPaint);
-                    miniPaint.setColor(0x994C6060);
+                    miniPaint.setColor(previewInk);
                     canvas.drawRoundRect(left + 11 * dp, top + 36 * dp,
                             left + 42 * dp, top + 39 * dp, 2 * dp, 2 * dp, miniPaint);
                     miniPaint.setColor(blend(oldOutColor, outColor));
                     canvas.drawRoundRect(left + 21 * dp, top + 53 * dp,
                             left + 70 * dp, top + 72 * dp, 6 * dp, 6 * dp, miniPaint);
-                    miniPaint.setColor(0x99354C4C);
+                    miniPaint.setColor(previewInk);
                     canvas.drawRoundRect(left + 28 * dp, top + 59 * dp,
                             left + 61 * dp, top + 62 * dp, 2 * dp, 2 * dp, miniPaint);
-                    miniPaint.setColor(0xDDF7FAFB);
+                    miniPaint.setColor(blend(oldInColor, inColor));
                     canvas.drawRoundRect(left + 4 * dp, top + 80 * dp,
                             left + 72 * dp, top + 93 * dp, 6 * dp, 6 * dp, miniPaint);
-                    miniPaint.setColor(0x775B7272);
+                    miniPaint.setColor(previewInk);
                     canvas.drawRoundRect(left + 10 * dp, top + 85 * dp,
                             left + 48 * dp, top + 88 * dp, 2 * dp, 2 * dp, miniPaint);
                     canvas.restoreToCount(saved);
