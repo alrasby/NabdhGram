@@ -24,7 +24,8 @@ checks = {
         and "Calendar.DAY_OF_YEAR" in dialogs and "DatePickerDialog" in dialogs
         and "NabdhSwipeReminder.cancel" in dialogs,
     "chat opening uses correct Telegram account": 'putExtra("currentAccount", account)' in receiver
-        and 'setAction("com.tmessages.openchat")' in receiver,
+        and 'setAction("com.tmessages.openchat")' in receiver
+        and "DialogObject.getEncryptedChatId(dialogId)" in receiver,
     "scheduled alarms persist and reboot": "ACTION_BOOT_COMPLETED" in receiver
         and "setAndAllowWhileIdle" in receiver
         and "SharedPreferences" in receiver,
