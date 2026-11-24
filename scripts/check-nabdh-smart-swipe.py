@@ -25,7 +25,7 @@ checks = {
         and "downX <= dp(24)" in dialogs,
     "reverse gesture and tap-outside close":
         "expanded.setTranslationX(Math.max(0f, dp(212) + dx));" in dialogs
-        and "close(); // Reverse swipe always returns to rest." in dialogs
+        and "row.getTranslationX() < dp(135)" in dialogs
         and "Outside tap dismisses without chat opening." in dialogs,
     "physical spring with damping and stiffness":
         "new androidx.dynamicanimation.animation.SpringAnimation" in dialogs
