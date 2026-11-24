@@ -6,7 +6,6 @@ Optional until the binary assets are added to branding/themes in the GitHub repo
 """
 from pathlib import Path
 import hashlib
-import shutil
 import sys
 import zipfile
 
@@ -70,6 +69,7 @@ asset_dir = Path(__file__).resolve().parents[1] / "branding" / "themes"
 archive = asset_dir / "NabdhGram_Bundled_Themes.zip"
 available = [asset_dir / spec[0] for spec in themes]
 verified_themes = []
+verified_assets = []
 if archive.is_file():
     # The approved ZIP keeps the four original binary files under branding/themes/.
     # Read only expected members: never extract arbitrary paths from a ZIP.
@@ -84,15 +84,11 @@ if archive.is_file():
                 raise SystemExit(f"Theme asset is unexpectedly large: {filename}")
             data = bundled.read(entry)
             verified_themes.append(resolve_verified_theme((filename, name, background, incoming, outgoing, checksum), data))
-            destination = root / "TMessagesProj/src/main/assets" / filename
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(data)
+            verified_assets.append((filename, data))
 elif all(p.is_file() for p in available):
     for spec, original in zip(themes, available):
         verified_themes.append(resolve_verified_theme(spec, original.read_bytes()))
-        destination = root / "TMessagesProj/src/main/assets" / original.name
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(original, destination)
+        verified_assets.append((original.name, original.read_bytes()))
 elif any(p.is_file() for p in available):
     raise SystemExit("Incomplete theme bundle: all four .attheme assets are required")
 else:
@@ -102,6 +98,10 @@ else:
 if len(verified_themes) != 4 or len({spec[0] for spec in verified_themes}) != 4:
     raise SystemExit("Invalid bundled theme inventory")
 themes = verified_themes
+for filename, data in verified_assets:
+    destination = root / "TMessagesProj/src/main/assets" / filename
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(data)
 
 target = root / "TMessagesProj/src/main/java/org/telegram/ui/ActionBar/Theme.java"
 source = target.read_text(encoding="utf-8")
