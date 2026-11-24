@@ -142,7 +142,7 @@ palette = """
                     downY = event.getY();
                     if (actionBar.isActionModeShowed() || onlySelect
                             || !allowSwipeDuringCurrentTouch || communityId != 0
-                            || slidingView != null || fastScrollAnimationRunning
+                            || slidingView != null
                             || waitingForScrollFinished || rightFragmentTransitionInProgress
                             || rightSlidingDialogContainer.hasFragment()
                             || filterTabsView != null && filterTabsView.isEditing()
