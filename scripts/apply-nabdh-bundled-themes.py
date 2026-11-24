@@ -122,3 +122,96 @@ source = source.replace(wallpaper_old, wallpaper_new, 1)
 
 target.write_text(source, encoding="utf-8")
 print("Registered 4 bundled NabdhGram theme assets in native Telegram selector.")
+
+
+# Enrich ONLY the four owned NabdhGram theme cards. Telegram's other themes
+# retain their upstream preview. The original ThemeInfo.name is untouched,
+# so native dialogs/details and accessibility retain the full title.
+cell = root / "TMessagesProj/src/main/java/org/telegram/ui/Cells/ThemesHorizontalListCell.java"
+cell_src = cell.read_text(encoding="utf-8")
+def replace_cell(old, new, label):
+    global cell_src
+    if cell_src.count(old) != 1:
+        raise SystemExit("Pinned theme selector changed (" + label + "); refusing unsafe patch")
+    cell_src = cell_src.replace(old, new, 1)
+
+replace_cell(
+    """            String text = TextUtils.ellipsize(name, textPaint, maxWidth, TextUtils.TruncateAt.END).toString();
+            int width = (int) Math.ceil(textPaint.measureText(text));
+            textPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            canvas.drawText(text, x + (AndroidUtilities.dp(76) - width) / 2, AndroidUtilities.dp(131), textPaint);""",
+    """            textPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            if (themeInfo.assetName != null && themeInfo.assetName.startsWith("nabdh_")) {
+                // The complete original name remains in ThemeInfo and native details.
+                // Use a readable two-line label only in this 76dp mini-card.
+                String cardName = name.startsWith("NabdhGram • ")
+                        ? name.substring("NabdhGram • ".length()) : name;
+                int split = cardName.lastIndexOf(' ');
+                String first = split > 0 ? cardName.substring(0, split) : cardName;
+                String second = split > 0 ? cardName.substring(split + 1) : "";
+                first = TextUtils.ellipsize(first, textPaint, maxWidth, TextUtils.TruncateAt.END).toString();
+                second = TextUtils.ellipsize(second, textPaint, maxWidth, TextUtils.TruncateAt.END).toString();
+                canvas.drawText(first, x + (AndroidUtilities.dp(76) - textPaint.measureText(first)) / 2,
+                        AndroidUtilities.dp(127), textPaint);
+                canvas.drawText(second, x + (AndroidUtilities.dp(76) - textPaint.measureText(second)) / 2,
+                        AndroidUtilities.dp(143), textPaint);
+            } else {
+                String text = TextUtils.ellipsize(name, textPaint, maxWidth, TextUtils.TruncateAt.END).toString();
+                int width = (int) Math.ceil(textPaint.measureText(text));
+                canvas.drawText(text, x + (AndroidUtilities.dp(76) - width) / 2, AndroidUtilities.dp(131), textPaint);
+            }""",
+    "two-line brand theme title")
+
+replace_cell(
+    """                inDrawable.setBounds(x + AndroidUtilities.dp(6), AndroidUtilities.dp(22), x + AndroidUtilities.dp(6 + 43), AndroidUtilities.dp(22 + 14));
+                inDrawable.draw(canvas);
+
+                outDrawable.setBounds(x + AndroidUtilities.dp(27), AndroidUtilities.dp(41), x + AndroidUtilities.dp(27 + 43), AndroidUtilities.dp(41 + 14));
+                outDrawable.draw(canvas);""",
+    """                if (themeInfo.assetName != null && themeInfo.assetName.startsWith("nabdh_")) {
+                    // Small conversation mockup, rendered using each theme's
+                    // real background and incoming/outgoing bubble colors.
+                    // No personal messages or screenshots are embedded.
+                    int saved = canvas.save();
+                    canvas.clipRect(rect);
+                    Paint miniPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    float left = rect.left;
+                    float top = rect.top;
+                    float dp = AndroidUtilities.density;
+                    miniPaint.setColor(0xDDF7FAFB);
+                    canvas.drawRoundRect(left + 3 * dp, top + 3 * dp,
+                            left + 73 * dp, top + 24 * dp, 4 * dp, 4 * dp, miniPaint);
+                    miniPaint.setColor(0xFF168E91);
+                    canvas.drawCircle(left + 13 * dp, top + 13 * dp, 6 * dp, miniPaint);
+                    miniPaint.setColor(0xFF3A5558);
+                    canvas.drawRoundRect(left + 24 * dp, top + 9 * dp,
+                            left + 55 * dp, top + 12 * dp, 2 * dp, 2 * dp, miniPaint);
+                    miniPaint.setColor(blend(oldInColor, inColor));
+                    canvas.drawRoundRect(left + 5 * dp, top + 30 * dp,
+                            left + 56 * dp, top + 49 * dp, 6 * dp, 6 * dp, miniPaint);
+                    miniPaint.setColor(0x994C6060);
+                    canvas.drawRoundRect(left + 11 * dp, top + 36 * dp,
+                            left + 42 * dp, top + 39 * dp, 2 * dp, 2 * dp, miniPaint);
+                    miniPaint.setColor(blend(oldOutColor, outColor));
+                    canvas.drawRoundRect(left + 21 * dp, top + 53 * dp,
+                            left + 70 * dp, top + 72 * dp, 6 * dp, 6 * dp, miniPaint);
+                    miniPaint.setColor(0x99354C4C);
+                    canvas.drawRoundRect(left + 28 * dp, top + 59 * dp,
+                            left + 61 * dp, top + 62 * dp, 2 * dp, 2 * dp, miniPaint);
+                    miniPaint.setColor(0xDDF7FAFB);
+                    canvas.drawRoundRect(left + 4 * dp, top + 80 * dp,
+                            left + 72 * dp, top + 93 * dp, 6 * dp, 6 * dp, miniPaint);
+                    miniPaint.setColor(0x775B7272);
+                    canvas.drawRoundRect(left + 10 * dp, top + 85 * dp,
+                            left + 48 * dp, top + 88 * dp, 2 * dp, 2 * dp, miniPaint);
+                    canvas.restoreToCount(saved);
+                } else {
+                    inDrawable.setBounds(x + AndroidUtilities.dp(6), AndroidUtilities.dp(22), x + AndroidUtilities.dp(6 + 43), AndroidUtilities.dp(22 + 14));
+                    inDrawable.draw(canvas);
+
+                    outDrawable.setBounds(x + AndroidUtilities.dp(27), AndroidUtilities.dp(41), x + AndroidUtilities.dp(27 + 43), AndroidUtilities.dp(41 + 14));
+                    outDrawable.draw(canvas);
+                }""",
+    "mini chat preview")
+cell.write_text(cell_src, encoding="utf-8")
+print("PASS: NabdhGram theme cards show mini chats and readable two-line labels")
