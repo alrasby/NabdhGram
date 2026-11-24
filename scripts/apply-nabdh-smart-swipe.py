@@ -69,6 +69,7 @@ palette = """
     }
 
     private void installNabdhSmartSwipe(ViewPage page) {
+        final Runnable[] stopSwipeOnScroll = new Runnable[1];
         page.listView.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
             private DialogCell candidate;
             private DialogCell expanded;
@@ -76,6 +77,23 @@ palette = """
             private float downX, downY, startingX;
             private boolean dragging;
             private boolean consumedDown;
+            {
+                stopSwipeOnScroll[0] = () -> {
+                    if (spring != null) spring.cancel();
+                    if (expanded != null) {
+                        expanded.nabdhClearSmartSwipeActions();
+                        expanded.setTranslationX(0f);
+                        expanded = null;
+                    }
+                    if (candidate != null) {
+                        candidate.nabdhClearSmartSwipeActions();
+                        candidate.setTranslationX(0f);
+                        candidate = null;
+                    }
+                    dragging = false;
+                    consumedDown = false;
+                };
+            }
 
             private void settle(DialogCell row, float target) {
                 if (row == null) return;
@@ -96,6 +114,11 @@ palette = """
                 force.setDampingRatio(0.88f);
                 spring.setSpring(force);
                 spring.setMinimumVisibleChange(0.7f);
+                if (android.os.Build.VERSION.SDK_INT >= 26
+                        && !android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    row.setTranslationX(target);
+                    return;
+                }
                 spring.start();
             }
 
@@ -118,6 +141,9 @@ palette = """
                     downX = event.getX();
                     downY = event.getY();
                     if (actionBar.isActionModeShowed() || onlySelect
+                            || !allowSwipeDuringCurrentTouch || communityId != 0
+                            || slidingView != null || fastScrollAnimationRunning
+                            || waitingForScrollFinished || rightFragmentTransitionInProgress
                             || rightSlidingDialogContainer.hasFragment()
                             || filterTabsView != null && filterTabsView.isEditing()
                             || waitingForDialogsAnimationEnd(page)) {
@@ -226,17 +252,9 @@ palette = """
         page.listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override public void onScrollStateChanged(RecyclerView rv, int state) {
                 // RecyclerView recycles rows while scrolling; clear inline buttons.
-                if (state == RecyclerView.SCROLL_STATE_DRAGGING) {
-                    for (int i = 0; i < rv.getChildCount(); i++) {
-                        android.view.View child = rv.getChildAt(i);
-                        if (child instanceof DialogCell) {
-                            DialogCell row = (DialogCell) child;
-                            if (row.getTranslationX() > 0) {
-                                row.nabdhClearSmartSwipeActions();
-                                row.setTranslationX(0f);
-                            }
-                        }
-                    }
+                if (state == RecyclerView.SCROLL_STATE_DRAGGING
+                        && stopSwipeOnScroll[0] != null) {
+                    stopSwipeOnScroll[0].run();
                 }
             }
         });
@@ -347,6 +365,9 @@ cell = once(cell, "    private boolean drawPinBackground;",
     private void nabdhCreateSmartBar(android.content.Context context) {
         nabdhSmartBar = new android.widget.LinearLayout(context);
         nabdhSmartBar.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        nabdhSmartBar.setLayoutDirection(LocaleController.isRTL
+                ? android.view.View.LAYOUT_DIRECTION_RTL
+                : android.view.View.LAYOUT_DIRECTION_LTR);
         android.graphics.drawable.GradientDrawable surface =
                 new android.graphics.drawable.GradientDrawable();
         surface.setColor(Theme.getColor(Theme.key_chats_archiveBackground));
@@ -453,6 +474,56 @@ cell = once(cell,
         }
         if (isSliding && !swipeCanceled) {""",
     "reset haptic when closed")
+
+# The interactive bar overlaps the avatar's original story-touch area.
+# When expanded, those taps must be delivered to the actual child buttons.
+cell = once(cell,
+    """    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {""",
+    """    private boolean nabdhHitSmartAction(android.view.MotionEvent event) {
+        return nabdhSmartBar != null && nabdhSmartAction != null
+                && nabdhSmartBar.getVisibility() == android.view.View.VISIBLE
+                && translationX >= dp(140)
+                && event.getX() >= dp(7) && event.getX() <= dp(219)
+                && event.getY() >= dp(3) && event.getY() <= getHeight() - dp(3);
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        if (nabdhHitSmartAction(ev)) {
+            return super.onInterceptTouchEvent(ev);
+        }""", "no story-avatar interception of Smart Swipe buttons")
+cell = once(cell,
+    """    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (!isTopic""",
+    """    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (nabdhHitSmartAction(ev)) {
+            return super.dispatchTouchEvent(ev);
+        }
+        if (!isTopic""", "deliver buttons through child dispatch")
+cell = once(cell,
+    """    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (rightFragmentOpenedProgress""",
+    """    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (nabdhHitSmartAction(event)) {
+            return super.onTouchEvent(event);
+        }
+        if (rightFragmentOpenedProgress""", "button touches bypass story handler")
+
+# Native Telegram reveal-circle work belongs exclusively to the LEFT action.
+# The RIGHT tray paints its own layer and haptics, avoiding offscreen animations.
+cell = once(cell,
+    "drawRevealBackground = Math.abs(translationX) >= getMeasuredWidth() * 0.45f;",
+    "drawRevealBackground = translationX < 0 && Math.abs(translationX) >= getMeasuredWidth() * 0.45f;",
+    "disable native reveal animation for opposite direction")
+cell = once(cell,
+    "if (!prevValue && drawRevealBackground && !nabdhSwipeHapticTriggered",
+    "if (!prevValue && (drawRevealBackground || (translationX > 0 && translationX >= dp(70))) && !nabdhSwipeHapticTriggered",
+    "one haptic threshold per RIGHT gesture")
 
 # Keep Android-specific storage and boot handling from the existing implementation.
 manifest = once(manifest, "</application>",

@@ -49,6 +49,20 @@ checks = {
         and "nabdhSwipeHapticTriggered = false;" in cell
         and "performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);" in cell
         and "FLAG_IGNORE_GLOBAL_SETTING" not in cell[cell.index("nabdhSwipeHapticTriggered = true;"):cell.index("nabdhSwipeHapticTriggered = true;")+360],
+    "story/avatar touch does not intercept four inline buttons":
+        "nabdhHitSmartAction(ev)" in cell
+        and "nabdhHitSmartAction(event)" in cell
+        and "return super.dispatchTouchEvent(ev);" in cell,
+    "active spring cancels before vertical list scroll":
+        "stopSwipeOnScroll[0].run();" in dialogs
+        and "if (spring != null) spring.cancel();" in dialogs
+        and "expanded.nabdhClearSmartSwipeActions();" in dialogs,
+    "RTL actions layout and reduced motion preference":
+        "setLayoutDirection(LocaleController.isRTL" in cell
+        and "ValueAnimator.areAnimatorsEnabled()" in dialogs,
+    "opposite-direction reveal skips native Telegram circle animation":
+        "drawRevealBackground = translationX < 0" in cell
+        and "translationX >= dp(70)" in cell,
     "reminder choices and custom date/time":
         "30 * 60_000L" in dialogs and "2 * 60 * 60_000L" in dialogs
         and "Calendar.DAY_OF_YEAR" in dialogs and "DatePickerDialog" in dialogs
