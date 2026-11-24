@@ -510,12 +510,13 @@ cell = once(cell, "    private boolean drawPinBackground;",
                 : android.view.View.LAYOUT_DIRECTION_LTR);
         android.graphics.drawable.GradientDrawable surface =
                 new android.graphics.drawable.GradientDrawable();
-        // Match the rounded Glass row surface; avoid a solid green block.
-        final int glassBase = Theme.getColor(Theme.key_windowBackgroundWhite);
-        surface.setColor(android.graphics.Color.argb(232,
-                android.graphics.Color.red(glassBase),
-                android.graphics.Color.green(glassBase),
-                android.graphics.Color.blue(glassBase)));
+        // The row itself has a Glass fill. Avoid a second nearly opaque
+        // windowBackgroundWhite panel underneath it as the card slides.
+        final int glassAccent = Theme.getColor(Theme.key_chats_archiveBackground);
+        surface.setColor(android.graphics.Color.argb(30,
+                android.graphics.Color.red(glassAccent),
+                android.graphics.Color.green(glassAccent),
+                android.graphics.Color.blue(glassAccent)));
         surface.setCornerRadius(dp(17));
         nabdhSmartBar.setBackground(surface);
         final String[] labels = LocaleController.isRTL ?
@@ -632,7 +633,7 @@ cell = once(cell,
     """        if (translationX != 0 || cornerProgress != 0.0f) {
             canvas.save();
             canvas.translate(0, -translateY);""",
-    """        if (translationX < 0 || cornerProgress != 0.0f) {
+    """        if (translationX < 0) {
             canvas.save();
             canvas.translate(0, -translateY);
             // Native Telegram's rectangular READ reveal previously bled
