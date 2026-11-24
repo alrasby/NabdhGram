@@ -561,9 +561,12 @@ checks = {
         and "if (!isTopic" in cell
         and "canvas.drawRoundRect(nabdhCardBounds" in cell
         and cell.index("canvas.translate(translationX, 0);") < cell.index(
+            "canvas.drawRoundRect(nabdhCardBounds")
+        and cell.index("rect.set(getMeasuredWidth() - dp(64)") < cell.index(
             "canvas.drawRoundRect(nabdhCardBounds"),
     "dialog card selection uses native state and matching rounded bounds":
-        "final boolean selected = isPressed() || isSelected || isSelected();" in cell
+        "final boolean selected = isSelected;" in cell
+        and "isPressed() || isSelected || isSelected()" not in cell
         and "final int fill = selected" in cell
         and "rect.set(dp(7), dp(3), getMeasuredWidth() - dp(7)," in cell
         and "canvas.drawRoundRect(rect, dp(17), dp(17), Theme.dialogs_tabletSeletedPaint);" in cell,
