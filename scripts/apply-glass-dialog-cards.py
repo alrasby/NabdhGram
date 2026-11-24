@@ -30,21 +30,24 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
     }
 
 """ + field_anchor, 1)
-# Draw after Telegram's base pinned/archive background, before message content.
-# Painting at the beginning of onDraw would be hidden by the later base fill.
-anchor = "        canvas.restore();\n\n        updateHelper.updateAnimationValues();"
+# Telegram paints the swipe action BEHIND the translated conversation content.
+# Paint the card inside that same translated canvas, after native backdrop
+# preparation and before text. This keeps its surface visible during drag,
+# reveal and spring-back rather than toggling between two backgrounds.
+# Paint after native swipe-edge white backing; the previous early drawing
+# was covered by Telegram when the corner animation became active.
+anchor = """            if (drawNameLock) {
+                setDrawableBounds(Theme.dialogs_lockDrawable, nameLockLeft, nameLockTop);
+                Theme.dialogs_lockDrawable.draw(canvas);
+            }"""
 if s.count(anchor) != 1:
-    raise SystemExit(f"DialogCell card rendering anchor changed: {s.count(anchor)}")
-s = s.replace(anchor, """        canvas.restore();
-
-        // NabdhGram Glass: draw only for normal dialog rows, after Telegram
-        // backgrounds and before message content. Do not interfere with archive,
-        // swipe-to-reveal, tablet slide effects, or transient edit animations.
-        if (translationX == 0 && currentRevealProgress == 0.0f
-                && rightFragmentOpenedProgress == 0.0f
-                // drawArchive defaults to true for ordinary Telegram dialogs;
-                // it is NOT an archive-row test. Use folder ID instead.
-                && !isTopic
+    raise SystemExit("Pinned Telegram content-stage drawing anchor changed")
+s = s.replace(anchor, """        // This canvas already carries Telegram's translationX and any
+        // right-fragment transform. Never hide the card when swiping: native
+        // action colors stay behind it, and the same card follows its content.
+        // The actual archive folder row is supported; topic/profile rows keep
+        // their original native drawing.
+        if (!isTopic
                 && !(getParent() instanceof ProfileChannelCell)
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12)) {
             final int surface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
@@ -52,7 +55,7 @@ s = s.replace(anchor, """        canvas.restore();
             final int alternate = Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider);
             final boolean archived = isFolderCell();
             final boolean pinned = getIsPinned();
-            final boolean selected = isPressed() || isSelected || isSelected();
+            final boolean selected = isSelected;
             final int fill = selected
                     ? nabdhBlendThemeColor(surface, accent, 0.23f)
                     : archived ? nabdhBlendThemeColor(surface, alternate, 0.67f)
@@ -66,14 +69,44 @@ s = s.replace(anchor, """        canvas.restore();
                     getMeasuredHeight() - dp(3));
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             nabdhCardPaint.setColor(nabdhBlendThemeColor(
-                    archived ? alternate : surface, accent, pinned ? 0.55f : 0.36f));
+                    archived ? alternate : surface, accent, pinned ? 0.34f : 0.22f));
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
             nabdhCardPaint.setStrokeWidth(dp(1));
+            nabdhCardPaint.setAlpha(176);
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
+            nabdhCardPaint.setAlpha(255);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
         }
 
-        updateHelper.updateAnimationValues();""", 1)
+""" + anchor, 1)
+
+# Telegram paints a full-width rectangular selected background before the
+# card. For dialog rows, restrict it to the SAME 7dp/3dp and 17dp shape as the
+# card; otherwise the native selection bleeds outside the curved Glass edge.
+# Preserve the native branch for topic/profile rows and its original paint.
+selection_old = """        if (isSelected) {
+            rect.set(0, 0, getMeasuredWidth(), AndroidUtilities.lerp(getMeasuredHeight(), getCollapsedHeight(), rightFragmentOpenedProgress));
+            rect.offset(0, -translateY + collapseOffset);
+            canvas.drawRoundRect(rect, cornersRadius, cornersRadius, Theme.dialogs_tabletSeletedPaint);
+        }"""
+selection_new = """        if (isSelected) {
+            if (!isTopic && !(getParent() instanceof ProfileChannelCell)) {
+                rect.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
+                        AndroidUtilities.lerp(getMeasuredHeight(), getCollapsedHeight(),
+                                rightFragmentOpenedProgress) - dp(3));
+                rect.offset(0, -translateY + collapseOffset);
+                canvas.drawRoundRect(rect, dp(17), dp(17), Theme.dialogs_tabletSeletedPaint);
+            } else {
+                rect.set(0, 0, getMeasuredWidth(), AndroidUtilities.lerp(getMeasuredHeight(),
+                        getCollapsedHeight(), rightFragmentOpenedProgress));
+                rect.offset(0, -translateY + collapseOffset);
+                canvas.drawRoundRect(rect, cornersRadius, cornersRadius,
+                        Theme.dialogs_tabletSeletedPaint);
+            }
+        }"""
+if s.count(selection_old) != 1:
+    raise SystemExit("Pinned Telegram selected background changed")
+s = s.replace(selection_old, selection_new, 1)
 
 # Exact pinned native DialogCell reorder drawing (source verified in preflight).
 original_reorder = "                Theme.dialogs_reorderDrawable.setAlpha((int) (reorderIconProgress * 255));\n                setDrawableBounds(Theme.dialogs_reorderDrawable, pinLeft, pinTop);\n                Theme.dialogs_reorderDrawable.draw(canvas);"
