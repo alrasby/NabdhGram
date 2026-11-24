@@ -411,8 +411,7 @@ cell = once(cell,
     "layout interactive tray")
 
 # Preserve the same card surface draw ordering as the verified #1036.
-cell = once(cell, "        translationX = value;
-",
+cell = once(cell, "        translationX = value;\n",
     """        translationX = value;
         if (nabdhSmartBar != null) {
             if (value > 0) {
