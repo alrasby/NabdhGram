@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Fail fast if Smart Swipe V1 is partially installed or LEFT behavior regresses."""
+"""Smart Swipe source checks: independent directions, clickable row buttons and actual spring."""
 from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
-
 if len(sys.argv) != 2:
     raise SystemExit("Usage: check-nabdh-smart-swipe.py TELEGRAM_SOURCE")
 root = Path(sys.argv[1]) / "TMessagesProj/src/main"
@@ -13,42 +12,62 @@ receiver = (root / "java/org/telegram/ui/NabdhSwipeReminder.java").read_text(enc
 manifest = ET.parse(root / "AndroidManifest.xml").getroot()
 android = "{http://schemas.android.com/apk/res/android}"
 checks = {
-    "LEFT native action preserved": "ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT" in dialogs
-        and "if (direction == ItemTouchHelper.RIGHT)" in dialogs
-        and "if (!getMessagesController().isPromoDialog(dialogId, false)" in dialogs,
-    "RIGHT only offers intentional actions": "showNabdhSmartSwipeActions(dialogId)" in dialogs
-        and "menu.setItems(choices," in dialogs
-        and "performSelectedDialogsAction(selected, archive, true, false)" in dialogs,
-    "reminders offer 30m, 2h, next morning, custom, cancel":
+    "LEFT original direction retained without ItemTouchHelper RIGHT":
+        "return makeMovementFlags(0, ItemTouchHelper.LEFT);" in dialogs
+        and "ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT" not in dialogs
+        and "installNabdhSmartSwipe(viewPage);" in dialogs,
+    "gesture listener installs before ItemTouchHelper":
+        dialogs.index("installNabdhSmartSwipe(viewPage);") <
+        dialogs.index("viewPage.itemTouchhelper = new ItemTouchHelper("),
+    "gesture respects touch-slop, vertical scroll, and edge back":
+        "getScaledTouchSlop()" in dialogs
+        and "Math.abs(dy) * 1.5f" in dialogs
+        and "downX <= dp(24)" in dialogs,
+    "reverse gesture and tap-outside close":
+        "startingX > 0 && dx < -slop" in dialogs
+        and "close(); // A tap anywhere outside dismisses" in dialogs,
+    "physical spring with damping and stiffness":
+        "new androidx.dynamicanimation.animation.SpringAnimation" in dialogs
+        and "force.setStiffness(550f);" in dialogs
+        and "force.setDampingRatio(0.88f);" in dialogs
+        and "spring.setMinimumVisibleChange(0.7f);" in dialogs,
+    "four actual tappable row views not canvas labels":
+        "nabdhSmartBar.addView(button" in cell
+        and "button.setOnClickListener(" in cell
+        and 'new String[]{"Remind", "Mute", "Pin", "Archive"}' in cell
+        and "row.nabdhSetSmartSwipeActions(index ->" in dialogs,
+    "actions require explicit tap":
+        "nabdhRunSmartAction(dialogId, index)" in dialogs
+        and "performSelectedDialogsAction(selected, archive, true, false)" in dialogs
+        and "performSelectedDialogsAction(selected, pin, true, false)" in dialogs,
+    "card surface remains fixed while reveal slides":
+        "if (translationX < 0 || cornerProgress != 0.0f)" in cell
+        and "nabdhCardBounds.set(dp(7), dp(3)" in cell
+        and "nabdhSmartBar.setAlpha(Math.min(1f, value / dp(100)))" in cell,
+    "haptic once, obeys device vibration preference":
+        "nabdhSwipeHapticTriggered = true;" in cell
+        and "nabdhSwipeHapticTriggered = false;" in cell
+        and "performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);" in cell
+        and "FLAG_IGNORE_GLOBAL_SETTING" not in cell[cell.index("nabdhSwipeHapticTriggered = true;"):cell.index("nabdhSwipeHapticTriggered = true;")+360],
+    "reminder choices and custom date/time":
         "30 * 60_000L" in dialogs and "2 * 60 * 60_000L" in dialogs
         and "Calendar.DAY_OF_YEAR" in dialogs and "DatePickerDialog" in dialogs
         and "NabdhSwipeReminder.cancel" in dialogs,
-    "chat opening uses correct Telegram account": 'putExtra("currentAccount", account)' in receiver
+    "reminder survives process restart and device reboot":
+        "ACTION_BOOT_COMPLETED" in receiver and "setAndAllowWhileIdle" in receiver
+        and "SharedPreferences" in receiver,
+    "reminder identifies account/chat including secret chat":
+        'putExtra("currentAccount", account)' in receiver
         and 'setAction("com.tmessages.openchat")' in receiver
         and "DialogObject.getEncryptedChatId(dialogId)" in receiver,
-    "scheduled alarms persist and reboot": "ACTION_BOOT_COMPLETED" in receiver
-        and "setAndAllowWhileIdle" in receiver
-        and "SharedPreferences" in receiver,
-    "permission respected": "POST_NOTIFICATIONS" in receiver
-        and "POST_NOTIFICATIONS" in dialogs,
-    "rightward short reveal is cancellable": "return 1.1f;" in dialogs
-        and "peek.getTranslationX() > peek.getMeasuredWidth() * 0.22f" in dialogs
-        and "showNabdhSmartSwipeActions(peekDialogId)" in dialogs
-        and "translationX > 0 ? 0.22f : 0.45f" in cell,
-    "rounded tray and translated card": "NabdhGram Smart Swipe: LEFT side action tray" in cell
-        and "nabdhCardBounds.set(dp(7), dp(3)" in cell,
-    "haptics respect device preference and fire once per gesture":
-        "performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);" in cell
-        and "nabdhSwipeHapticTriggered = true;" in cell
-        and "nabdhSwipeHapticTriggered = false;" in cell,
-    "return animation duration softens": "return 230; // Soft return" in dialogs,
-    "receiver registered unexported": any(
-        n.attrib.get(android + "name") == "org.telegram.ui.NabdhSwipeReminder"
-        and n.attrib.get(android + "exported") == "false"
+    "Android 13 notification permission respected":
+        "POST_NOTIFICATIONS" in receiver and "POST_NOTIFICATIONS" in dialogs,
+    "nonexported receiver in manifest": any(
+        n.attrib.get(android+"name") == "org.telegram.ui.NabdhSwipeReminder"
+        and n.attrib.get(android+"exported") == "false"
         for n in manifest.findall(".//receiver")),
 }
-failed = [name for name, result in checks.items() if not result]
-for name, passed in checks.items():
-    print(("PASS " if passed else "FAIL ") + name)
-if failed:
-    raise SystemExit("Smart Swipe V1 overlay incomplete: " + ", ".join(failed))
+for name, ok in checks.items():
+    print(("PASS " if ok else "FAIL ") + name)
+if not all(checks.values()):
+    raise SystemExit("Smart Swipe V1.1 regression check failed")

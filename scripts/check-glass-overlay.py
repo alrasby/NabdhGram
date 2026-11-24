@@ -555,14 +555,14 @@ checks = {
         and "if (left == 0)" in cell
         and "nameWidth -= dp(27);" in cell,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
-    "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 3,
+    "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
     "dialog surface remains drawn during swipe and reveal":
         "if (translationX == 0 && currentRevealProgress == 0.0f" not in cell
         and "if (!isTopic" in cell
         and "canvas.drawRoundRect(nabdhCardBounds" in cell
-        and cell.index("canvas.translate(translationX, 0);") < cell.rindex(
+        and cell.index("canvas.translate(translationX, 0);") < cell.index(
             "canvas.drawRoundRect(nabdhCardBounds")
-        and cell.index("rect.set(getMeasuredWidth() - dp(64)") < cell.rindex(
+        and cell.index("rect.set(getMeasuredWidth() - dp(64)") < cell.index(
             "canvas.drawRoundRect(nabdhCardBounds"),
     "dialog card selection uses native state and matching rounded bounds":
         "final boolean selected = isSelected;" in cell

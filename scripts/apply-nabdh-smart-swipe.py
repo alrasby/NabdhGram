@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Install Smart Swipe V1 on the pinned Telegram source after Glass card overlays.
+"""Smart Swipe V1.1: independent RIGHT touch recognizer; LEFT remains Telegram native.
 
-Preserve native LEFT-swipe actions and Telegram's original account/dialog mutation paths.
-RIGHT-swipe exposes the Smart Swipe palette; no automatic archive/pin/mute.
+A held RIGHT card displays four actual child buttons. A custom SpringAnimation
+controls only RIGHT swipes. Never give RIGHT to ItemTouchHelper: this caused
+stuck translations and unresponsive rows in the previous implementation.
 """
 from pathlib import Path
 import sys
-
 if len(sys.argv) != 2:
     raise SystemExit("Usage: apply-nabdh-smart-swipe.py TELEGRAM_SOURCE")
 root = Path(sys.argv[1])
@@ -18,153 +18,228 @@ dialogs = dialogs_path.read_text(encoding="utf-8")
 cell = cell_path.read_text(encoding="utf-8")
 manifest = manifest_path.read_text(encoding="utf-8")
 
-def replace_once(data, old, new, desc):
-    if data.count(old) != 1:
-        raise SystemExit(f"Smart Swipe upstream anchor mismatch: {desc}, count={data.count(old)}")
-    return data.replace(old, new, 1)
+def once(text, old, new, label):
+    if text.count(old) != 1:
+        raise SystemExit("Smart Swipe upstream anchor mismatch: " + label +
+                         " count=" + str(text.count(old)))
+    return text.replace(old, new, 1)
 
-dialogs = replace_once(dialogs,
-    "                    return makeMovementFlags(0, ItemTouchHelper.LEFT);\n",
-    """                    // Preserve Telegram's LEFT action; the opposite direction opens
-                    // a deliberate Smart Swipe palette. Folder rows retain native handling.
-                    return makeMovementFlags(0, DialogObject.isFolderDialogId(dialogId)
-                            ? ItemTouchHelper.LEFT : ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT);
-""", "movement flags")
+# Preflight must fail if someone accidentally merges the previous gesture
+# implementation into this script later.
+if "ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT" in dialogs:
+    raise SystemExit("Smart Swipe cannot coexist with native RIGHT ItemTouchHelper")
 
-dialogs = replace_once(dialogs, """                if (dialog == null) {
-                    return;
+# Add a dedicated touch listener BEFORE ItemTouchHelper is attached. It only
+# intercepts clear rightward drags after touch slop and rejects vertical moves.
+dialogs = once(dialogs,
+    "            viewPage.itemTouchhelper = new ItemTouchHelper(viewPage.swipeController);",
+    """            installNabdhSmartSwipe(viewPage);
+            viewPage.itemTouchhelper = new ItemTouchHelper(viewPage.swipeController);""",
+    "independent listener before native ItemTouchHelper")
+
+palette = """ 
+    private void nabdhRunSmartAction(long dialogId, int action) {
+        if (getParentActivity() == null || actionBar.isActionModeShowed()) return;
+        TLRPC.Dialog dialog = getMessagesController().dialogs_dict.get(dialogId);
+        if (dialog == null || DialogObject.isFolderDialogId(dialogId)
+                || getMessagesController().isPromoDialog(dialogId, false)) return;
+        if (action == 0) {
+            showNabdhSwipeReminderOptions(dialogId);
+            return;
+        }
+        ArrayList<Long> selected = new ArrayList<>();
+        selected.add(dialogId);
+        if (action == 1) {
+            if (!getMessagesController().isDialogMuted(dialogId, 0)) {
+                NotificationsController.getInstance(currentAccount)
+                        .setDialogNotificationsSettings(dialogId, 0,
+                                NotificationsController.SETTING_MUTE_FOREVER);
+            } else {
+                canMuteCount = 0;
+                canUnmuteCount = 1;
+                performSelectedDialogsAction(selected, mute, true, false);
+            }
+        } else if (action == 2) {
+            canPinCount = isDialogPinned(dialog) ? 0 : 1;
+            performSelectedDialogsAction(selected, pin, true, false);
+        } else if (action == 3) {
+            canUnarchiveCount = folderId == 0 ? 0 : 1;
+            performSelectedDialogsAction(selected, archive, true, false);
+        }
+    }
+
+    private void installNabdhSmartSwipe(ViewPage page) {
+        page.listView.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
+            private DialogCell candidate;
+            private DialogCell expanded;
+            private androidx.dynamicanimation.animation.SpringAnimation spring;
+            private float downX, downY, startingX;
+            private boolean dragging;
+            private boolean consumedDown;
+
+            private void settle(DialogCell row, float target) {
+                if (row == null) return;
+                if (spring != null) spring.cancel();
+                spring = new androidx.dynamicanimation.animation.SpringAnimation(row,
+                        new androidx.dynamicanimation.animation.FloatPropertyCompat<DialogCell>(
+                                "nabdhSmartSwipeX") {
+                            @Override public float getValue(DialogCell value) {
+                                return value.getTranslationX();
+                            }
+                            @Override public void setValue(DialogCell value, float x) {
+                                value.setTranslationX(x);
+                            }
+                        });
+                androidx.dynamicanimation.animation.SpringForce force =
+                        new androidx.dynamicanimation.animation.SpringForce(target);
+                force.setStiffness(550f);
+                force.setDampingRatio(0.88f);
+                spring.setSpring(force);
+                spring.setMinimumVisibleChange(0.7f);
+                spring.start();
+            }
+
+            private void close() {
+                if (expanded != null) {
+                    DialogCell old = expanded;
+                    expanded = null;
+                    old.nabdhClearSmartSwipeActions();
+                    settle(old, 0f);
                 }
+            }
 
-                if (!getMessagesController().isPromoDialog(dialogId, false)""",
-    """                if (dialog == null) {
-                    return;
-                }
-                if (direction == ItemTouchHelper.RIGHT) {
-                    // ItemTouchHelper expects an adapter rebind after a completed swipe.
-                    // The dialog is not removed or modified by merely opening the palette.
-                    final int position = viewHolder.getAdapterPosition();
-                    AndroidUtilities.runOnUIThread(() -> {
-                        if (position >= 0 && position < parentPage.dialogsAdapter.getItemCount()) {
-                            parentPage.dialogsAdapter.notifyItemChanged(position);
-                        } else {
-                            parentPage.dialogsAdapter.notifyDataSetChanged();
+            @Override public boolean onInterceptTouchEvent(RecyclerView recycler,
+                    android.view.MotionEvent event) {
+                int action = event.getActionMasked();
+                if (action == android.view.MotionEvent.ACTION_DOWN) {
+                    consumedDown = false;
+                    dragging = false;
+                    candidate = null;
+                    downX = event.getX();
+                    downY = event.getY();
+                    if (actionBar.isActionModeShowed() || onlySelect
+                            || rightSlidingDialogContainer.hasFragment()
+                            || filterTabsView != null && filterTabsView.isEditing()
+                            || waitingForDialogsAnimationEnd(page)) {
+                        close();
+                        return false;
+                    }
+                    if (expanded != null) {
+                        float cx = event.getX() - expanded.getLeft();
+                        float cy = event.getY() - expanded.getTop();
+                        if (cx < dp(7) || cx > dp(219)
+                                || cy < dp(3) || cy > expanded.getHeight() - dp(3)) {
+                            close(); // A tap anywhere outside dismisses without opening chat.
+                            consumedDown = true;
+                            return true;
                         }
-                        showNabdhSmartSwipeActions(dialogId);
-                    }, 32);
+                        // Allow taps on actual buttons; a horizontal reverse
+                        // drag can still close the tray without invoking an action.
+                        candidate = expanded;
+                        startingX = expanded.getTranslationX();
+                        return false;
+                    }
+                    if (downX <= dp(24)
+                            || downX >= recycler.getWidth() - dp(24)) return false;
+                    android.view.View child = recycler.findChildViewUnder(downX, downY);
+                    if (!(child instanceof DialogCell)) return false;
+                    DialogCell row = (DialogCell) child;
+                    long id = row.getDialogId();
+                    if (DialogObject.isFolderDialogId(id)
+                            || getMessagesController().isPromoDialog(id, false)
+                            || getMessagesController().dialogs_dict.get(id) == null
+                            || page.dialogsType != DIALOGS_TYPE_DEFAULT
+                            && page.dialogsType != DIALOGS_TYPE_FOLDER1
+                            && page.dialogsType != DIALOGS_TYPE_FOLDER2) return false;
+                    candidate = row;
+                    startingX = row.getTranslationX();
+                    return false;
+                }
+                if (action == android.view.MotionEvent.ACTION_MOVE && candidate != null) {
+                    float dx = event.getX() - downX;
+                    float dy = event.getY() - downY;
+                    int slop = android.view.ViewConfiguration.get(
+                            recycler.getContext()).getScaledTouchSlop();
+                    if (((startingX > 0 && dx < -slop)
+                            || (startingX == 0 && dx > slop))
+                            && Math.abs(dx) > Math.abs(dy) * 1.5f
+                            && Math.abs(dy) < dp(36)) {
+                        dragging = true;
+                        if (spring != null) spring.cancel();
+                        recycler.getParent().requestDisallowInterceptTouchEvent(true);
+                        return true;
+                    }
+                    if (Math.abs(dy) > slop * 1.5f
+                            || (startingX == 0 && dx < -slop)) {
+                        candidate = null;
+                    }
+                }
+                if (action == android.view.MotionEvent.ACTION_UP
+                        || action == android.view.MotionEvent.ACTION_CANCEL) candidate = null;
+                return false;
+            }
+
+            @Override public void onTouchEvent(RecyclerView recycler,
+                    android.view.MotionEvent event) {
+                int action = event.getActionMasked();
+                if (consumedDown) {
+                    if (action == android.view.MotionEvent.ACTION_UP
+                            || action == android.view.MotionEvent.ACTION_CANCEL) {
+                        consumedDown = false;
+                    }
                     return;
                 }
-
-                if (!getMessagesController().isPromoDialog(dialogId, false)""",
-    "onSwiped RIGHT handling")
-
-# Keep RIGHT as a cancellable "peek" instead of ItemTouchHelper's
-# destructive full-width swipe animation. The palette opens on release.
-dialogs = replace_once(dialogs,
-    """        public float getSwipeThreshold(RecyclerView.ViewHolder viewHolder) {
-            return 0.45f;
-        }""",
-    """        public float getSwipeThreshold(RecyclerView.ViewHolder viewHolder) {
-            if (viewHolder.itemView instanceof DialogCell
-                    && ((DialogCell) viewHolder.itemView).getTranslationX() > 0) {
-                // Never complete the opposite direction as an off-screen swipe;
-                // open the action palette after a short, cancellable reveal.
-                return 1.1f;
-            }
-            return 0.45f;
-        }""", "short opposite-direction swipe threshold")
-
-dialogs = replace_once(dialogs,
-    """            currentItemViewHolder = viewHolder;
-            if (viewHolder != null && viewHolder.itemView instanceof DialogCell) {
-                ((DialogCell) viewHolder.itemView).swipeCanceled = false;
-            }
-            super.onSelectedChanged(viewHolder, actionState);""",
-    """            if (viewHolder == null && actionState == ItemTouchHelper.ACTION_STATE_IDLE
-                    && currentItemViewHolder != null
-                    && currentItemViewHolder.itemView instanceof DialogCell) {
-                DialogCell peek = (DialogCell) currentItemViewHolder.itemView;
-                if (peek.getTranslationX() > peek.getMeasuredWidth() * 0.22f) {
-                    final long peekDialogId = peek.getDialogId();
-                    if (!DialogObject.isFolderDialogId(peekDialogId)) {
-                        // ItemTouchHelper recovers the cell to its starting position.
-                        // Delay the sheet until the 230ms recovery has finished.
-                        AndroidUtilities.runOnUIThread(
-                                () -> showNabdhSmartSwipeActions(peekDialogId), 240);
+                if (candidate == null || !dragging) return;
+                if (action == android.view.MotionEvent.ACTION_MOVE) {
+                    float dx = event.getX() - downX;
+                    candidate.setTranslationX(Math.max(0f,
+                            Math.min(dp(212), startingX + dx)));
+                } else if (action == android.view.MotionEvent.ACTION_UP
+                        || action == android.view.MotionEvent.ACTION_CANCEL) {
+                    DialogCell row = candidate;
+                    boolean open = action == android.view.MotionEvent.ACTION_UP
+                            && row.getTranslationX() > (startingX > 0 ? dp(135) : dp(68))
+                            && row.getParent() == recycler;
+                    candidate = null;
+                    dragging = false;
+                    if (open) {
+                        if (expanded != null && expanded != row) close();
+                        expanded = row;
+                        final long dialogId = row.getDialogId();
+                        row.nabdhSetSmartSwipeActions(index -> {
+                            if (row.getDialogId() == dialogId) {
+                                close();
+                                nabdhRunSmartAction(dialogId, index);
+                            }
+                        });
+                        settle(row, dp(212));
+                    } else {
+                        settle(row, 0f);
                     }
                 }
             }
-            currentItemViewHolder = viewHolder;
-            if (viewHolder != null && viewHolder.itemView instanceof DialogCell) {
-                ((DialogCell) viewHolder.itemView).swipeCanceled = false;
-            }
-            super.onSelectedChanged(viewHolder, actionState);""",
-    "open menu at swipe recovery")
-cell = replace_once(cell,
-    "drawRevealBackground = Math.abs(translationX) >= getMeasuredWidth() * 0.45f;",
-    "drawRevealBackground = Math.abs(translationX) >= getMeasuredWidth() * (translationX > 0 ? 0.22f : 0.45f);",
-    "direction-aware haptic threshold")
 
-dialogs = replace_once(dialogs,
-    """            if (animationType == ItemTouchHelper.ANIMATION_TYPE_SWIPE_CANCEL) {
-                return 200;""",
-    """            if (animationType == ItemTouchHelper.ANIMATION_TYPE_SWIPE_CANCEL) {
-                return 230; // Soft return, respecting Telegram's own recovery animator.""",
-    "swipe return duration")
-
-palette = """
-    // Smart Swipe V1: a deliberate action picker after the RIGHT reveal.
-    // Never run destructive or state-changing actions just by dragging.
-    private void showNabdhSmartSwipeActions(long dialogId) {
-        if (getParentActivity() == null || actionBar.isActionModeShowed()) {
-            return;
-        }
-        TLRPC.Dialog target = getMessagesController().dialogs_dict.get(dialogId);
-        if (target == null || DialogObject.isFolderDialogId(dialogId)
-                || getMessagesController().isPromoDialog(dialogId, false)) {
-            return;
-        }
-        final boolean rtl = LocaleController.isRTL;
-        final boolean muted = getMessagesController().isDialogMuted(dialogId, 0);
-        final boolean pinned = isDialogPinned(target);
-        final boolean archived = folderId != 0;
-        CharSequence[] choices = new CharSequence[] {
-                rtl ? "ذكّرني بهذه المحادثة" : "Remind me about this chat",
-                muted ? (rtl ? "إلغاء الكتم" : "Unmute") : (rtl ? "كتم المحادثة" : "Mute"),
-                pinned ? (rtl ? "إلغاء التثبيت" : "Unpin") : (rtl ? "تثبيت" : "Pin"),
-                archived ? (rtl ? "إلغاء الأرشفة" : "Unarchive") : (rtl ? "أرشفة" : "Archive")
-        };
-        BottomSheet.Builder menu = new BottomSheet.Builder(getParentActivity());
-        menu.setItems(choices, new int[] {0, 0, 0, 0}, (sheet, which) -> {
-            if (which == 0) {
-                showNabdhSwipeReminderOptions(dialogId);
-                return;
-            }
-            TLRPC.Dialog current = getMessagesController().dialogs_dict.get(dialogId);
-            if (current == null) {
-                return;
-            }
-            ArrayList<Long> selected = new ArrayList<>();
-            selected.add(dialogId);
-            if (which == 1) {
-                boolean nowMuted = getMessagesController().isDialogMuted(dialogId, 0);
-                if (!nowMuted) {
-                    NotificationsController.getInstance(currentAccount)
-                            .setDialogNotificationsSettings(dialogId, 0,
-                                    NotificationsController.SETTING_MUTE_FOREVER);
-                } else {
-                    canMuteCount = 0;
-                    canUnmuteCount = 1;
-                    performSelectedDialogsAction(selected, mute, true, false);
-                }
-            } else if (which == 2) {
-                canPinCount = isDialogPinned(current) ? 0 : 1;
-                performSelectedDialogsAction(selected, pin, true, false);
-            } else if (which == 3) {
-                canUnarchiveCount = folderId == 0 ? 0 : 1;
-                performSelectedDialogsAction(selected, archive, true, false);
+            @Override public void onRequestDisallowInterceptTouchEvent(boolean disallow) {
+                // No global interception; native vertical and LEFT remain untouched.
             }
         });
-        showDialog(menu.create());
+        page.listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrollStateChanged(RecyclerView rv, int state) {
+                // RecyclerView recycles rows while scrolling; clear inline buttons.
+                if (state == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    for (int i = 0; i < rv.getChildCount(); i++) {
+                        android.view.View child = rv.getChildAt(i);
+                        if (child instanceof DialogCell) {
+                            DialogCell row = (DialogCell) child;
+                            if (row.getTranslationX() > 0) {
+                                row.nabdhClearSmartSwipeActions();
+                                row.setTranslationX(0f);
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     private void showNabdhSwipeReminderOptions(long dialogId) {
@@ -257,53 +332,118 @@ palette = """
     }
 
 """
-dialogs = replace_once(dialogs,
+dialogs = once(dialogs,
     "    private class SwipeController extends ItemTouchHelper.Callback {",
     palette + "    private class SwipeController extends ItemTouchHelper.Callback {",
-    "smart swipe palette location")
+    "gesture and reminder integration")
 
-# Native reveal Paint is kept behind the content. Explicitly draw the
-# opposite-direction preview without changing Telegram's original LEFT canvas.
-cell = replace_once(cell,
-    "            float tx = getMeasuredWidth() + translationX;",
-    """            // NabdhGram Smart Swipe: LEFT side action tray for opposite drag.
-            // No allocations in onDraw; the rounded conversation card draws
-            // later on its translated canvas, so its fill cannot flash.
-            if (translationX > 0 && !isTopic) {
-                canvas.save();
-                final float revealed = Math.min(translationX, getMeasuredWidth());
-                canvas.clipRect(0, 0, revealed, getMeasuredHeight());
-                nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
-                        getMeasuredHeight() - dp(3));
-                nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
-                nabdhCardPaint.setColor(Theme.getColor(Theme.key_chats_archiveBackground,
-                        resourcesProvider));
-                canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
-                nabdhCardPaint.setColor(android.graphics.Color.WHITE);
-                nabdhCardPaint.setTextSize(dp(11));
-                nabdhCardPaint.setTextAlign(android.graphics.Paint.Align.CENTER);
-                nabdhCardPaint.setAlpha((int) (225 * Math.min(1f, revealed / dp(85))));
-                final String[] labels = LocaleController.isRTL
-                        ? new String[] {"ذكرني", "كتم", "تثبيت", "أرشفة"}
-                        : new String[] {"Remind", "Mute", "Pin", "Archive"};
-                for (int i = 0; i < labels.length; i++) {
-                    canvas.drawText(labels[i], dp(29 + i * 47),
-                            getMeasuredHeight() / 2f + dp(4), nabdhCardPaint);
-                }
-                nabdhCardPaint.setAlpha(255);
-                nabdhCardPaint.setTextAlign(android.graphics.Paint.Align.LEFT);
-                canvas.restore();
-            }
-            float tx = getMeasuredWidth() + translationX;""",
-    "opposite swipe reveal")
-
-cell = replace_once(cell,
-    "    private boolean drawPinBackground;",
-    """    // One haptic tick per gesture; resets only after the row returns to rest.
+# Real tappable Android views belong to the DialogCell, not a canvas label.
+cell = once(cell, "    private boolean drawPinBackground;",
+    """    public interface NabdhSmartAction { void onAction(int index); }
+    private NabdhSmartAction nabdhSmartAction;
+    private android.widget.LinearLayout nabdhSmartBar;
     private boolean nabdhSwipeHapticTriggered;
+
+    private void nabdhCreateSmartBar(android.content.Context context) {
+        nabdhSmartBar = new android.widget.LinearLayout(context);
+        nabdhSmartBar.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        android.graphics.drawable.GradientDrawable surface =
+                new android.graphics.drawable.GradientDrawable();
+        surface.setColor(Theme.getColor(Theme.key_chats_archiveBackground));
+        surface.setCornerRadius(dp(17));
+        nabdhSmartBar.setBackground(surface);
+        final String[] labels = LocaleController.isRTL ?
+                new String[]{"ذكرني", "كتم", "تثبيت", "أرشفة"} :
+                new String[]{"Remind", "Mute", "Pin", "Archive"};
+        for (int i = 0; i < labels.length; i++) {
+            final int which = i;
+            android.widget.TextView button = new android.widget.TextView(context);
+            button.setText(labels[i]);
+            button.setTextColor(android.graphics.Color.WHITE);
+            button.setTextSize(10);
+            button.setGravity(android.view.Gravity.CENTER);
+            button.setContentDescription(labels[i]);
+            button.setClickable(true);
+            button.setOnClickListener(v -> {
+                if (nabdhSmartAction != null) nabdhSmartAction.onAction(which);
+            });
+            nabdhSmartBar.addView(button, new android.widget.LinearLayout.LayoutParams(
+                    dp(53), android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        nabdhSmartBar.setVisibility(android.view.View.GONE);
+        addView(nabdhSmartBar);
+    }
+
+    public void nabdhSetSmartSwipeActions(NabdhSmartAction callback) {
+        nabdhSmartAction = callback;
+        nabdhSmartBar.bringToFront();
+        nabdhSmartBar.setVisibility(android.view.View.VISIBLE);
+        nabdhSmartBar.setAlpha(1f);
+    }
+
+    public void nabdhClearSmartSwipeActions() {
+        nabdhSmartAction = null;
+        nabdhSmartBar.setVisibility(android.view.View.GONE);
+    }
+
     private boolean drawPinBackground;""",
-    "single-tick haptic state")
-cell = replace_once(cell,
+    "four interactive card buttons")
+
+cell = once(cell, """        super(context);
+        storyParams.allowLongress = true;""",
+    """        super(context);
+        nabdhCreateSmartBar(context);
+        storyParams.allowLongress = true;""", "initialize child action bar")
+
+cell = once(cell,
+    """        int size = getMeasuredHeight() + getMeasuredWidth() << 16;""",
+    """        if (nabdhSmartBar != null) {
+            nabdhSmartBar.measure(
+                    android.view.View.MeasureSpec.makeMeasureSpec(dp(212),
+                            android.view.View.MeasureSpec.EXACTLY),
+                    android.view.View.MeasureSpec.makeMeasureSpec(
+                            Math.max(dp(32), getMeasuredHeight() - dp(6)),
+                            android.view.View.MeasureSpec.EXACTLY));
+            nabdhSmartBar.layout(dp(7), dp(3), dp(219),
+                    getMeasuredHeight() - dp(3));
+        }
+        int size = getMeasuredHeight() + getMeasuredWidth() << 16;""",
+    "layout interactive tray")
+
+# Preserve the same card surface draw ordering as the verified #1036.
+cell = once(cell, "        translationX = value;
+",
+    """        translationX = value;
+        if (nabdhSmartBar != null) {
+            if (value > 0) {
+                nabdhSmartBar.setVisibility(android.view.View.VISIBLE);
+                nabdhSmartBar.setAlpha(Math.min(1f, value / dp(100)));
+            } else {
+                nabdhSmartBar.setVisibility(android.view.View.GONE);
+            }
+        }
+""", "visibility follows swipe translation")
+
+cell = once(cell,
+    """        if (translationX != 0 || cornerProgress != 0.0f) {
+            canvas.save();
+            canvas.translate(0, -translateY);""",
+    """        if (translationX < 0 || cornerProgress != 0.0f) {
+            canvas.save();
+            canvas.translate(0, -translateY);""",
+    "keep native LEFT reveal away from RIGHT tray")
+
+cell = once(cell,
+    """            if (prevValue != drawRevealBackground && archiveHidden == SharedConfig.archiveHidden) {
+                try {
+                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);""",
+    """            if (!prevValue && drawRevealBackground && !nabdhSwipeHapticTriggered
+                    && archiveHidden == SharedConfig.archiveHidden) {
+                nabdhSwipeHapticTriggered = true;
+                try {
+                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);""",
+    "single system-respecting haptic")
+cell = once(cell,
     """            currentRevealProgress = 0f;
             drawRevealBackground = false;
         }
@@ -313,22 +453,10 @@ cell = replace_once(cell,
             nabdhSwipeHapticTriggered = false;
         }
         if (isSliding && !swipeCanceled) {""",
-    "reset haptic at rest")
+    "reset haptic when closed")
 
-cell = replace_once(cell,
-    """            if (prevValue != drawRevealBackground && archiveHidden == SharedConfig.archiveHidden) {
-                try {
-                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);""",
-    """            if (!prevValue && drawRevealBackground && !nabdhSwipeHapticTriggered
-                    && archiveHidden == SharedConfig.archiveHidden) {
-                nabdhSwipeHapticTriggered = true;
-                try {
-                    // Respect system vibration preferences; one tick per gesture.
-                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);""",
-    "haptic threshold")
-
-# A non-exported receiver receives system boot and its own explicit alarms.
-manifest = replace_once(manifest, "</application>",
+# Keep Android-specific storage and boot handling from the existing implementation.
+manifest = once(manifest, "</application>",
     """    <receiver android:name="org.telegram.ui.NabdhSwipeReminder"
               android:enabled="true"
               android:exported="false">
@@ -336,13 +464,13 @@ manifest = replace_once(manifest, "</application>",
             <action android:name="android.intent.action.BOOT_COMPLETED" />
         </intent-filter>
     </receiver>
-</application>""", "alarm receiver manifest")
+</application>""", "nonexported reminder receiver")
+
 dialogs_path.write_text(dialogs, encoding="utf-8")
 cell_path.write_text(cell, encoding="utf-8")
 manifest_path.write_text(manifest, encoding="utf-8")
-# Install the tested reminder implementation from the overlay repository.
 reminder_asset = Path(__file__).resolve().parents[1] / "TMessagesProj/src/main/java/org/telegram/ui/NabdhSwipeReminder.java"
 if not reminder_asset.is_file():
-    raise SystemExit("Smart Swipe reminder source is missing from the overlay repository")
+    raise SystemExit("Missing approved local reminder receiver")
 (ui / "NabdhSwipeReminder.java").write_bytes(reminder_asset.read_bytes())
-print("NabdhGram Smart Swipe V1 source overlay installed.")
+print("Smart Swipe V1.1 installed with independent right gesture and real inline buttons.")
