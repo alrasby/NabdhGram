@@ -24,9 +24,39 @@ themes = [
     ("nabdh_sand.attheme", "NabdhGram • Gray Avalanche Sand", 0xFFD4C4AE, 0xFFE4D7C6, 0xFFD7C8B7,
      "b32ed42b89ac7375e7fddbe6833a506e89fe25436651696af5ff4346a5c46f7f"),
 ]
+# Accept the validated existing archive until the new binary ZIP is staged.
+# Select each preview palette only after verifying the matching asset digest.
+UPDATED_THEME_SPECS = {
+    "nabdh_siri_refined.attheme": (
+        "ec27974ab1930be4a6015d5d907d11acd3fcf08ac79f834d539958abb8a5b2a6",
+        0xFFF0F7F5, 0xFFF8FCFB, 0xFFDFF2F0),
+    "nabdh_soft_mint.attheme": (
+        "2e1d755c59c640b1dd191ac4eda18e8232dc75347b6bef66dc1f80f094dfd011",
+        0xFFECF5F3, 0xFFFFFFFF, 0xFFE5F3F2),
+    "nabdh_dark.attheme": (
+        "fc06d71577698ae0cf6b8879e5175274d5d0def85de1a1369dbaa0ca0627a617",
+        0xFF101B24, 0xFF223942, 0xFF275157),
+    "nabdh_sand.attheme": (
+        "9d81f3276c1db4f0f6edc88aa6d82fbf3338c961407948fe5084a4f5e15f255b",
+        0xFFF3ECE0, 0xFFF3E8D7, 0xFFD7C0A8),
+}
+
+
+def resolve_verified_theme(spec, data):
+    filename, name, background, incoming, outgoing, old_digest = spec
+    digest = hashlib.sha256(data).hexdigest()
+    updated_digest, updated_bg, updated_in, updated_out = UPDATED_THEME_SPECS[filename]
+    if digest == updated_digest:
+        return filename, name, updated_bg, updated_in, updated_out, updated_digest
+    if digest == old_digest:
+        return spec
+    raise SystemExit("Unrecognized SHA-256 for " + filename + ": " + digest)
+
+
 asset_dir = Path(__file__).resolve().parents[1] / "branding" / "themes"
 archive = asset_dir / "NabdhGram_Bundled_Themes.zip"
 available = [asset_dir / spec[0] for spec in themes]
+verified_themes = []
 if archive.is_file():
     # The approved ZIP keeps the four original binary files under branding/themes/.
     # Read only expected members: never extract arbitrary paths from a ZIP.
@@ -40,15 +70,13 @@ if archive.is_file():
             if entry.file_size > 5 * 1024 * 1024:
                 raise SystemExit(f"Theme asset is unexpectedly large: {filename}")
             data = bundled.read(entry)
-            if hashlib.sha256(data).hexdigest() != checksum:
-                raise SystemExit(f"Theme integrity mismatch: {filename}")
+            verified_themes.append(resolve_verified_theme((filename, name, background, incoming, outgoing, checksum), data))
             destination = root / "TMessagesProj/src/main/assets" / filename
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(data)
 elif all(p.is_file() for p in available):
     for spec, original in zip(themes, available):
-        if hashlib.sha256(original.read_bytes()).hexdigest() != spec[5]:
-            raise SystemExit(f"Theme integrity mismatch: {original.name}")
+        verified_themes.append(resolve_verified_theme(spec, original.read_bytes()))
         destination = root / "TMessagesProj/src/main/assets" / original.name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(original, destination)
@@ -56,6 +84,11 @@ elif any(p.is_file() for p in available):
     raise SystemExit("Incomplete theme bundle: all four .attheme assets are required")
 else:
     raise SystemExit("Missing NabdhGram theme ZIP or individual approved .attheme assets")
+
+# Do not register anything until all four resources pass integrity checks.
+if len(verified_themes) != 4 or len({spec[0] for spec in verified_themes}) != 4:
+    raise SystemExit("Invalid bundled theme inventory")
+themes = verified_themes
 
 target = root / "TMessagesProj/src/main/java/org/telegram/ui/ActionBar/Theme.java"
 source = target.read_text(encoding="utf-8")
@@ -111,9 +144,8 @@ is_dark_new = """            if (isDark == UNKNOWN) {
 if source.count(is_dark_old) != 1:
     raise SystemExit("ThemeInfo.isDark fallback anchor changed")
 source = source.replace(is_dark_old, is_dark_new, 1)
-# The approved Sand preset uses WLS= (remote theme wallpaper) instead of WPS
-# embedded bytes. Telegram's asset branch discarded that link by passing null;
-# retain it, exactly as it does for user-imported .attheme files.
+# Preserve Telegram's wallpaper-link handling for legacy WLS assets;
+# updated bundled WPS JPEG wallpaper bytes remain untouched.
 wallpaper_old = "currentColorsNoAccent = getThemeFileValues(null, themeInfo.assetName, null);"
 wallpaper_new = "currentColorsNoAccent = getThemeFileValues(null, themeInfo.assetName, wallpaperLink);"
 if source.count(wallpaper_old) != 1:
