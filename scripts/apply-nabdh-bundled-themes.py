@@ -52,8 +52,8 @@ def resolve_verified_theme(spec, data):
         # before replacing anything in the Telegram build checkout.
         from PIL import Image
         from io import BytesIO
-        marker = data.find(b"WPS\\n")
-        if marker < 0 or data[marker + 4:marker + 7] != b"\\xff\\xd8\\xff":
+        marker = data.find(b"WPS\n")
+        if marker < 0 or data[marker + 4:marker + 7] != b"\xff\xd8\xff":
             raise SystemExit("Missing embedded JPEG wallpaper: " + filename)
         try:
             with Image.open(BytesIO(data[marker + 4:])) as wallpaper:
