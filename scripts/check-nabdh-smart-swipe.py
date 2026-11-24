@@ -89,6 +89,15 @@ checks = {
         "new android.graphics.drawable.RippleDrawable" in cell
         and "lp.setMargins(dp(2), dp(3), dp(2), dp(3));" in cell
         and "pill.setCornerRadius(dp(11));" in cell,
+    "native RIGHT white backing suppressed without changing LEFT":
+        "if (translationX < 0 || (translationX == 0 && cornerProgress != 0.0f))" in cell
+        and "Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite" in cell,
+    "reminder chooser uses NabdhGram-themed rounded Glass options":
+        "nabdhSwipeBlend(background, accent, 0.075f)" in dialogs
+        and "capsule.setCornerRadius(dp(14));" in dialogs
+        and "chooser.setBackgroundColor(background);" in dialogs
+        and "new android.graphics.drawable.RippleDrawable(" in dialogs
+        and "setLayoutDirection(rtl" in dialogs,
     "reminder action offers settings and confirms schedule/cancel":
         "nabdhShowReminderConfirmation(when);" in dialogs
         and "nabdhShowReminderConfirmation(chosen.getTimeInMillis());" in dialogs

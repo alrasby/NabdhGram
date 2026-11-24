@@ -355,22 +355,63 @@ palette = """
                 rtl ? "غدًا صباحًا" : "Tomorrow morning",
                 rtl ? "اختيار موعد" : "Choose date and time"
         };
-        showDialog(new AlertDialog.Builder(getParentActivity())
+        // Use native Telegram AlertDialog, but compose custom themed Glass
+        // options instead of the plain platform list visible in the test video.
+        final android.content.Context context = getParentActivity();
+        final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        final int background = Theme.getColor(Theme.key_dialogBackground);
+        final int foreground = Theme.getColor(Theme.key_dialogTextBlack);
+        android.widget.LinearLayout options = new android.widget.LinearLayout(context);
+        options.setOrientation(android.widget.LinearLayout.VERTICAL);
+        options.setPadding(dp(16), dp(6), dp(16), dp(14));
+        options.setLayoutDirection(rtl
+                ? android.view.View.LAYOUT_DIRECTION_RTL
+                : android.view.View.LAYOUT_DIRECTION_LTR);
+        final AlertDialog chooser = new AlertDialog.Builder(context)
                 .setTitle(rtl ? "تذكير بالمحادثة" : "Chat reminder")
-                .setItems(times, (dialog, which) -> {
-                    if (which == 4) {
-                        NabdhSwipeReminder.cancel(getParentActivity(), currentAccount, dialogId);
-                        nabdhShowReminderConfirmation(0L);
-                        return;
-                    }
-                    if (which == 3) {
-                        showNabdhCustomReminderPicker(dialogId);
-                        return;
-                    }
+                .setView(options)
+                .setNegativeButton(rtl ? "إغلاق" : "Close", null).create();
+        chooser.setBackgroundColor(background);
+        for (int i = 0; i < times.length; i++) {
+            final int option = i;
+            android.widget.TextView item = new android.widget.TextView(context);
+            item.setText(times[i]);
+            item.setTextColor(i == 4 ? accent : foreground);
+            item.setTextSize(15);
+            item.setGravity(android.view.Gravity.CENTER_VERTICAL
+                    | (rtl ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT));
+            item.setPadding(dp(16), 0, dp(16), 0);
+            item.setMinHeight(dp(49));
+            item.setContentDescription(times[i]);
+            android.graphics.drawable.GradientDrawable capsule =
+                    new android.graphics.drawable.GradientDrawable();
+            capsule.setColor(nabdhSwipeBlend(background, accent, 0.075f));
+            capsule.setCornerRadius(dp(14));
+            capsule.setStroke(dp(1), nabdhSwipeBlend(background, accent, 0.22f));
+            item.setBackground(new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(
+                            android.graphics.Color.argb(35,
+                                    android.graphics.Color.red(accent),
+                                    android.graphics.Color.green(accent),
+                                    android.graphics.Color.blue(accent))),
+                    capsule, null));
+            android.widget.LinearLayout.LayoutParams params =
+                    new android.widget.LinearLayout.LayoutParams(
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT, dp(49));
+            params.setMargins(0, dp(4), 0, dp(4));
+            options.addView(item, params);
+            item.setOnClickListener(v -> {
+                chooser.dismiss();
+                if (option == 4) {
+                    NabdhSwipeReminder.cancel(context, currentAccount, dialogId);
+                    nabdhShowReminderConfirmation(0L);
+                } else if (option == 3) {
+                    showNabdhCustomReminderPicker(dialogId);
+                } else {
                     long when;
-                    if (which == 0) {
+                    if (option == 0) {
                         when = System.currentTimeMillis() + 30 * 60_000L;
-                    } else if (which == 1) {
+                    } else if (option == 1) {
                         when = System.currentTimeMillis() + 2 * 60 * 60_000L;
                     } else {
                         java.util.Calendar calendar = java.util.Calendar.getInstance();
@@ -381,10 +422,23 @@ palette = """
                         calendar.set(java.util.Calendar.MILLISECOND, 0);
                         when = calendar.getTimeInMillis();
                     }
-                    NabdhSwipeReminder.schedule(getParentActivity(), currentAccount,
-                            dialogId, when);
+                    NabdhSwipeReminder.schedule(context, currentAccount, dialogId, when);
                     nabdhShowReminderConfirmation(when);
-                }).create());
+                }
+            });
+        }
+        showDialog(chooser);
+    }
+
+    private static int nabdhSwipeBlend(int surface, int accent, float ratio) {
+        final float inv = 1f - ratio;
+        return android.graphics.Color.rgb(
+                Math.round(android.graphics.Color.red(surface) * inv
+                        + android.graphics.Color.red(accent) * ratio),
+                Math.round(android.graphics.Color.green(surface) * inv
+                        + android.graphics.Color.green(accent) * ratio),
+                Math.round(android.graphics.Color.blue(surface) * inv
+                        + android.graphics.Color.blue(accent) * ratio));
     }
 
     private void nabdhShowReminderConfirmation(long when) {
@@ -652,6 +706,19 @@ cell = once(cell,
             return super.onTouchEvent(event);
         }
         if (rightFragmentOpenedProgress""", "button touches bypass story handler")
+
+cell = once(cell,
+    """            if (translationX != 0 || cornerProgress != 0.0f) {
+                canvas.save();
+
+                Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));""",
+    """            // Telegram draws a flat 64dp white backing during a swipe.
+            // Keep it for native LEFT gestures only; Smart Swipe RIGHT owns
+            // its separate rounded tray and must not drag a white rectangle.
+            if (translationX < 0 || (translationX == 0 && cornerProgress != 0.0f)) {
+                canvas.save();
+
+                Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));""", "remove right-swipe white backing without affecting native LEFT")
 
 # Native Telegram reveal-circle work belongs exclusively to the LEFT action.
 # The RIGHT tray paints its own layer and haptics, avoiding offscreen animations.
