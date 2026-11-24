@@ -30,7 +30,7 @@ replacement = """    // Reuse clipping geometry while the user presses a dialog 
                     selectorRect.bottom - 3f * density);
             nabdhDialogSelectorPath.reset();
             nabdhDialogSelectorPath.addRoundRect(nabdhDialogSelectorBounds,
-                    20f * density, 20f * density, android.graphics.Path.Direction.CW);
+                    17f * density, 17f * density, android.graphics.Path.Direction.CW);
             canvas.save();
             canvas.clipPath(nabdhDialogSelectorPath);
         }
