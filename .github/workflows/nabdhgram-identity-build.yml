@@ -284,6 +284,13 @@ jobs:
           set -euo pipefail
           python3 nabdhgram/scripts/apply-glass-selector.py Telegram-upstream
 
+      - name: Install Smart Swipe V1 actions, reminders, and dual-direction reveal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-smart-swipe.py
+          python3 nabdhgram/scripts/apply-nabdh-smart-swipe.py Telegram-upstream
+
       - name: Apply rounded Glass chat bubble defaults
         shell: bash
         run: |
@@ -590,6 +597,7 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-chat-lock-privacy.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
+          python3 nabdhgram/scripts/check-nabdh-smart-swipe.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-toggle-hitboxes.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-notification-typography.py Telegram-upstream
           python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream
