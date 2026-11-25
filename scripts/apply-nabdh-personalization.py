@@ -17,6 +17,7 @@ def once(text, before, after, desc):
 
 for file, destination in [
     ("NabdhHomePrefs.java", "Components/NabdhHomePrefs.java"),
+    ("NabdhStorageAudit.java", "Components/NabdhStorageAudit.java"),
     ("NabdhPersonalizeActivity.java", "NabdhPersonalizeActivity.java"),
     ("NabdhVideoActivity.java", "NabdhVideoActivity.java"),
     ("NabdhCameraGalleryActivity.java", "NabdhCameraGalleryActivity.java"),
@@ -102,6 +103,12 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
                             .setNegativeButton(org.telegram.messenger.LocaleController.isRTL ? "إغلاق" : "Close", null)
                             .show();
                 });
+
+        org.telegram.ui.Components.NabdhCompactSettings.row(context, content,
+                org.telegram.messenger.LocaleController.isRTL ? "إدارة التخزين الذكية" : "Smart Storage",
+                org.telegram.messenger.LocaleController.isRTL ? "تحليل مساحة التطبيق والبيانات دون حذفها" : "Analyze app data without deleting it",
+                R.drawable.settings_data,
+                () -> org.telegram.ui.Components.NabdhStorageAudit.show(context));
 
         // User-visible native home, bubble and Camera2 settings under themes.
         org.telegram.ui.Components.NabdhCompactSettings.header(context, content,
