@@ -691,5 +691,5 @@ old = "LocaleController.getString(R.string.FontSizePreviewLine2)"
 if preview_source.count(old) != 1:
     raise SystemExit("Font preview localization anchor changed")
 preview_cell.write_text(preview_source.replace(old,
-    "LocaleController.getString(R.string.NabdhMuscatPreviewLine2)", 1), encoding="utf-8")
+    "getContext().getString(R.string.NabdhMuscatPreviewLine2)", 1), encoding="utf-8")
 print("PASS: Muscat preview resource variants:", count)
