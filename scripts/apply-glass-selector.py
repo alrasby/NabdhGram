@@ -23,14 +23,20 @@ replacement = """    // Reuse clipping geometry while the user presses a dialog 
                 || org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(selectorView);
         if (nabdhCard) {
             final float density = getResources().getDisplayMetrics().density;
+            // Dialog cards keep the established swipe geometry; settings
+            // selectors follow the same live geometry as their surfaces.
+            final boolean classic = NabdhAppearancePrefs.uiStyle() == NabdhAppearancePrefs.UI_CLASSIC;
+            final float inset = (nabdhDialog ? 7f : classic ? 0f : 10f) * density;
+            final float vertical = (nabdhDialog ? 3f : classic ? 0f : 2f) * density;
+            final float radius = (nabdhDialog ? 17f : NabdhAppearancePrefs.surfaceRadius()) * density;
             nabdhDialogSelectorBounds.set(
-                    selectorRect.left + 7f * density,
-                    selectorRect.top + 3f * density,
-                    selectorRect.right - 7f * density,
-                    selectorRect.bottom - 3f * density);
+                    selectorRect.left + inset,
+                    selectorRect.top + vertical,
+                    selectorRect.right - inset,
+                    selectorRect.bottom - vertical);
             nabdhDialogSelectorPath.reset();
             nabdhDialogSelectorPath.addRoundRect(nabdhDialogSelectorBounds,
-                    17f * density, 17f * density, android.graphics.Path.Direction.CW);
+                    radius, radius, android.graphics.Path.Direction.CW);
             canvas.save();
             canvas.clipPath(nabdhDialogSelectorPath);
         }
