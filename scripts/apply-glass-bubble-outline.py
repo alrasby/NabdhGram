@@ -141,13 +141,13 @@ anchor = """        canvas.drawPath(path, p);
 replacement = """        // Draw the native bubble path with a bounded translucent fill for
         // unselected text. Preserve the original theme hue, wallpaper, native
         // geometry, selected states and media bubbles.
-        final boolean nabdhFrostedText = paintToUse == null
+        final boolean nabdhFrostedText = org.telegram.ui.Components.NabdhAppearancePrefs.glassSurface() && paintToUse == null
                 && currentType == TYPE_TEXT && !themePreview && !isSelected
                 && crossfadeFromDrawable == null;
         final int nabdhOriginalPaintAlpha = p.getAlpha();
         if (nabdhFrostedText) {
             nabdhDrawFrostedWallpaper(canvas, path);
-            p.setAlpha(nabdhOriginalPaintAlpha * 136 / 255);
+            p.setAlpha(nabdhOriginalPaintAlpha * (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == org.telegram.ui.Components.NabdhAppearancePrefs.UI_GLASS ? 112 : 136) / 255);
         }
         canvas.drawPath(path, p);
         if (nabdhFrostedText) {
@@ -155,7 +155,7 @@ replacement = """        // Draw the native bubble path with a bounded transluce
         }
         // NabdhGram Glass: outline gradient text and media bubbles using the
         // existing Telegram shape, preserving grouping and tail geometry.
-        if (paintToUse == null && gradientShader != null
+        if (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() != org.telegram.ui.Components.NabdhAppearancePrefs.UI_CLASSIC && paintToUse == null && gradientShader != null
                 && (currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
             nabdhBubbleEdge.setStyle(Paint.Style.STROKE);
             nabdhBubbleEdge.setStrokeWidth(dp(1));
@@ -189,18 +189,18 @@ cached_stroke = """                background.setBounds(bounds);
                 // than canvas.drawPath. Apply the same bounded translucency
                 // here, then restore the shared drawable alpha immediately.
                 // Do not alter selected, preview or media backgrounds.
-                final boolean nabdhFrostedText = currentType == TYPE_TEXT
+                final boolean nabdhFrostedText = org.telegram.ui.Components.NabdhAppearancePrefs.glassSurface() && currentType == TYPE_TEXT
                         && !themePreview && !isSelected && crossfadeFromDrawable == null;
                 final int nabdhOriginalAlpha = background.getAlpha();
                 if (nabdhFrostedText) {
                     nabdhDrawFrostedWallpaper(canvas, makePath());
-                    background.setAlpha(nabdhOriginalAlpha * 136 / 255);
+                    background.setAlpha(nabdhOriginalAlpha * (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == org.telegram.ui.Components.NabdhAppearancePrefs.UI_GLASS ? 112 : 136) / 255);
                 }
                 background.draw(canvas);
                 if (nabdhFrostedText) {
                     background.setAlpha(nabdhOriginalAlpha);
                 }
-                if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
+                if (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() != org.telegram.ui.Components.NabdhAppearancePrefs.UI_CLASSIC && (currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
                     int stroke = getColor(isOut
                             ? Theme.key_chat_outBubbleShadow : Theme.key_chat_inBubbleShadow);
                     if (Color.alpha(stroke) < 30) {
