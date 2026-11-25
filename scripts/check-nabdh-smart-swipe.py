@@ -87,8 +87,8 @@ checks = {
         and '"Unmute"' in cell and '"Unpin"' in cell and '"Unarchive"' in cell
         and "nabdhSetSmartSwipeActions(NabdhSmartAction callback," in cell,
     "native READ reveal clipped to same rounded Glass card":
-        "nabdhSwipeRevealClip.reset();" in cell
-        and "canvas.clipPath(nabdhSwipeRevealClip);" in cell
+        "nabdhCardOutline.reset();" in cell
+        and "canvas.clipPath(nabdhCardOutline);" in cell
         and "nabdhCardBounds.set(dp(7), dp(3)" in cell,
     "four independent rounded pill backgrounds and Android ripple":
         "new android.graphics.drawable.RippleDrawable" in cell
@@ -97,14 +97,15 @@ checks = {
     "RIGHT tray has opaque themed reveal and clipped interactive buttons":
         "surface.setColor(nabdhBlendThemeColor(" in cell
         and "final int glassAccent = Theme.getColor(Theme.key_chats_archiveBackground);" in cell
-        and "if (translationX > 0 && !isTopic" in cell
+        and "if (translationX > 0 && nabdhOwnsCard())" in cell
         and cell.index("Stationary reveal surface:") < cell.index("canvas.translate(translationX, 0);"),
     "native reveal does not run when spring keeps stale corner progress on RIGHT":
         "if (translationX < 0)" in cell
         and "drawRevealBackground = translationX < 0" in cell,
-    "native RIGHT white backing suppressed without changing LEFT":
-        "if (translationX < 0 || (translationX == 0 && cornerProgress != 0.0f))" in cell
-        and "Theme.dialogs_pinnedPaint.setColor(nabdhBlendThemeColor(" in cell,
+    "native backing excluded for owned cards in both directions":
+        "if (!nabdhOwnsCard() && (translationX != 0 || cornerProgress != 0.0f))" in cell
+        and "canvas.clipRect(Math.max(nabdhCardBounds.left, nabdhCardBounds.right + translationX)" in cell
+        and "Math.min(nabdhCardBounds.right, nabdhCardBounds.left + translationX)" in cell,
     "reminder chooser uses NabdhGram-themed rounded Glass options":
         "nabdhSwipeBlend(background, accent, 0.075f)" in dialogs
         and "capsule.setCornerRadius(dp(14));" in dialogs

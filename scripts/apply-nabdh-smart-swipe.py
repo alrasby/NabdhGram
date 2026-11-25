@@ -625,8 +625,6 @@ cell = once(cell, "    private boolean drawPinBackground;",
         nabdhSmartBar.setClipBounds(nabdhSmartTrayClip);
     }
 
-    private final android.graphics.Path nabdhSwipeRevealClip =
-            new android.graphics.Path();
     private boolean drawPinBackground;""",
     "four interactive card buttons")
 
@@ -670,13 +668,16 @@ cell = once(cell,
     """        if (translationX != 0 || cornerProgress != 0.0f) {
             canvas.save();
             canvas.translate(0, -translateY);""",
-    """        if (translationX > 0 && !isTopic && !(getParent() instanceof ProfileChannelCell)) {
+    """        if (translationX > 0 && nabdhOwnsCard()) {
             // Stationary reveal surface: paint before the content translation,
             // so spring-back never exposes the unstyled list canvas.
             canvas.save();
             canvas.translate(0, -translateY);
-            nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
-                    getMeasuredHeight() - dp(3));
+            nabdhClipCard(canvas);
+            // Only the exposed strip is painted; the moving card owns the rest.
+            canvas.clipRect(nabdhCardBounds.left, nabdhCardBounds.top,
+                    Math.min(nabdhCardBounds.right, nabdhCardBounds.left + translationX),
+                    nabdhCardBounds.bottom);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
             nabdhCardPaint.setColor(nabdhBlendThemeColor(
                     Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider),
@@ -690,12 +691,11 @@ cell = once(cell,
             // Native Telegram's rectangular READ reveal previously bled
             // beyond the rounded Glass surface. Clip its canvas to the same
             // bounds without allocating a Path on each frame.
-            nabdhSwipeRevealClip.reset();
-            nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
-                    getMeasuredHeight() - dp(3));
-            nabdhSwipeRevealClip.addRoundRect(nabdhCardBounds, dp(17), dp(17),
-                    android.graphics.Path.Direction.CW);
-            canvas.clipPath(nabdhSwipeRevealClip);""",
+            if (nabdhOwnsCard()) {
+                nabdhClipCard(canvas);
+                canvas.clipRect(Math.max(nabdhCardBounds.left, nabdhCardBounds.right + translationX),
+                        nabdhCardBounds.top, nabdhCardBounds.right, nabdhCardBounds.bottom);
+            }""",
     "clip original LEFT reveal to rounded Glass card")
 
 cell = once(cell,
@@ -764,15 +764,10 @@ cell = once(cell,
     """            // Telegram draws a flat 64dp white backing during a swipe.
             // Keep it for native LEFT gestures only; Smart Swipe RIGHT owns
             // its separate rounded tray and must not drag a white rectangle.
-            if (translationX < 0 || (translationX == 0 && cornerProgress != 0.0f)) {
+            // Native rectangular backing is unnecessary for owned cards:
+            // the opaque translated card fill is their sole content surface.
+            if (!nabdhOwnsCard() && (translationX != 0 || cornerProgress != 0.0f)) {
                 canvas.save();
-                // The native backing must stay inside the moving card outline.
-                nabdhSwipeRevealClip.reset();
-                nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
-                        getMeasuredHeight() - dp(3));
-                nabdhSwipeRevealClip.addRoundRect(nabdhCardBounds, dp(17), dp(17),
-                        android.graphics.Path.Direction.CW);
-                canvas.clipPath(nabdhSwipeRevealClip);
 
                 Theme.dialogs_pinnedPaint.setColor(nabdhBlendThemeColor(
                         Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider),

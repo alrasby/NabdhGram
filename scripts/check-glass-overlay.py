@@ -559,8 +559,8 @@ checks = {
     "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 3,
     "dialog surface remains drawn during swipe and reveal":
         "if (translationX == 0 && currentRevealProgress == 0.0f" not in cell
-        and "if (!isTopic" in cell
-        and "if (translationX > 0 && !isTopic" in cell
+        and "if (nabdhOwnsCard())" in cell
+        and "if (translationX > 0 && nabdhOwnsCard())" in cell
         and cell.index("Stationary reveal surface:") < cell.index("canvas.drawRoundRect(nabdhCardBounds")
         < cell.index("canvas.translate(translationX, 0);")
         and cell.count("canvas.drawRoundRect(nabdhCardBounds", cell.index("canvas.translate(translationX, 0);")) == 2

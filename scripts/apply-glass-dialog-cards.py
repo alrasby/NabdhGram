@@ -19,6 +19,22 @@ if s.count(field_anchor) != 1:
 s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded chat surfaces.
     private final android.graphics.Paint nabdhCardPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
     private final android.graphics.RectF nabdhCardBounds = new android.graphics.RectF();
+    private final android.graphics.Path nabdhCardOutline = new android.graphics.Path();
+    private boolean nabdhOwnsCard() {
+        return !isTopic && !(getParent() instanceof ProfileChannelCell)
+                && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12);
+    }
+    private void nabdhSetCardBounds() {
+        nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
+                getMeasuredHeight() - dp(3));
+    }
+    private void nabdhClipCard(android.graphics.Canvas canvas) {
+        nabdhSetCardBounds();
+        nabdhCardOutline.reset();
+        nabdhCardOutline.addRoundRect(nabdhCardBounds, dp(17), dp(17),
+                android.graphics.Path.Direction.CW);
+        canvas.clipPath(nabdhCardOutline);
+    }
 """ + """    // Blend resolved Telegram theme colors instead of fixed light/dark palette values.
     // This keeps imported .attheme palettes effective for the custom dialog cards.
     private static int nabdhBlendThemeColor(int base, int tint, float ratio) {
@@ -47,9 +63,7 @@ s = s.replace(anchor, """        // This canvas already carries Telegram's trans
         // action colors stay behind it, and the same card follows its content.
         // The actual archive folder row is supported; topic/profile rows keep
         // their original native drawing.
-        if (!isTopic
-                && !(getParent() instanceof ProfileChannelCell)
-                && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12)) {
+        if (nabdhOwnsCard()) {
             final int surface = Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
             final int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
             final int alternate = Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider);
@@ -68,8 +82,7 @@ s = s.replace(anchor, """        // This canvas already carries Telegram's trans
                     ? surface : uiStyle == 1 && !selected && !pinned && !archived
                     ? nabdhBlendThemeColor(surface, alternate, 0.30f) : fill);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
-            nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
-                    getMeasuredHeight() - dp(3));
+            nabdhSetCardBounds();
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             nabdhCardPaint.setColor(nabdhBlendThemeColor(
                     archived ? alternate : surface, accent, pinned ? 0.34f : 0.22f));
