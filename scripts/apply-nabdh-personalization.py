@@ -94,7 +94,7 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
                                     (dialog, which) -> {
                                         org.telegram.ui.Components.NabdhAppearancePrefs.setUiStyle(context, which);
                                         dialog.dismiss();
-                                        content.invalidate();
+                                        nabdhInvalidateStyleTree(content.getRootView());
                                         content.requestLayout();
                                         android.widget.Toast.makeText(context,
                                                 styles[which], android.widget.Toast.LENGTH_SHORT).show();
@@ -124,7 +124,17 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
 
         org.telegram.ui.Components.NabdhCompactSettings.header''', "appearance menu after themes")
 marker = '''    private void nabdhAppearancePicker(Context context, String kind) {'''
-method = '''    private void nabdhPersonalize(Context context, String kind) {
+method = '''    private static void nabdhInvalidateStyleTree(android.view.View view) {
+        view.invalidate();
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                nabdhInvalidateStyleTree(group.getChildAt(i));
+            }
+        }
+    }
+
+    private void nabdhPersonalize(Context context, String kind) {
         android.content.Intent intent = new android.content.Intent(context,
                 NabdhPersonalizeActivity.class);
         intent.putExtra(NabdhPersonalizeActivity.EXTRA_SECTION, kind);
