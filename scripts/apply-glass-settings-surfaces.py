@@ -138,6 +138,10 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     private static final class GlassCardLayers extends android.graphics.drawable.RippleDrawable {
         private int lastTint;
         private int lastStyle = NabdhAppearancePrefs.uiStyle();
+        @Override public void draw(@NonNull Canvas canvas) {
+            refreshThemeTint();
+            super.draw(canvas);
+        }
         GlassCardLayers() {
             super(android.content.res.ColorStateList.valueOf(
                     Theme.getColor(Theme.key_listSelector)),
