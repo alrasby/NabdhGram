@@ -659,22 +659,29 @@ for directory in sorted(res_dir.glob("values*")):
     match = pattern.search(strings.read_text(encoding="utf-8"))
     if not match:
         continue
-    original = match.group(1)
+    # Decode XML entities first, then serialize Android string syntax once.
+    # AAPT interprets apostrophes even when originally written as &apos;.
+    import xml.etree.ElementTree as ET
+    from xml.sax.saxutils import escape
+    original = ET.fromstring("<string>" + match.group(1) + "</string>").text or ""
     localized = original
     for old, new in city_pairs:
         localized = localized.replace(old, new)
     if directory.name == "values":
-        localized = "It&apos;s morning here in Muscat &#128526;"
+        localized = "It's morning here in Muscat 😎"
     elif directory.name == "values-ar":
-        localized = "الوقت صباح هنا في مسقط &#128526;"
+        localized = "الوقت صباح هنا في مسقط 😎"
     elif localized == original:
-        # Unknown spelling or a different upstream example: retain a safe
-        # Muscat fallback rather than silently displaying an old city.
-        localized = "It&apos;s morning here in Muscat &#128526;"
+        localized = "It's morning here in Muscat 😎"
         print("Muscat preview fallback:", directory.name)
+    # Preserve valid upstream Android escapes; normalize only quotes that
+    # are not already escaped. XML escaping is a separate final step.
+    localized = re.sub(r"(?<!\\)['\"]", lambda m: "\\" + m.group(0), localized)
+    serialized = escape(localized)
     output = directory / "nabdh_muscat_preview.xml"
-    output.write_text('<resources>\n    <string name="NabdhMuscatPreviewLine2">'
-                      + localized + '</string>\n</resources>\n', encoding="utf-8")
+    xml = '<resources>\n    <string name="NabdhMuscatPreviewLine2">' + serialized + '</string>\n</resources>\n'
+    assert ET.fromstring(xml).find("string").text == localized
+    output.write_text(xml, encoding="utf-8")
     count += 1
 assert (res_dir / "values/nabdh_muscat_preview.xml").is_file()
 assert (res_dir / "values-ar/nabdh_muscat_preview.xml").is_file()
