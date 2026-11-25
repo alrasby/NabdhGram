@@ -137,6 +137,7 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
 
     private static final class GlassCardLayers extends android.graphics.drawable.RippleDrawable {
         private int lastTint;
+        private int lastStyle = NabdhAppearancePrefs.uiStyle();
         GlassCardLayers() {
             super(android.content.res.ColorStateList.valueOf(
                     Theme.getColor(Theme.key_listSelector)),
@@ -147,14 +148,21 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
             android.graphics.drawable.GradientDrawable mask =
                     new android.graphics.drawable.GradientDrawable();
             mask.setColor(Color.WHITE);
-            mask.setCornerRadius(AndroidUtilities.dp(20));
+            mask.setCornerRadius(AndroidUtilities.dp(NabdhAppearancePrefs.surfaceRadius()));
+            final boolean classic = NabdhAppearancePrefs.uiStyle() == NabdhAppearancePrefs.UI_CLASSIC;
             return new android.graphics.drawable.InsetDrawable(mask,
-                    AndroidUtilities.dp(10), AndroidUtilities.dp(2),
-                    AndroidUtilities.dp(10), AndroidUtilities.dp(2));
+                    AndroidUtilities.dp(classic ? 0 : 10), AndroidUtilities.dp(classic ? 0 : 2),
+                    AndroidUtilities.dp(classic ? 0 : 10), AndroidUtilities.dp(classic ? 0 : 2));
         }
         void refreshThemeTint() {
             // Called during RecyclerView decoration. Updating the RippleDrawable
             // unconditionally here would schedule an endless draw/invalidate loop.
+            int style = NabdhAppearancePrefs.uiStyle();
+            if (style != lastStyle) {
+                lastStyle = style;
+                setDrawableByLayerId(android.R.id.mask, makeRippleMask());
+                invalidateSelf();
+            }
             int tint = Theme.getColor(Theme.key_listSelector);
             if (tint != lastTint) {
                 lastTint = tint;
