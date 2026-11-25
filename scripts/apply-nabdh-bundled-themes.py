@@ -198,7 +198,20 @@ replace_cell(
                 // Use a readable two-line label only in this 76dp mini-card.
                 String cardName = name.startsWith("NabdhGram • ")
                         ? name.substring("NabdhGram • ".length()) : name;
-                int split = cardName.lastIndexOf(' ');
+                // Split by measured width, not by the last word: long names
+                // such as Gray Avalanche Sand should remain balanced.
+                int split = -1;
+                float best = Float.MAX_VALUE;
+                for (int pos = cardName.indexOf(' '); pos >= 0;
+                        pos = cardName.indexOf(' ', pos + 1)) {
+                    float a = textPaint.measureText(cardName, 0, pos);
+                    float b = textPaint.measureText(cardName, pos + 1, cardName.length());
+                    float score = Math.max(a, b);
+                    if (score < best) {
+                        best = score;
+                        split = pos;
+                    }
+                }
                 String first = split > 0 ? cardName.substring(0, split) : cardName;
                 String second = split > 0 ? cardName.substring(split + 1) : "";
                 first = TextUtils.ellipsize(first, textPaint, maxWidth, TextUtils.TruncateAt.END).toString();
@@ -309,6 +322,8 @@ replace_cell(
                 .getSharedPreferences("nabdh_theme_gallery", Activity.MODE_PRIVATE);
         final String key = night ? "previousNightTheme" : "previousDayTheme";
         final Theme.ThemeInfo previous = Theme.getTheme(prefs.getString(key, ""));
+        // These are Telegram's own stable bundled defaults, not new themes.
+        final Theme.ThemeInfo defaultChoice = Theme.getTheme(night ? "Night" : "Blue");
         android.widget.LinearLayout content = new android.widget.LinearLayout(context);
         content.setOrientation(android.widget.LinearLayout.VERTICAL);
         content.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(10),
@@ -460,6 +475,25 @@ replace_cell(
             restore.setOnClickListener(v -> {
                 if (shown[0] != null) shown[0].dismiss();
                 selectTheme(previous, null);
+            });
+        }
+        if (defaultChoice != null && defaultChoice != selected) {
+            android.widget.TextView reset = new android.widget.TextView(context);
+            reset.setText(arabic ? "استعادة ثيم Telegram الافتراضي" :
+                    "Restore Telegram default theme");
+            reset.setTextSize(14);
+            reset.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+            reset.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12),
+                    AndroidUtilities.dp(12), AndroidUtilities.dp(12));
+            content.addView(reset);
+            reset.setOnClickListener(v -> {
+                Theme.ThemeInfo before = night
+                        ? Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
+                if (before != null && before != defaultChoice) {
+                    prefs.edit().putString(key, before.getKey()).apply();
+                }
+                if (shown[0] != null) shown[0].dismiss();
+                selectTheme(defaultChoice, null); // Persist with Telegram's native API.
             });
         }
         android.widget.ScrollView scrolling = new android.widget.ScrollView(context);
