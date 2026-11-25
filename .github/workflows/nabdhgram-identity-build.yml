@@ -987,6 +987,8 @@ jobs:
               sys.exit("Release is missing 32-bit ARM libraries")
           PY
           sha256sum dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
+          python3 nabdhgram/scripts/report-apk-size.py dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk | tee apk-size-audit.md
+          cat apk-size-audit.md >> "$GITHUB_STEP_SUMMARY"
           echo "### NabdhGram APK" >> "$GITHUB_STEP_SUMMARY"
           echo "APK mode: ${{ inputs.release_mode && 'privately signed Release' || 'experimental Debug' }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Filename: nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk" >> "$GITHUB_STEP_SUMMARY"
@@ -1055,6 +1057,7 @@ jobs:
             nabdhgram-play-bundle-build.log
             play-bundle-sha256.txt
             play-bundle-size-audit.md
+            apk-size-audit.md
             nabdhgram-manifest-check.log
             identity-patch.log
             apk-paths.txt
