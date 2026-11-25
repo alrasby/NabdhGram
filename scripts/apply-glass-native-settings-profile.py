@@ -37,19 +37,24 @@ source = source.replace(old, """        canvas.clipRect(action.rect);
         // Consistent Glass tiles behind all profile action icons, with a
         // stronger native press state. These never intercept touch handling.
         int nabdhAccent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        final int nabdhStyle = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();
+        final float nabdhRadius = nabdhStyle == 0 ? 0f : nabdhStyle == 1
+                ? Math.min(getRoundRadius(), AndroidUtilities.dp(16))
+                : nabdhStyle == 2 ? Math.min(getRoundRadius(), AndroidUtilities.dp(24))
+                : getRoundRadius();
         nabdhPressPaint.setStyle(Paint.Style.FILL);
-        nabdhPressPaint.setColor(android.graphics.Color.argb(hit == action ? 52 : 19,
+        nabdhPressPaint.setColor(android.graphics.Color.argb(hit == action ? 52 : nabdhStyle == 0 ? 0 : nabdhStyle == 1 ? 30 : 19,
                 android.graphics.Color.red(nabdhAccent),
                 android.graphics.Color.green(nabdhAccent),
                 android.graphics.Color.blue(nabdhAccent)));
-        canvas.drawRoundRect(action.rect, getRoundRadius(), getRoundRadius(), nabdhPressPaint);
+        canvas.drawRoundRect(action.rect, nabdhRadius, nabdhRadius, nabdhPressPaint);
         nabdhPressPaint.setStyle(Paint.Style.STROKE);
         nabdhPressPaint.setStrokeWidth(AndroidUtilities.dpf2(.75f));
-        nabdhPressPaint.setColor(android.graphics.Color.argb(hit == action ? 95 : 53,
+        nabdhPressPaint.setColor(android.graphics.Color.argb(nabdhStyle < 2 ? 0 : hit == action ? 95 : 53,
                 android.graphics.Color.red(nabdhAccent),
                 android.graphics.Color.green(nabdhAccent),
                 android.graphics.Color.blue(nabdhAccent)));
-        canvas.drawRoundRect(action.rect, getRoundRadius(), getRoundRadius(), nabdhPressPaint);
+        canvas.drawRoundRect(action.rect, nabdhRadius, nabdhRadius, nabdhPressPaint);
         nabdhPressPaint.setStyle(Paint.Style.FILL);
 
         updateBounds(action);""", 1)
