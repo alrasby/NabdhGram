@@ -412,11 +412,11 @@ modify("ActionBar/MessageDrawable.java", [
         """                if (nabdhFrostedText) {
                     background.setAlpha(nabdhOriginalAlpha);
                 }
-                if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {""",
+                if (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() != org.telegram.ui.Components.NabdhAppearancePrefs.UI_CLASSIC && (currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {""",
         """                if (nabdhFrostedText) {
                     background.setAlpha(nabdhOriginalAlpha);
                 }
-                if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
+                if (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() != org.telegram.ui.Components.NabdhAppearancePrefs.UI_CLASSIC && (currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected) {
                     // Semi-transparent theme accent under the message glyphs:
                     // makes Glass visible for cached solid native bubbles too.
                     int tint = getColor(isOut
@@ -426,7 +426,7 @@ modify("ActionBar/MessageDrawable.java", [
                     }
                     nabdhBubbleEdge.setStyle(Paint.Style.FILL);
                     nabdhBubbleEdge.setColor(tint);
-                    nabdhBubbleEdge.setAlpha((int) (42f * alpha / 255f));
+                    nabdhBubbleEdge.setAlpha((int) ((org.telegram.ui.Components.NabdhAppearancePrefs.glassSurface() ? 42f : 0f) * alpha / 255f));
                     canvas.drawPath(makePath(), nabdhBubbleEdge);""",
         1
     ),
