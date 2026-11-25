@@ -519,9 +519,10 @@ checks = {
         and "ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider)" in composer,
     "dialog selector rounded clipping installed": "selectorView instanceof org.telegram.ui.Cells.DialogCell" in selector
         and "canvas.clipPath(nabdhDialogSelectorPath)" in selector
-        and "selectorRect.left + 7f * density" in selector
-        and "selectorRect.bottom - 3f * density" in selector
-        and "17f * density, 17f * density" in selector,
+        and "(nabdhDialog ? 7f : classic ? 0f : 10f) * density" in selector
+        and "(nabdhDialog ? 3f : classic ? 0f : 2f) * density" in selector
+        and "(nabdhDialog ? 17f : NabdhAppearancePrefs.surfaceRadius()) * density" in selector
+        and "radius, radius, android.graphics.Path.Direction.CW" in selector,
     "selector canvas state restored": "if (nabdhCard) {" in selector and "canvas.restore();" in selector,
     "all section labels honor normal-weight selected typography":
         'labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf"))' in dialogs,
