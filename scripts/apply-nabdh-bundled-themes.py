@@ -691,5 +691,27 @@ old = "LocaleController.getString(R.string.FontSizePreviewLine2)"
 if preview_source.count(old) != 1:
     raise SystemExit("Font preview localization anchor changed")
 preview_cell.write_text(preview_source.replace(old,
-    "getContext().getString(R.string.NabdhMuscatPreviewLine2)", 1), encoding="utf-8")
+    "nabdhMuscatPreviewLine()", 1), encoding="utf-8")
+# Resolve the actual in-app locale, not the device configuration. Use a
+# configuration-scoped resource lookup rather than changing global resources.
+preview_source = preview_cell.read_text(encoding="utf-8")
+class_end = preview_source.rfind("}")
+if class_end < 0:
+    raise SystemExit("Preview class end missing")
+helper = """
+    private String nabdhMuscatPreviewLine() {
+        java.util.Locale locale = LocaleController.getInstance().getCurrentLocale();
+        if (locale == null) locale = java.util.Locale.ENGLISH;
+        if ("ar".equals(locale.getLanguage())) {
+            return "الوقت صباح هنا في مسقط 😎";
+        }
+        android.content.res.Configuration configuration =
+                new android.content.res.Configuration(getContext().getResources().getConfiguration());
+        configuration.setLocale(locale);
+        return getContext().createConfigurationContext(configuration)
+                .getString(R.string.NabdhMuscatPreviewLine2);
+    }
+"""
+preview_cell.write_text(preview_source[:class_end] + helper +
+                        preview_source[class_end:], encoding="utf-8")
 print("PASS: Muscat preview resource variants:", count)
