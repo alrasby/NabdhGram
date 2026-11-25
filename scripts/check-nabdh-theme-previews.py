@@ -92,4 +92,12 @@ assert 'Math.max(a, b)' in preview
 assert 'TextUtils.ellipsize(first, textPaint, maxWidth' in preview
 assert 'TextUtils.ellipsize(second, textPaint, maxWidth' in preview
 assert 'Theme.getCurrentNightTheme() : Theme.getCurrentTheme()' in preview
+assert "fixed.addView(mock, block)" in preview
+assert "content.removeView(mock)" in preview
+assert ".setView(fixed)" in preview
+assert '"Name personal copy"' in preview
+assert 'String copyName = chosen + ".attheme";' in preview
+assert "Theme.getTheme(copyName)" in preview
+assert "nabdhInvalidThemeName(chosen)" in preview
+assert "System.currentTimeMillis()" not in preview
 print("PASS: exactly four owned themes retained, previews use stable palette and cached Paint; native selection preserved")
