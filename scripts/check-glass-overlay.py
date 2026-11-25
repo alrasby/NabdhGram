@@ -572,7 +572,8 @@ checks = {
         and "canvas.drawRoundRect(rect, dp(17), dp(17), Theme.dialogs_tabletSeletedPaint);" in cell,
     "dialog borders use subtle theme-aware stroke":
         "pinned ? 0.34f : 0.22f" in cell
-        and "nabdhCardPaint.setAlpha(176);" in cell,
+        and "final int uiStyle = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();" in cell
+        and "nabdhCardPaint.setAlpha(uiStyle == 0 ? 0 : uiStyle == 1 ? 70 : uiStyle == 2 ? 220 : 176);" in cell,
     "dialog card has no experimental swipe alpha interpolation":
         "Math.abs(translationX) / dp(56f)" not in cell
         and "swipeFade" not in cell
