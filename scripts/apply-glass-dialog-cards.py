@@ -63,6 +63,7 @@ s = s.replace(anchor, """        // This canvas already carries Telegram's trans
                     : nabdhBlendThemeColor(surface, alternate, 0.55f);
             // Keep Telegram's selection feedback, but confine our Glass
             // surface to the same rounded bounds for every dialog row.
+            final int uiStyle = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();
             nabdhCardPaint.setColor(fill);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
             nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
@@ -72,7 +73,7 @@ s = s.replace(anchor, """        // This canvas already carries Telegram's trans
                     archived ? alternate : surface, accent, pinned ? 0.34f : 0.22f));
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
             nabdhCardPaint.setStrokeWidth(dp(1));
-            nabdhCardPaint.setAlpha(176);
+            nabdhCardPaint.setAlpha(uiStyle == 0 ? 0 : uiStyle == 1 ? 70 : uiStyle == 2 ? 220 : 176);
             canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             nabdhCardPaint.setAlpha(255);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
