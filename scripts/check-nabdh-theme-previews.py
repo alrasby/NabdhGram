@@ -99,5 +99,13 @@ assert '"Name personal copy"' in preview
 assert 'String copyName = chosen + ".attheme";' in preview
 assert "Theme.getTheme(copyName)" in preview
 assert "nabdhInvalidThemeName(chosen)" in preview
-assert "System.currentTimeMillis()" not in preview
+assert 'String copyName = "Nabdh Personal "' not in preview
+prefs = (root / "java/org/telegram/ui/Components/NabdhAppearancePrefs.java").read_text(encoding="utf-8")
+surface = (root / "java/org/telegram/ui/Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+category = (root / "java/org/telegram/ui/NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
+assert '"ui_style_v2"' in prefs
+assert 'putInt(UI_STYLE, style)' in prefs
+assert 'NabdhAppearancePrefs.surfaceRadius()' in surface
+assert 'NabdhAppearancePrefs.glassSurface()' in surface
+assert 'NabdhAppearancePrefs.setUiStyle(context, which)' in category
 print("PASS: exactly four owned themes retained, previews use stable palette and cached Paint; native selection preserved")
