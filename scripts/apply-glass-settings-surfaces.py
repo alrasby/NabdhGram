@@ -183,15 +183,28 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
             final int blue = (Color.blue(base) * 82 + Color.blue(accent) * 18) / 100;
             float inset = AndroidUtilities.dp(10);
             float vertical = AndroidUtilities.dp(2);
-            float round = AndroidUtilities.dp(20);
+            final int style = NabdhAppearancePrefs.uiStyle();
+            float round = AndroidUtilities.dp(NabdhAppearancePrefs.surfaceRadius());
+            if (style == NabdhAppearancePrefs.UI_CLASSIC) {
+                inset = 0;
+                vertical = 0;
+            }
             rect.set(bounds.left + inset, bounds.top + vertical,
                     bounds.right - inset, bounds.bottom - vertical);
             if (rect.width() <= 0 || rect.height() <= 0) return;
             fill.setStyle(Paint.Style.FILL);
             // A partially translucent surface lets the active theme canvas
             // show through instead of painting another opaque pale-blue row.
-            fill.setColor(Color.argb(218 * opacity / 255, red, green, blue));
+            final boolean glass = NabdhAppearancePrefs.glassSurface();
+            if (style == NabdhAppearancePrefs.UI_CLASSIC) {
+                fill.setColor(base);
+            } else if (!glass) {
+                fill.setColor(Color.rgb(red, green, blue));
+            } else {
+                fill.setColor(Color.argb((style == NabdhAppearancePrefs.UI_GLASS ? 185 : 218) * opacity / 255, red, green, blue));
+            }
             canvas.drawRoundRect(rect, round, round, fill);
+            if (!glass) return;
             edge.setStyle(Paint.Style.STROKE);
             edge.setStrokeWidth(AndroidUtilities.dpf2(.8f));
             edge.setColor(Color.argb(73 * opacity / 255,
