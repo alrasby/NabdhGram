@@ -698,8 +698,25 @@ preview_source = preview_cell.read_text(encoding="utf-8")
 class_end = preview_source.rfind("}")
 if class_end < 0:
     raise SystemExit("Preview class end missing")
+# Generate a Java replacement table from the same reviewed locale spellings.
+import json
+java_pairs = ", ".join("{" + json.dumps(a, ensure_ascii=False) + ", " +
+                       json.dumps(b, ensure_ascii=False) + "}" for a, b in city_pairs)
 helper = """
     private String nabdhMuscatPreviewLine() {
+        // The native sample already resolves the selected Telegram language,
+        // including downloaded packs. Replace only its city, not its grammar.
+        String nativeSample = LocaleController.getString(R.string.FontSizePreviewLine2);
+        if (nativeSample != null && nativeSample.contains("دبي")) {
+            return nativeSample.replace("دبي", "مسقط");
+        }
+        if (nativeSample != null) {
+            for (String[] pair : new String[][] {""" + java_pairs + """}) {
+                if (nativeSample.contains(pair[0])) {
+                    return nativeSample.replace(pair[0], pair[1]);
+                }
+            }
+        }
         java.util.Locale locale = LocaleController.getInstance().getCurrentLocale();
         if (locale == null) locale = java.util.Locale.ENGLISH;
         if ("ar".equals(locale.getLanguage())) {
