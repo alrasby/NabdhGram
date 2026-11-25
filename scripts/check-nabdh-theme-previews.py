@@ -81,4 +81,15 @@ assert '"lastDarkTheme" : "lastDayTheme"' in preview
 assert "Theme.switchThemeWithReveal(themeInfo, false, -1, from)" in preview
 assert "Theme.setCurrentNightTheme(themeInfo)" in preview
 assert "EmojiThemes.saveCustomTheme(themeInfo, themeInfo.currentAccentId)" in preview
+# Final V2 gallery checks: do not mutate imported assets or change
+# native selection. Defaults must come from Telegram's own registered IDs.
+assert 'Theme.getTheme(night ? "Night" : "Blue")' in preview
+assert 'selectTheme(defaultChoice, null)' in preview
+assert 'prefs.edit().putString(key, before.getKey()).apply();' in preview
+assert '"Restore Telegram default theme"' in preview
+assert 'for (int pos = cardName.indexOf(' in preview
+assert 'Math.max(a, b)' in preview
+assert 'TextUtils.ellipsize(first, textPaint, maxWidth' in preview
+assert 'TextUtils.ellipsize(second, textPaint, maxWidth' in preview
+assert 'Theme.getCurrentNightTheme() : Theme.getCurrentTheme()' in preview
 print("PASS: exactly four owned themes retained, previews use stable palette and cached Paint; native selection preserved")
