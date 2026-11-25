@@ -184,8 +184,8 @@ palette = """
                             close();
                             return true; // Outside tap dismisses without chat opening.
                         }
-                        int visual = Math.min(3, Math.max(0, (int)((cx - dp(7)) / dp(53))));
-                        pressedAction = LocaleController.isRTL ? 3 - visual : visual;
+                        pressedAction = expanded.nabdhSmartActionAt(cx, cy);
+                        if (pressedAction >= 0) expanded.nabdhSetSmartPressed(pressedAction);
                         return true;
                     }
                     if (downX <= dp(24)
@@ -250,7 +250,10 @@ palette = """
                         DialogCell row = expanded;
                         int actionIndex = pressedAction;
                         boolean click = action == android.view.MotionEvent.ACTION_UP
-                                && Math.abs(dx) < slop && Math.abs(dy) < slop;
+                                && Math.abs(dx) < slop && Math.abs(dy) < slop
+                                && row != null && row.nabdhSmartActionAt(
+                                        event.getX() - row.getLeft(), event.getY() - row.getTop()) == actionIndex;
+                        if (row != null) row.nabdhSetSmartPressed(-1);
                         consumedDown = false;
                         pressedAction = -1;
                         if (row != null && row.getParent() == recycler
@@ -285,6 +288,8 @@ palette = """
                         final long dialogId = row.getDialogId();
                         TLRPC.Dialog current = getMessagesController().dialogs_dict.get(dialogId);
                         if (current == null) {
+                            expanded = null;
+                            row.nabdhClearSmartSwipeActions();
                             settle(row, 0f);
                             return;
                         }
@@ -577,6 +582,28 @@ cell = once(cell, "    private boolean drawPinBackground;",
         nabdhUpdateSmartTrayClip(translationX);
     }
 
+    public int nabdhSmartActionAt(float x, float y) {
+        if (nabdhSmartBar == null || nabdhSmartAction == null
+                || nabdhSmartBar.getVisibility() != android.view.View.VISIBLE) return -1;
+        float localX = x - nabdhSmartBar.getLeft();
+        float localY = y - nabdhSmartBar.getTop();
+        if (localX < 0 || localX >= Math.min(nabdhSmartBar.getWidth(), translationX)
+                || localY < 0 || localY >= nabdhSmartBar.getHeight()) return -1;
+        for (int i = 0; i < nabdhSmartBar.getChildCount(); i++) {
+            android.view.View button = nabdhSmartBar.getChildAt(i);
+            if (localX >= button.getLeft() && localX < button.getRight()
+                    && localY >= button.getTop() && localY < button.getBottom()) return i;
+        }
+        return -1;
+    }
+
+    public void nabdhSetSmartPressed(int index) {
+        if (nabdhSmartBar == null) return;
+        for (int i = 0; i < nabdhSmartBar.getChildCount(); i++) {
+            nabdhSmartBar.getChildAt(i).setPressed(i == index);
+        }
+    }
+
     public void nabdhPerformSmartAction(int index) {
         if (nabdhSmartAction != null && index >= 0 && index < 4) {
             android.view.View button = nabdhSmartBar.getChildAt(index);
@@ -586,6 +613,7 @@ cell = once(cell, "    private boolean drawPinBackground;",
 
     public void nabdhClearSmartSwipeActions() {
         nabdhSmartAction = null;
+        nabdhSetSmartPressed(-1);
         nabdhSmartBar.setVisibility(android.view.View.GONE);
     }
 
@@ -698,11 +726,8 @@ cell = once(cell,
     """    @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {""",
     """    private boolean nabdhHitSmartAction(android.view.MotionEvent event) {
-        return nabdhSmartBar != null && nabdhSmartAction != null
-                && nabdhSmartBar.getVisibility() == android.view.View.VISIBLE
-                && translationX >= dp(140)
-                && event.getX() >= dp(7) && event.getX() <= dp(219)
-                && event.getY() >= dp(3) && event.getY() <= getHeight() - dp(3);
+        return translationX >= dp(140)
+                && nabdhSmartActionAt(event.getX(), event.getY()) >= 0;
     }
 
     @Override
@@ -741,6 +766,13 @@ cell = once(cell,
             // its separate rounded tray and must not drag a white rectangle.
             if (translationX < 0 || (translationX == 0 && cornerProgress != 0.0f)) {
                 canvas.save();
+                // The native backing must stay inside the moving card outline.
+                nabdhSwipeRevealClip.reset();
+                nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
+                        getMeasuredHeight() - dp(3));
+                nabdhSwipeRevealClip.addRoundRect(nabdhCardBounds, dp(17), dp(17),
+                        android.graphics.Path.Direction.CW);
+                canvas.clipPath(nabdhSwipeRevealClip);
 
                 Theme.dialogs_pinnedPaint.setColor(nabdhBlendThemeColor(
                         Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider),

@@ -22,12 +22,12 @@ public final class NabdhStorageAudit {
     }
     private static String group(String name, String parent) {
         String lower = name.toLowerCase(Locale.ROOT);
+        if (parent.contains("nabdh_camera")) return "camera";
         if (lower.endsWith(".db") || lower.endsWith(".db-wal") || lower.endsWith(".db-shm")
-                || lower.endsWith(".sqlite") || lower.endsWith(".sqlite-wal")
+                || lower.endsWith(".db-journal") || lower.endsWith(".sqlite") || lower.endsWith(".sqlite-wal")
                 || lower.endsWith(".sqlite-shm") || lower.endsWith(".sqlite-journal")) return "db";
         if (lower.endsWith(".tflite") || lower.endsWith(".task") || lower.endsWith(".gguf")
                 || lower.endsWith(".onnx") || lower.endsWith(".bin") && parent.contains("model")) return "model";
-        if (parent.contains("nabdh_camera")) return "camera";
         if (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")
                 || lower.endsWith(".webp") || lower.endsWith(".mp4") || lower.endsWith(".ogg")
                 || lower.endsWith(".opus") || lower.endsWith(".mp3") || lower.endsWith(".pdf")) return "media";
@@ -86,7 +86,26 @@ public final class NabdhStorageAudit {
                 boolean[] partial = {false};
                 long cache = walk(app.getCacheDir(), totals, visited, cancelled, partial);
                 for (File f : app.getExternalCacheDirs()) cache += walk(f, totals, visited, cancelled, partial);
-                long privateData = walk(new File(app.getApplicationInfo().dataDir), totals, visited, cancelled, partial);
+                File dataRoot = new File(app.getApplicationInfo().dataDir);
+                long privateData = 0;
+                File[] roots = dataRoot.listFiles();
+                TreeMap<String,Long> rootSizes = new TreeMap<>();
+                if (roots == null) partial[0] = true;
+                else for (File dir : roots) {
+                    if (cancelled.get()) break;
+                    if (!dir.isDirectory()) {
+                        if (dir.isFile()) {
+                            long n = dir.length();
+                            privateData += n;
+                            totals.put("other", totals.getOrDefault("other", 0L) + n);
+                        }
+                        continue;
+                    }
+                    if (java.nio.file.Files.isSymbolicLink(dir.toPath())) continue;
+                    long n = walk(dir, totals, visited, cancelled, partial);
+                    privateData += n;
+                    if (n > 0) rootSizes.put(dir.getName(), n);
+                }
                 long external = 0;
                 for (File f : app.getExternalFilesDirs(null)) external += walk(f, totals, visited, cancelled, partial);
                 StringBuilder out = new StringBuilder();
@@ -96,6 +115,13 @@ public final class NabdhStorageAudit {
                 String[] keys = {"db","media","camera","model","theme","other"};
                 String[] names = ar ? new String[]{"قواعد البيانات وملفاتها","وسائط معروفة","صور الكاميرا الخاصة","ملفات النماذج","الثيمات","ملفات أخرى"}
                         : new String[]{"Databases and sidecars","Recognized media","Private camera","Model files","Themes","Other files"};
+                out.append(ar ? "\n\nأكبر المجلدات الداخلية:" : "\n\nLargest internal directories:");
+                java.util.ArrayList<java.util.Map.Entry<String,Long>> ranked = new java.util.ArrayList<>(rootSizes.entrySet());
+                ranked.sort((a,b) -> Long.compare(b.getValue(), a.getValue()));
+                for (int i=0; i<Math.min(8, ranked.size()); i++) {
+                    java.util.Map.Entry<String,Long> entry = ranked.get(i);
+                    out.append("\n").append(entry.getKey()).append(": ").append(size(entry.getValue()));
+                }
                 out.append(ar ? "\n\nتصنيف الملفات (يشمل الكاش):" : "\n\nFile categories (including cache):");
                 for (int i=0;i<keys.length;i++) out.append("\n").append(names[i]).append(": ").append(size(totals.getOrDefault(keys[i],0L)));
                 out.append(ar ? "\n\nهذا تقدير للملفات المقروءة، وليس قياس Android الكامل. لم تُحذف أي ملفات." : "\n\nReadable-file estimate, not Android's full storage accounting. No files deleted.");

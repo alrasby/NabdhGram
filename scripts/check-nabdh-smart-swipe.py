@@ -74,7 +74,10 @@ checks = {
         "page.listView.cancelClickRunnables(true);" in dialogs
         and "consumedDown = true;" in dialogs
         and "row.nabdhPerformSmartAction(actionIndex);" in dialogs
-        and "pressedAction = LocaleController.isRTL ? 3 - visual : visual;" in dialogs,
+        and "pressedAction = expanded.nabdhSmartActionAt(cx, cy);" in dialogs
+        and "row.nabdhSmartActionAt(" in dialogs
+        and "button.getLeft()" in cell and "button.getRight()" in cell
+        and "nabdhSetSmartPressed(-1)" in cell,
     "reverse swipe closes the tray without tapping":
         "expanded.setTranslationX(Math.max(0f, dp(212) + dx));" in dialogs
         and "row.getTranslationX() < dp(135)" in dialogs,
