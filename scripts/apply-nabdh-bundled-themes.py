@@ -632,3 +632,57 @@ replace_cell(
 
 cell.write_text(cell_src, encoding="utf-8")
 print("PASS: NabdhGram theme cards show mini chats and readable two-line labels")
+
+
+# Use an app-owned key so downloaded Telegram language packs cannot restore
+# the original Dubai sample. Preserve existing translations where available.
+import re
+city_pairs = (
+    ("Дубае", "Маскате"), ("Дубая", "Маската"), ("Дубай", "Маскат"),
+    ("Дубаї", "Маскаті"), ("Дубаю", "Маскату"), ("Дубай", "Маскат"),
+    ("دبئی", "مسقط"), ("دُبَيّ", "مسقط"), ("دبي", "مسقط"), ("دبی", "مسقط"),
+    ("दुबई", "मस्कट"), ("দুবাই", "মাস্কাট"), ("دوبۍ", "مسقط"),
+    ("杜拜", "馬斯喀特"), ("迪拜", "马斯喀特"), ("ドバイ", "マスカット"),
+    ("두바이", "무스카트"), ("ดูไบ", "มัสกัต"), ("ဒူဘိုင်း", "မတ်စ်ကတ်"),
+    ("Ντουμπάι", "Μουσκάτ"), ("דובאי", "מוסקט"), ("Դուբայում", "Մասկատում"),
+    ("დუბაიში", "მასკატში"), ("Дубайд", "Маскатад"),
+    ("Dubaiju", "Maskatu"), ("Dubaijā", "Maskatā"), ("Dubaï", "Mascate"),
+    ("Dubái", "Mascate"), ("Dubaj", "Maskat"), ("Dubai", "Muscat"),
+)
+res_dir = root / "TMessagesProj/src/main/res"
+pattern = re.compile(r'<string\s+name="FontSizePreviewLine2"[^>]*>(.*?)</string>', re.S)
+count = 0
+for directory in sorted(res_dir.glob("values*")):
+    strings = directory / "strings.xml"
+    if not strings.is_file():
+        continue
+    match = pattern.search(strings.read_text(encoding="utf-8"))
+    if not match:
+        continue
+    original = match.group(1)
+    localized = original
+    for old, new in city_pairs:
+        localized = localized.replace(old, new)
+    if directory.name == "values":
+        localized = "It&apos;s morning here in Muscat &#128526;"
+    elif directory.name == "values-ar":
+        localized = "الوقت صباح هنا في مسقط &#128526;"
+    elif localized == original:
+        # Unknown spelling or a different upstream example: retain a safe
+        # Muscat fallback rather than silently displaying an old city.
+        localized = "It&apos;s morning here in Muscat &#128526;"
+        print("Muscat preview fallback:", directory.name)
+    output = directory / "nabdh_muscat_preview.xml"
+    output.write_text('<resources>\n    <string name="NabdhMuscatPreviewLine2">'
+                      + localized + '</string>\n</resources>\n', encoding="utf-8")
+    count += 1
+assert (res_dir / "values/nabdh_muscat_preview.xml").is_file()
+assert (res_dir / "values-ar/nabdh_muscat_preview.xml").is_file()
+preview_cell = root / "TMessagesProj/src/main/java/org/telegram/ui/Cells/ThemePreviewMessagesCell.java"
+preview_source = preview_cell.read_text(encoding="utf-8")
+old = "LocaleController.getString(R.string.FontSizePreviewLine2)"
+if preview_source.count(old) != 1:
+    raise SystemExit("Font preview localization anchor changed")
+preview_cell.write_text(preview_source.replace(old,
+    "LocaleController.getString(R.string.NabdhMuscatPreviewLine2)", 1), encoding="utf-8")
+print("PASS: Muscat preview resource variants:", count)
