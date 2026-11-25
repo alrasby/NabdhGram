@@ -513,10 +513,8 @@ cell = once(cell, "    private boolean drawPinBackground;",
         // The row itself has a Glass fill. Avoid a second nearly opaque
         // windowBackgroundWhite panel underneath it as the card slides.
         final int glassAccent = Theme.getColor(Theme.key_chats_archiveBackground);
-        surface.setColor(android.graphics.Color.argb(30,
-                android.graphics.Color.red(glassAccent),
-                android.graphics.Color.green(glassAccent),
-                android.graphics.Color.blue(glassAccent)));
+        surface.setColor(nabdhBlendThemeColor(
+                Theme.getColor(Theme.key_windowBackgroundGray), glassAccent, 0.20f));
         surface.setCornerRadius(dp(17));
         nabdhSmartBar.setBackground(surface);
         final String[] labels = LocaleController.isRTL ?
@@ -576,6 +574,7 @@ cell = once(cell, "    private boolean drawPinBackground;",
         nabdhSmartBar.bringToFront();
         nabdhSmartBar.setVisibility(android.view.View.VISIBLE);
         nabdhSmartBar.setAlpha(1f);
+        nabdhUpdateSmartTrayClip(translationX);
     }
 
     public void nabdhPerformSmartAction(int index) {
@@ -588,6 +587,14 @@ cell = once(cell, "    private boolean drawPinBackground;",
     public void nabdhClearSmartSwipeActions() {
         nabdhSmartAction = null;
         nabdhSmartBar.setVisibility(android.view.View.GONE);
+    }
+
+    private final android.graphics.Rect nabdhSmartTrayClip = new android.graphics.Rect();
+    private void nabdhUpdateSmartTrayClip(float translation) {
+        if (nabdhSmartBar == null) return;
+        int width = Math.max(0, Math.min(dp(212), Math.round(translation)));
+        nabdhSmartTrayClip.set(0, 0, width, Math.max(0, getMeasuredHeight() - dp(6)));
+        nabdhSmartBar.setClipBounds(nabdhSmartTrayClip);
     }
 
     private final android.graphics.Path nabdhSwipeRevealClip =
@@ -612,6 +619,7 @@ cell = once(cell,
                             android.view.View.MeasureSpec.EXACTLY));
             nabdhSmartBar.layout(dp(7), dp(3), dp(219),
                     getMeasuredHeight() - dp(3));
+            nabdhUpdateSmartTrayClip(translationX);
         }
         int size = getMeasuredHeight() + getMeasuredWidth() << 16;""",
     "layout interactive tray")
@@ -622,7 +630,8 @@ cell = once(cell, "        translationX = value;\n",
         if (nabdhSmartBar != null) {
             if (value > 0) {
                 nabdhSmartBar.setVisibility(android.view.View.VISIBLE);
-                nabdhSmartBar.setAlpha(Math.min(1f, value / dp(100)));
+                nabdhSmartBar.setAlpha(1f);
+                nabdhUpdateSmartTrayClip(value);
             } else {
                 nabdhSmartBar.setVisibility(android.view.View.GONE);
             }
@@ -633,7 +642,21 @@ cell = once(cell,
     """        if (translationX != 0 || cornerProgress != 0.0f) {
             canvas.save();
             canvas.translate(0, -translateY);""",
-    """        if (translationX < 0) {
+    """        if (translationX > 0 && !isTopic && !(getParent() instanceof ProfileChannelCell)) {
+            // Stationary reveal surface: paint before the content translation,
+            // so spring-back never exposes the unstyled list canvas.
+            canvas.save();
+            canvas.translate(0, -translateY);
+            nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
+                    getMeasuredHeight() - dp(3));
+            nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
+            nabdhCardPaint.setColor(nabdhBlendThemeColor(
+                    Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider),
+                    Theme.getColor(Theme.key_chats_archiveBackground, resourcesProvider), 0.20f));
+            canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
+            canvas.restore();
+        }
+        if (translationX < 0) {
             canvas.save();
             canvas.translate(0, -translateY);
             // Native Telegram's rectangular READ reveal previously bled
@@ -719,7 +742,9 @@ cell = once(cell,
             if (translationX < 0 || (translationX == 0 && cornerProgress != 0.0f)) {
                 canvas.save();
 
-                Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));""", "remove right-swipe white backing without affecting native LEFT")
+                Theme.dialogs_pinnedPaint.setColor(nabdhBlendThemeColor(
+                        Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider),
+                        Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider), 0.55f));""", "remove right-swipe white backing without affecting native LEFT")
 
 # Native Telegram reveal-circle work belongs exclusively to the LEFT action.
 # The RIGHT tray paints its own layer and haptics, avoiding offscreen animations.

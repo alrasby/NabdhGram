@@ -44,7 +44,9 @@ checks = {
     "card surface remains fixed while reveal slides":
         "if (translationX < 0)" in cell
         and "nabdhCardBounds.set(dp(7), dp(3)" in cell
-        and "nabdhSmartBar.setAlpha(Math.min(1f, value / dp(100)))" in cell,
+        and "nabdhUpdateSmartTrayClip(value);" in cell
+        and "nabdhSmartBar.setClipBounds(nabdhSmartTrayClip);" in cell
+        and "nabdhSmartBar.setAlpha(Math.min" not in cell,
     "haptic once, obeys device vibration preference":
         "nabdhSwipeHapticTriggered = true;" in cell
         and "nabdhSwipeHapticTriggered = false;" in cell
@@ -89,15 +91,17 @@ checks = {
         "new android.graphics.drawable.RippleDrawable" in cell
         and "lp.setMargins(dp(2), dp(3), dp(2), dp(3));" in cell
         and "pill.setCornerRadius(dp(11));" in cell,
-    "RIGHT tray has no opaque window background":
-        "surface.setColor(android.graphics.Color.argb(30," in cell
-        and "final int glassAccent = Theme.getColor(Theme.key_chats_archiveBackground);" in cell,
+    "RIGHT tray has opaque themed reveal and clipped interactive buttons":
+        "surface.setColor(nabdhBlendThemeColor(" in cell
+        and "final int glassAccent = Theme.getColor(Theme.key_chats_archiveBackground);" in cell
+        and "if (translationX > 0 && !isTopic" in cell
+        and cell.index("Stationary reveal surface:") < cell.index("canvas.translate(translationX, 0);"),
     "native reveal does not run when spring keeps stale corner progress on RIGHT":
         "if (translationX < 0)" in cell
         and "drawRevealBackground = translationX < 0" in cell,
     "native RIGHT white backing suppressed without changing LEFT":
         "if (translationX < 0 || (translationX == 0 && cornerProgress != 0.0f))" in cell
-        and "Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite" in cell,
+        and "Theme.dialogs_pinnedPaint.setColor(nabdhBlendThemeColor(" in cell,
     "reminder chooser uses NabdhGram-themed rounded Glass options":
         "nabdhSwipeBlend(background, accent, 0.075f)" in dialogs
         and "capsule.setCornerRadius(dp(14));" in dialogs
