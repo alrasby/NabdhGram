@@ -75,9 +75,9 @@ s = once(s,
     "&& (currentType == TYPE_TEXT || currentType == TYPE_MEDIA)\n                && !themePreview && !isSelected",
     "gradient bubble type guard")
 s = once(s,
-    """final boolean nabdhFrostedText = currentType == TYPE_TEXT
+    """final boolean nabdhFrostedText = org.telegram.ui.Components.NabdhAppearancePrefs.glassSurface() && currentType == TYPE_TEXT
                         && !themePreview && !isSelected && crossfadeFromDrawable == null;""",
-    """final boolean nabdhFrostedText =
+    """final boolean nabdhFrostedText = org.telegram.ui.Components.NabdhAppearancePrefs.glassSurface() &&
                         (currentType == TYPE_TEXT || currentType == TYPE_MEDIA)
                         && !themePreview && !isSelected && crossfadeFromDrawable == null;""",
     "cached bubble type guard")
@@ -89,7 +89,7 @@ s = once(s, "nabdhDrawFrostedWallpaper(canvas, makePath());",
     "if (currentType == TYPE_TEXT) nabdhDrawFrostedWallpaper(canvas, makePath());",
     "cached wallpaper guard")
 s = once(s,
-    "p.setAlpha(nabdhOriginalPaintAlpha * 136 / 255);",
+    "p.setAlpha(nabdhOriginalPaintAlpha * (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == org.telegram.ui.Components.NabdhAppearancePrefs.UI_GLASS ? 112 : 136) / 255);",
     """p.setAlpha(nabdhOriginalPaintAlpha *
                     org.telegram.ui.Components.NabdhBubblePalette.backgroundAlpha(
                         org.telegram.ui.Components.NabdhGlassStyle.current(),
@@ -98,7 +98,7 @@ s = once(s,
                         currentType == TYPE_MEDIA) / 255);""",
     "gradient normalized opacity")
 s = once(s,
-    "background.setAlpha(nabdhOriginalAlpha * 136 / 255);",
+    "background.setAlpha(nabdhOriginalAlpha * (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == org.telegram.ui.Components.NabdhAppearancePrefs.UI_GLASS ? 112 : 136) / 255);",
     """background.setAlpha(nabdhOriginalAlpha *
                             org.telegram.ui.Components.NabdhBubblePalette.backgroundAlpha(
                                 org.telegram.ui.Components.NabdhGlassStyle.current(),
@@ -123,7 +123,7 @@ cached_only_tint = """                    // Semi-transparent theme accent under
                     }
                     nabdhBubbleEdge.setStyle(Paint.Style.FILL);
                     nabdhBubbleEdge.setColor(tint);
-                    nabdhBubbleEdge.setAlpha((int) (42f * alpha / 255f));
+                    nabdhBubbleEdge.setAlpha((int) ((org.telegram.ui.Components.NabdhAppearancePrefs.glassSurface() ? 42f : 0f) * alpha / 255f));
                     canvas.drawPath(makePath(), nabdhBubbleEdge);
 """
 s = once(s, cached_only_tint, "", "cached-only duplicate Glass tint")

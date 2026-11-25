@@ -345,7 +345,7 @@ for cell_name in ("TextCell", "TextSettingsCell", "TextCheckCell", "TextCheckCel
     if cell_src.count(before_divider) != 1:
         raise SystemExit(f"{cell_name}: divider draw anchor changed")
     cell_src = cell_src.replace(before_divider,
-        "        if (needDivider && !org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this)) {",
+        "        if (needDivider && (!org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this) || org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == 0)) {",
         1)
     cell_path.write_text(cell_src, encoding="utf-8")
 

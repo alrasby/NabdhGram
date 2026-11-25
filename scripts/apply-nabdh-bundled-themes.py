@@ -706,6 +706,11 @@ helper = """
     private String nabdhMuscatPreviewLine() {
         // The native sample already resolves the selected Telegram language,
         // including downloaded packs. Replace only its city, not its grammar.
+        java.util.Locale locale = LocaleController.getInstance().getCurrentLocale();
+        if (locale == null) locale = java.util.Locale.ENGLISH;
+        if ("ar".equals(locale.getLanguage())) {
+            return "الوقت صباح هنا في مسقط 😎";
+        }
         String nativeSample = LocaleController.getString(R.string.FontSizePreviewLine2);
         if (nativeSample != null && nativeSample.contains("دبي")) {
             return nativeSample.replace("دبي", "مسقط");
@@ -716,11 +721,6 @@ helper = """
                     return nativeSample.replace(pair[0], pair[1]);
                 }
             }
-        }
-        java.util.Locale locale = LocaleController.getInstance().getCurrentLocale();
-        if (locale == null) locale = java.util.Locale.ENGLISH;
-        if ("ar".equals(locale.getLanguage())) {
-            return "الوقت صباح هنا في مسقط 😎";
         }
         android.content.res.Configuration configuration =
                 new android.content.res.Configuration(getContext().getResources().getConfiguration());

@@ -109,3 +109,10 @@ assert 'NabdhAppearancePrefs.surfaceRadius()' in surface
 assert 'NabdhAppearancePrefs.glassSurface()' in surface
 assert 'NabdhAppearancePrefs.setUiStyle(context, which)' in category
 print("PASS: exactly four owned themes retained, previews use stable palette and cached Paint; native selection preserved")
+
+# Verify real locale resolution and shared style integration in generated source.
+message_preview = (root / "java/org/telegram/ui/Cells/ThemePreviewMessagesCell.java").read_text(encoding="utf-8")
+assert "nabdhMuscatPreviewLine()" in message_preview
+assert "LocaleController.getInstance().getCurrentLocale()" in message_preview
+assert "الوقت صباح هنا في مسقط" in message_preview
+assert message_preview.index('"ar".equals(locale.getLanguage())') < message_preview.index("String nativeSample =")

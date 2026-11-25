@@ -19,6 +19,9 @@ public final class NabdhBubblePalette {
     }
 
     public static int edgeAlpha(int style, int drawableAlpha) {
+        int uiStyle = NabdhAppearancePrefs.uiStyle();
+        if (uiStyle == NabdhAppearancePrefs.UI_CLASSIC) return 0;
+        if (uiStyle == NabdhAppearancePrefs.UI_MATERIAL) return 45 * drawableAlpha / 255;
         int strength = style == NabdhGlassStyle.SOFT ? 85 :
                        style == NabdhGlassStyle.CRYSTAL ? 157 : 122;
         return Math.max(0, Math.min(255, strength * drawableAlpha / 255));
@@ -28,6 +31,7 @@ public final class NabdhBubblePalette {
                                       int wallpaperColor, boolean media) {
         int opacity = style == NabdhGlassStyle.SOFT ? 226 :
                       style == NabdhGlassStyle.CRYSTAL ? 200 : 213;
+        if (NabdhAppearancePrefs.uiStyle() == NabdhAppearancePrefs.UI_GLASS) opacity -= 12;
         int separation = Math.abs(lightness(bubbleColor) - lightness(wallpaperColor));
         // Protect readable text on similar-toned themes; media often has
         // smaller file metadata, so apply the same or stronger minimum.

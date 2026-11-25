@@ -101,7 +101,7 @@ checks = {
                 (ui / page).read_text(encoding="utf-8")
             for page in ("Cells/SessionCell.java", "SessionBottomSheet.java")),
     "Glass cards suppress native separator strokes without touching other pages":
-        all("if (needDivider && !org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this))" in
+        all("if (needDivider && (!org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this) || org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == 0))" in
             (ui / "Cells" / (name + ".java")).read_text(encoding="utf-8")
             for name in ("TextCell", "TextSettingsCell", "TextCheckCell", "TextCheckCell2",
                          "NotificationsCheckCell", "TextDetailCell", "TextRadioCell"))
