@@ -11,6 +11,34 @@ public final class NabdhAppearancePrefs {
     public static final String DUOTONE = "duotone";
     public static final String LINEAR = "linear";
     public static final String BOLD = "bold";
+    // Independent from Telegram themeconfig and from icon_style.
+    private static final String UI_STYLE = "ui_style_v2";
+    public static final int UI_CLASSIC = 0, UI_MATERIAL = 1, UI_GLASS = 2, UI_HYBRID = 3;
+    private static volatile int cachedUiStyle = -1;
+    public static int uiStyle() {
+        int value = cachedUiStyle;
+        if (value >= 0) return value;
+        Context context = org.telegram.messenger.ApplicationLoader.applicationContext;
+        if (context == null) return UI_HYBRID;
+        value = context.getSharedPreferences(STORE, Context.MODE_PRIVATE)
+                .getInt(UI_STYLE, UI_HYBRID);
+        cachedUiStyle = value >= 0 && value <= 3 ? value : UI_HYBRID;
+        return cachedUiStyle;
+    }
+    public static void setUiStyle(Context context, int style) {
+        if (style < 0 || style > 3) throw new IllegalArgumentException("Invalid UI style");
+        context.getSharedPreferences(STORE, Context.MODE_PRIVATE).edit().putInt(UI_STYLE, style).apply();
+        cachedUiStyle = style;
+    }
+    public static boolean glassSurface() { return uiStyle() >= UI_GLASS; }
+    public static int surfaceRadius() {
+        switch (uiStyle()) {
+            case UI_CLASSIC: return 0;
+            case UI_MATERIAL: return 16;
+            case UI_GLASS: return 24;
+            default: return 20;
+        }
+    }
     private NabdhAppearancePrefs() {}
 
     public static String iconStyle(Context context) {
