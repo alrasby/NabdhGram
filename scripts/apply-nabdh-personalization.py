@@ -81,6 +81,28 @@ marker = '''        nabdhFeatureRow(context, content, 602);
         org.telegram.ui.Components.NabdhCompactSettings.header'''
 p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
 
+        org.telegram.ui.Components.NabdhCompactSettings.row(context, content,
+                org.telegram.messenger.LocaleController.isRTL ? "نمط الواجهة" : "UI style",
+                org.telegram.messenger.LocaleController.isRTL ? "مستقل عن ألوان الثيم وخلفيته" : "Independent of theme colors and wallpaper",
+                R.drawable.settings_chat,
+                () -> {
+                    final String[] styles = {"Classic", "Material 3", "Siri Glass", "M3 × Glass"};
+                    new android.app.AlertDialog.Builder(context)
+                            .setTitle(org.telegram.messenger.LocaleController.isRTL ? "نمط الواجهة" : "UI style")
+                            .setSingleChoiceItems(styles,
+                                    org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle(),
+                                    (dialog, which) -> {
+                                        org.telegram.ui.Components.NabdhAppearancePrefs.setUiStyle(context, which);
+                                        dialog.dismiss();
+                                        content.invalidate();
+                                        content.requestLayout();
+                                        android.widget.Toast.makeText(context,
+                                                styles[which], android.widget.Toast.LENGTH_SHORT).show();
+                                    })
+                            .setNegativeButton(org.telegram.messenger.LocaleController.isRTL ? "إغلاق" : "Close", null)
+                            .show();
+                });
+
         // User-visible native home, bubble and Camera2 settings under themes.
         org.telegram.ui.Components.NabdhCompactSettings.header(context, content,
                 NabdhStrings.get(context, R.string.NabdhPersonalizeSection));
