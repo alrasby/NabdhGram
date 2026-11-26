@@ -445,7 +445,7 @@ checks = {
     "document title and metadata do not share fixed spacing": 
         "subtitleY = titleY + Math.max(dp(23), docTitleLayout.getHeight() + dp(7));" in document_cell
         and "photoHeight = Math.max(photoHeight, docTitleLayout.getHeight() + dp(32));" in document_cell,
-    "archive gets its own rounded card": "final boolean archived = isFolderCell();" in cell,
+    "archive gets its own rounded card": "drawContent(canvas, surface, accent, alternate, isFolderCell()" in cell,
     "archive folder remains outside pinned group": all(
         token in dialogs for token in (
             "if (dialog.isFolder) continue;",

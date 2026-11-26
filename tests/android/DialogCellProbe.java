@@ -6,8 +6,11 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.FrameLayout;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -32,7 +35,7 @@ public final class DialogCellProbe extends Instrumentation {
             }
         });
         if (failure[0] == null) {
-            result.putString("stream", "\nDIALOG_CELL_PASS: 500 render cycles and LTR/RTL tray hit checks\n");
+            result.putString("stream", "\nDIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles and LTR/RTL tray hit checks\n");
             finish(Activity.RESULT_OK, result);
         } else {
             result.putString("stream", "\nDIALOG_CELL_FAIL: " + Log.getStackTraceString(failure[0]));
@@ -67,6 +70,7 @@ public final class DialogCellProbe extends Instrumentation {
             throw new AssertionError("Fixture does not use production card rendering");
         }
         exerciseTray(cell, type, loader, width, density);
+        exerciseController(cell, type, loader, width, density, app);
         Bitmap frame = Bitmap.createBitmap(width, cell.getHeight(), Bitmap.Config.ARGB_8888);
         try {
             int offset = Math.round(110 * density);
@@ -78,6 +82,90 @@ public final class DialogCellProbe extends Instrumentation {
         } finally {
             cell.setTranslationX(0);
             frame.recycle();
+        }
+    }
+
+    private void exerciseController(View cell, Class<?> type, ClassLoader loader, int width,
+            float density, Context context) throws Exception {
+        Class<?> recyclerType = loader.loadClass("androidx.recyclerview.widget.RecyclerView");
+        ViewGroup recycler = (ViewGroup) recyclerType.getConstructor(Context.class).newInstance(context);
+        Class<?> managerType = loader.loadClass("androidx.recyclerview.widget.RecyclerView$LayoutManager");
+        Object manager = loader.loadClass("androidx.recyclerview.widget.LinearLayoutManager")
+                .getConstructor(Context.class).newInstance(context);
+        recyclerType.getMethod("setLayoutManager", managerType).invoke(recycler, manager);
+        FrameLayout parent = new FrameLayout(context);
+        parent.addView(recycler);
+        int height = cell.getMeasuredHeight();
+        recycler.layout(0, 0, width, height);
+        recycler.addView(cell);
+        cell.layout(0, 0, width, height);
+
+        String controllerName = "org.telegram.ui.Components.NabdhSmartSwipeController";
+        Class<?> controllerType = loader.loadClass(controllerName);
+        Class<?> hostType = loader.loadClass(controllerName + "$Host");
+        Class<?> callbackType = loader.loadClass(type.getName() + "$NabdhSmartAction");
+        Method configure = type.getMethod("nabdhSetSmartSwipeActions", callbackType,
+                boolean.class, boolean.class, boolean.class);
+        int[] executions = new int[1];
+        Object host = Proxy.newProxyInstance(loader, new Class<?>[]{hostType},
+                (proxy, method, arguments) -> {
+                    switch (method.getName()) {
+                        case "canBegin":
+                        case "isEligible":
+                            return true;
+                        case "configure":
+                            configure.invoke(arguments[0], arguments[1], false, false, false);
+                            return true;
+                        case "runAction":
+                            executions[0]++;
+                            return null;
+                        default:
+                            return null;
+                    }
+                });
+        Object controller = controllerType.getConstructor(hostType).newInstance(host);
+        Method intercept = controllerType.getMethod("onInterceptTouchEvent", recyclerType, MotionEvent.class);
+        Method touch = controllerType.getMethod("onTouchEvent", recyclerType, MotionEvent.class);
+        Method cancel = controllerType.getMethod("cancel");
+        float x = Math.round(42 * density);
+        float y = height / 2f;
+        long down = SystemClock.uptimeMillis();
+        try {
+            if (event(intercept, controller, recycler, down, MotionEvent.ACTION_DOWN, x, y)
+                    || event(intercept, controller, recycler, down, MotionEvent.ACTION_MOVE,
+                        x, y + 32 * density)) {
+                throw new AssertionError("Vertical gesture claimed by Smart Swipe");
+            }
+            for (int cycle = 0; cycle < 500; cycle++) {
+                down = SystemClock.uptimeMillis();
+                if (event(intercept, controller, recycler, down, MotionEvent.ACTION_DOWN, x, y)
+                        || !event(intercept, controller, recycler, down, MotionEvent.ACTION_MOVE,
+                            x + 120 * density, y)) {
+                    throw new AssertionError("Horizontal gesture was misclassified");
+                }
+                event(touch, controller, recycler, down, MotionEvent.ACTION_MOVE, x + 212 * density, y);
+                if (cell.getTranslationX() < 200 * density) {
+                    throw new AssertionError("DialogCell did not move with the gesture");
+                }
+                event(touch, controller, recycler, down, MotionEvent.ACTION_CANCEL, x + 212 * density, y);
+                cancel.invoke(controller);
+                if (cell.getTranslationX() != 0 || executions[0] != 0) {
+                    throw new AssertionError("Cancellation left an offset or executed an action");
+                }
+            }
+        } finally {
+            cancel.invoke(controller);
+            recycler.removeView(cell);
+        }
+    }
+
+    private boolean event(Method method, Object controller, View recycler, long down,
+            int action, float x, float y) throws Exception {
+        MotionEvent event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0);
+        try {
+            return Boolean.TRUE.equals(method.invoke(controller, recycler, event));
+        } finally {
+            event.recycle();
         }
     }
 
