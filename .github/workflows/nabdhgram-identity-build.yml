@@ -600,6 +600,7 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-smart-swipe.py Telegram-upstream
+          python3 nabdhgram/scripts/test-nabdh-card-geometry.py
           python3 nabdhgram/scripts/check-nabdh-toggle-hitboxes.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-notification-typography.py Telegram-upstream
           python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream

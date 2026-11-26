@@ -104,8 +104,8 @@ checks = {
         and "drawRevealBackground = translationX < 0" in cell,
     "native backing excluded for owned cards in both directions":
         "if (!nabdhOwnsCard() && (translationX != 0 || cornerProgress != 0.0f))" in cell
-        and "canvas.clipRect(Math.max(nabdhCardBounds.left, nabdhCardBounds.right + translationX)" in cell
-        and "Math.min(nabdhCardBounds.right, nabdhCardBounds.left + translationX)" in cell,
+        and "canvas.clipRect(org.telegram.ui.Components.NabdhCardGeometry.revealLeft(nabdhCardBounds.left, nabdhCardBounds.right, translationX)" in cell
+        and "org.telegram.ui.Components.NabdhCardGeometry.revealRight(nabdhCardBounds.left, nabdhCardBounds.right, translationX)" in cell,
     "reminder chooser uses NabdhGram-themed rounded Glass options":
         "nabdhSwipeBlend(background, accent, 0.075f)" in dialogs
         and "capsule.setCornerRadius(dp(14));" in dialogs

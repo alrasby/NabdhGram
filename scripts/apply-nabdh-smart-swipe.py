@@ -249,10 +249,10 @@ palette = """
                             || action == android.view.MotionEvent.ACTION_CANCEL) {
                         DialogCell row = expanded;
                         int actionIndex = pressedAction;
-                        boolean click = action == android.view.MotionEvent.ACTION_UP
-                                && Math.abs(dx) < slop && Math.abs(dy) < slop
-                                && row != null && row.nabdhSmartActionAt(
-                                        event.getX() - row.getLeft(), event.getY() - row.getTop()) == actionIndex;
+                        boolean click = org.telegram.ui.Components.NabdhCardGeometry.acceptTap(
+                                action == android.view.MotionEvent.ACTION_UP, dx, dy, slop,
+                                actionIndex, row == null ? -1 : row.nabdhSmartActionAt(
+                                        event.getX() - row.getLeft(), event.getY() - row.getTop()));
                         if (row != null) row.nabdhSetSmartPressed(-1);
                         consumedDown = false;
                         pressedAction = -1;
@@ -591,8 +591,8 @@ cell = once(cell, "    private boolean drawPinBackground;",
                 || localY < 0 || localY >= nabdhSmartBar.getHeight()) return -1;
         for (int i = 0; i < nabdhSmartBar.getChildCount(); i++) {
             android.view.View button = nabdhSmartBar.getChildAt(i);
-            if (localX >= button.getLeft() && localX < button.getRight()
-                    && localY >= button.getTop() && localY < button.getBottom()) return i;
+            if (org.telegram.ui.Components.NabdhCardGeometry.hit(localX, localY,
+                    button.getLeft(), button.getTop(), button.getRight(), button.getBottom())) return i;
         }
         return -1;
     }
@@ -620,7 +620,7 @@ cell = once(cell, "    private boolean drawPinBackground;",
     private final android.graphics.Rect nabdhSmartTrayClip = new android.graphics.Rect();
     private void nabdhUpdateSmartTrayClip(float translation) {
         if (nabdhSmartBar == null) return;
-        int width = Math.max(0, Math.min(dp(212), Math.round(translation)));
+        int width = org.telegram.ui.Components.NabdhCardGeometry.trayWidth(translation, dp(212));
         nabdhSmartTrayClip.set(0, 0, width, Math.max(0, getMeasuredHeight() - dp(6)));
         nabdhSmartBar.setClipBounds(nabdhSmartTrayClip);
     }
@@ -676,7 +676,7 @@ cell = once(cell,
             nabdhClipCard(canvas);
             // Only the exposed strip is painted; the moving card owns the rest.
             canvas.clipRect(nabdhCardBounds.left, nabdhCardBounds.top,
-                    Math.min(nabdhCardBounds.right, nabdhCardBounds.left + translationX),
+                    org.telegram.ui.Components.NabdhCardGeometry.revealRight(nabdhCardBounds.left, nabdhCardBounds.right, translationX),
                     nabdhCardBounds.bottom);
             nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
             nabdhCardPaint.setColor(nabdhBlendThemeColor(
@@ -693,7 +693,7 @@ cell = once(cell,
             // bounds without allocating a Path on each frame.
             if (nabdhOwnsCard()) {
                 nabdhClipCard(canvas);
-                canvas.clipRect(Math.max(nabdhCardBounds.left, nabdhCardBounds.right + translationX),
+                canvas.clipRect(org.telegram.ui.Components.NabdhCardGeometry.revealLeft(nabdhCardBounds.left, nabdhCardBounds.right, translationX),
                         nabdhCardBounds.top, nabdhCardBounds.right, nabdhCardBounds.bottom);
             }""",
     "clip original LEFT reveal to rounded Glass card")

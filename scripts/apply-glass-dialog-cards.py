@@ -9,6 +9,11 @@ if len(sys.argv) != 2:
     raise SystemExit("Usage: apply-glass-dialog-cards.py TELEGRAM_SOURCE")
 p = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java"
 s = p.read_text(encoding="utf-8")
+geometry = Path(__file__).resolve().parents[1] / "overlay/java/NabdhCardGeometry.java"
+target = p.parent.parent / "Components/NabdhCardGeometry.java"
+if target.exists():
+    raise SystemExit("Card geometry class collision")
+target.write_bytes(geometry.read_bytes())
 anchor = "    protected void onDraw(Canvas canvas) {\n        if (currentDialogId == 0 && customDialog == null) {"
 if s.count(anchor) != 1:
     raise SystemExit("DialogCell drawing anchor changed")
