@@ -115,15 +115,24 @@ palette = """
         page.listView.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
             private DialogCell candidate;
             private DialogCell expanded;
+            private DialogCell settlingRow;
+            private long gestureDialogId;
             private androidx.dynamicanimation.animation.SpringAnimation spring;
             private float downX, downY, startingX;
             private boolean dragging;
             private boolean consumedDown;
             private int pressedAction = -1;
-            private float actionDownX, actionDownY;
+            private float actionDownX;
+            private final org.telegram.ui.Components.NabdhSwipeActionPress actionPress =
+                    new org.telegram.ui.Components.NabdhSwipeActionPress();
             {
                 stopSwipeOnScroll[0] = () -> {
                     if (spring != null) spring.cancel();
+                    if (settlingRow != null) {
+                        settlingRow.nabdhClearSmartSwipeActions();
+                        settlingRow.setTranslationX(0f);
+                        settlingRow = null;
+                    }
                     if (expanded != null) {
                         expanded.nabdhClearSmartSwipeActions();
                         expanded.setTranslationX(0f);
@@ -136,12 +145,29 @@ palette = """
                     }
                     dragging = false;
                     consumedDown = false;
+                    actionPress.cancel();
                 };
             }
+
+            private final android.view.View.OnAttachStateChangeListener rowAttachment =
+                    new android.view.View.OnAttachStateChangeListener() {
+                @Override public void onViewAttachedToWindow(android.view.View view) {}
+                @Override public void onViewDetachedFromWindow(android.view.View view) {
+                    view.removeOnAttachStateChangeListener(this);
+                    if (view == candidate || view == expanded || view == settlingRow) {
+                        stopSwipeOnScroll[0].run();
+                    }
+                }
+            };
 
             private void settle(DialogCell row, float target) {
                 if (row == null) return;
                 if (spring != null) spring.cancel();
+                if (settlingRow != null && settlingRow != row) {
+                    settlingRow.nabdhClearSmartSwipeActions();
+                    settlingRow.setTranslationX(0f);
+                }
+                settlingRow = row;
                 final long boundId = row.getDialogId();
                 spring = new androidx.dynamicanimation.animation.SpringAnimation(row,
                         new androidx.dynamicanimation.animation.FloatPropertyCompat<DialogCell>(
@@ -158,10 +184,22 @@ palette = """
                 force.setStiffness(550f);
                 force.setDampingRatio(0.88f);
                 spring.setSpring(force);
+                spring.setMinValue(0f);
+                spring.setMaxValue(dp(212));
                 spring.setMinimumVisibleChange(0.7f);
+                spring.addEndListener((animation, cancelled, value, velocity) -> {
+                    if (!cancelled) {
+                        settlingRow = null;
+                        if (target == 0f && row.getDialogId() == boundId) {
+                            row.nabdhClearSmartSwipeActions();
+                        }
+                    }
+                });
                 if (android.os.Build.VERSION.SDK_INT >= 26
                         && !android.animation.ValueAnimator.areAnimatorsEnabled()) {
                     row.setTranslationX(target);
+                    if (target == 0f) row.nabdhClearSmartSwipeActions();
+                    settlingRow = null;
                     return;
                 }
                 spring.start();
@@ -171,7 +209,7 @@ palette = """
                 if (expanded != null) {
                     DialogCell old = expanded;
                     expanded = null;
-                    old.nabdhClearSmartSwipeActions();
+                    old.nabdhSetSmartPressed(-1);
                     settle(old, 0f);
                 }
             }
@@ -182,6 +220,7 @@ palette = """
                 if (action == android.view.MotionEvent.ACTION_DOWN) {
                     consumedDown = false;
                     pressedAction = -1;
+                    actionPress.cancel();
                     dragging = false;
                     candidate = null;
                     downX = event.getX();
@@ -204,7 +243,7 @@ palette = """
                                 android.os.SystemClock.uptimeMillis() + 450L;
                         consumedDown = true;
                         actionDownX = event.getX();
-                        actionDownY = event.getY();
+                        gestureDialogId = expanded.getDialogId();
                         float cx = event.getX() - expanded.getLeft();
                         float cy = event.getY() - expanded.getTop();
                         if (expanded.getParent() != recycler
@@ -215,7 +254,11 @@ palette = """
                             return true; // Outside tap dismisses without chat opening.
                         }
                         pressedAction = expanded.nabdhSmartActionAt(cx, cy);
-                        if (pressedAction >= 0) expanded.nabdhSetSmartPressed(pressedAction);
+                        if (pressedAction >= 0) {
+                            actionPress.begin(event.getPointerId(0), pressedAction,
+                                    event.getX(), event.getY());
+                            expanded.nabdhSetSmartPressed(pressedAction);
+                        }
                         return true;
                     }
                     if (downX <= dp(24)
@@ -231,10 +274,16 @@ palette = """
                             && page.dialogsType != DIALOGS_TYPE_FOLDER1
                             && page.dialogsType != DIALOGS_TYPE_FOLDER2) return false;
                     candidate = row;
+                    gestureDialogId = id;
                     startingX = row.getTranslationX();
                     return false;
                 }
+                if (action == android.view.MotionEvent.ACTION_POINTER_DOWN) candidate = null;
                 if (action == android.view.MotionEvent.ACTION_MOVE && candidate != null) {
+                    if (candidate.getDialogId() != gestureDialogId) {
+                        candidate = null;
+                        return false;
+                    }
                     float dx = event.getX() - downX;
                     float dy = event.getY() - downY;
                     int slop = android.view.ViewConfiguration.get(
@@ -243,11 +292,33 @@ palette = """
                             || (startingX == 0 && dx > slop))
                             && Math.abs(dx) > Math.abs(dy) * 1.5f
                             && Math.abs(dy) < dp(36)) {
+                        final DialogCell row = candidate;
+                        final long dialogId = row.getDialogId();
+                        final TLRPC.Dialog current = getMessagesController().dialogs_dict.get(dialogId);
+                        if (current == null) {
+                            candidate = null;
+                            return false;
+                        }
+                        row.removeOnAttachStateChangeListener(rowAttachment);
+                        row.addOnAttachStateChangeListener(rowAttachment);
+                        row.nabdhSetSmartSwipeActions(index -> {
+                            if (expanded == row && row.getDialogId() == dialogId) {
+                                close();
+                                nabdhRunSmartAction(dialogId, index);
+                            }
+                        }, getMessagesController().isDialogMuted(dialogId, 0),
+                                isDialogPinned(current), current.folder_id != 0);
                         dragging = true;
                         nabdhIgnoreItemClicksUntil =
                                 android.os.SystemClock.uptimeMillis() + 450L;
                         page.listView.cancelClickRunnables(true);
                         if (spring != null) spring.cancel();
+                        if (settlingRow != null && settlingRow != row) {
+                            settlingRow.removeOnAttachStateChangeListener(rowAttachment);
+                            settlingRow.nabdhClearSmartSwipeActions();
+                            settlingRow.setTranslationX(0f);
+                            settlingRow = null;
+                        }
                         recycler.getParent().requestDisallowInterceptTouchEvent(true);
                         return true;
                     }
@@ -264,34 +335,52 @@ palette = """
             @Override public void onTouchEvent(RecyclerView recycler,
                     android.view.MotionEvent event) {
                 int action = event.getActionMasked();
+                if (action == android.view.MotionEvent.ACTION_POINTER_DOWN) {
+                    stopSwipeOnScroll[0].run();
+                    return;
+                }
+                if (expanded != null && expanded.getDialogId() != gestureDialogId
+                        || candidate != null && candidate.getDialogId() != gestureDialogId) {
+                    stopSwipeOnScroll[0].run();
+                    return;
+                }
                 if (consumedDown) {
                     final int slop = android.view.ViewConfiguration.get(
                             recycler.getContext()).getScaledTouchSlop();
                     float dx = event.getX() - actionDownX;
-                    float dy = event.getY() - actionDownY;
+                    int hit = expanded == null ? -1 : expanded.nabdhSmartActionAt(
+                            event.getX() - expanded.getLeft(), event.getY() - expanded.getTop());
                     if (expanded != null && pressedAction >= 0
                             && action == android.view.MotionEvent.ACTION_MOVE
                             && dx < -slop) {
                         if (spring != null) spring.cancel();
                         expanded.setTranslationX(Math.max(0f, dp(212) + dx));
                     }
+                    if (expanded != null && action == android.view.MotionEvent.ACTION_MOVE
+                            && !actionPress.update(event.getPointerId(0), event.getX(),
+                                    event.getY(), slop, hit)) {
+                        expanded.nabdhSetSmartPressed(-1);
+                    }
                     if (action == android.view.MotionEvent.ACTION_UP
                             || action == android.view.MotionEvent.ACTION_CANCEL) {
                         DialogCell row = expanded;
-                        int actionIndex = pressedAction;
-                        boolean click = org.telegram.ui.Components.NabdhCardGeometry.acceptTap(
-                                action == android.view.MotionEvent.ACTION_UP, dx, dy, slop,
-                                actionIndex, row == null ? -1 : row.nabdhSmartActionAt(
-                                        event.getX() - row.getLeft(), event.getY() - row.getTop()));
+                        int actionIndex = -1;
+                        if (action == android.view.MotionEvent.ACTION_UP) {
+                            actionIndex = actionPress.release(event.getPointerId(0), event.getX(),
+                                    event.getY(), slop, hit);
+                        } else {
+                            actionPress.cancel();
+                        }
                         if (row != null) row.nabdhSetSmartPressed(-1);
                         consumedDown = false;
                         pressedAction = -1;
                         if (row != null && row.getParent() == recycler
-                                && actionIndex >= 0 && click) {
+                                && actionIndex >= 0) {
                             // Delegate to a real TextView.performClick(), not to
                             // RecyclerListView's underlying item click handler.
                             row.nabdhPerformSmartAction(actionIndex);
-                        } else if (row != null && row.getTranslationX() < dp(135)) {
+                        } else if (row != null && (action == android.view.MotionEvent.ACTION_CANCEL
+                                || row.getTranslationX() < dp(135))) {
                             close();
                         } else if (row != null) {
                             settle(row, dp(212));
@@ -315,21 +404,6 @@ palette = """
                     if (open) {
                         if (expanded != null && expanded != row) close();
                         expanded = row;
-                        final long dialogId = row.getDialogId();
-                        TLRPC.Dialog current = getMessagesController().dialogs_dict.get(dialogId);
-                        if (current == null) {
-                            expanded = null;
-                            row.nabdhClearSmartSwipeActions();
-                            settle(row, 0f);
-                            return;
-                        }
-                        row.nabdhSetSmartSwipeActions(index -> {
-                            if (row.getDialogId() == dialogId) {
-                                close();
-                                nabdhRunSmartAction(dialogId, index);
-                            }
-                        }, getMessagesController().isDialogMuted(dialogId, 0),
-                                isDialogPinned(current), current.folder_id != 0);
                         settle(row, dp(212));
                     } else {
                         settle(row, 0f);
@@ -600,9 +674,9 @@ cell = once(cell, "    private boolean drawPinBackground;",
             button.setContentDescription(labels[i]);
         }
         nabdhSmartBar.bringToFront();
-        nabdhSmartBar.setVisibility(android.view.View.VISIBLE);
-        nabdhSmartBar.setAlpha(1f);
         nabdhUpdateSmartTrayClip(translationX);
+        nabdhSmartBar.setVisibility(translationX > 0
+                ? android.view.View.VISIBLE : android.view.View.GONE);
     }
 
     public int nabdhSmartActionAt(float x, float y) {
@@ -701,7 +775,7 @@ cell = once(cell,
             canvas.clipRect(nabdhCardBounds.left, nabdhCardBounds.top,
                     org.telegram.ui.Components.NabdhCardGeometry.revealRight(nabdhCardBounds.left, nabdhCardBounds.right, translationX),
                     nabdhCardBounds.bottom);
-            nabdhRenderer.reveal(canvas, nabdhCardBounds, dp(17),
+            nabdhRenderer.reveal(canvas, nabdhCardBounds, nabdhCardRadius(),
                     nabdhBlendThemeColor(
                     Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider),
                     Theme.getColor(Theme.key_chats_archiveBackground, resourcesProvider), 0.20f));
@@ -813,7 +887,7 @@ cell = once(cell,
     """            float tx = getMeasuredWidth() + translationX;
             if (nabdhOwnsCard()) {
                 nabdhSetCardBounds();
-                nabdhRenderer.reveal(canvas, nabdhCardBounds, dp(17),
+                nabdhRenderer.reveal(canvas, nabdhCardBounds, nabdhCardRadius(),
                         nabdhBlendThemeColor(backgroundColor, revealBackgroundColor,
                                 Math.max(0f, Math.min(1f, currentRevealProgress))));
             }""", "render native action surface through card renderer")
@@ -840,6 +914,8 @@ manifest = once(manifest, "</application>",
     </receiver>
 </application>""", "nonexported reminder receiver")
 
+press_asset = Path(__file__).resolve().parents[1] / "overlay/java/NabdhSwipeActionPress.java"
+(ui / "Components" / press_asset.name).write_bytes(press_asset.read_bytes())
 dialogs_path.write_text(dialogs, encoding="utf-8")
 cell_path.write_text(cell, encoding="utf-8")
 manifest_path.write_text(manifest, encoding="utf-8")

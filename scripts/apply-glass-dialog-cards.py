@@ -33,8 +33,14 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12);
     }
     private void nabdhSetCardBounds() {
-        nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
-                getMeasuredHeight() - dp(3));
+        final int horizontal = dp(org.telegram.ui.Components.NabdhCardGeometry.HORIZONTAL_INSET_DP);
+        final int vertical = dp(org.telegram.ui.Components.NabdhCardGeometry.VERTICAL_INSET_DP);
+        nabdhCardBounds.set(horizontal, vertical,
+                getMeasuredWidth() - horizontal, getMeasuredHeight() - vertical);
+    }
+
+    private int nabdhCardRadius() {
+        return dp(org.telegram.ui.Components.NabdhCardGeometry.CORNER_RADIUS_DP);
     }
     // One outer viewport for background, native canvas and child views.
     @Override
@@ -54,7 +60,7 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
 
     private void nabdhClipCard(android.graphics.Canvas canvas) {
         nabdhSetCardBounds();
-        nabdhRenderer.clip(canvas, nabdhCardBounds, dp(17));
+        nabdhRenderer.clip(canvas, nabdhCardBounds, nabdhCardRadius());
     }
 """ + """    // Blend resolved Telegram theme colors instead of fixed light/dark palette values.
     // This keeps imported .attheme palettes effective for the custom dialog cards.
@@ -100,7 +106,7 @@ s = s.replace(anchor, """        // This canvas already carries Telegram's trans
             // surface to the same rounded bounds for every dialog row.
             final int uiStyle = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();
             nabdhSetCardBounds();
-            nabdhRenderer.content(canvas, nabdhCardBounds, dp(17), dp(1),
+            nabdhRenderer.content(canvas, nabdhCardBounds, nabdhCardRadius(), dp(1),
                     uiStyle == 0 && !selected && !pinned && !archived
                     ? surface : uiStyle == 1 && !selected && !pinned && !archived
                     ? nabdhBlendThemeColor(surface, alternate, 0.30f) : fill,

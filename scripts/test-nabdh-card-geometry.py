@@ -6,7 +6,9 @@ import tempfile
 
 root = Path(__file__).resolve().parents[1]
 source = root / "overlay/java/NabdhCardGeometry.java"
+press = source.with_name("NabdhSwipeActionPress.java")
 harness = """import org.telegram.ui.Components.NabdhCardGeometry;
+import org.telegram.ui.Components.NabdhSwipeActionPress;
 public class CardGeometryTest {
     private static void require(boolean ok) {
         if (!ok) throw new AssertionError("Card geometry invariant failed");
@@ -42,6 +44,19 @@ public class CardGeometryTest {
         require(NabdhCardGeometry.hit(2,3,2,3,51,60));
         require(!NabdhCardGeometry.hit(51,3,2,3,51,60));
         require(!NabdhCardGeometry.hit(2,60,2,3,51,60));
+        NabdhSwipeActionPress press = new NabdhSwipeActionPress();
+        press.begin(3, 2, 20, 20);
+        require(press.release(3, 21, 20, 8, 2) == 2);
+        require(press.release(3, 21, 20, 8, 2) == -1);
+        press.begin(3, 2, 20, 20);
+        require(!press.update(3, 20, 29, 8, 2));
+        require(press.release(3, 20, 20, 8, 2) == -1);
+        press.begin(3, 2, 20, 20);
+        require(press.release(4, 20, 20, 8, 2) == -1);
+        press.begin(3, 2, 20, 20);
+        press.cancel();
+        require(press.release(3, 20, 20, 8, 2) == -1);
+        System.out.println("PASS: 6 action press assertions");
         System.out.println("PASS: " + cases + " reveal cases and tap cancellation/boundaries");
     }
 }
@@ -50,5 +65,5 @@ with tempfile.TemporaryDirectory() as directory:
     target = Path(directory)
     main = target / "CardGeometryTest.java"
     main.write_text(harness, encoding="utf-8")
-    subprocess.run(["javac", "-d", str(target), str(source), str(main)], check=True)
+    subprocess.run(["javac", "-d", str(target), str(source), str(press), str(main)], check=True)
     subprocess.run(["java", "-cp", str(target), "CardGeometryTest"], check=True)

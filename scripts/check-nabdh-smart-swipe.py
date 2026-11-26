@@ -45,7 +45,7 @@ checks = {
         and "performSelectedDialogsAction(selected, pin, true, false)" in dialogs,
     "card surface remains fixed while reveal slides":
         "if (translationX < 0)" in cell
-        and "nabdhCardBounds.set(dp(7), dp(3)" in cell
+        and "nabdhCardBounds.set(horizontal, vertical" in cell
         and "nabdhUpdateSmartTrayClip(value);" in cell
         and "nabdhSmartBar.setClipBounds(nabdhSmartTrayClip);" in cell
         and "nabdhSmartBar.setAlpha(Math.min" not in cell,
@@ -77,7 +77,8 @@ checks = {
         and "consumedDown = true;" in dialogs
         and "row.nabdhPerformSmartAction(actionIndex);" in dialogs
         and "pressedAction = expanded.nabdhSmartActionAt(cx, cy);" in dialogs
-        and "row.nabdhSmartActionAt(" in dialogs
+        and "expanded.nabdhSmartActionAt(" in dialogs
+        and "actionPress.release(" in dialogs
         and "button.getLeft()" in cell and "button.getRight()" in cell
         and "nabdhSetSmartPressed(-1)" in cell,
     "reverse swipe closes the tray without tapping":
@@ -91,7 +92,7 @@ checks = {
     "native READ reveal clipped to same rounded Glass card":
         "nabdhRenderer.clip(canvas, nabdhCardBounds" in cell
         and "nabdhClipCard(canvas);" in cell
-        and "nabdhCardBounds.set(dp(7), dp(3)" in cell,
+        and "nabdhCardBounds.set(horizontal, vertical" in cell,
     "four independent rounded pill backgrounds and Android ripple":
         "new android.graphics.drawable.RippleDrawable" in cell
         and "lp.setMargins(dp(2), dp(3), dp(2), dp(3));" in cell

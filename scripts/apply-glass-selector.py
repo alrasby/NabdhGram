@@ -26,9 +26,15 @@ replacement = """    // Reuse clipping geometry while the user presses a dialog 
             // Dialog cards keep the established swipe geometry; settings
             // selectors follow the same live geometry as their surfaces.
             final boolean classic = NabdhAppearancePrefs.uiStyle() == NabdhAppearancePrefs.UI_CLASSIC;
-            final float inset = (nabdhDialog ? 7f : classic ? 0f : 10f) * density;
-            final float vertical = (nabdhDialog ? 3f : classic ? 0f : 2f) * density;
-            final float radius = (nabdhDialog ? 17f : NabdhAppearancePrefs.surfaceRadius()) * density;
+            final float inset = nabdhDialog
+                    ? AndroidUtilities.dp(NabdhCardGeometry.HORIZONTAL_INSET_DP)
+                    : (classic ? 0f : 10f) * density;
+            final float vertical = nabdhDialog
+                    ? AndroidUtilities.dp(NabdhCardGeometry.VERTICAL_INSET_DP)
+                    : (classic ? 0f : 2f) * density;
+            final float radius = nabdhDialog
+                    ? AndroidUtilities.dp(NabdhCardGeometry.CORNER_RADIUS_DP)
+                    : NabdhAppearancePrefs.surfaceRadius() * density;
             nabdhDialogSelectorBounds.set(
                     selectorRect.left + inset,
                     selectorRect.top + vertical,

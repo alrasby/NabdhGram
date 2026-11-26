@@ -2,6 +2,10 @@ package org.telegram.ui.Components;
 
 /** Pure geometry and tap policy, shared by rendering and gesture handling. */
 public final class NabdhCardGeometry {
+    public static final int HORIZONTAL_INSET_DP = 7;
+    public static final int VERTICAL_INSET_DP = 3;
+    public static final int CORNER_RADIUS_DP = 17;
+
     private NabdhCardGeometry() {}
     // Mirrors the pinned MessagesController folder eligibility rule.
     public static boolean canMoveToFolder(long dialogId, long selfId, int targetFolder) {
