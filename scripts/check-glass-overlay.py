@@ -563,7 +563,7 @@ checks = {
         and "canvas.drawRoundRect(nabdhCardBounds" not in cell,
     "selected card is rendered once":
         "final boolean selected = isSelected;" in cell
-        and "Selected color is owned by the content renderer" in cell,
+        and "if (isSelected && !nabdhOwnsCard())" in cell,
     "theme-aware border":
         "pinned ? 0.34f : 0.22f" in cell
         and "uiStyle == 0 ? 0 : uiStyle == 1 ? 70 : uiStyle == 2 ? 220 : 176" in cell,

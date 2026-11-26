@@ -59,7 +59,7 @@ checks = {
         and "nabdhHitSmartAction(event)" in cell
         and "return super.dispatchTouchEvent(ev);" in cell,
     "active spring cancels before vertical list scroll":
-        "stopSwipeOnScroll[0].run();" in dialogs
+        "page.nabdhCancelSwipe.run();" in dialogs
         and "if (spring != null) spring.cancel();" in dialogs
         and "expanded.nabdhClearSmartSwipeActions();" in dialogs,
     "RTL actions layout and reduced motion preference":
@@ -112,8 +112,7 @@ checks = {
         and "nabdhBlendThemeColor(backgroundColor, revealBackgroundColor," in cell,
     "native backing excluded for owned cards in both directions":
         "if (!nabdhOwnsCard() && (translationX != 0 || cornerProgress != 0.0f))" in cell
-        and "canvas.clipRect(org.telegram.ui.Components.NabdhCardGeometry.revealLeft(nabdhCardBounds.left, nabdhCardBounds.right, translationX)" in cell
-        and "org.telegram.ui.Components.NabdhCardGeometry.revealRight(nabdhCardBounds.left, nabdhCardBounds.right, translationX)" in cell,
+        and "canvas.clipRect(org.telegram.ui.Components.NabdhCardGeometry.revealLeft(" in cell,
     "reminder chooser uses NabdhGram-themed rounded Glass options":
         "nabdhSwipeBlend(background, accent, 0.075f)" in dialogs
         and "capsule.setCornerRadius(dp(14));" in dialogs

@@ -28,8 +28,9 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
     private final android.graphics.RectF nabdhCardBounds = new android.graphics.RectF();
     private final org.telegram.ui.Components.NabdhCardRenderer nabdhRenderer =
             new org.telegram.ui.Components.NabdhCardRenderer();
-    private boolean nabdhOwnsCard() {
-        return !isTopic && !(getParent() instanceof ProfileChannelCell)
+    public boolean nabdhOwnsCard() {
+        return !isTopic && rightFragmentOpenedProgress == 0f
+                && !(getParent() instanceof ProfileChannelCell)
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12);
     }
     private void nabdhSetCardBounds() {
@@ -45,7 +46,7 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
     // One outer viewport for background, native canvas and child views.
     @Override
     public void draw(android.graphics.Canvas canvas) {
-        if (!nabdhOwnsCard() || isFolderCell() || rightFragmentOpenedProgress != 0f) {
+        if (!nabdhOwnsCard()) {
             super.draw(canvas);
             return;
         }
@@ -125,17 +126,7 @@ selection_old = """        if (isSelected) {
             rect.offset(0, -translateY + collapseOffset);
             canvas.drawRoundRect(rect, cornersRadius, cornersRadius, Theme.dialogs_tabletSeletedPaint);
         }"""
-selection_new = """        if (isSelected) {
-            if (!isTopic && !(getParent() instanceof ProfileChannelCell)) {
-                // Selected color is owned by the content renderer, not a second surface.
-            } else {
-                rect.set(0, 0, getMeasuredWidth(), AndroidUtilities.lerp(getMeasuredHeight(),
-                        getCollapsedHeight(), rightFragmentOpenedProgress));
-                rect.offset(0, -translateY + collapseOffset);
-                canvas.drawRoundRect(rect, cornersRadius, cornersRadius,
-                        Theme.dialogs_tabletSeletedPaint);
-            }
-        }"""
+selection_new = selection_old.replace("if (isSelected)", "if (isSelected && !nabdhOwnsCard())")
 if s.count(selection_old) != 1:
     raise SystemExit("Pinned Telegram selected background changed")
 s = s.replace(selection_old, selection_new, 1)

@@ -48,6 +48,21 @@ dialogs = once(dialogs,
                     return;
                 }""", "suppress chat opening immediately after Smart Swipe")
 
+dialogs = once(dialogs,
+    "        private SwipeController swipeController;",
+    "        private SwipeController swipeController;\n        private Runnable nabdhCancelSwipe;",
+    "store the gesture lifecycle with its list page")
+dialogs = once(dialogs,
+    "    public void onPause() {\n        super.onPause();",
+    """    public void onPause() {
+        if (viewPages != null) {
+            for (ViewPage page : viewPages) {
+                if (page != null && page.nabdhCancelSwipe != null) page.nabdhCancelSwipe.run();
+            }
+        }
+        super.onPause();""",
+    "cancel active gestures when leaving the dialogs screen")
+
 palette = """
     private long nabdhIgnoreItemClicksUntil;
 
@@ -111,7 +126,6 @@ palette = """
     }
 
     private void installNabdhSmartSwipe(ViewPage page) {
-        final Runnable[] stopSwipeOnScroll = new Runnable[1];
         page.listView.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
             private DialogCell candidate;
             private DialogCell expanded;
@@ -125,20 +139,34 @@ palette = """
             private float actionDownX;
             private final org.telegram.ui.Components.NabdhSwipeActionPress actionPress =
                     new org.telegram.ui.Components.NabdhSwipeActionPress();
+            private final android.view.View.OnAttachStateChangeListener rowAttachment =
+                    new android.view.View.OnAttachStateChangeListener() {
+                @Override public void onViewAttachedToWindow(android.view.View view) {}
+                @Override public void onViewDetachedFromWindow(android.view.View view) {
+                    view.removeOnAttachStateChangeListener(this);
+                    if (view == candidate || view == expanded || view == settlingRow) {
+                        page.nabdhCancelSwipe.run();
+                    }
+                }
+            };
+
             {
-                stopSwipeOnScroll[0] = () -> {
+                page.nabdhCancelSwipe = () -> {
                     if (spring != null) spring.cancel();
                     if (settlingRow != null) {
+                        settlingRow.removeOnAttachStateChangeListener(rowAttachment);
                         settlingRow.nabdhClearSmartSwipeActions();
                         settlingRow.setTranslationX(0f);
                         settlingRow = null;
                     }
                     if (expanded != null) {
+                        expanded.removeOnAttachStateChangeListener(rowAttachment);
                         expanded.nabdhClearSmartSwipeActions();
                         expanded.setTranslationX(0f);
                         expanded = null;
                     }
                     if (candidate != null) {
+                        candidate.removeOnAttachStateChangeListener(rowAttachment);
                         candidate.nabdhClearSmartSwipeActions();
                         candidate.setTranslationX(0f);
                         candidate = null;
@@ -149,21 +177,11 @@ palette = """
                 };
             }
 
-            private final android.view.View.OnAttachStateChangeListener rowAttachment =
-                    new android.view.View.OnAttachStateChangeListener() {
-                @Override public void onViewAttachedToWindow(android.view.View view) {}
-                @Override public void onViewDetachedFromWindow(android.view.View view) {
-                    view.removeOnAttachStateChangeListener(this);
-                    if (view == candidate || view == expanded || view == settlingRow) {
-                        stopSwipeOnScroll[0].run();
-                    }
-                }
-            };
-
             private void settle(DialogCell row, float target) {
                 if (row == null) return;
                 if (spring != null) spring.cancel();
                 if (settlingRow != null && settlingRow != row) {
+                    settlingRow.removeOnAttachStateChangeListener(rowAttachment);
                     settlingRow.nabdhClearSmartSwipeActions();
                     settlingRow.setTranslationX(0f);
                 }
@@ -190,15 +208,19 @@ palette = """
                 spring.addEndListener((animation, cancelled, value, velocity) -> {
                     if (!cancelled) {
                         settlingRow = null;
-                        if (target == 0f && row.getDialogId() == boundId) {
-                            row.nabdhClearSmartSwipeActions();
+                        if (target == 0f) {
+                            row.removeOnAttachStateChangeListener(rowAttachment);
+                            if (row.getDialogId() == boundId) row.nabdhClearSmartSwipeActions();
                         }
                     }
                 });
                 if (android.os.Build.VERSION.SDK_INT >= 26
                         && !android.animation.ValueAnimator.areAnimatorsEnabled()) {
                     row.setTranslationX(target);
-                    if (target == 0f) row.nabdhClearSmartSwipeActions();
+                    if (target == 0f) {
+                        row.removeOnAttachStateChangeListener(rowAttachment);
+                        row.nabdhClearSmartSwipeActions();
+                    }
                     settlingRow = null;
                     return;
                 }
@@ -336,12 +358,12 @@ palette = """
                     android.view.MotionEvent event) {
                 int action = event.getActionMasked();
                 if (action == android.view.MotionEvent.ACTION_POINTER_DOWN) {
-                    stopSwipeOnScroll[0].run();
+                    page.nabdhCancelSwipe.run();
                     return;
                 }
                 if (expanded != null && expanded.getDialogId() != gestureDialogId
                         || candidate != null && candidate.getDialogId() != gestureDialogId) {
-                    stopSwipeOnScroll[0].run();
+                    page.nabdhCancelSwipe.run();
                     return;
                 }
                 if (consumedDown) {
@@ -419,8 +441,8 @@ palette = """
             @Override public void onScrollStateChanged(RecyclerView rv, int state) {
                 // RecyclerView recycles rows while scrolling; clear inline buttons.
                 if (state == RecyclerView.SCROLL_STATE_DRAGGING
-                        && stopSwipeOnScroll[0] != null) {
-                    stopSwipeOnScroll[0].run();
+                        && page.nabdhCancelSwipe != null) {
+                    page.nabdhCancelSwipe.run();
                 }
             }
         });
@@ -770,11 +792,9 @@ cell = once(cell,
             // so spring-back never exposes the unstyled list canvas.
             canvas.save();
             canvas.translate(0, -translateY);
-            nabdhClipCard(canvas);
-            // Only the exposed strip is painted; the moving card owns the rest.
-            canvas.clipRect(nabdhCardBounds.left, nabdhCardBounds.top,
-                    org.telegram.ui.Components.NabdhCardGeometry.revealRight(nabdhCardBounds.left, nabdhCardBounds.right, translationX),
-                    nabdhCardBounds.bottom);
+            // The stationary surface also fills the space behind the moving
+            // rounded corner. The outer viewport clips both layers.
+            nabdhSetCardBounds();
             nabdhRenderer.reveal(canvas, nabdhCardBounds, nabdhCardRadius(),
                     nabdhBlendThemeColor(
                     Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider),
@@ -784,14 +804,7 @@ cell = once(cell,
         if (translationX < 0) {
             canvas.save();
             canvas.translate(0, -translateY);
-            // Native Telegram's rectangular READ reveal previously bled
-            // beyond the rounded Glass surface. Clip its canvas to the same
-            // bounds without allocating a Path on each frame.
-            if (nabdhOwnsCard()) {
-                nabdhClipCard(canvas);
-                canvas.clipRect(org.telegram.ui.Components.NabdhCardGeometry.revealLeft(nabdhCardBounds.left, nabdhCardBounds.right, translationX),
-                        nabdhCardBounds.top, nabdhCardBounds.right, nabdhCardBounds.bottom);
-            }""",
+            // Owned rows already have the enclosing rounded viewport.""",
     "clip original LEFT reveal to rounded Glass card")
 
 cell = once(cell,
@@ -865,9 +878,7 @@ cell = once(cell,
             if (!nabdhOwnsCard() && (translationX != 0 || cornerProgress != 0.0f)) {
                 canvas.save();
 
-                Theme.dialogs_pinnedPaint.setColor(nabdhBlendThemeColor(
-                        Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider),
-                        Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider), 0.55f));""", "remove right-swipe white backing without affecting native LEFT")
+                Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider));""", "remove right-swipe white backing without affecting native LEFT")
 
 # Owned cards use the same renderer for BOTH reveal directions. The native
 # action icon and localized text remain; native rectangular/circular fills
@@ -890,6 +901,11 @@ cell = once(cell,
                 nabdhRenderer.reveal(canvas, nabdhCardBounds, nabdhCardRadius(),
                         nabdhBlendThemeColor(backgroundColor, revealBackgroundColor,
                                 Math.max(0f, Math.min(1f, currentRevealProgress))));
+                // Clip native glyphs to the exposed strip; the stationary
+                // surface continues behind the moving rounded corner.
+                canvas.clipRect(org.telegram.ui.Components.NabdhCardGeometry.revealLeft(
+                        nabdhCardBounds.left, nabdhCardBounds.right, translationX),
+                        nabdhCardBounds.top, nabdhCardBounds.right, nabdhCardBounds.bottom);
             }""", "render native action surface through card renderer")
 
 # Native Telegram reveal-circle work belongs exclusively to the LEFT action.

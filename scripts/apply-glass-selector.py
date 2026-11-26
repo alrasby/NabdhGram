@@ -18,7 +18,8 @@ replacement = """    // Reuse clipping geometry while the user presses a dialog 
         // Telegram draws the pressed overlay at the RecyclerListView level,
         // *above* DialogCell.onDraw. Clip that overlay rather than trying to
         // cover it from the child; leave non-dialog selectors unchanged.
-        final boolean nabdhDialog = selectorView instanceof org.telegram.ui.Cells.DialogCell;
+        final boolean nabdhDialog = selectorView instanceof org.telegram.ui.Cells.DialogCell
+                && ((org.telegram.ui.Cells.DialogCell) selectorView).nabdhOwnsCard();
         final boolean nabdhCard = nabdhDialog
                 || org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(selectorView);
         if (nabdhCard) {
