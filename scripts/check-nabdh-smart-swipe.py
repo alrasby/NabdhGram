@@ -63,7 +63,7 @@ checks = {
         and "if (spring != null) spring.cancel();" in dialogs
         and "expanded.nabdhClearSmartSwipeActions();" in dialogs,
     "RTL actions layout and reduced motion preference":
-        "setLayoutDirection(LocaleController.isRTL" in cell
+        "button.layout(width - button.getRight(), button.getTop()," in cell
         and "ValueAnimator.areAnimatorsEnabled()" in dialogs,
     "opposite-direction reveal skips native Telegram circle animation":
         "drawRevealBackground = translationX < 0" in cell

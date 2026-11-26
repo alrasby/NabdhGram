@@ -9,7 +9,10 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import java.io.FileOutputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import android.view.ViewGroup;
 
 /** Runs in the debug application's process and renders its actual DialogCell. */
 public final class DialogCellProbe extends Instrumentation {
@@ -29,7 +32,7 @@ public final class DialogCellProbe extends Instrumentation {
             }
         });
         if (failure[0] == null) {
-            result.putString("stream", "\nDIALOG_CELL_PASS: 500 render cycles with both offsets\n");
+            result.putString("stream", "\nDIALOG_CELL_PASS: 500 render cycles and LTR/RTL tray hit checks\n");
             finish(Activity.RESULT_OK, result);
         } else {
             result.putString("stream", "\nDIALOG_CELL_FAIL: " + Log.getStackTraceString(failure[0]));
@@ -63,6 +66,7 @@ public final class DialogCellProbe extends Instrumentation {
         if (!Boolean.TRUE.equals(ownsCard.invoke(cell))) {
             throw new AssertionError("Fixture does not use production card rendering");
         }
+        exerciseTray(cell, type, loader, width, density);
         Bitmap frame = Bitmap.createBitmap(width, cell.getHeight(), Bitmap.Config.ARGB_8888);
         try {
             int offset = Math.round(110 * density);
@@ -74,6 +78,73 @@ public final class DialogCellProbe extends Instrumentation {
         } finally {
             cell.setTranslationX(0);
             frame.recycle();
+        }
+    }
+
+    private void exerciseTray(View cell, Class<?> type, ClassLoader loader, int width,
+            float density) throws Exception {
+        Class<?> callbackType = loader.loadClass(type.getName() + "$NabdhSmartAction");
+        Method configure = type.getMethod("nabdhSetSmartSwipeActions", callbackType,
+                boolean.class, boolean.class, boolean.class);
+        Method hit = type.getMethod("nabdhSmartActionAt", float.class, float.class);
+        Method perform = type.getMethod("nabdhPerformSmartAction", int.class);
+        Method clear = type.getMethod("nabdhClearSmartSwipeActions");
+        Field trayField = type.getDeclaredField("nabdhSmartBar");
+        trayField.setAccessible(true);
+        ViewGroup tray = (ViewGroup) trayField.get(cell);
+        Field rtl = loader.loadClass("org.telegram.messenger.LocaleController").getField("isRTL");
+        boolean originalDirection = rtl.getBoolean(null);
+        int[] calls = new int[4];
+        Object callback = Proxy.newProxyInstance(loader, new Class<?>[]{callbackType},
+                (proxy, method, arguments) -> {
+                    if ("onAction".equals(method.getName())) {
+                        calls[(Integer) arguments[0]]++;
+                    }
+                    return null;
+                });
+        try {
+            for (boolean direction : new boolean[]{false, true}) {
+                rtl.setBoolean(null, direction);
+                configure.invoke(cell, callback, true, true, true);
+                cell.setTranslationX((float) Math.ceil(212 * density));
+                cell.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                cell.layout(0, 0, width, cell.getMeasuredHeight());
+                int previousCenter = direction ? Integer.MAX_VALUE : Integer.MIN_VALUE;
+                int expectedCalls = direction ? 2 : 1;
+                for (int action = 0; action < 4; action++) {
+                    View button = tray.getChildAt(action);
+                    int center = (button.getLeft() + button.getRight()) / 2;
+                    if (direction ? center >= previousCenter : center <= previousCenter) {
+                        throw new AssertionError("Incorrect direction for action " + action);
+                    }
+                    previousCenter = center;
+                    float x = tray.getLeft() + center;
+                    float y = tray.getTop() + (button.getTop() + button.getBottom()) / 2f;
+                    if (!Integer.valueOf(action).equals(hit.invoke(cell, x, y))) {
+                        throw new AssertionError("Incorrect hit for action " + action);
+                    }
+                    perform.invoke(cell, action);
+                    if (calls[action] != expectedCalls) {
+                        throw new AssertionError("Incorrect dispatch for action " + action);
+                    }
+                    cell.setTranslationX(center / 2f);
+                    if (!Integer.valueOf(-1).equals(hit.invoke(cell, x, y))) {
+                        throw new AssertionError("Clipped action remains interactive");
+                    }
+                    cell.setTranslationX((float) Math.ceil(212 * density));
+                }
+                clear.invoke(cell);
+                perform.invoke(cell, 0);
+                if (calls[0] != expectedCalls) {
+                    throw new AssertionError("Cleared action remains interactive");
+                }
+                cell.setTranslationX(0);
+            }
+        } finally {
+            rtl.setBoolean(null, originalDirection);
+            clear.invoke(cell);
+            cell.setTranslationX(0);
         }
     }
 

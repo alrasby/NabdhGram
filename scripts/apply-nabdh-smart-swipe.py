@@ -639,11 +639,24 @@ cell = once(cell, "    private boolean drawPinBackground;",
     private boolean nabdhSwipeHapticTriggered;
 
     private void nabdhCreateSmartBar(android.content.Context context) {
-        nabdhSmartBar = new android.widget.LinearLayout(context);
+        nabdhSmartBar = new android.widget.LinearLayout(context) {
+            @Override protected void onLayout(boolean changed, int left, int top,
+                    int right, int bottom) {
+                super.onLayout(changed, left, top, right, bottom);
+                // Telegram disables Android's automatic RTL layout. Mirror
+                // the physical bounds while keeping logical action indices.
+                if (LocaleController.isRTL) {
+                    int width = right - left;
+                    for (int i = 0; i < getChildCount(); i++) {
+                        android.view.View button = getChildAt(i);
+                        button.layout(width - button.getRight(), button.getTop(),
+                                width - button.getLeft(), button.getBottom());
+                    }
+                }
+            }
+        };
         nabdhSmartBar.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-        nabdhSmartBar.setLayoutDirection(LocaleController.isRTL
-                ? android.view.View.LAYOUT_DIRECTION_RTL
-                : android.view.View.LAYOUT_DIRECTION_LTR);
+        nabdhSmartBar.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_LTR);
         // The stationary card reveal owns the surface; this child only draws buttons.
         nabdhSmartBar.setBackground(null);
         final String[] labels = LocaleController.isRTL ?
@@ -675,8 +688,8 @@ cell = once(cell, "    private boolean drawPinBackground;",
                 if (nabdhSmartAction != null) nabdhSmartAction.onAction(which);
             });
             android.widget.LinearLayout.LayoutParams lp =
-                    new android.widget.LinearLayout.LayoutParams(dp(49),
-                            android.view.ViewGroup.LayoutParams.MATCH_PARENT);
+                    new android.widget.LinearLayout.LayoutParams(0,
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT, 1f);
             lp.setMargins(dp(2), dp(3), dp(2), dp(3));
             nabdhSmartBar.addView(button, lp);
         }
@@ -701,6 +714,7 @@ cell = once(cell, "    private boolean drawPinBackground;",
             button.setContentDescription(labels[i]);
         }
         nabdhSmartBar.bringToFront();
+        nabdhSmartBar.requestLayout();
         nabdhUpdateSmartTrayClip(translationX);
         nabdhSmartBar.setVisibility(translationX > 0
                 ? android.view.View.VISIBLE : android.view.View.GONE);
