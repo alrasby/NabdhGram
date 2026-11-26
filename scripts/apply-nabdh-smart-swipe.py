@@ -815,11 +815,9 @@ cell = once(cell,
             canvas.translate(0, -translateY);
             // The stationary surface also fills the space behind the moving
             // rounded corner. The outer viewport clips both layers.
-            nabdhSetCardBounds();
-            nabdhRenderer.reveal(canvas, nabdhCardBounds, nabdhCardRadius(),
-                    nabdhBlendThemeColor(
+            nabdhCardEngine.drawAction(canvas,
                     Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider),
-                    Theme.getColor(Theme.key_chats_archiveBackground, resourcesProvider), 0.20f));
+                    Theme.getColor(Theme.key_chats_archiveBackground, resourcesProvider), 0.20f);
             canvas.restore();
         }
         if (translationX < 0) {
@@ -918,15 +916,11 @@ cell = once(cell,
     "            float tx = getMeasuredWidth() + translationX;",
     """            float tx = getMeasuredWidth() + translationX;
             if (nabdhOwnsCard()) {
-                nabdhSetCardBounds();
-                nabdhRenderer.reveal(canvas, nabdhCardBounds, nabdhCardRadius(),
-                        nabdhBlendThemeColor(backgroundColor, revealBackgroundColor,
-                                Math.max(0f, Math.min(1f, currentRevealProgress))));
+                nabdhCardEngine.drawAction(canvas, backgroundColor, revealBackgroundColor,
+                        Math.max(0f, Math.min(1f, currentRevealProgress)));
                 // Clip native glyphs to the exposed strip; the stationary
                 // surface continues behind the moving rounded corner.
-                canvas.clipRect(org.telegram.ui.Components.NabdhCardGeometry.revealLeft(
-                        nabdhCardBounds.left, nabdhCardBounds.right, translationX),
-                        nabdhCardBounds.top, nabdhCardBounds.right, nabdhCardBounds.bottom);
+                nabdhCardEngine.clipTrailingAction(canvas, translationX);
             }""", "render native action surface through card renderer")
 
 # Native Telegram reveal-circle work belongs exclusively to the LEFT action.

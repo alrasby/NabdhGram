@@ -45,7 +45,7 @@ checks = {
         and "performSelectedDialogsAction(selected, pin, true, false)" in dialogs,
     "card surface remains fixed while reveal slides":
         "if (translationX < 0)" in cell
-        and "nabdhCardBounds.set(horizontal, vertical" in cell
+        and "nabdhCardEngine.setViewport(" in cell
         and "nabdhUpdateSmartTrayClip(value);" in cell
         and "nabdhSmartBar.setClipBounds(nabdhSmartTrayClip);" in cell
         and "nabdhSmartBar.setAlpha(Math.min" not in cell,
@@ -90,9 +90,9 @@ checks = {
         and '"Unmute"' in cell and '"Unpin"' in cell and '"Unarchive"' in cell
         and "nabdhSetSmartSwipeActions(NabdhSmartAction callback," in cell,
     "native READ reveal clipped to same rounded Glass card":
-        "nabdhRenderer.clip(canvas, nabdhCardBounds" in cell
-        and "nabdhClipCard(canvas);" in cell
-        and "nabdhCardBounds.set(horizontal, vertical" in cell,
+        "nabdhCardEngine.clipViewport(canvas)" in cell
+        and "nabdhCardEngine.clipTrailingAction(canvas, translationX)" in cell
+        and "nabdhCardEngine.setViewport(" in cell,
     "four independent rounded pill backgrounds and Android ripple":
         "new android.graphics.drawable.RippleDrawable" in cell
         and "lp.setMargins(dp(2), dp(3), dp(2), dp(3));" in cell
@@ -109,10 +109,10 @@ checks = {
     "native rectangular and circle fills excluded from owned card action surface":
         "if (!nabdhOwnsCard()) {\n                    canvas.drawRect(tx - dp(8)" in cell
         and "if (!nabdhOwnsCard()) {\n                    canvas.drawCircle(drawableCx" in cell
-        and "nabdhBlendThemeColor(backgroundColor, revealBackgroundColor," in cell,
+        and "nabdhCardEngine.drawAction(canvas, backgroundColor, revealBackgroundColor," in cell,
     "native backing excluded for owned cards in both directions":
         "if (!nabdhOwnsCard() && (translationX != 0 || cornerProgress != 0.0f))" in cell
-        and "canvas.clipRect(org.telegram.ui.Components.NabdhCardGeometry.revealLeft(" in cell,
+        and "nabdhCardEngine.clipTrailingAction(canvas, translationX)" in cell,
     "reminder chooser uses NabdhGram-themed rounded Glass options":
         "nabdhSwipeBlend(background, accent, 0.075f)" in dialogs
         and "capsule.setCornerRadius(dp(14));" in dialogs

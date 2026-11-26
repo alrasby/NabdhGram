@@ -557,16 +557,15 @@ checks = {
         and "nameWidth -= dp(27);" in cell,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
     "independent card surface renderer owns content and reveal":
-        "nabdhRenderer.content(canvas, nabdhCardBounds" in cell
-        and "nabdhRenderer.reveal(canvas, nabdhCardBounds" in cell
-        and "nabdhRenderer.clip(canvas, nabdhCardBounds" in cell
+        "nabdhCardEngine.drawContent(canvas, surface, accent, alternate" in cell
+        and "nabdhCardEngine.drawAction(canvas," in cell
+        and "nabdhCardEngine.clipViewport(canvas)" in cell
         and "canvas.drawRoundRect(nabdhCardBounds" not in cell,
     "selected card is rendered once":
-        "final boolean selected = isSelected;" in cell
+        "getIsPinned(), isSelected," in cell
         and "if (isSelected && !nabdhOwnsCard())" in cell,
     "theme-aware border":
-        "pinned ? 0.34f : 0.22f" in cell
-        and "uiStyle == 0 ? 0 : uiStyle == 1 ? 70 : uiStyle == 2 ? 220 : 176" in cell,
+        "NabdhAppearancePrefs.uiStyle()," in cell,
     "dialog card has no experimental swipe alpha interpolation":
         "Math.abs(translationX) / dp(56f)" not in cell
         and "swipeFade" not in cell
