@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+TARGET_APK="${2:-}"
 ROOT="$(cd "$1" && pwd)"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$PWD/card-android-evidence"
@@ -19,8 +20,11 @@ cat > "$WORK/AndroidManifest.xml" <<'XML'
   <instrumentation android:name=".CardProbe" android:targetPackage="net.nabdhserv.cardtest"/>
 </manifest>
 XML
+if [[ -n "$TARGET_APK" ]]; then
+  sed -i '/<\/manifest>/i\  <instrumentation android:name=".DialogCellProbe" android:targetPackage="net.nabdhserv.nabdhgram"/>' "$WORK/AndroidManifest.xml"
+fi
 mkdir -p "$WORK/classes" "$WORK/dex"
-javac --release 8 -cp "$JAR" -d "$WORK/classes" "$SRC/NabdhCardRenderer.java" "$SRC/NabdhCardGeometry.java" "$HERE/tests/android/CardProbe.java"
+javac --release 8 -cp "$JAR" -d "$WORK/classes" "$SRC/NabdhCardRenderer.java" "$SRC/NabdhCardGeometry.java" "$HERE/tests/android/CardProbe.java" "$HERE/tests/android/DialogCellProbe.java"
 (cd "$WORK/classes" && jar cf "$WORK/classes.jar" .)
 "$BT/d8" --min-api 26 --lib "$JAR" --output "$WORK/dex" "$WORK/classes.jar"
 "$BT/aapt" package -f -M "$WORK/AndroidManifest.xml" -I "$JAR" -F "$WORK/unsigned.apk"
@@ -40,3 +44,20 @@ test "$status" -eq 0
 grep -Fq 'CARD_GATE_PASS' "$OUT/android.log"
 ! grep -Eq 'CARD_GATE_FAIL|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED' "$OUT/android.log"
 for f in rest right left dark; do test -s "$OUT/$f.png"; done
+
+if [[ -n "$TARGET_APK" ]]; then
+  "$BT/apksigner" sign --ks "$WORK/test.jks" --ks-pass pass:android --key-pass pass:android \
+    --out "$WORK/dialog-target.apk" "$TARGET_APK"
+  adb install "$WORK/dialog-target.apk" | tee "$OUT/dialog-install.log"
+  set +e
+  timeout 180 adb shell am instrument -w -r "$PKG/.DialogCellProbe" | tee "$OUT/dialog-android.log"
+  status=$?
+  set -e
+  for f in dialog-rest dialog-right dialog-left; do
+    adb exec-out run-as net.nabdhserv.nabdhgram cat "files/$f.png" > "$OUT/$f.png" || true
+  done
+  test "$status" -eq 0
+  grep -Fq 'DIALOG_CELL_PASS' "$OUT/dialog-android.log"
+  ! grep -Eq 'DIALOG_CELL_FAIL|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED' "$OUT/dialog-android.log"
+  for f in dialog-rest dialog-right dialog-left; do test -s "$OUT/$f.png"; done
+fi
