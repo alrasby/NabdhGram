@@ -984,8 +984,33 @@ jobs:
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then
             python3 nabdhgram/scripts/verify-release-apk.py "$APK" apk-badging.txt apk-manifest-tree.txt
           fi
-      - name: Publish verified APK with a clean filename
+      - name: Enable KVM for mandatory Android renderer regression
         if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-nabdh-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android card renderer pixel and gesture regression
+        id: card_android_gate
+        if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash nabdhgram/scripts/run-card-android-gate.sh Telegram-upstream
+      - name: Upload Android card regression evidence
+        if: ${{ always() && !inputs.source_preflight_only }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nabdh-card-android-evidence
+          path: card-android-evidence/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Publish verified APK with a clean filename
+        if: ${{ success() && !inputs.source_preflight_only && steps.compile.outcome == 'success' && steps.card_android_gate.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1060,7 +1085,7 @@ jobs:
           find Telegram-upstream -type f -name '*.apk' -print > apk-paths.txt || true
           cat apk-paths.txt
       - name: Upload APK when available
-        if: ${{ always() && !inputs.source_preflight_only }}
+        if: ${{ success() && !inputs.source_preflight_only && steps.card_android_gate.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.release_mode && 'nabdhgram-owner-signed-release-apk' || 'nabdhgram-identity-debug-apk' }}
@@ -1116,4 +1141,5 @@ jobs:
           BUILD_RESULT: ${{ steps.compile.outcome }}
         run: |
           test "$BUILD_RESULT" = success
+          test "${{ steps.card_android_gate.outcome }}" = success
           test -s dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
