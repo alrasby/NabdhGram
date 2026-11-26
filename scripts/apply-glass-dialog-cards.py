@@ -14,6 +14,8 @@ target = p.parent.parent / "Components/NabdhCardGeometry.java"
 if target.exists():
     raise SystemExit("Card geometry class collision")
 target.write_bytes(geometry.read_bytes())
+renderer = geometry.with_name("NabdhCardRenderer.java")
+target.with_name(renderer.name).write_bytes(renderer.read_bytes())
 anchor = "    protected void onDraw(Canvas canvas) {\n        if (currentDialogId == 0 && customDialog == null) {"
 if s.count(anchor) != 1:
     raise SystemExit("DialogCell drawing anchor changed")
@@ -24,7 +26,8 @@ if s.count(field_anchor) != 1:
 s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded chat surfaces.
     private final android.graphics.Paint nabdhCardPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
     private final android.graphics.RectF nabdhCardBounds = new android.graphics.RectF();
-    private final android.graphics.Path nabdhCardOutline = new android.graphics.Path();
+    private final org.telegram.ui.Components.NabdhCardRenderer nabdhRenderer =
+            new org.telegram.ui.Components.NabdhCardRenderer();
     private boolean nabdhOwnsCard() {
         return !isTopic && !(getParent() instanceof ProfileChannelCell)
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12);
@@ -51,10 +54,7 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
 
     private void nabdhClipCard(android.graphics.Canvas canvas) {
         nabdhSetCardBounds();
-        nabdhCardOutline.reset();
-        nabdhCardOutline.addRoundRect(nabdhCardBounds, dp(17), dp(17),
-                android.graphics.Path.Direction.CW);
-        canvas.clipPath(nabdhCardOutline);
+        nabdhRenderer.clip(canvas, nabdhCardBounds, dp(17));
     }
 """ + """    // Blend resolved Telegram theme colors instead of fixed light/dark palette values.
     // This keeps imported .attheme palettes effective for the custom dialog cards.
@@ -99,20 +99,13 @@ s = s.replace(anchor, """        // This canvas already carries Telegram's trans
             // Keep Telegram's selection feedback, but confine our Glass
             // surface to the same rounded bounds for every dialog row.
             final int uiStyle = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();
-            nabdhCardPaint.setColor(uiStyle == 0 && !selected && !pinned && !archived
-                    ? surface : uiStyle == 1 && !selected && !pinned && !archived
-                    ? nabdhBlendThemeColor(surface, alternate, 0.30f) : fill);
-            nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
             nabdhSetCardBounds();
-            canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
-            nabdhCardPaint.setColor(nabdhBlendThemeColor(
-                    archived ? alternate : surface, accent, pinned ? 0.34f : 0.22f));
-            nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);
-            nabdhCardPaint.setStrokeWidth(dp(1));
-            nabdhCardPaint.setAlpha(uiStyle == 0 ? 0 : uiStyle == 1 ? 70 : uiStyle == 2 ? 220 : 176);
-            canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
-            nabdhCardPaint.setAlpha(255);
-            nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
+            nabdhRenderer.content(canvas, nabdhCardBounds, dp(17), dp(1),
+                    uiStyle == 0 && !selected && !pinned && !archived
+                    ? surface : uiStyle == 1 && !selected && !pinned && !archived
+                    ? nabdhBlendThemeColor(surface, alternate, 0.30f) : fill,
+                    nabdhBlendThemeColor(archived ? alternate : surface, accent, pinned ? 0.34f : 0.22f),
+                    uiStyle == 0 ? 0 : uiStyle == 1 ? 70 : uiStyle == 2 ? 220 : 176);
         }
 
 """ + anchor, 1)
@@ -128,11 +121,7 @@ selection_old = """        if (isSelected) {
         }"""
 selection_new = """        if (isSelected) {
             if (!isTopic && !(getParent() instanceof ProfileChannelCell)) {
-                rect.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
-                        AndroidUtilities.lerp(getMeasuredHeight(), getCollapsedHeight(),
-                                rightFragmentOpenedProgress) - dp(3));
-                rect.offset(0, -translateY + collapseOffset);
-                canvas.drawRoundRect(rect, dp(17), dp(17), Theme.dialogs_tabletSeletedPaint);
+                // Selected color is owned by the content renderer, not a second surface.
             } else {
                 rect.set(0, 0, getMeasuredWidth(), AndroidUtilities.lerp(getMeasuredHeight(),
                         getCollapsedHeight(), rightFragmentOpenedProgress));

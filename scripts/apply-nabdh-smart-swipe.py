@@ -701,11 +701,10 @@ cell = once(cell,
             canvas.clipRect(nabdhCardBounds.left, nabdhCardBounds.top,
                     org.telegram.ui.Components.NabdhCardGeometry.revealRight(nabdhCardBounds.left, nabdhCardBounds.right, translationX),
                     nabdhCardBounds.bottom);
-            nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);
-            nabdhCardPaint.setColor(nabdhBlendThemeColor(
+            nabdhRenderer.reveal(canvas, nabdhCardBounds, dp(17),
+                    nabdhBlendThemeColor(
                     Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider),
                     Theme.getColor(Theme.key_chats_archiveBackground, resourcesProvider), 0.20f));
-            canvas.drawRoundRect(nabdhCardBounds, dp(17), dp(17), nabdhCardPaint);
             canvas.restore();
         }
         if (translationX < 0) {

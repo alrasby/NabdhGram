@@ -89,8 +89,8 @@ checks = {
         and '"Unmute"' in cell and '"Unpin"' in cell and '"Unarchive"' in cell
         and "nabdhSetSmartSwipeActions(NabdhSmartAction callback," in cell,
     "native READ reveal clipped to same rounded Glass card":
-        "nabdhCardOutline.reset();" in cell
-        and "canvas.clipPath(nabdhCardOutline);" in cell
+        "nabdhRenderer.clip(canvas, nabdhCardBounds" in cell
+        and "nabdhClipCard(canvas);" in cell
         and "nabdhCardBounds.set(dp(7), dp(3)" in cell,
     "four independent rounded pill backgrounds and Android ripple":
         "new android.graphics.drawable.RippleDrawable" in cell

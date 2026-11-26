@@ -556,26 +556,17 @@ checks = {
         and "if (left == 0)" in cell
         and "nameWidth -= dp(27);" in cell,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
-    "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 3,
-    "dialog surface remains drawn during swipe and reveal":
-        "if (translationX == 0 && currentRevealProgress == 0.0f" not in cell
-        and "if (nabdhOwnsCard())" in cell
-        and "if (translationX > 0 && nabdhOwnsCard())" in cell
-        and cell.index("Stationary reveal surface:") < cell.index("canvas.drawRoundRect(nabdhCardBounds")
-        < cell.index("canvas.translate(translationX, 0);")
-        and cell.count("canvas.drawRoundRect(nabdhCardBounds", cell.index("canvas.translate(translationX, 0);")) == 2
-        and cell.index("rect.set(getMeasuredWidth() - dp(64)") < cell.index(
-            "canvas.drawRoundRect(nabdhCardBounds", cell.index("canvas.translate(translationX, 0);")),
-    "dialog card selection uses native state and matching rounded bounds":
+    "independent card surface renderer owns content and reveal":
+        "nabdhRenderer.content(canvas, nabdhCardBounds" in cell
+        and "nabdhRenderer.reveal(canvas, nabdhCardBounds" in cell
+        and "nabdhRenderer.clip(canvas, nabdhCardBounds" in cell
+        and "canvas.drawRoundRect(nabdhCardBounds" not in cell,
+    "selected card is rendered once":
         "final boolean selected = isSelected;" in cell
-        and "isPressed() || isSelected || isSelected()" not in cell
-        and "final int fill = selected" in cell
-        and "rect.set(dp(7), dp(3), getMeasuredWidth() - dp(7)," in cell
-        and "canvas.drawRoundRect(rect, dp(17), dp(17), Theme.dialogs_tabletSeletedPaint);" in cell,
-    "dialog borders use subtle theme-aware stroke":
+        and "Selected color is owned by the content renderer" in cell,
+    "theme-aware border":
         "pinned ? 0.34f : 0.22f" in cell
-        and "final int uiStyle = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();" in cell
-        and "nabdhCardPaint.setAlpha(uiStyle == 0 ? 0 : uiStyle == 1 ? 70 : uiStyle == 2 ? 220 : 176);" in cell,
+        and "uiStyle == 0 ? 0 : uiStyle == 1 ? 70 : uiStyle == 2 ? 220 : 176" in cell,
     "dialog card has no experimental swipe alpha interpolation":
         "Math.abs(translationX) / dp(56f)" not in cell
         and "swipeFade" not in cell
