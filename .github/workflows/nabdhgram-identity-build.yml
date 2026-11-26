@@ -104,6 +104,25 @@ jobs:
           test "$(git -C Telegram-upstream rev-parse HEAD)" = "$COMMIT"
           # Source-only Glass overlays do not use native submodules. Defer
           # recursive checkout until ALL generated-source checks have passed.
+      - name: Export exact pinned public source for card engine review
+        if: ${{ inputs.source_preflight_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p card-source-review
+          for f in TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java TMessagesProj/src/main/java/org/telegram/ui/Components/RecyclerListView.java; do
+            git -C Telegram-upstream show "HEAD:$f" > "card-source-review/$(basename "$f")"
+          done
+          git -C Telegram-upstream rev-parse HEAD > card-source-review/UPSTREAM_COMMIT
+      - name: Publish pinned card source review
+        if: ${{ inputs.source_preflight_only }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinned-card-source-review
+          path: card-source-review/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Apply NabdhGram package and label overlay
         shell: bash
         run: |
