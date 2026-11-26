@@ -21,10 +21,10 @@ checks = {
         dialogs.index("viewPage.itemTouchhelper = new ItemTouchHelper("),
     "gesture respects touch-slop, vertical scroll, and edge back":
         "getScaledTouchSlop()" in dialogs
-        and "Math.abs(dy) * 1.5f" in dialogs
+        and "NabdhSwipeMotion.classify(" in dialogs
         and "downX <= dp(24)" in dialogs,
     "reverse gesture and tap-outside close":
-        "expanded.setTranslationX(Math.max(0f, dp(212) + dx));" in dialogs
+        "actionStartOffset, dx, dp(212)" in dialogs
         and "row.getTranslationX() < dp(135)" in dialogs
         and "Outside tap dismisses without chat opening." in dialogs,
     "physical spring with damping and stiffness":
@@ -82,7 +82,7 @@ checks = {
         and "button.getLeft()" in cell and "button.getRight()" in cell
         and "nabdhSetSmartPressed(-1)" in cell,
     "reverse swipe closes the tray without tapping":
-        "expanded.setTranslationX(Math.max(0f, dp(212) + dx));" in dialogs
+        "actionStartOffset, dx, dp(212)" in dialogs
         and "row.getTranslationX() < dp(135)" in dialogs,
     "dynamic labels match actual muted/pinned/archived state":
         "getMessagesController().isDialogMuted(dialogId, 0)" in dialogs

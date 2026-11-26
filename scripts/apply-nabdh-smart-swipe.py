@@ -135,8 +135,7 @@ palette = """
             private float downX, downY, startingX;
             private boolean dragging;
             private boolean consumedDown;
-            private int pressedAction = -1;
-            private float actionDownX;
+            private float actionDownX, actionDownY, actionStartOffset;
             private final org.telegram.ui.Components.NabdhSwipeActionPress actionPress =
                     new org.telegram.ui.Components.NabdhSwipeActionPress();
             private final android.view.View.OnAttachStateChangeListener rowAttachment =
@@ -241,7 +240,6 @@ palette = """
                 int action = event.getActionMasked();
                 if (action == android.view.MotionEvent.ACTION_DOWN) {
                     consumedDown = false;
-                    pressedAction = -1;
                     actionPress.cancel();
                     dragging = false;
                     candidate = null;
@@ -265,6 +263,8 @@ palette = """
                                 android.os.SystemClock.uptimeMillis() + 450L;
                         consumedDown = true;
                         actionDownX = event.getX();
+                        actionDownY = event.getY();
+                        actionStartOffset = expanded.getTranslationX();
                         gestureDialogId = expanded.getDialogId();
                         float cx = event.getX() - expanded.getLeft();
                         float cy = event.getY() - expanded.getTop();
@@ -275,7 +275,7 @@ palette = """
                             close();
                             return true; // Outside tap dismisses without chat opening.
                         }
-                        pressedAction = expanded.nabdhSmartActionAt(cx, cy);
+                        int pressedAction = expanded.nabdhSmartActionAt(cx, cy);
                         if (pressedAction >= 0) {
                             actionPress.begin(event.getPointerId(0), pressedAction,
                                     event.getX(), event.getY());
@@ -289,7 +289,7 @@ palette = """
                     if (!(child instanceof DialogCell)) return false;
                     DialogCell row = (DialogCell) child;
                     long id = row.getDialogId();
-                    if (DialogObject.isFolderDialogId(id)
+                    if (!row.nabdhOwnsCard() || DialogObject.isFolderDialogId(id)
                             || getMessagesController().isPromoDialog(id, false)
                             || getMessagesController().dialogs_dict.get(id) == null
                             || page.dialogsType != DIALOGS_TYPE_DEFAULT
@@ -310,10 +310,10 @@ palette = """
                     float dy = event.getY() - downY;
                     int slop = android.view.ViewConfiguration.get(
                             recycler.getContext()).getScaledTouchSlop();
-                    if (((startingX > 0 && dx < -slop)
-                            || (startingX == 0 && dx > slop))
-                            && Math.abs(dx) > Math.abs(dy) * 1.5f
-                            && Math.abs(dy) < dp(36)) {
+                    final org.telegram.ui.Components.NabdhSwipeMotion.Decision decision =
+                            org.telegram.ui.Components.NabdhSwipeMotion.classify(
+                                    startingX, dx, dy, slop, dp(36));
+                    if (decision == org.telegram.ui.Components.NabdhSwipeMotion.Decision.CLAIM) {
                         final DialogCell row = candidate;
                         final long dialogId = row.getDialogId();
                         final TLRPC.Dialog current = getMessagesController().dialogs_dict.get(dialogId);
@@ -342,10 +342,11 @@ palette = """
                             settlingRow = null;
                         }
                         recycler.getParent().requestDisallowInterceptTouchEvent(true);
+                        row.setTranslationX(org.telegram.ui.Components.NabdhSwipeMotion.offset(
+                                startingX, dx, dp(212)));
                         return true;
                     }
-                    if (Math.abs(dy) > slop * 1.5f
-                            || (startingX == 0 && dx < -slop)) {
+                    if (decision == org.telegram.ui.Components.NabdhSwipeMotion.Decision.YIELD) {
                         candidate = null;
                     }
                 }
@@ -372,11 +373,16 @@ palette = """
                     float dx = event.getX() - actionDownX;
                     int hit = expanded == null ? -1 : expanded.nabdhSmartActionAt(
                             event.getX() - expanded.getLeft(), event.getY() - expanded.getTop());
-                    if (expanded != null && pressedAction >= 0
-                            && action == android.view.MotionEvent.ACTION_MOVE
-                            && dx < -slop) {
-                        if (spring != null) spring.cancel();
-                        expanded.setTranslationX(Math.max(0f, dp(212) + dx));
+                    if (expanded != null && action == android.view.MotionEvent.ACTION_MOVE) {
+                        float dy = event.getY() - actionDownY;
+                        if (Math.abs(dy) > slop && Math.abs(dy) > Math.abs(dx)) {
+                            actionPress.cancel();
+                            close();
+                        } else if (dx < -slop && Math.abs(dx) > Math.abs(dy) * 1.5f) {
+                            if (spring != null) spring.cancel();
+                            expanded.setTranslationX(org.telegram.ui.Components.NabdhSwipeMotion.offset(
+                                    actionStartOffset, dx, dp(212)));
+                        }
                     }
                     if (expanded != null && action == android.view.MotionEvent.ACTION_MOVE
                             && !actionPress.update(event.getPointerId(0), event.getX(),
@@ -395,7 +401,6 @@ palette = """
                         }
                         if (row != null) row.nabdhSetSmartPressed(-1);
                         consumedDown = false;
-                        pressedAction = -1;
                         if (row != null && row.getParent() == recycler
                                 && actionIndex >= 0) {
                             // Delegate to a real TextView.performClick(), not to
@@ -413,8 +418,8 @@ palette = """
                 if (candidate == null || !dragging) return;
                 if (action == android.view.MotionEvent.ACTION_MOVE) {
                     float dx = event.getX() - downX;
-                    candidate.setTranslationX(Math.max(0f,
-                            Math.min(dp(212), startingX + dx)));
+                    candidate.setTranslationX(org.telegram.ui.Components.NabdhSwipeMotion.offset(
+                            startingX, dx, dp(212)));
                 } else if (action == android.view.MotionEvent.ACTION_UP
                         || action == android.view.MotionEvent.ACTION_CANCEL) {
                     DialogCell row = candidate;
@@ -771,7 +776,9 @@ cell = once(cell,
 
 # Preserve the same card surface draw ordering as the verified #1036.
 cell = once(cell, "        translationX = value;\n",
-    """        translationX = value;
+    """        final boolean closingSmartSwipe = translationX > 0 && value == 0;
+        translationX = value;
+        if (closingSmartSwipe) isSliding = false;
         if (nabdhSmartBar != null) {
             if (value > 0 && nabdhSmartAction != null) {
                 nabdhSmartBar.setVisibility(android.view.View.VISIBLE);
@@ -930,8 +937,9 @@ manifest = once(manifest, "</application>",
     </receiver>
 </application>""", "nonexported reminder receiver")
 
-press_asset = Path(__file__).resolve().parents[1] / "overlay/java/NabdhSwipeActionPress.java"
-(ui / "Components" / press_asset.name).write_bytes(press_asset.read_bytes())
+for name in ("NabdhSwipeActionPress.java", "NabdhSwipeMotion.java"):
+    asset = Path(__file__).resolve().parents[1] / "overlay/java" / name
+    (ui / "Components" / name).write_bytes(asset.read_bytes())
 dialogs_path.write_text(dialogs, encoding="utf-8")
 cell_path.write_text(cell, encoding="utf-8")
 manifest_path.write_text(manifest, encoding="utf-8")

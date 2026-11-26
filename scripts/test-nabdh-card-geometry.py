@@ -7,8 +7,11 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 source = root / "overlay/java/NabdhCardGeometry.java"
 press = source.with_name("NabdhSwipeActionPress.java")
+motion = source.with_name("NabdhSwipeMotion.java")
 harness = """import org.telegram.ui.Components.NabdhCardGeometry;
 import org.telegram.ui.Components.NabdhSwipeActionPress;
+import org.telegram.ui.Components.NabdhSwipeMotion;
+import org.telegram.ui.Components.NabdhSwipeMotion.Decision;
 public class CardGeometryTest {
     private static void require(boolean ok) {
         if (!ok) throw new AssertionError("Card geometry invariant failed");
@@ -56,6 +59,15 @@ public class CardGeometryTest {
         press.begin(3, 2, 20, 20);
         press.cancel();
         require(press.release(3, 20, 20, 8, 2) == -1);
+        require(NabdhSwipeMotion.classify(0, 8, 0, 8, 36) == Decision.PENDING);
+        require(NabdhSwipeMotion.classify(0, 40, 8, 8, 36) == Decision.CLAIM);
+        require(NabdhSwipeMotion.classify(0, -40, 8, 8, 36) == Decision.YIELD);
+        require(NabdhSwipeMotion.classify(0, 40, 40, 8, 36) == Decision.YIELD);
+        require(NabdhSwipeMotion.classify(120, -40, 8, 8, 36) == Decision.CLAIM);
+        require(NabdhSwipeMotion.offset(120, -180, 212) == 0);
+        require(NabdhSwipeMotion.offset(120, 180, 212) == 212);
+        require(NabdhSwipeMotion.offset(120, -40, 212) == 80);
+        System.out.println("PASS: 8 gesture direction and offset assertions");
         System.out.println("PASS: 6 action press assertions");
         System.out.println("PASS: " + cases + " reveal cases and tap cancellation/boundaries");
     }
@@ -65,5 +77,5 @@ with tempfile.TemporaryDirectory() as directory:
     target = Path(directory)
     main = target / "CardGeometryTest.java"
     main.write_text(harness, encoding="utf-8")
-    subprocess.run(["javac", "-d", str(target), str(source), str(press), str(main)], check=True)
+    subprocess.run(["javac", "-d", str(target), str(source), str(press), str(motion), str(main)], check=True)
     subprocess.run(["java", "-cp", str(target), "CardGeometryTest"], check=True)
