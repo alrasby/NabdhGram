@@ -795,6 +795,29 @@ cell = once(cell,
                         Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider),
                         Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider), 0.55f));""", "remove right-swipe white backing without affecting native LEFT")
 
+# Owned cards use the same renderer for BOTH reveal directions. The native
+# action icon and localized text remain; native rectangular/circular fills
+# only run for rows outside the Nabdh card engine.
+cell = once(cell,
+    "                canvas.drawRect(tx - dp(8), 0, getMeasuredWidth(), getMeasuredHeight(), Theme.dialogs_pinnedPaint);",
+    """                if (!nabdhOwnsCard()) {
+                    canvas.drawRect(tx - dp(8), 0, getMeasuredWidth(), getMeasuredHeight(), Theme.dialogs_pinnedPaint);
+                }""", "remove native rectangular fill for owned rows")
+cell = once(cell,
+    "                canvas.drawCircle(drawableCx, drawableCy, rad * AndroidUtilities.accelerateInterpolator.getInterpolation(currentRevealProgress), Theme.dialogs_pinnedPaint);",
+    """                if (!nabdhOwnsCard()) {
+                    canvas.drawCircle(drawableCx, drawableCy, rad * AndroidUtilities.accelerateInterpolator.getInterpolation(currentRevealProgress), Theme.dialogs_pinnedPaint);
+                }""", "remove native animated circle fill for owned rows")
+cell = once(cell,
+    "            float tx = getMeasuredWidth() + translationX;",
+    """            float tx = getMeasuredWidth() + translationX;
+            if (nabdhOwnsCard()) {
+                nabdhSetCardBounds();
+                nabdhRenderer.reveal(canvas, nabdhCardBounds, dp(17),
+                        nabdhBlendThemeColor(backgroundColor, revealBackgroundColor,
+                                Math.max(0f, Math.min(1f, currentRevealProgress))));
+            }""", "render native action surface through card renderer")
+
 # Native Telegram reveal-circle work belongs exclusively to the LEFT action.
 # The RIGHT tray paints its own layer and haptics, avoiding offscreen animations.
 cell = once(cell,

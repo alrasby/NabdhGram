@@ -105,6 +105,10 @@ checks = {
     "native reveal does not run when spring keeps stale corner progress on RIGHT":
         "if (translationX < 0)" in cell
         and "drawRevealBackground = translationX < 0" in cell,
+    "native rectangular and circle fills excluded from owned card action surface":
+        "if (!nabdhOwnsCard()) {\n                    canvas.drawRect(tx - dp(8)" in cell
+        and "if (!nabdhOwnsCard()) {\n                    canvas.drawCircle(drawableCx" in cell
+        and "nabdhBlendThemeColor(backgroundColor, revealBackgroundColor," in cell,
     "native backing excluded for owned cards in both directions":
         "if (!nabdhOwnsCard() && (translationX != 0 || cornerProgress != 0.0f))" in cell
         and "canvas.clipRect(org.telegram.ui.Components.NabdhCardGeometry.revealLeft(nabdhCardBounds.left, nabdhCardBounds.right, translationX)" in cell
