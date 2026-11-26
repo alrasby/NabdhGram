@@ -39,7 +39,9 @@ checks = {
         and "row.nabdhSetSmartSwipeActions(index ->" in dialogs,
     "actions require explicit tap":
         "nabdhRunSmartAction(dialogId, index)" in dialogs
-        and "performSelectedDialogsAction(selected, archive, true, false)" in dialogs
+        and "getMessagesController().addDialogToFolder(" in dialogs
+        and "updated.folder_id != targetFolder" in dialogs
+        and "canMoveToFolder(" in dialogs
         and "performSelectedDialogsAction(selected, pin, true, false)" in dialogs,
     "card surface remains fixed while reveal slides":
         "if (translationX < 0)" in cell
@@ -95,8 +97,9 @@ checks = {
         and "lp.setMargins(dp(2), dp(3), dp(2), dp(3));" in cell
         and "pill.setCornerRadius(dp(11));" in cell,
     "RIGHT tray has opaque themed reveal and clipped interactive buttons":
-        "surface.setColor(nabdhBlendThemeColor(" in cell
-        and "final int glassAccent = Theme.getColor(Theme.key_chats_archiveBackground);" in cell
+        "nabdhSmartBar.setBackground(null);" in cell
+        and "super.draw(canvas);" in cell
+        and "canvas.restoreToCount(saved);" in cell
         and "if (translationX > 0 && nabdhOwnsCard())" in cell
         and cell.index("Stationary reveal surface:") < cell.index("canvas.translate(translationX, 0);"),
     "native reveal does not run when spring keeps stale corner progress on RIGHT":

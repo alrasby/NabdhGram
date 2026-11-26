@@ -3,6 +3,10 @@ package org.telegram.ui.Components;
 /** Pure geometry and tap policy, shared by rendering and gesture handling. */
 public final class NabdhCardGeometry {
     private NabdhCardGeometry() {}
+    // Mirrors the pinned MessagesController folder eligibility rule.
+    public static boolean canMoveToFolder(long dialogId, long selfId, int targetFolder) {
+        return targetFolder == 0 || (targetFolder == 1 && dialogId != selfId && dialogId != 777000L);
+    }
     public static int trayWidth(float translation, int max) {
         return Math.max(0, Math.min(Math.max(0, max), Math.round(translation)));
     }

@@ -33,6 +33,22 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
         nabdhCardBounds.set(dp(7), dp(3), getMeasuredWidth() - dp(7),
                 getMeasuredHeight() - dp(3));
     }
+    // One outer viewport for background, native canvas and child views.
+    @Override
+    public void draw(android.graphics.Canvas canvas) {
+        if (!nabdhOwnsCard() || isFolderCell() || rightFragmentOpenedProgress != 0f) {
+            super.draw(canvas);
+            return;
+        }
+        final int saved = canvas.save();
+        try {
+            nabdhClipCard(canvas);
+            super.draw(canvas);
+        } finally {
+            canvas.restoreToCount(saved);
+        }
+    }
+
     private void nabdhClipCard(android.graphics.Canvas canvas) {
         nabdhSetCardBounds();
         nabdhCardOutline.reset();

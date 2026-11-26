@@ -34,6 +34,11 @@ public class CardGeometryTest {
                 require(!NabdhCardGeometry.acceptTap(true,0,-8,8,down,up));
             }
         }
+        require(!NabdhCardGeometry.canMoveToFolder(42,42,1));
+        require(!NabdhCardGeometry.canMoveToFolder(777000,42,1));
+        require(NabdhCardGeometry.canMoveToFolder(43,42,1));
+        require(NabdhCardGeometry.canMoveToFolder(-43,42,1));
+        require(NabdhCardGeometry.canMoveToFolder(42,42,0));
         require(NabdhCardGeometry.hit(2,3,2,3,51,60));
         require(!NabdhCardGeometry.hit(51,3,2,3,51,60));
         require(!NabdhCardGeometry.hit(2,60,2,3,51,60));

@@ -76,8 +76,37 @@ palette = """
             canPinCount = isDialogPinned(dialog) ? 0 : 1;
             performSelectedDialogsAction(selected, pin, true, false);
         } else if (action == 3) {
-            canUnarchiveCount = dialog.folder_id == 0 ? 0 : 1;
-            performSelectedDialogsAction(selected, archive, true, false);
+            final int previousFolder = dialog.folder_id;
+            final int targetFolder = previousFolder == 0 ? 1 : 0;
+            final long selfId = getUserConfig().getClientUserId();
+            final boolean rtl = LocaleController.isRTL;
+            if (!org.telegram.ui.Components.NabdhCardGeometry.canMoveToFolder(
+                    dialogId, selfId, targetFolder)) {
+                android.widget.Toast.makeText(getParentActivity(),
+                        rtl ? "لا يسمح تيليجرام بأرشفة هذه المحادثة" :
+                                "Telegram does not allow archiving this chat",
+                        android.widget.Toast.LENGTH_SHORT).show();
+                return;
+            }
+            final int previousPin = dialog.pinnedNum;
+            final int result = getMessagesController().addDialogToFolder(
+                    dialogId, targetFolder, -1, 0);
+            final TLRPC.Dialog updated = getMessagesController().dialogs_dict.get(dialogId);
+            if (result == 0 || updated == null || updated.folder_id != targetFolder) {
+                android.widget.Toast.makeText(getParentActivity(),
+                        rtl ? "لم تنتقل المحادثة" : "Chat was not moved",
+                        android.widget.Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (targetFolder == 1) {
+                if (result == 2 && SharedConfig.archiveHidden) SharedConfig.toggleArchiveHidden();
+                final UndoView undoView = getUndoView();
+                if (undoView != null) {
+                    undoView.showWithAction(0, UndoView.ACTION_ARCHIVE, null,
+                            () -> getMessagesController().addDialogToFolder(
+                                    dialogId, previousFolder, previousPin, 0));
+                }
+            }
         }
     }
 
@@ -113,6 +142,7 @@ palette = """
             private void settle(DialogCell row, float target) {
                 if (row == null) return;
                 if (spring != null) spring.cancel();
+                final long boundId = row.getDialogId();
                 spring = new androidx.dynamicanimation.animation.SpringAnimation(row,
                         new androidx.dynamicanimation.animation.FloatPropertyCompat<DialogCell>(
                                 "nabdhSmartSwipeX") {
@@ -120,7 +150,7 @@ palette = """
                                 return value.getTranslationX();
                             }
                             @Override public void setValue(DialogCell value, float x) {
-                                value.setTranslationX(x);
+                                if (value.getDialogId() == boundId) value.setTranslationX(x);
                             }
                         });
                 androidx.dynamicanimation.animation.SpringForce force =
@@ -513,15 +543,8 @@ cell = once(cell, "    private boolean drawPinBackground;",
         nabdhSmartBar.setLayoutDirection(LocaleController.isRTL
                 ? android.view.View.LAYOUT_DIRECTION_RTL
                 : android.view.View.LAYOUT_DIRECTION_LTR);
-        android.graphics.drawable.GradientDrawable surface =
-                new android.graphics.drawable.GradientDrawable();
-        // The row itself has a Glass fill. Avoid a second nearly opaque
-        // windowBackgroundWhite panel underneath it as the card slides.
-        final int glassAccent = Theme.getColor(Theme.key_chats_archiveBackground);
-        surface.setColor(nabdhBlendThemeColor(
-                Theme.getColor(Theme.key_windowBackgroundGray), glassAccent, 0.20f));
-        surface.setCornerRadius(dp(17));
-        nabdhSmartBar.setBackground(surface);
+        // The stationary card reveal owns the surface; this child only draws buttons.
+        nabdhSmartBar.setBackground(null);
         final String[] labels = LocaleController.isRTL ?
                 new String[]{"ذكّرني", "كتم", "تثبيت", "أرشفة"} :
                 new String[]{"Remind", "Mute", "Pin", "Archive"};
@@ -654,7 +677,7 @@ cell = once(cell,
 cell = once(cell, "        translationX = value;\n",
     """        translationX = value;
         if (nabdhSmartBar != null) {
-            if (value > 0) {
+            if (value > 0 && nabdhSmartAction != null) {
                 nabdhSmartBar.setVisibility(android.view.View.VISIBLE);
                 nabdhSmartBar.setAlpha(1f);
                 nabdhUpdateSmartTrayClip(value);
