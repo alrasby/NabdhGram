@@ -53,11 +53,24 @@ if [[ -n "$TARGET_APK" ]]; then
   timeout 180 adb shell am instrument -w -r "$PKG/.DialogCellProbe" | tee "$OUT/dialog-android.log"
   status=$?
   set -e
-  for f in dialog-rest dialog-right dialog-left; do
+  for f in dialog-rest dialog-right dialog-left dialog-rest-after; do
     adb exec-out run-as net.nabdhserv.nabdhgram cat "files/$f.png" > "$OUT/$f.png" || true
   done
   test "$status" -eq 0
   grep -Fq 'DIALOG_CELL_PASS' "$OUT/dialog-android.log"
   ! grep -Eq 'DIALOG_CELL_FAIL|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED' "$OUT/dialog-android.log"
-  for f in dialog-rest dialog-right dialog-left; do test -s "$OUT/$f.png"; done
+  for f in dialog-rest dialog-right dialog-left dialog-rest-after; do test -s "$OUT/$f.png"; done
+  python3 - "$OUT" <<'PIXELS' | tee "$OUT/dialog-pixel-comparison.log"
+from pathlib import Path
+from PIL import Image, ImageChops
+import sys
+
+evidence = Path(sys.argv[1])
+with Image.open(evidence / "dialog-rest.png") as before, Image.open(evidence / "dialog-rest-after.png") as after:
+    before_mask = before.convert("RGBA").getchannel("A")
+    after_mask = after.convert("RGBA").getchannel("A")
+    if before_mask.size != after_mask.size or ImageChops.difference(before_mask, after_mask).getbbox():
+        raise SystemExit("DialogCell resting silhouette changed after repeated draws")
+    print("Resting silhouette: pixel-identical alpha before and after 500 draw cycles")
+PIXELS
 fi

@@ -15,6 +15,7 @@ import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import android.view.ViewGroup;
 
 /** Runs in the debug application's process and renders its actual DialogCell. */
@@ -35,7 +36,7 @@ public final class DialogCellProbe extends Instrumentation {
             }
         });
         if (failure[0] == null) {
-            result.putString("stream", "\nDIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles and LTR/RTL tray hit checks\n");
+            result.putString("stream", "\nDIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch and native local folder move\n");
             finish(Activity.RESULT_OK, result);
         } else {
             result.putString("stream", "\nDIALOG_CELL_FAIL: " + Log.getStackTraceString(failure[0]));
@@ -69,20 +70,67 @@ public final class DialogCellProbe extends Instrumentation {
         if (!Boolean.TRUE.equals(ownsCard.invoke(cell))) {
             throw new AssertionError("Fixture does not use production card rendering");
         }
+        exerciseNativeArchive(loader);
         exerciseTray(cell, type, loader, width, density);
         exerciseController(cell, type, loader, width, density, app);
         Bitmap frame = Bitmap.createBitmap(width, cell.getHeight(), Bitmap.Config.ARGB_8888);
         try {
             int offset = Math.round(110 * density);
+            long[] frameTimes = new long[500];
             for (int cycle = 0; cycle < 500; cycle++) {
+                long start = System.nanoTime();
                 draw(cell, frame, 0, cycle == 0 ? "dialog-rest" : null, app);
                 draw(cell, frame, offset, cycle == 0 ? "dialog-right" : null, app);
                 draw(cell, frame, -offset, cycle == 0 ? "dialog-left" : null, app);
+                frameTimes[cycle] = System.nanoTime() - start;
             }
+            Arrays.sort(frameTimes);
+            status("Three-frame software draw cycle, p50=" + frameTimes[250] / 1000
+                    + "us p95=" + frameTimes[475] / 1000 + "us");
+            draw(cell, frame, 0, "dialog-rest-after", app);
         } finally {
             cell.setTranslationX(0);
             frame.recycle();
         }
+    }
+
+    private void status(String message) {
+        Bundle status = new Bundle();
+        status.putString("stream", "\n" + message + "\n");
+        sendStatus(0, status);
+    }
+
+    private void exerciseNativeArchive(ClassLoader loader) throws Exception {
+        Class<?> controllerType = loader.loadClass("org.telegram.messenger.MessagesController");
+        Class<?> configType = loader.loadClass("org.telegram.messenger.UserConfig");
+        int account = configType.getField("selectedAccount").getInt(null);
+        Object controller = controllerType.getMethod("getInstance", int.class).invoke(null, account);
+        Object dialog = loader.loadClass("org.telegram.tgnet.TLRPC$TL_dialog")
+                .getConstructor().newInstance();
+        long id = (Long) loader.loadClass("org.telegram.messenger.DialogObject")
+                .getMethod("makeEncryptedDialogId", long.class).invoke(null, 42L);
+        dialog.getClass().getField("id").setLong(dialog, id);
+        Object dialogs = controllerType.getField("dialogs_dict").get(controller);
+        Method put = dialogs.getClass().getMethod("put", long.class, Object.class);
+        Method remove = dialogs.getClass().getMethod("remove", long.class);
+        Method move = controllerType.getMethod("addDialogToFolder",
+                long.class, int.class, int.class, long.class);
+        Field folder = dialog.getClass().getField("folder_id");
+        put.invoke(dialogs, id, dialog);
+        try {
+            for (int destination : new int[]{1, 0}) {
+                if (((Integer) move.invoke(controller, id, destination, -1, 0L)) <= 0
+                        || folder.getInt(dialog) != destination) {
+                    throw new AssertionError("Native local folder move failed: " + destination);
+                }
+            }
+            if (!Integer.valueOf(0).equals(move.invoke(controller, 777000L, 1, -1, 0L))) {
+                throw new AssertionError("Telegram service dialog accepted for archive");
+            }
+        } finally {
+            remove.invoke(dialogs, id);
+        }
+        status("Native folder state: archived, restored, Telegram service dialog rejected");
     }
 
     private void exerciseController(View cell, Class<?> type, ClassLoader loader, int width,
@@ -106,7 +154,7 @@ public final class DialogCellProbe extends Instrumentation {
         Class<?> callbackType = loader.loadClass(type.getName() + "$NabdhSmartAction");
         Method configure = type.getMethod("nabdhSetSmartSwipeActions", callbackType,
                 boolean.class, boolean.class, boolean.class);
-        int[] executions = new int[1];
+        int[] executions = new int[4];
         Object host = Proxy.newProxyInstance(loader, new Class<?>[]{hostType},
                 (proxy, method, arguments) -> {
                     switch (method.getName()) {
@@ -117,7 +165,7 @@ public final class DialogCellProbe extends Instrumentation {
                             configure.invoke(arguments[0], arguments[1], false, false, false);
                             return true;
                         case "runAction":
-                            executions[0]++;
+                            executions[(Integer) arguments[1]]++;
                             return null;
                         default:
                             return null;
@@ -149,9 +197,34 @@ public final class DialogCellProbe extends Instrumentation {
                 }
                 event(touch, controller, recycler, down, MotionEvent.ACTION_CANCEL, x + 212 * density, y);
                 cancel.invoke(controller);
-                if (cell.getTranslationX() != 0 || executions[0] != 0) {
+                if (cell.getTranslationX() != 0 || Arrays.stream(executions).sum() != 0) {
                     throw new AssertionError("Cancellation left an offset or executed an action");
                 }
+            }
+            Field trayField = type.getDeclaredField("nabdhSmartBar");
+            trayField.setAccessible(true);
+            ViewGroup tray = (ViewGroup) trayField.get(cell);
+            for (int action = 0; action < 4; action++) {
+                down = SystemClock.uptimeMillis();
+                event(intercept, controller, recycler, down, MotionEvent.ACTION_DOWN, x, y);
+                if (!event(intercept, controller, recycler, down, MotionEvent.ACTION_MOVE,
+                        x + 212 * density, y)) {
+                    throw new AssertionError("Could not reveal action tray");
+                }
+                event(touch, controller, recycler, down, MotionEvent.ACTION_UP, x + 212 * density, y);
+                View button = tray.getChildAt(action);
+                float buttonX = tray.getLeft() + (button.getLeft() + button.getRight()) / 2f;
+                float buttonY = tray.getTop() + (button.getTop() + button.getBottom()) / 2f;
+                down = SystemClock.uptimeMillis();
+                if (!event(intercept, controller, recycler, down, MotionEvent.ACTION_DOWN, buttonX, buttonY)) {
+                    throw new AssertionError("Tray did not claim action tap");
+                }
+                event(touch, controller, recycler, down, MotionEvent.ACTION_UP, buttonX, buttonY);
+                event(touch, controller, recycler, down, MotionEvent.ACTION_UP, buttonX, buttonY);
+                if (executions[action] != 1 || Arrays.stream(executions).sum() != action + 1) {
+                    throw new AssertionError("Missing, duplicate or incorrect action: " + action);
+                }
+                cancel.invoke(controller);
             }
         } finally {
             cancel.invoke(controller);
