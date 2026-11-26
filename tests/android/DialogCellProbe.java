@@ -107,6 +107,9 @@ public final class DialogCellProbe extends Instrumentation {
                 rtl.setBoolean(null, direction);
                 configure.invoke(cell, callback, true, true, true);
                 cell.setTranslationX((float) Math.ceil(212 * density));
+                // An unattached DialogCell does not propagate requestLayout().
+                // Force a new layout to exercise the tray after changing direction.
+                cell.forceLayout();
                 cell.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                         View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 cell.layout(0, 0, width, cell.getMeasuredHeight());
