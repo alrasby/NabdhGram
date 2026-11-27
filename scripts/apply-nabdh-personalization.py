@@ -84,10 +84,13 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
 
         org.telegram.ui.Components.NabdhCompactSettings.row(context, content,
                 org.telegram.messenger.LocaleController.isRTL ? "نمط الواجهة" : "UI style",
-                org.telegram.messenger.LocaleController.isRTL ? "مستقل عن ألوان الثيم وخلفيته" : "Independent of theme colors and wallpaper",
+                org.telegram.messenger.LocaleController.isRTL
+                        ? "اختر مظهر البطاقات وعناصر الواجهة" : "Choose the appearance of cards and controls",
                 R.drawable.settings_chat,
                 () -> {
-                    final String[] styles = {"Classic", "Material 3", "Siri Glass", "M3 × Glass"};
+                    final String[] styles = org.telegram.messenger.LocaleController.isRTL
+                            ? new String[]{"كلاسيكي", "ماتيريال 3", "زجاج سيري", "ماتيريال 3 مع الزجاج"}
+                            : new String[]{"Classic", "Material 3", "Siri Glass", "Material 3 with Glass"};
                     new android.app.AlertDialog.Builder(context)
                             .setTitle(org.telegram.messenger.LocaleController.isRTL ? "نمط الواجهة" : "UI style")
                             .setSingleChoiceItems(styles,
@@ -104,6 +107,8 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
                             .show();
                 });
 
+        org.telegram.ui.Components.NabdhCompactSettings.header(context, content,
+                org.telegram.messenger.LocaleController.isRTL ? "التخزين" : "Storage");
         org.telegram.ui.Components.NabdhCompactSettings.row(context, content,
                 org.telegram.messenger.LocaleController.isRTL ? "إدارة التخزين الذكية" : "Smart Storage",
                 org.telegram.messenger.LocaleController.isRTL ? "تحليل مساحة التطبيق والبيانات دون حذفها" : "Analyze app data without deleting it",
