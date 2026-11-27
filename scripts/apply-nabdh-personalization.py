@@ -100,7 +100,6 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
                             .setTitle(NabdhStrings.get(context, R.string.NabdhUiStyleTitle))
                             .setItems(styles, (dialog, which) -> {
                                         org.telegram.ui.Components.NabdhAppearancePrefs.setUiStyle(context, which);
-                                        dialog.dismiss();
                                         nabdhInvalidateStyleTree(content.getRootView());
                                         content.requestLayout();
                                         android.widget.Toast.makeText(context,
