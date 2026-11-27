@@ -15,7 +15,7 @@ badging = badging_file.read_text(encoding="utf-8")
 resources = resources_file.read_text(encoding="utf-8")
 
 def fail(msg):
-    raise SystemExit("FAIL: installed launcher may still be Telegram: " + msg)
+    raise SystemExit("FAIL: packaged launcher verification: " + msg)
 
 paths = re.findall(r"^application-icon-\d+:'([^']+)'", badging, re.M)
 if not paths:
@@ -89,9 +89,24 @@ print("PASS: compiled DefaultIcon activity-alias uses owner NabdhGram standard a
 
 
 
+# Release resource shrinking can shorten packaged file names. AAPT2
+# reports each compiled file entry under its stable resource ID.
+table = subprocess.run([str(tool.with_name("aapt2")), "dump", "resources", str(apk)],
+                       capture_output=True, text=True, timeout=90)
+if table.returncode:
+    fail("aapt2 could not inspect the compiled resource table")
+file_entries = {}
+resource_id = None
+for line in table.stdout.splitlines():
+    header = re.match(r"\s*resource (0x[0-9a-fA-F]+)\b", line)
+    if header:
+        resource_id = int(header.group(1), 16)
+    elif resource_id is not None:
+        entry = re.search(r"\(file\)\s+(\S+)", line)
+        if entry:
+            file_entries.setdefault(resource_id, set()).add(entry.group(1))
+
 # Check installed resources for the original user-selectable aliases.
-# Experimental V2 aliases are retained for migration only and deliberately
-# point to fallback artwork; they must not be checked as selectable entries.
 # A correct in-app preview is not enough: the launcher uses each alias's
 # android:icon/roundIcon from the packaged merged manifest.
 for activity, mipmap in (
@@ -114,14 +129,10 @@ for activity, mipmap in (
             fail(activity + ": compiled launcher icon resource missing: " + attr)
         if int(icon_ref.group(1), 16) != int(expected_ref.group(1), 16):
             fail(activity + ": launcher maps to wrong resource " + attr)
-    with ZipFile(apk) as package:
-        modern = [entry for entry in package.namelist() if entry.endswith("/" + mipmap + ".xml")]
-        backing = [entry for entry in package.namelist() if entry.endswith("/" + mipmap + "_background.png")]
-        if len(modern) != 1 or len(backing) != 1:
-            fail(activity + ": adaptive icon or opaque backing is missing")
-        with Image.open(BytesIO(package.read(backing[0]))) as bitmap:
-            if bitmap.convert("RGBA").getchannel("A").getextrema() != (255, 255):
-                fail(activity + ": adaptive backing is not completely opaque")
+    icon_files = file_entries.get(int(expected_ref.group(1), 16), set())
+    modern = [entry for entry in icon_files if entry.endswith(".xml")]
+    if len(modern) != 1:
+        fail(activity + ": expected one modern adaptive icon XML in the resource table")
     compiled = subprocess.run([str(tool), "dump", "xmltree", str(apk), modern[0]],
                               capture_output=True, text=True, timeout=40)
     if compiled.returncode or "E: adaptive-icon" not in compiled.stdout:
@@ -135,4 +146,13 @@ for activity, mipmap in (
             + re.escape(mipmap + "_" + layer) + r":", resources)
         if not ref or not expected or int(ref.group(1), 16) != int(expected.group(1), 16):
             fail(activity + ": compiled adaptive " + layer + " points to the wrong artwork")
+        layer_files = file_entries.get(int(ref.group(1), 16), set())
+        if not layer_files:
+            fail(activity + ": compiled adaptive " + layer + " has no packaged file")
+        if layer == "background":
+            with ZipFile(apk) as package:
+                for entry in layer_files:
+                    with Image.open(BytesIO(package.read(entry))) as bitmap:
+                        if bitmap.convert("RGBA").getchannel("A").getextrema() != (255, 255):
+                            fail(activity + ": adaptive backing is not completely opaque")
 print("PASS: all four selectable aliases have installed opaque adaptive backing and approved artwork")
