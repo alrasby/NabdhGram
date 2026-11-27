@@ -23,6 +23,12 @@ themes = [
     ("nabdh_sand.attheme", "NabdhGram • Gray Avalanche Sand", 0xFFD4C4AE, 0xFFE4D7C6, 0xFFD7C8B7,
      "b32ed42b89ac7375e7fddbe6833a506e89fe25436651696af5ff4346a5c46f7f"),
 ]
+THEME_ORDER = {
+    "nabdh_soft_mint.attheme": 1,
+    "nabdh_siri_refined.attheme": 2,
+    "nabdh_sand.attheme": 3,
+    "nabdh_dark.attheme": 4,
+}
 # Accept the validated existing archive until the new binary ZIP is staged.
 # Select each preview palette only after verifying the matching asset digest.
 UPDATED_THEME_SPECS = {
@@ -119,6 +125,7 @@ for filename, name, background, incoming, outgoing, sha in themes:
         "        themeInfo = new ThemeInfo();",
         f'        themeInfo.name = "{name}";',
         f'        themeInfo.assetName = "{filename}";',
+        f"        themeInfo.sortIndex = {THEME_ORDER[filename] - len(THEME_ORDER) - 1};",
         f"        themeInfo.previewBackgroundColor = 0x{background:08X};",
         f"        themeInfo.previewInColor = 0x{incoming:08X};",
         f"        themeInfo.previewOutColor = 0x{outgoing:08X};",
@@ -133,6 +140,11 @@ for filename, name, background, incoming, outgoing, sha in themes:
         "        themesDict.put(themeInfo.getKey(), themeInfo);",
     ])
 source = source.replace(anchor, "\n".join(lines) + "\n\n" + anchor, 1)
+day_theme_preference = '            String theme = preferences.getString("theme", null);'
+if source.count(day_theme_preference) != 1:
+    raise SystemExit("Pinned day theme preference anchor changed")
+source = source.replace(day_theme_preference,
+    '            String theme = preferences.getString("theme", "NabdhGram • Soft Mint");', 1)
 # Defensive support for asset themes: if a future bundled theme doesn't have a
 # cached isDark value, it must read its asset rather than constructing File(null).
 is_dark_old = """            if (isDark == UNKNOWN) {

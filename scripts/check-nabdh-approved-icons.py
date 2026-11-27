@@ -201,13 +201,17 @@ for slug, alias, label in names:
         bounds = rgba.getchannel("A").getbbox()
         assert bounds is not None, "Empty adaptive artwork: " + slug
         circular = slug in ("silver", "dark", "glass")
-        # Restored user-verified 76% foreground for all three circles
-        # and iPhone; Default uses a separate size in apply-brand-icons.py.
-        assert bounds[0] >= 120 and bounds[1] >= 120 and (
-            bounds[2] <= 960 and bounds[3] <= 960), (
-            "Approved adaptive icon bounds were exceeded: " + slug)
-        assert bounds[0] < 175 and bounds[2] > 905, (
+        inset = 210 if circular else 120
+        assert bounds[0] >= inset and bounds[1] >= inset and (
+            bounds[2] <= 1080 - inset and bounds[3] <= 1080 - inset), (
+            "Adaptive icon exceeds its mask safe area: " + slug)
+        assert bounds[2] - bounds[0] > (590 if circular else 730), (
             "Approved icon scaling was unexpectedly reduced: " + slug)
+        if circular:
+            safe = Image.new("L", rgba.size)
+            ImageDraw.Draw(safe).ellipse((210, 210, 869, 869), fill=255)
+            outside = ImageChops.subtract(rgba.getchannel("A"), safe)
+            assert outside.getextrema()[1] <= 16, "Circle extends outside the adaptive safe area: " + slug
         if slug == "iphone":
             picker_foreground = res / "drawable-nodpi/nabdh_icon_iphone_picker_foreground.png"
             assert picker_foreground.read_bytes() == foreground.read_bytes(), (
@@ -289,3 +293,4 @@ assert manifest_start in manifest, "Native Telegram launch theme no longer appli
 app_style = (root / "TMessagesProj_App/src/main/res/values-v31/nabdhgram_splash.xml").read_text(encoding="utf-8")
 assert '@drawable/nabdhgram_launcher_foreground' in app_style, "App-level Android 12 style reverts startup icon"
 print("PASS: five approved NabdhGram and five Telegram options, no stale V2 aliases")
+assert '.loadIcon(packages)' in selector and 'nabdhLauncherIcon.draw(canvas);' in selector

@@ -134,6 +134,11 @@ public final class DialogCellProbe extends Instrumentation {
         Class<?> appearance = loader.loadClass("org.telegram.ui.Components.NabdhAppearancePrefs");
         Method chooseStyle = appearance.getMethod("setUiStyle", Context.class, int.class);
         Method currentStyle = appearance.getMethod("uiStyle");
+        Class<?> theme = loader.loadClass("org.telegram.ui.ActionBar.Theme");
+        Object defaultTheme = theme.getMethod("getTheme", String.class).invoke(null, PERSISTED_THEME);
+        if (defaultTheme == null || theme.getMethod("getCurrentTheme").invoke(null) != defaultTheme) {
+            throw new AssertionError("Fresh installs must use the Soft Mint bundled theme");
+        }
         if (app.getSharedPreferences("nabdh_appearance_packs_v1", Context.MODE_PRIVATE)
                 .contains("ui_style_v2")) {
             throw new AssertionError("Default style check requires an install with no saved style");
@@ -199,11 +204,16 @@ public final class DialogCellProbe extends Instrumentation {
         Method hasWallpaper = theme.getMethod("hasWallpaperFromTheme");
         Method selectedStyle = appearance.getMethod("uiStyle");
         Object original = current.invoke(null);
-        String[] names = {"Siri Glass Refined", "Soft Mint", "Dark Glass", "Gray Avalanche Sand"};
+        String[] names = {"Soft Mint", "Siri Glass Refined", "Gray Avalanche Sand", "Dark Glass"};
+        Field sortIndex = themeInfo.getField("sortIndex");
+        int previousOrder = Integer.MIN_VALUE;
         try {
             for (String name : names) {
                 Object bundled = lookup.invoke(null, "NabdhGram • " + name);
                 if (bundled == null) throw new AssertionError("Missing bundled theme: " + name);
+                int order = sortIndex.getInt(bundled);
+                if (order <= previousOrder) throw new AssertionError("Incorrect gallery order: " + name);
+                previousOrder = order;
                 apply.invoke(null, bundled, false, false);
                 for (int style = 0; style < 4; style++) {
                     chooseStyle.invoke(null, app, style);

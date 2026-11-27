@@ -102,6 +102,13 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
                                         org.telegram.ui.Components.NabdhAppearancePrefs.setUiStyle(context, which);
                                         nabdhInvalidateStyleTree(content.getRootView());
                                         content.requestLayout();
+                                        if (which != selected) {
+                                            content.post(() -> {
+                                                if (getParentLayout() != null) {
+                                                    getParentLayout().rebuildAllFragmentViews(true, true);
+                                                }
+                                            });
+                                        }
                                         android.widget.Toast.makeText(context,
                                                 which == selected ? selectedLabel : styles[which],
                                                 android.widget.Toast.LENGTH_SHORT).show();

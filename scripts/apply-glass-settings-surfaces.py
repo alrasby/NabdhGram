@@ -72,11 +72,7 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     }
 
     public static android.graphics.drawable.Drawable newHeroBackground() {
-        // Same radius and theme as rows, but remove the nearly white
-        // appearance of the account hero over the opaque Settings root.
-        GlassCardLayers hero = new GlassCardLayers();
-        hero.setAlpha(190);
-        return hero;
+        return newCardBackground();
     }
 
     // The removed Telegram section-group fills no longer mask old fragments.
@@ -119,6 +115,7 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     // appear in the legacy class whitelist. Only its explicitly opted-in
     // SettingsActivity and approved row types may use this override.
     public static void applyCardStyle(View child, boolean settingsRow) {
+        if (NabdhAppearancePrefs.isClassic()) return;
         if (!settingsRow && !isSettingRow(child)) return;
         android.graphics.drawable.Drawable existing = child.getBackground();
         if (existing instanceof GlassCardLayers) {
@@ -530,8 +527,10 @@ hero_old = "        topView = new FrameLayout(context);"
 hero_new = """        topView = new FrameLayout(context);
         // GlassCardLayers already insets 10dp on both sides. The extra
         // InsetDrawable doubled this margin and misaligned the hero.
-        topView.setBackground(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newHeroBackground());"""
+        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) {
+            topView.setBackground(
+                    org.telegram.ui.Components.NabdhGlassRowDecoration.newHeroBackground());
+        }"""
 if hero_source.count(hero_old) != 1:
     raise SystemExit("SettingsActivity account hero constructor changed")
 settings_hero.write_text(hero_source.replace(hero_old, hero_new, 1), encoding="utf-8")
@@ -605,7 +604,7 @@ end = universal_source.find("\n    }", begin)
 if end < 0 or "nabdhGlassSettings" not in universal_source[begin:end]:
     raise SystemExit("UniversalAdapter native settings styling was not applied")
 universal_source = universal_source[:end] + """
-        if (nabdhGlassSettings) {
+        if (nabdhGlassSettings && !NabdhAppearancePrefs.isClassic()) {
             int glassType = holder.getItemViewType();
             // Do not turn section headers, profile hero, media, or spacer
             // rows into cards; force only these Settings-specific row types.
@@ -635,7 +634,7 @@ if universal_source.count(white_fallback_anchor) != 1:
 universal_source = universal_source.replace(
     white_fallback_anchor,
     white_fallback_anchor + """
-        if (nabdhGlassSettings) return;""", 1)
+        if (nabdhGlassSettings && !NabdhAppearancePrefs.isClassic()) return;""", 1)
 universal_path.write_text(universal_source, encoding="utf-8")
 
 # The modern Settings screen has a SizeNotifierFrameLayout root with its
@@ -661,8 +660,10 @@ if settings_source.count(native_list_anchor) != 1:
 settings_source = settings_source.replace(native_list_anchor,
     """        // This root covers the avatar, glass action bar and over-scrolled
         // list; only individual cards are semi-transparent.
-        contentView.setBackground(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());
+        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) {
+            contentView.setBackground(
+                    org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());
+        }
 """ + native_list_anchor, 1)
 settings_main.write_text(settings_source, encoding="utf-8")
 

@@ -118,6 +118,7 @@ prefs = (root / "java/org/telegram/ui/Components/NabdhAppearancePrefs.java").rea
 surface = (root / "java/org/telegram/ui/Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
 category = (root / "java/org/telegram/ui/NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
 assert '"ui_style_v2"' in prefs
+assert 'preferences.getString("theme", "NabdhGram • Soft Mint")' in theme_source
 assert "DEFAULT_UI_STYLE = UI_HYBRID" in prefs
 assert ".getInt(UI_STYLE, DEFAULT_UI_STYLE)" in prefs
 assert 'putInt(UI_STYLE, style)' in prefs

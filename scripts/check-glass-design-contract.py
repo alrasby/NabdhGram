@@ -212,7 +212,7 @@ assert "public void nabdhHideSectionBackgroundOnly()" in native_surfaces, "Glass
 assert "nabdhSuppressLegacySectionFill" in native_surfaces and "bitmapSectionsItemDecoration.setDrawBackground(false)" in native_surfaces, "Telegram 13.2 bitmap section fills can still appear"
 assert "native_list_fill = (" in native_surfaces and "native_rounded_fill = (" in native_surfaces, "Cached native section draw entrypoints not protected"
 assert "if (nabdhSuppressLegacySectionFill) return;" in native_surfaces, "Native section draw callbacks still paint white groups"
-assert "if (nabdhGlassSettings) return;" in native_surfaces, "UniversalAdapter can still paint white fallback groups"
+assert "if (nabdhGlassSettings && !NabdhAppearancePrefs.isClassic()) return;" in native_surfaces, "UniversalAdapter must preserve Classic native section painting"
 assert 'group_anchor = "        listView.setSectionsDrawBackground(true);"' in native_surfaces, "Main Settings section suppression runs before native bitmap setup"
 assert "final int maxRowHeight = dp(mini ? 96 : 200);" in native_surfaces and "MeasureSpec.AT_MOST" in native_surfaces, "Arabic descriptions may clip at fixed 60dp"
 assert "newOpaquePageBackground()" in native_surfaces and "Theme.key_windowBackgroundGray" in native_surfaces and "PixelFormat.OPAQUE" in native_surfaces, "Nested settings may leak content from previous fragments"
@@ -269,5 +269,5 @@ assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/ap
 assert "nabdhRestoreChatTitle" not in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Duplicate title-restoration owner must be removed"
 assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Native title must retain Telegram status drawable"
 assert "telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Stories wordmark must retain native positioning"
-assert "newHeroBackground()" in native_surfaces and "hero.setAlpha(190)" in native_surfaces, "Main hero remains near-white opaque"
+assert "newHeroBackground() {\n        return newCardBackground();" in native_surfaces, "Settings hero must share the style and opacity of the other cards"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")

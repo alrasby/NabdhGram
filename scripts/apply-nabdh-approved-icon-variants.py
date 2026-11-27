@@ -85,12 +85,11 @@ def clean_edge_fringe(image):
                 target[x, y] = (*nearest[:3], alpha)
     return corrected
 
-# Restore the user-verified circular launcher geometry. The Android
-# mask may be squircle, but these designs were visually approved at 76%.
-# Do not force circular artwork into a smaller safe-zone square.
+# Adaptive icons show the center 72dp of a 108dp layer. Keep the circular
+# artwork inside this viewport and its circular safe area on all launchers.
 ADAPTIVE_CANVAS = 1080
 ADAPTIVE_SAFE_FRACTION = 0.60
-CIRCULAR_SAFE_FRACTION = 0.76
+CIRCULAR_SAFE_FRACTION = 0.60
 IPHONE_EXPERIMENT_FRACTION = 0.76
 modern = res / "mipmap-anydpi-v26"
 modern.mkdir(parents=True, exist_ok=True)
@@ -166,8 +165,7 @@ with Image.open(source_fg) as master_foreground:
     master_foreground.load()
     if master_foreground.size != (1080, 1080):
         raise SystemExit("Invalid default adaptive foreground canvas")
-    # A static settings tile cannot invoke the launcher's adaptive mask;
-    # render its rounded teal preview from the exact same foreground pixels.
+    # Keep an offline fallback for when PackageManager cannot resolve the alias.
     from PIL import ImageDraw
     from PIL import ImageChops
     preview = Image.new("RGBA", (1080, 1080), (7, 86, 93, 255))
@@ -374,12 +372,29 @@ replace_selector(
     """            nabdhFrameless = icon.key.startsWith("Nabdh") || "DefaultIcon".equals(icon.key);
             iconView.setOuterPadding(nabdhFrameless ? 0 : AndroidUtilities.dp(5));
             iconView.setNabdhSquircleMask("DefaultIcon".equals(icon.key) || "NabdhIphoneIcon".equals(icon.key));
+            Drawable launcherIcon = null;
+            if (nabdhFrameless) {
+                android.content.pm.PackageManager packages = getContext().getPackageManager();
+                try {
+                    launcherIcon = packages.getActivityInfo(icon.getComponentName(getContext()),
+                            android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS).loadIcon(packages);
+                } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {
+                    // A missing alias still has its offline preview resource.
+                }
+            }
+            iconView.setNabdhLauncherIcon(launcherIcon);
             iconView.setImageResource(icon.background);""",
     "Native picker transparent drawing")
 # The stock chooser uses a circle for every Android icon preview;
 # match the approximate One UI squircle only for Default and iPhone.
 picker_anchor = "        private int backgroundOuterPadding = AndroidUtilities.dp(42);"
 picker_insert = """        private boolean nabdhSquircleMask;
+        private Drawable nabdhLauncherIcon;
+
+        public void setNabdhLauncherIcon(Drawable icon) {
+            nabdhLauncherIcon = icon;
+            invalidate();
+        }
 
         public void setNabdhSquircleMask(boolean squircle) {
             if (nabdhSquircleMask == squircle) return;
@@ -404,6 +419,18 @@ new_circle = """            if (nabdhSquircleMask) {
                         Path.Direction.CW);
             }"""
 replace_selector(old_circle, new_circle, "Default and iPhone squircle preview path")
+replace_selector(
+    """        public void draw(Canvas canvas) {
+            canvas.save();""",
+    """        public void draw(Canvas canvas) {
+            if (nabdhLauncherIcon != null) {
+                nabdhLauncherIcon.setBounds(getPaddingLeft(), getPaddingTop(),
+                        getWidth() - getPaddingRight(), getHeight() - getPaddingBottom());
+                nabdhLauncherIcon.draw(canvas);
+                return;
+            }
+            canvas.save();""",
+    "Use the selected launcher alias artwork directly")
 
 # Never tell the user "Icon changed" before PackageManager confirms
 # the selected alias is enabled. Keep Telegram's original animated chooser.
