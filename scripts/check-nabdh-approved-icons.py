@@ -73,6 +73,10 @@ for density, pixels in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
             assert first_install.convert("RGBA").tobytes() == b.convert("RGBA").tobytes(), (
                 "Initial launcher still uses Telegram artwork: " + density)
         rgba = b.convert("RGBA")
+        bounds = rgba.getchannel("A").getbbox()
+        assert bounds is not None
+        assert 0.74 * pixels <= bounds[2] - bounds[0] <= 0.80 * pixels, (
+            "Legacy default mark lost its launcher inset: " + density)
         assert all(rgba.getpixel(point)[3] == 0 for point in (
             (0, 0), (pixels - 1, 0), (0, pixels - 1),
             (pixels - 1, pixels - 1),
@@ -85,7 +89,7 @@ assert "<adaptive-icon" in adaptive.read_text(encoding="utf-8"), (
 assert '<background android:drawable="@color/nabdhgram_icon_background" />' in adaptive.read_text(encoding="utf-8"), (
     "Default launcher should use dark-teal adaptive background")
 assert '<foreground android:drawable="@drawable/nabdhgram_launcher_icon_foreground" />' in adaptive.read_text(encoding="utf-8"), (
-    "Default launcher should use its own 76% foreground")
+    "Default launcher should use its own inset foreground")
 from xml.etree import ElementTree
 color_file = app_res / "values/nabdhgram_icon_background.xml"
 assert color_file.is_file(), "Adaptive background missing"
@@ -101,9 +105,7 @@ with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
     assert actual.size == picker.size == (1080, 1080)
     launcher = actual.convert("RGBA")
     selected = picker.convert("RGBA")
-    # Every pixel outside the logo's 61% safe canvas must remain
-    # transparent, including side edges; otherwise One UI can expose a
-    # baked-in square or duplicate backplate.
+    # Keep a visible gutter within Android's centered 720px viewport.
     for point in ((0, 0), (1079, 0), (0, 1079), (1079, 1079),
                   (540, 10), (10, 540), (1070, 540), (540, 1070),
                   (100, 100)):
@@ -111,9 +113,10 @@ with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
             "Launcher foreground contains a backplate outside safe area")
     bounds = launcher.getchannel("A").getbbox()
     assert bounds is not None
-    assert bounds[0] >= 200 and bounds[1] >= 200 and (
-        bounds[2] <= 880 and bounds[3] <= 880), (
-        "Launcher mark extends beyond Android's adaptive safe region")
+    assert min(bounds[0] - 180, 900 - bounds[2]) >= 75, (
+        "Default launcher mark touches the horizontal viewport edges")
+    assert 550 <= bounds[2] - bounds[0] <= 570 and abs(bounds[0] + bounds[2] - 1080) <= 2, (
+        "Default launcher mark lost its approved scale or centering")
     # Preview is the approved foreground over the exact adaptive teal,
     # clipped into a rounded square only in the in-app selector.
     from PIL import ImageDraw, ImageChops
@@ -128,7 +131,7 @@ with Image.open(app_fg) as actual, Image.open(picker_fg) as picker:
 with Image.open(app_res / "drawable-nodpi/nabdhgram_launcher_foreground.png") as splash:
     assert splash.size == (1080, 1080)
     assert splash.convert("RGBA").tobytes() != actual.convert("RGBA").tobytes(), (
-        "Launcher enlargement unintentionally changed the splash icon")
+        "Launcher sizing should remain separate from the splash icon")
     assert splash.convert("RGBA").getpixel((0, 0))[3] == 0, (
         "Default launcher changed the transparent Android splash")
 for alias in ("ic_launcher.xml", "ic_launcher_round.xml"):

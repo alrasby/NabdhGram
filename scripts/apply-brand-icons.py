@@ -12,9 +12,9 @@ SIZES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 # The approved source can include an opaque dark surround, so crop its visible
 # logo first rather than enlarging a padded square and letting Android clip it.
 ADAPTIVE_ARTWORK_FRACTION = 0.60
-DEFAULT_LAUNCHER_ARTWORK_FRACTION = 0.62
+DEFAULT_LAUNCHER_ARTWORK_FRACTION = 0.52
 # The native splash keeps its existing 60% foreground size.
-LEGACY_ARTWORK_FRACTION = 0.86
+LEGACY_ARTWORK_FRACTION = 0.78
 
 def safe_canvas(artwork, pixels):
     from PIL import Image
@@ -135,8 +135,8 @@ def main():
         foreground_canvas(rgba, 1080).save(
             drawable / "nabdhgram_launcher_foreground.png", format="PNG", optimize=True
         )
-        # Separate the launcher drawable from the splash drawable so enlarging
-        # the home-screen icon never changes the app's launch animation.
+        # Keep the home-screen mark centered with a wider inset. The splash
+        # continues to use its own drawable and original proportions.
         foreground_canvas(rgba, 1080, DEFAULT_LAUNCHER_ARTWORK_FRACTION).save(
             drawable / "nabdhgram_launcher_icon_foreground.png",
             format="PNG", optimize=True
