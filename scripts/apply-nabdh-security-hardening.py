@@ -34,6 +34,13 @@ m = once(m, '<uses-permission android:name="android.permission.READ_EXTERNAL_STO
 m = once(m, '<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="replace" />',
          '<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:node="replace" />',
          "legacy write storage scope")
+# Android 8+ uses ShortcutManager instead of legacy shortcut broadcasts.
+for name in ("android.permission.INSTALL_SHORTCUT",
+             "com.android.launcher.permission.INSTALL_SHORTCUT",
+             "com.android.launcher.permission.UNINSTALL_SHORTCUT"):
+    declaration = f'<uses-permission android:name="{name}"'
+    m = once(m, declaration, declaration + ' android:maxSdkVersion="25"',
+             "legacy shortcut permission scope: " + name)
 # The SMS Retriever broadcast is exported for Google Play Services, but
 # only an authenticated sender holding Google's signature permission may
 # provide an OTP. This is a RECEIVER permission, not a new app permission.
@@ -212,5 +219,47 @@ launch_source = once(launch_source,
 
     private static void onDestroyStaticResources()''',
 "LaunchActivity static stale references")
+launch_source = once(launch_source,
+    "    private static LaunchActivity staticInstanceForAlerts;",
+    "    private Runnable nabdhFreeSpaceCheck;\n    private static LaunchActivity staticInstanceForAlerts;",
+    "track pending disk-space work")
+launch_source = once(launch_source,
+'''        Utilities.globalQueue.postRunnable(() -> {
+            if (!UserConfig.getInstance(currentAccount).isClientActivated()) {''',
+'''        if (nabdhFreeSpaceCheck != null) {
+            Utilities.globalQueue.cancelRunnable(nabdhFreeSpaceCheck);
+        }
+        nabdhFreeSpaceCheck = () -> {
+            if (!UserConfig.getInstance(currentAccount).isClientActivated()) {''',
+    "coalesce disk-space work")
+launch_source = once(launch_source,
+'''        }, 2000);
+    }
+    public static void checkFreeDiscSpaceStatic''',
+'''        };
+        Utilities.globalQueue.postRunnable(nabdhFreeSpaceCheck, 2000);
+    }
+    public static void checkFreeDiscSpaceStatic''',
+    "schedule cancellable disk-space work")
+launch_source = once(launch_source,
+'''                            if (checkFreeDiscSpaceShown) {
+                                return;
+                            }''',
+'''                            if (isFinishing() || isDestroyed() || checkFreeDiscSpaceShown) {
+                                return;
+                            }''',
+    "guard disk-space dialog after Activity teardown")
+launch_source = once(launch_source,
+'''        if (staticInstanceForAlerts == this) {
+            staticInstanceForAlerts = null;
+        }''',
+'''        if (staticInstanceForAlerts == this) {
+            staticInstanceForAlerts = null;
+        }
+        if (nabdhFreeSpaceCheck != null) {
+            Utilities.globalQueue.cancelRunnable(nabdhFreeSpaceCheck);
+            nabdhFreeSpaceCheck = null;
+        }''',
+    "cancel pending disk-space work on Activity teardown")
 launch.write_text(launch_source, encoding="utf-8")
 print("PASS: internal services, MediaPlayer lifecycle, LaunchActivity refs, PendingIntents and legacy storage scope")

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Release-only privacy policy: no backup/transfer of app-private session state.
+"""APK privacy policy: no backup/transfer of app-private session state.
 
 Telegram's upstream BackupAgent includes 'saved_tokens' and
 'saved_tokens_login'. Nabdh Camera originals also reside under filesDir.
-No silent changes to Debug or Telegram login logic; this policy prevents
+This policy prevents
 these private artifacts from being transferred through Android app backups.
 """
 from pathlib import Path
@@ -14,17 +14,25 @@ RULES = '''<?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
         <exclude domain="device_root" path="." />
+        <exclude domain="device_file" path="." />
+        <exclude domain="device_database" path="." />
+        <exclude domain="device_sharedpref" path="." />
         <exclude domain="external" path="." />
-        <exclude domain="sharedpref" path="saved_tokens.xml" />
-        <exclude domain="sharedpref" path="saved_tokens_login.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
         <exclude domain="device_root" path="." />
+        <exclude domain="device_file" path="." />
+        <exclude domain="device_database" path="." />
+        <exclude domain="device_sharedpref" path="." />
         <exclude domain="external" path="." />
-        <exclude domain="sharedpref" path="saved_tokens.xml" />
-        <exclude domain="sharedpref" path="saved_tokens_login.xml" />
     </device-transfer>
 </data-extraction-rules>
 '''
@@ -34,9 +42,9 @@ def main(root):
     content = manifest.read_text(encoding="utf-8")
     original = 'android:allowBackup="true"'
     if content.count(original) != 1:
-        raise SystemExit("FAIL Release backup: upstream allowBackup anchor changed")
+        raise SystemExit("FAIL private backup: upstream allowBackup anchor changed")
     if "android:dataExtractionRules=" in content or "android:fullBackupContent=" in content:
-        raise SystemExit("FAIL Release backup: upstream backup policy already configured")
+        raise SystemExit("FAIL private backup: upstream backup policy already configured")
     content = content.replace(original, '''android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/nabdh_private_backup_rules"''', 1)
@@ -46,10 +54,10 @@ def main(root):
     folder.mkdir(parents=True, exist_ok=True)
     rules = folder / "nabdh_private_backup_rules.xml"
     if rules.exists():
-        raise SystemExit("FAIL Release backup: conflicting pre-existing rules")
+        raise SystemExit("FAIL private backup: conflicting pre-existing rules")
     ET.fromstring(RULES)
     rules.write_text(RULES, encoding="utf-8")
-    print("PASS: owner Release excludes token backups and app-private Camera gallery from Android cloud/device migration")
+    print("PASS: APK excludes token backups and app-private Camera gallery from Android cloud/device migration")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

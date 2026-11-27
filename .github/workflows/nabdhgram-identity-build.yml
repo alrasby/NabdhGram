@@ -593,6 +593,8 @@ jobs:
           set -euo pipefail
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-security-hardening.py
           python3 nabdhgram/scripts/apply-nabdh-security-hardening.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-private-backup.py
+          python3 nabdhgram/scripts/apply-nabdh-private-backup.py Telegram-upstream
 
       - name: Enable secure Android Auto notification messaging
         shell: bash
@@ -814,8 +816,6 @@ jobs:
           set -euo pipefail
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-play-permissions.py
           python3 nabdhgram/scripts/apply-nabdh-play-permissions.py Telegram-upstream
-          python3 -m py_compile nabdhgram/scripts/apply-nabdh-private-backup.py
-          python3 nabdhgram/scripts/apply-nabdh-private-backup.py Telegram-upstream
 
       - name: Use compact native symbol tables in owner-signed Release
         if: ${{ inputs.release_mode && !inputs.source_preflight_only }}
@@ -918,9 +918,8 @@ jobs:
             exit 1
           }
           echo "PASS: actual APK contains Android Auto capability metadata and descriptor"
-          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
-            grep -q "android:dataExtractionRules" apk-manifest-tree.txt || {
-              echo "::error::Release manifest is missing Android data-extraction rules"; exit 1;
+          grep -q "android:dataExtractionRules" apk-manifest-tree.txt || {
+              echo "::error::APK manifest is missing Android data-extraction rules"; exit 1;
             }
             python3 - <<'PY'
           import re
@@ -928,13 +927,12 @@ jobs:
           manifest = Path("apk-manifest-tree.txt").read_text(encoding="utf-8")
           match = re.search(r"(?m)^.*android:allowBackup.*$", manifest)
           if not match or not re.search(r"(?:0x0|false)\s*$", match.group(0), re.I):
-              raise SystemExit("FAIL: signed Release must have allowBackup=false")
-          print("PASS: signed APK manifest disables automatic app-data backup")
+              raise SystemExit("FAIL: APK must have allowBackup=false")
+          print("PASS: APK manifest disables automatic app-data backup")
           PY
             grep -q "nabdh_private_backup_rules" apk-resources.txt || {
-              echo "::error::Release APK has no compiled private-backup rules"; exit 1;
+              echo "::error::APK has no compiled private-backup rules"; exit 1;
             }
-          fi
           # Verify the actual APK permissions, not only the source manifest.
           ! grep -E "uses-permission: name='android.permission.(READ_SMS|RECEIVE_SMS|QUERY_ALL_PACKAGES|BIND_ACCESSIBILITY_SERVICE)'" apk-permissions.txt
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then

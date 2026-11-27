@@ -49,6 +49,20 @@ if [[ -n "$TARGET_APK" ]]; then
   "$BT/apksigner" sign --ks "$WORK/test.jks" --ks-pass pass:android --key-pass pass:android \
     --out "$WORK/dialog-target.apk" "$TARGET_APK"
   adb install "$WORK/dialog-target.apk" | tee "$OUT/dialog-install.log"
+  # Collect startup/idle evidence on the fresh emulator before instrumentation.
+  TARGET_PACKAGE=net.nabdhserv.nabdhgram
+  timeout 60 adb shell am start -W -a android.intent.action.MAIN \
+    -c android.intent.category.LAUNCHER -p "$TARGET_PACKAGE" | tee "$OUT/runtime-launch.txt"
+  grep -Fq 'Status: ok' "$OUT/runtime-launch.txt"
+  startup_pid="$(adb shell pidof "$TARGET_PACKAGE" | tr -d '\r')"
+  test -n "$startup_pid"
+  adb shell dumpsys meminfo "$TARGET_PACKAGE" > "$OUT/runtime-startup-meminfo.txt"
+  sleep 15
+  test "$startup_pid" = "$(adb shell pidof "$TARGET_PACKAGE" | tr -d '\r')"
+  adb shell dumpsys meminfo "$TARGET_PACKAGE" > "$OUT/runtime-idle-meminfo.txt"
+  adb shell dumpsys gfxinfo "$TARGET_PACKAGE" > "$OUT/runtime-idle-gfxinfo.txt"
+  adb shell dumpsys batterystats --charged "$TARGET_PACKAGE" > "$OUT/runtime-batterystats.txt"
+  awk '/TOTAL PSS:/ {print FILENAME ": " $0}' "$OUT"/runtime-*-meminfo.txt
   set +e
   timeout 180 adb shell am instrument -w -r "$PKG/.DialogCellProbe" | tee "$OUT/dialog-android.log"
   status=$?
