@@ -12,6 +12,7 @@ import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import android.view.ViewGroup;
 
 /** Runs in the debug application's process and renders its actual DialogCell. */
@@ -32,7 +33,7 @@ public final class DialogCellProbe extends Instrumentation {
             }
         });
         if (failure[0] == null) {
-            result.putString("stream", "\nDIALOG_CELL_PASS: 500 render cycles and LTR/RTL tray hit checks\n");
+            result.putString("stream", "\nDIALOG_CELL_PASS: baseline 500 render cycles, tray hit checks and native local folder move\n");
             finish(Activity.RESULT_OK, result);
         } else {
             result.putString("stream", "\nDIALOG_CELL_FAIL: " + Log.getStackTraceString(failure[0]));
@@ -66,19 +67,66 @@ public final class DialogCellProbe extends Instrumentation {
         if (!Boolean.TRUE.equals(ownsCard.invoke(cell))) {
             throw new AssertionError("Fixture does not use production card rendering");
         }
+        exerciseNativeArchive(loader);
         exerciseTray(cell, type, loader, width, density);
         Bitmap frame = Bitmap.createBitmap(width, cell.getHeight(), Bitmap.Config.ARGB_8888);
         try {
             int offset = Math.round(110 * density);
+            long[] frameTimes = new long[500];
             for (int cycle = 0; cycle < 500; cycle++) {
+                long start = System.nanoTime();
                 draw(cell, frame, 0, cycle == 0 ? "dialog-rest" : null, app);
                 draw(cell, frame, offset, cycle == 0 ? "dialog-right" : null, app);
                 draw(cell, frame, -offset, cycle == 0 ? "dialog-left" : null, app);
+                frameTimes[cycle] = System.nanoTime() - start;
             }
+            Arrays.sort(frameTimes);
+            status("Three-frame software draw cycle, p50=" + frameTimes[250] / 1000
+                    + "us p95=" + frameTimes[475] / 1000 + "us");
+            draw(cell, frame, 0, "dialog-rest-after", app);
         } finally {
             cell.setTranslationX(0);
             frame.recycle();
         }
+    }
+
+    private void status(String message) {
+        Bundle status = new Bundle();
+        status.putString("stream", "\n" + message + "\n");
+        sendStatus(0, status);
+    }
+
+    private void exerciseNativeArchive(ClassLoader loader) throws Exception {
+        Class<?> controllerType = loader.loadClass("org.telegram.messenger.MessagesController");
+        Class<?> configType = loader.loadClass("org.telegram.messenger.UserConfig");
+        int account = configType.getField("selectedAccount").getInt(null);
+        Object controller = controllerType.getMethod("getInstance", int.class).invoke(null, account);
+        Object dialog = loader.loadClass("org.telegram.tgnet.TLRPC$TL_dialog")
+                .getConstructor().newInstance();
+        long id = (Long) loader.loadClass("org.telegram.messenger.DialogObject")
+                .getMethod("makeEncryptedDialogId", long.class).invoke(null, 42L);
+        dialog.getClass().getField("id").setLong(dialog, id);
+        Object dialogs = controllerType.getField("dialogs_dict").get(controller);
+        Method put = dialogs.getClass().getMethod("put", long.class, Object.class);
+        Method remove = dialogs.getClass().getMethod("remove", long.class);
+        Method move = controllerType.getMethod("addDialogToFolder",
+                long.class, int.class, int.class, long.class);
+        Field folder = dialog.getClass().getField("folder_id");
+        put.invoke(dialogs, id, dialog);
+        try {
+            for (int destination : new int[]{1, 0}) {
+                if (((Integer) move.invoke(controller, id, destination, -1, 0L)) <= 0
+                        || folder.getInt(dialog) != destination) {
+                    throw new AssertionError("Native local folder move failed: " + destination);
+                }
+            }
+            if (!Integer.valueOf(0).equals(move.invoke(controller, 777000L, 1, -1, 0L))) {
+                throw new AssertionError("Telegram service dialog accepted for archive");
+            }
+        } finally {
+            remove.invoke(dialogs, id);
+        }
+        status("Native folder state: archived, restored, Telegram service dialog rejected");
     }
 
     private void exerciseTray(View cell, Class<?> type, ClassLoader loader, int width,
