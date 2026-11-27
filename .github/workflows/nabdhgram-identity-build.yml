@@ -42,6 +42,10 @@ on:
         required: false
         default: false
         type: boolean
+      android_validation_run:
+        description: 'Use a successful same-source Android PR run to publish a phone-test APK'
+        type: string
+        default: ''
   pull_request:
     branches:
       - main
@@ -59,6 +63,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 # Supersede older *PR* commits only. Never cancel a manual dispatch because
 # the very same branch also received a pull_request event.
@@ -72,14 +77,16 @@ jobs:
     timeout-minutes: 120
     env:
       DIALOG_CELL_VALIDATION: ${{ inputs.dialog_cell_validation || (github.event_name == 'pull_request' && !inputs.source_preflight_only) }}
+      PUBLISH_APK: ${{ inputs.publish_artifacts || inputs.android_validation_run != '' }}
     steps:
       - name: Checkout NabdhGram automation
         uses: actions/checkout@v4
         with:
           path: nabdhgram
+          fetch-depth: ${{ inputs.android_validation_run != '' && '0' || '1' }}
       - name: Validate Android build mode
         env:
-          PUBLISH_ARTIFACTS: ${{ inputs.publish_artifacts }}
+          ANDROID_VALIDATION_RUN: ${{ inputs.android_validation_run }}
           RELEASE_MODE: ${{ inputs.release_mode }}
           SOURCE_PREFLIGHT: ${{ inputs.source_preflight_only }}
           INTERNAL_PHONE_BUILD: ${{ inputs.internal_phone_build }}
@@ -87,17 +94,21 @@ jobs:
           if [[ "$DIALOG_CELL_VALIDATION" == true || "$INTERNAL_PHONE_BUILD" == true ]]; then
             test "$RELEASE_MODE" != true
             test "$SOURCE_PREFLIGHT" != true
-            test "$PUBLISH_ARTIFACTS" != true
+            test "$PUBLISH_APK" != true
           fi
           if [[ "$DIALOG_CELL_VALIDATION" == true ]]; then
             test "$INTERNAL_PHONE_BUILD" != true
           fi
           if [[ "$RELEASE_MODE" == true ]]; then
-            test "$PUBLISH_ARTIFACTS" = true
+            test "$PUBLISH_APK" = true
           fi
-          if [[ "$PUBLISH_ARTIFACTS" == true ]]; then
+          if [[ "$PUBLISH_APK" == true ]]; then
             test "$GITHUB_EVENT_NAME" = workflow_dispatch
             test "$SOURCE_PREFLIGHT" != true
+          fi
+          if [[ -n "$ANDROID_VALIDATION_RUN" ]]; then
+            [[ "$ANDROID_VALIDATION_RUN" =~ ^[0-9]+$ ]]
+            test "$RELEASE_MODE" != true
           fi
       - name: Validate private Release dispatch before cloning sources
         if: ${{ inputs.release_mode }}
@@ -1049,8 +1060,41 @@ jobs:
           path: card-android-evidence/
           if-no-files-found: ignore
           retention-days: 14
+      - name: Verify prior production Android test evidence for phone testing
+        if: ${{ inputs.android_validation_run != '' }}
+        working-directory: nabdhgram
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATION_RUN: ${{ inputs.android_validation_run }}
+        run: |
+          set -euo pipefail
+          [[ "$VALIDATION_RUN" =~ ^[0-9]+$ ]]
+          proof="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN")"
+          jq -e --arg repo "$GITHUB_REPOSITORY" '
+            .head_repository.full_name == $repo and
+            .path == ".github/workflows/nabdhgram-identity-build.yml" and
+            .event == "pull_request" and .conclusion == "success" and
+            (.pull_requests | length) == 1
+          ' <<< "$proof" >/dev/null
+          tested="$(jq -er '.head_sha' <<< "$proof")"
+          tested_base="$(jq -er '.pull_requests[0].base.sha' <<< "$proof")"
+          [[ "$tested" =~ ^[0-9a-f]{40}$ && "$tested_base" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags origin "$tested" "$tested_base"
+          # PR Actions check out the merge. An ancestral base guarantees that
+          # the application and tests being compared are exactly what ran.
+          git merge-base --is-ancestor "$tested_base" "$tested"
+          git diff --exit-code "$tested" HEAD -- . ':(exclude).github/workflows/**'
+          evidence="$(mktemp -d)"
+          gh run download "$VALIDATION_RUN" --name nabdh-card-android-evidence --dir "$evidence"
+          grep -Fq 'DIALOG_CELL_PASS' "$evidence/dialog-android.log"
+          grep -Fq 'THEME_RESTART_PASS: save-theme' "$evidence/save-theme.log"
+          grep -Fq 'THEME_RESTART_PASS: verify-theme' "$evidence/verify-theme.log"
+          test -s "$evidence/dialog-rest.png"
+          test -s "$evidence/dialog-pixel-comparison.log"
+          echo "Production Android evidence: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" >> "$GITHUB_STEP_SUMMARY"
       - name: Publish verified APK with a clean filename
-        if: ${{ success() && !inputs.source_preflight_only && inputs.publish_artifacts && steps.compile.outcome == 'success' && steps.card_android_gate.outcome == 'success' }}
+        if: ${{ success() && !inputs.source_preflight_only && env.PUBLISH_APK == 'true' && steps.compile.outcome == 'success' && steps.card_android_gate.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1125,7 +1169,7 @@ jobs:
           find Telegram-upstream -type f -name '*.apk' -print > apk-paths.txt || true
           cat apk-paths.txt
       - name: Upload APK when available
-        if: ${{ success() && !inputs.source_preflight_only && inputs.publish_artifacts && steps.card_android_gate.outcome == 'success' }}
+        if: ${{ success() && !inputs.source_preflight_only && env.PUBLISH_APK == 'true' && steps.card_android_gate.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.release_mode && 'nabdhgram-owner-signed-release-apk' || 'nabdhgram-identity-debug-apk' }}
@@ -1179,7 +1223,6 @@ jobs:
         shell: bash
         env:
           BUILD_RESULT: ${{ steps.compile.outcome }}
-          PUBLISH_ARTIFACTS: ${{ inputs.publish_artifacts }}
         run: |
           test "$BUILD_RESULT" = success
           test "${{ steps.card_android_gate.outcome }}" = success
@@ -1188,7 +1231,7 @@ jobs:
             test -s card-android-evidence/dialog-rest.png
             test -s card-android-evidence/verify-theme.log
             grep -Fq 'THEME_RESTART_PASS: verify-theme' card-android-evidence/verify-theme.log
-          elif [[ "$PUBLISH_ARTIFACTS" != true ]]; then
+          elif [[ "$PUBLISH_APK" != true ]]; then
             test -s apk-sha256.txt
             test -s apk-signature.txt
             test -s Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk
