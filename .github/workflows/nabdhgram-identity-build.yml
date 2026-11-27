@@ -839,6 +839,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/configure-release-signing.py Telegram-upstream
+          # The previous owner-signed 13.2.2 APK used 73039. Bump the same
+          # Gradle input for both the APK and Play AAB so either can upgrade.
+          properties=Telegram-upstream/gradle.properties
+          grep -qx 'APP_VERSION_CODE=7303' "$properties"
+          sed -i 's/^APP_VERSION_CODE=7303$/APP_VERSION_CODE=7304/' "$properties"
+          grep -qx 'APP_VERSION_CODE=7304' "$properties"
       - name: Enforce Google Play Release-only sensitive-permission policy
         if: ${{ inputs.release_mode }}
         shell: bash
