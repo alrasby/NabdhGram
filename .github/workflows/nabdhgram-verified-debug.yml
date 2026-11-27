@@ -12,6 +12,9 @@ jobs:
     uses: ./.github/workflows/nabdhgram-identity-build.yml
     with:
       dialog_cell_validation: true
+    secrets:
+      NABDHGRAM_API_ID: ${{ secrets.NABDHGRAM_API_ID }}
+      NABDHGRAM_API_HASH: ${{ secrets.NABDHGRAM_API_HASH }}
 
   phone-apk:
     needs: android-validation

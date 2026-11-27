@@ -6,6 +6,23 @@ name: NabdhGram identity debug build
 # Build the PR head exactly once; workflow_dispatch supports manual branch runs.
 on:
   workflow_call:
+    secrets:
+      NABDHGRAM_API_ID:
+        required: false
+      NABDHGRAM_API_HASH:
+        required: false
+      NABDH_RELEASE_KEYSTORE_B64:
+        required: false
+      NABDH_RELEASE_STORE_PASSWORD:
+        required: false
+      NABDH_RELEASE_KEY_ALIAS:
+        required: false
+      NABDH_RELEASE_KEY_PASSWORD:
+        required: false
+      NABDH_RELEASE_CERT_SHA256:
+        required: false
+      NABDH_FIREBASE_CONFIG_B64:
+        required: false
     inputs:
       source_preflight_only:
         description: 'Run every source overlay and API check but skip native compilation'
