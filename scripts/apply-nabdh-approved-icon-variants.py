@@ -4,6 +4,7 @@
 No public releases or third-party installations exist yet. Legacy and
 experimental aliases are intentionally removed, not migrated.
 """
+from math import atan2, cos, pi, sin
 from pathlib import Path
 import sys
 from PIL import Image
@@ -85,13 +86,36 @@ def clean_edge_fringe(image):
                 target[x, y] = (*nearest[:3], alpha)
     return corrected
 
-# Restore the user-verified circular launcher geometry. The Android
-# mask may be squircle, but these designs were visually approved at 76%.
-# Do not force circular artwork into a smaller safe-zone square.
+def adaptive_background(icon):
+    """Extend the artwork's perimeter colors under the launcher mask."""
+    center = (icon.width - 1) / 2
+    perimeter = []
+    for angle in range(360):
+        x, y = cos(angle * pi / 180), sin(angle * pi / 180)
+        for radius in range(int(center * 2 ** .5), 0, -1):
+            point = (round(center + radius * x), round(center + radius * y))
+            if (0 <= point[0] < icon.width and 0 <= point[1] < icon.height
+                    and icon.getpixel(point)[3] >= 248):
+                sample = max(0, radius - 2)
+                perimeter.append(icon.getpixel((round(center + sample * x),
+                                                round(center + sample * y)))[:3])
+                break
+        else:
+            raise SystemExit("Approved launcher artwork has no opaque perimeter")
+    size = 256
+    center = (size - 1) / 2
+    background = Image.new("RGB", (size, size))
+    background.putdata([
+        perimeter[round(atan2(y - center, x - center) * 180 / pi) % 360]
+        for y in range(size) for x in range(size)
+    ])
+    return background
+
+
+# The visible icon occupies about 72dp of a 108dp layer. Keep the original
+# mark prominent and supply opaque, art-matched pixels beyond its edge.
 ADAPTIVE_CANVAS = 1080
-ADAPTIVE_SAFE_FRACTION = 0.60
-CIRCULAR_SAFE_FRACTION = 0.76
-IPHONE_EXPERIMENT_FRACTION = 0.76
+ARTWORK_FRACTION = 0.76
 modern = res / "mipmap-anydpi-v26"
 modern.mkdir(parents=True, exist_ok=True)
 drawable = res / "drawable-nodpi"
@@ -105,14 +129,10 @@ for slug, _, _, _, _ in VARIANTS:
         scaled = icon.resize((pixels, pixels), Image.Resampling.LANCZOS)
         scaled.save(directory / ("nabdh_icon_" + slug + ".png"),
                     format="PNG", optimize=True)
-        # Distinct preview resource prevents adaptive masks in the chooser.
-        scaled.save(directory / ("nabdh_icon_preview_" + slug + ".png"),
-                    format="PNG", optimize=True)
 
-    fraction = (CIRCULAR_SAFE_FRACTION if slug in ("silver", "dark", "glass")
-                else IPHONE_EXPERIMENT_FRACTION if slug == "iphone"
-                else ADAPTIVE_SAFE_FRACTION)
-    side = round(ADAPTIVE_CANVAS * fraction)
+    side = round(ADAPTIVE_CANVAS * ARTWORK_FRACTION)
+    adaptive_background(icon).save(drawable / ("nabdh_icon_" + slug + "_background.png"),
+                                   format="PNG", optimize=True)
     foreground = Image.new("RGBA", (ADAPTIVE_CANVAS, ADAPTIVE_CANVAS),
                            (0, 0, 0, 0))
     artwork = clean_edge_fringe(icon).resize((side, side), Image.Resampling.LANCZOS)
@@ -121,15 +141,10 @@ for slug, _, _, _, _ in VARIANTS:
                   (ADAPTIVE_CANVAS - side) // 2))
     foreground.save(drawable / ("nabdh_icon_" + slug + "_foreground.png"),
                     format="PNG", optimize=True)
-    # iPhone's chooser preview must use the same exact foreground layer as
-    # Android's adaptive icon, instead of a raw 192px icon at another scale.
-    if slug == "iphone":
-        foreground.save(drawable / "nabdh_icon_iphone_picker_foreground.png",
-                        format="PNG", optimize=True)
     (modern / ("nabdh_icon_" + slug + ".xml")).write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-        '    <background android:drawable="@android:color/transparent" />\n'
+        '    <background android:drawable="@drawable/nabdh_icon_' + slug + '_background" />\n'
         '    <foreground android:drawable="@drawable/nabdh_icon_'
         + slug + '_foreground" />\n'
         '</adaptive-icon>\n',
@@ -166,8 +181,7 @@ with Image.open(source_fg) as master_foreground:
     master_foreground.load()
     if master_foreground.size != (1080, 1080):
         raise SystemExit("Invalid default adaptive foreground canvas")
-    # A static settings tile cannot invoke the launcher's adaptive mask;
-    # render its rounded teal preview from the exact same foreground pixels.
+    # Keep an offline fallback for when PackageManager cannot resolve the alias.
     from PIL import ImageDraw
     from PIL import ImageChops
     preview = Image.new("RGBA", (1080, 1080), (7, 86, 93, 255))
@@ -176,6 +190,7 @@ with Image.open(source_fg) as master_foreground:
     ImageDraw.Draw(rounded).rounded_rectangle(
         (0, 0, 1079, 1079), radius=255, fill=255)
     preview.putalpha(ImageChops.multiply(preview.getchannel("A"), rounded))
+    (res / "drawable-nodpi").mkdir(parents=True, exist_ok=True)
     preview.save(res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png",
                  format="PNG", optimize=True)
 
@@ -188,8 +203,7 @@ branded_default = '        DEFAULT("DefaultIcon", R.drawable.nabdh_icon_default_
 java = java.replace(anchor, branded_default, 1)
 addition = ',\n'.join(
     '        NABDH_' + slug.upper() + '("' + alias + '", R.drawable.nabdh_icon_preview_background, '
-    + ('R.drawable.nabdh_icon_iphone_picker_foreground' if slug == "iphone"
-       else 'R.mipmap.nabdh_icon_preview_' + slug)
+    + 'R.mipmap.nabdh_icon_' + slug
     + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
@@ -374,12 +388,32 @@ replace_selector(
     """            nabdhFrameless = icon.key.startsWith("Nabdh") || "DefaultIcon".equals(icon.key);
             iconView.setOuterPadding(nabdhFrameless ? 0 : AndroidUtilities.dp(5));
             iconView.setNabdhSquircleMask("DefaultIcon".equals(icon.key) || "NabdhIphoneIcon".equals(icon.key));
+            Drawable launcherIcon = null;
+            if (nabdhFrameless) {
+                android.content.pm.PackageManager packages = getContext().getPackageManager();
+                try {
+                    android.content.pm.ActivityInfo activity = packages.getActivityInfo(
+                            icon.getComponentName(getContext()),
+                            android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
+                    launcherIcon = packages.getDrawable(activity.packageName,
+                            activity.getIconResource(), activity.applicationInfo);
+                } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {
+                    // A missing alias still has its offline preview resource.
+                }
+            }
+            iconView.setNabdhLauncherIcon(launcherIcon);
             iconView.setImageResource(icon.background);""",
     "Native picker transparent drawing")
 # The stock chooser uses a circle for every Android icon preview;
 # match the approximate One UI squircle only for Default and iPhone.
 picker_anchor = "        private int backgroundOuterPadding = AndroidUtilities.dp(42);"
 picker_insert = """        private boolean nabdhSquircleMask;
+        private Drawable nabdhLauncherIcon;
+
+        public void setNabdhLauncherIcon(Drawable icon) {
+            nabdhLauncherIcon = icon;
+            invalidate();
+        }
 
         public void setNabdhSquircleMask(boolean squircle) {
             if (nabdhSquircleMask == squircle) return;
@@ -404,6 +438,18 @@ new_circle = """            if (nabdhSquircleMask) {
                         Path.Direction.CW);
             }"""
 replace_selector(old_circle, new_circle, "Default and iPhone squircle preview path")
+replace_selector(
+    """        public void draw(Canvas canvas) {
+            canvas.save();""",
+    """        public void draw(Canvas canvas) {
+            if (nabdhLauncherIcon != null) {
+                nabdhLauncherIcon.setBounds(getPaddingLeft(), getPaddingTop(),
+                        getWidth() - getPaddingRight(), getHeight() - getPaddingBottom());
+                nabdhLauncherIcon.draw(canvas);
+                return;
+            }
+            canvas.save();""",
+    "Use the selected launcher alias artwork directly")
 
 # Never tell the user "Icon changed" before PackageManager confirms
 # the selected alias is enabled. Keep Telegram's original animated chooser.

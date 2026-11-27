@@ -17,6 +17,14 @@ on:
         type: boolean
         required: false
         default: false
+      dialog_cell_validation:
+        description: 'Run the production Android app and instrumented appearance tests'
+        type: boolean
+        default: false
+      publish_artifacts:
+        description: 'Upload APK after the calling workflow has completed real Android validation'
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       source_preflight_only:
@@ -24,11 +32,20 @@ on:
         required: false
         default: false
         type: boolean
-      release_mode:
-        description: 'Build signed Release from main using project-owned signing credentials'
+      dialog_cell_validation:
+        description: 'Build an internal x86_64 debug target and exercise the real DialogCell without publishing an APK'
         required: false
         default: false
         type: boolean
+      internal_phone_build:
+        description: 'Build and verify the ARM64 debug APK without publishing it'
+        required: false
+        default: false
+        type: boolean
+      android_validation_run:
+        description: 'Use a successful same-source Android PR run to publish a phone-test APK'
+        type: string
+        default: ''
   pull_request:
     branches:
       - main
@@ -46,22 +63,53 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 # Supersede older *PR* commits only. Never cancel a manual dispatch because
 # the very same branch also received a pull_request event.
 concurrency:
-  group: nabdhgram-android-${{ inputs.source_preflight_only && 'preflight' || 'full' }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  group: nabdhgram-android-${{ inputs.source_preflight_only && 'preflight' || inputs.dialog_cell_validation && 'dialog-cell' || inputs.internal_phone_build && 'internal-phone' || 'full' }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    env:
+      DIALOG_CELL_VALIDATION: ${{ inputs.dialog_cell_validation || (github.event_name == 'pull_request' && !inputs.source_preflight_only) }}
+      PUBLISH_APK: ${{ inputs.publish_artifacts || inputs.android_validation_run != '' }}
     steps:
       - name: Checkout NabdhGram automation
         uses: actions/checkout@v4
         with:
           path: nabdhgram
+          fetch-depth: ${{ inputs.android_validation_run != '' && '0' || '1' }}
+      - name: Validate Android build mode
+        env:
+          ANDROID_VALIDATION_RUN: ${{ inputs.android_validation_run }}
+          RELEASE_MODE: ${{ inputs.release_mode }}
+          SOURCE_PREFLIGHT: ${{ inputs.source_preflight_only }}
+          INTERNAL_PHONE_BUILD: ${{ inputs.internal_phone_build }}
+        run: |
+          if [[ "$DIALOG_CELL_VALIDATION" == true || "$INTERNAL_PHONE_BUILD" == true ]]; then
+            test "$RELEASE_MODE" != true
+            test "$SOURCE_PREFLIGHT" != true
+            test "$PUBLISH_APK" != true
+          fi
+          if [[ "$DIALOG_CELL_VALIDATION" == true ]]; then
+            test "$INTERNAL_PHONE_BUILD" != true
+          fi
+          if [[ "$RELEASE_MODE" == true ]]; then
+            test "$PUBLISH_APK" = true
+          fi
+          if [[ "$PUBLISH_APK" == true ]]; then
+            test "$GITHUB_EVENT_NAME" = workflow_dispatch
+            test "$SOURCE_PREFLIGHT" != true
+          fi
+          if [[ -n "$ANDROID_VALIDATION_RUN" ]]; then
+            [[ "$ANDROID_VALIDATION_RUN" =~ ^[0-9]+$ ]]
+            test "$RELEASE_MODE" != true
+          fi
       - name: Validate private Release dispatch before cloning sources
         if: ${{ inputs.release_mode }}
         shell: bash
@@ -104,6 +152,25 @@ jobs:
           test "$(git -C Telegram-upstream rev-parse HEAD)" = "$COMMIT"
           # Source-only Glass overlays do not use native submodules. Defer
           # recursive checkout until ALL generated-source checks have passed.
+      - name: Export exact pinned public source for card engine review
+        if: ${{ inputs.source_preflight_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p card-source-review
+          for f in TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java TMessagesProj/src/main/java/org/telegram/ui/Components/RecyclerListView.java; do
+            git -C Telegram-upstream show "HEAD:$f" > "card-source-review/$(basename "$f")"
+          done
+          git -C Telegram-upstream rev-parse HEAD > card-source-review/UPSTREAM_COMMIT
+      - name: Publish pinned card source review
+        if: ${{ inputs.source_preflight_only }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinned-card-source-review
+          path: card-source-review/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Apply NabdhGram package and label overlay
         shell: bash
         run: |
@@ -556,6 +623,8 @@ jobs:
           set -euo pipefail
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-security-hardening.py
           python3 nabdhgram/scripts/apply-nabdh-security-hardening.py Telegram-upstream
+          python3 -m py_compile nabdhgram/scripts/apply-nabdh-private-backup.py
+          python3 nabdhgram/scripts/apply-nabdh-private-backup.py Telegram-upstream
 
       - name: Enable secure Android Auto notification messaging
         shell: bash
@@ -600,6 +669,7 @@ jobs:
           python3 nabdhgram/scripts/check-nabdh-approved-icons.py Telegram-upstream
           python3 nabdhgram/scripts/check-glass-overlay.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-smart-swipe.py Telegram-upstream
+          python3 nabdhgram/scripts/test-nabdh-card-geometry.py
           python3 nabdhgram/scripts/check-nabdh-toggle-hitboxes.py Telegram-upstream
           python3 nabdhgram/scripts/check-nabdh-notification-typography.py Telegram-upstream
           python3 nabdhgram/scripts/check-profile-composer-visual-fixes.py Telegram-upstream
@@ -649,12 +719,14 @@ jobs:
           print("Google Services Gradle processing disabled for experimental debug build only.")
           PY
 
-      - name: Limit experimental APK to arm64-v8a
+      - name: Select debug APK ABI
         if: ${{ !inputs.release_mode }}
         shell: bash
         run: |
           set -euo pipefail
-          python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream
+          args=()
+          if [[ "$DIALOG_CELL_VALIDATION" == true ]]; then args+=(--emulator); fi
+          python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream "${args[@]}"
 
       - name: Preserve Telegram native Java APIs before Gradle
         shell: bash
@@ -767,6 +839,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 nabdhgram/scripts/configure-release-signing.py Telegram-upstream
+          # The previous owner-signed 13.2.2 APK used 73039. Bump the same
+          # Gradle input for both the APK and Play AAB so either can upgrade.
+          properties=Telegram-upstream/gradle.properties
+          grep -qx 'APP_VERSION_CODE=7303' "$properties"
+          sed -i 's/^APP_VERSION_CODE=7303$/APP_VERSION_CODE=7304/' "$properties"
+          grep -qx 'APP_VERSION_CODE=7304' "$properties"
       - name: Enforce Google Play Release-only sensitive-permission policy
         if: ${{ inputs.release_mode }}
         shell: bash
@@ -774,8 +852,6 @@ jobs:
           set -euo pipefail
           python3 -m py_compile nabdhgram/scripts/apply-nabdh-play-permissions.py
           python3 nabdhgram/scripts/apply-nabdh-play-permissions.py Telegram-upstream
-          python3 -m py_compile nabdhgram/scripts/apply-nabdh-private-backup.py
-          python3 nabdhgram/scripts/apply-nabdh-private-backup.py Telegram-upstream
 
       - name: Use compact native symbol tables in owner-signed Release
         if: ${{ inputs.release_mode && !inputs.source_preflight_only }}
@@ -878,9 +954,8 @@ jobs:
             exit 1
           }
           echo "PASS: actual APK contains Android Auto capability metadata and descriptor"
-          if [[ "${{ inputs.release_mode }}" == "true" ]]; then
-            grep -q "android:dataExtractionRules" apk-manifest-tree.txt || {
-              echo "::error::Release manifest is missing Android data-extraction rules"; exit 1;
+          grep -q "android:dataExtractionRules" apk-manifest-tree.txt || {
+              echo "::error::APK manifest is missing Android data-extraction rules"; exit 1;
             }
             python3 - <<'PY'
           import re
@@ -888,22 +963,24 @@ jobs:
           manifest = Path("apk-manifest-tree.txt").read_text(encoding="utf-8")
           match = re.search(r"(?m)^.*android:allowBackup.*$", manifest)
           if not match or not re.search(r"(?:0x0|false)\s*$", match.group(0), re.I):
-              raise SystemExit("FAIL: signed Release must have allowBackup=false")
-          print("PASS: signed APK manifest disables automatic app-data backup")
+              raise SystemExit("FAIL: APK must have allowBackup=false")
+          print("PASS: APK manifest disables automatic app-data backup")
           PY
             grep -q "nabdh_private_backup_rules" apk-resources.txt || {
-              echo "::error::Release APK has no compiled private-backup rules"; exit 1;
+              echo "::error::APK has no compiled private-backup rules"; exit 1;
             }
-          fi
           # Verify the actual APK permissions, not only the source manifest.
-          ! grep -E "uses-permission: name='android.permission.(READ_SMS|RECEIVE_SMS|QUERY_ALL_PACKAGES|BIND_ACCESSIBILITY_SERVICE)'" apk-permissions.txt
+          if grep -E "uses-permission: name='android\.permission\.(READ_SMS|RECEIVE_SMS|QUERY_ALL_PACKAGES|BIND_ACCESSIBILITY_SERVICE)'" apk-permissions.txt; then
+            echo "::error::Unexpected sensitive permission in packaged APK"
+            exit 1
+          fi
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then
             ! grep -E "uses-permission: name='android.permission.(REQUEST_INSTALL_PACKAGES|READ_CALL_LOG)'" apk-permissions.txt || {
               echo "::error::Restricted Play installation/call-log permission in signed APK"
               exit 1
             }
           fi
-          "$APKSIGNER" verify --verbose "$APK" > apk-signature.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > apk-signature.txt
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then
             python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "$APK" --enforce
           else
@@ -964,8 +1041,82 @@ jobs:
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then
             python3 nabdhgram/scripts/verify-release-apk.py "$APK" apk-badging.txt apk-manifest-tree.txt
           fi
-      - name: Publish verified APK with a clean filename
+      - name: Enable KVM for mandatory Android renderer regression
         if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-nabdh-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android card renderer pixel and gesture regression
+        id: card_android_gate
+        if: ${{ !inputs.source_preflight_only && steps.compile.outcome == 'success' }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash nabdhgram/scripts/run-card-android-gate.sh Telegram-upstream ${{ env.DIALOG_CELL_VALIDATION == 'true' && 'Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk' || '' }}
+      - name: Upload Android card regression evidence
+        if: ${{ always() && !inputs.source_preflight_only }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nabdh-card-android-evidence
+          path: card-android-evidence/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Verify prior production Android test evidence for phone testing
+        if: ${{ inputs.android_validation_run != '' }}
+        working-directory: nabdhgram
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATION_RUN: ${{ inputs.android_validation_run }}
+        run: |
+          set -euo pipefail
+          [[ "$VALIDATION_RUN" =~ ^[0-9]+$ ]]
+          proof="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN")"
+          jq -e --arg repo "$GITHUB_REPOSITORY" '
+            .head_repository.full_name == $repo and
+            .path == ".github/workflows/nabdhgram-identity-build.yml" and
+            .event == "pull_request" and
+            (.pull_requests | length) == 1
+          ' <<< "$proof" >/dev/null
+          tested="$(jq -er '.head_sha' <<< "$proof")"
+          tested_base="$(jq -er '.pull_requests[0].base.sha' <<< "$proof")"
+          [[ "$tested" =~ ^[0-9a-f]{40}$ && "$tested_base" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags origin "$tested" "$tested_base"
+          # PR Actions check out the merge. An ancestral base guarantees that
+          # the application and tests being compared are exactly what ran.
+          git merge-base --is-ancestor "$tested_base" "$tested"
+          git diff --exit-code "$tested" HEAD -- . ':(exclude).github/workflows/**'
+          # Phone and validation builds run concurrently and can finish out of order.
+          deadline=$((SECONDS + 1800))
+          while [[ "$(jq -r '.status' <<< "$proof")" != completed ]]; do
+            if (( SECONDS >= deadline )); then
+              echo "::error::Timed out waiting for Android validation run $VALIDATION_RUN"
+              exit 1
+            fi
+            echo "Waiting for Android validation run $VALIDATION_RUN"
+            sleep 20
+            proof="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN")"
+          done
+          conclusion="$(jq -r '.conclusion' <<< "$proof")"
+          if [[ "$conclusion" != success ]]; then
+            echo "::error::Android validation run $VALIDATION_RUN concluded $conclusion"
+            exit 1
+          fi
+          evidence="$(mktemp -d)"
+          gh run download "$VALIDATION_RUN" --name nabdh-card-android-evidence --dir "$evidence"
+          grep -Fq 'DIALOG_CELL_PASS' "$evidence/dialog-android.log"
+          grep -Fq 'THEME_RESTART_PASS: save-theme' "$evidence/save-theme.log"
+          grep -Fq 'THEME_RESTART_PASS: verify-theme' "$evidence/verify-theme.log"
+          test -s "$evidence/dialog-rest.png"
+          test -s "$evidence/dialog-pixel-comparison.log"
+          echo "Production Android evidence: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish verified APK with a clean filename
+        if: ${{ success() && !inputs.source_preflight_only && env.PUBLISH_APK == 'true' && steps.compile.outcome == 'success' && steps.card_android_gate.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -987,6 +1138,8 @@ jobs:
               sys.exit("Release is missing 32-bit ARM libraries")
           PY
           sha256sum dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
+          python3 nabdhgram/scripts/report-apk-size.py dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk | tee apk-size-audit.md
+          cat apk-size-audit.md >> "$GITHUB_STEP_SUMMARY"
           echo "### NabdhGram APK" >> "$GITHUB_STEP_SUMMARY"
           echo "APK mode: ${{ inputs.release_mode && 'privately signed Release' || 'experimental Debug' }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Filename: nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk" >> "$GITHUB_STEP_SUMMARY"
@@ -1038,12 +1191,12 @@ jobs:
           find Telegram-upstream -type f -name '*.apk' -print > apk-paths.txt || true
           cat apk-paths.txt
       - name: Upload APK when available
-        if: ${{ always() && !inputs.source_preflight_only }}
+        if: ${{ success() && !inputs.source_preflight_only && env.PUBLISH_APK == 'true' && steps.card_android_gate.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.release_mode && 'nabdhgram-owner-signed-release-apk' || 'nabdhgram-identity-debug-apk' }}
           path: dist/nabdhgram*.apk
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 7
       - name: Upload diagnostics
         if: ${{ always() && !inputs.source_preflight_only }}
@@ -1055,6 +1208,7 @@ jobs:
             nabdhgram-play-bundle-build.log
             play-bundle-sha256.txt
             play-bundle-size-audit.md
+            apk-size-audit.md
             nabdhgram-manifest-check.log
             identity-patch.log
             apk-paths.txt
@@ -1093,4 +1247,16 @@ jobs:
           BUILD_RESULT: ${{ steps.compile.outcome }}
         run: |
           test "$BUILD_RESULT" = success
-          test -s dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
+          test "${{ steps.card_android_gate.outcome }}" = success
+          if [[ "$DIALOG_CELL_VALIDATION" == true ]]; then
+            test -s card-android-evidence/dialog-android.log
+            test -s card-android-evidence/dialog-rest.png
+            test -s card-android-evidence/verify-theme.log
+            grep -Fq 'THEME_RESTART_PASS: verify-theme' card-android-evidence/verify-theme.log
+          elif [[ "$PUBLISH_APK" != true ]]; then
+            test -s apk-sha256.txt
+            test -s apk-signature.txt
+            test -s Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk
+          else
+            test -s dist/nabdhgram${{ inputs.release_mode && '-release' || '' }}.apk
+          fi

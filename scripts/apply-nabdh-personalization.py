@@ -17,6 +17,7 @@ def once(text, before, after, desc):
 
 for file, destination in [
     ("NabdhHomePrefs.java", "Components/NabdhHomePrefs.java"),
+    ("NabdhStorageAudit.java", "Components/NabdhStorageAudit.java"),
     ("NabdhPersonalizeActivity.java", "NabdhPersonalizeActivity.java"),
     ("NabdhVideoActivity.java", "NabdhVideoActivity.java"),
     ("NabdhCameraGalleryActivity.java", "NabdhCameraGalleryActivity.java"),
@@ -81,6 +82,49 @@ marker = '''        nabdhFeatureRow(context, content, 602);
         org.telegram.ui.Components.NabdhCompactSettings.header'''
 p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
 
+        org.telegram.ui.Components.NabdhCompactSettings.row(context, content,
+                NabdhStrings.get(context, R.string.NabdhUiStyleTitle),
+                NabdhStrings.get(context, R.string.NabdhUiStyleSummary),
+                R.drawable.settings_chat,
+                () -> {
+                    final String[] styles = {
+                        NabdhStrings.get(context, R.string.NabdhUiStyleClassic),
+                        NabdhStrings.get(context, R.string.NabdhUiStyleMaterial),
+                        NabdhStrings.get(context, R.string.NabdhUiStyleGlass),
+                        NabdhStrings.get(context, R.string.NabdhUiStyleHybrid)
+                    };
+                    int selected = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();
+                    String selectedLabel = styles[selected];
+                    styles[selected] = "✓  " + selectedLabel;
+                    new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
+                            .setTitle(NabdhStrings.get(context, R.string.NabdhUiStyleTitle))
+                            .setItems(styles, (dialog, which) -> {
+                                        org.telegram.ui.Components.NabdhAppearancePrefs.setUiStyle(context, which);
+                                        nabdhInvalidateStyleTree(content.getRootView());
+                                        content.requestLayout();
+                                        if (which != selected) {
+                                            content.post(() -> {
+                                                if (getParentLayout() != null) {
+                                                    getParentLayout().rebuildAllFragmentViews(true, true);
+                                                }
+                                            });
+                                        }
+                                        android.widget.Toast.makeText(context,
+                                                which == selected ? selectedLabel : styles[which],
+                                                android.widget.Toast.LENGTH_SHORT).show();
+                                    })
+                            .setNegativeButton(org.telegram.messenger.LocaleController.isRTL ? "إغلاق" : "Close", null)
+                            .show();
+                });
+
+        org.telegram.ui.Components.NabdhCompactSettings.header(context, content,
+                NabdhStrings.get(context, R.string.NabdhStorageSection));
+        org.telegram.ui.Components.NabdhCompactSettings.row(context, content,
+                NabdhStrings.get(context, R.string.NabdhStorageAuditTitle),
+                NabdhStrings.get(context, R.string.NabdhStorageAuditSummary),
+                R.drawable.settings_data,
+                () -> org.telegram.ui.Components.NabdhStorageAudit.show(context));
+
         // User-visible native home, bubble and Camera2 settings under themes.
         org.telegram.ui.Components.NabdhCompactSettings.header(context, content,
                 NabdhStrings.get(context, R.string.NabdhPersonalizeSection));
@@ -102,7 +146,17 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
 
         org.telegram.ui.Components.NabdhCompactSettings.header''', "appearance menu after themes")
 marker = '''    private void nabdhAppearancePicker(Context context, String kind) {'''
-method = '''    private void nabdhPersonalize(Context context, String kind) {
+method = '''    private static void nabdhInvalidateStyleTree(android.view.View view) {
+        view.invalidate();
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                nabdhInvalidateStyleTree(group.getChildAt(i));
+            }
+        }
+    }
+
+    private void nabdhPersonalize(Context context, String kind) {
         android.content.Intent intent = new android.content.Intent(context,
                 NabdhPersonalizeActivity.class);
         intent.putExtra(NabdhPersonalizeActivity.EXTRA_SECTION, kind);
@@ -115,6 +169,15 @@ page.write_text(p, encoding="utf-8")
 
 strings = {
     "values": {
+        "NabdhUiStyleTitle": "UI style",
+        "NabdhUiStyleSummary": "Choose the appearance of cards and controls",
+        "NabdhUiStyleClassic": "Classic",
+        "NabdhUiStyleMaterial": "Material 3",
+        "NabdhUiStyleGlass": "Siri Glass",
+        "NabdhUiStyleHybrid": "Material 3 with Glass",
+        "NabdhStorageSection": "Storage",
+        "NabdhStorageAuditTitle": "Smart Storage",
+        "NabdhStorageAuditSummary": "See how much space app data uses",
         "NabdhPersonalizeSection": "Layout and message bubbles",
         "NabdhPersonalizeHome": "Main screen layout",
         "NabdhPersonalizeHomeInfo": "Title, stories, search, compose button and folder tabs",
@@ -124,6 +187,15 @@ strings = {
         "NabdhPersonalizeCameraInfo": "Lens, stabilization, mirror, resolution and zoom",
     },
     "values-ar": {
+        "NabdhUiStyleTitle": "نمط الواجهة",
+        "NabdhUiStyleSummary": "اختر مظهر البطاقات وعناصر الواجهة",
+        "NabdhUiStyleClassic": "كلاسيكي",
+        "NabdhUiStyleMaterial": "ماتيريال 3",
+        "NabdhUiStyleGlass": "زجاج سيري",
+        "NabdhUiStyleHybrid": "ماتيريال 3 مع الزجاج",
+        "NabdhStorageSection": "التخزين",
+        "NabdhStorageAuditTitle": "إدارة التخزين الذكية",
+        "NabdhStorageAuditSummary": "اعرف ما يشغل مساحة بيانات التطبيق",
         "NabdhPersonalizeSection": "التنسيق وفقاعات المحادثات",
         "NabdhPersonalizeHome": "تنسيق الشاشة الرئيسية",
         "NabdhPersonalizeHomeInfo": "العنوان والقصص والبحث والزر العائم والمجلدات",

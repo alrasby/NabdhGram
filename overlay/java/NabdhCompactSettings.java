@@ -2,6 +2,7 @@ package org.telegram.ui.Components;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.os.Build;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
@@ -47,8 +48,6 @@ public final class NabdhCompactSettings {
         LinearLayout group = new LinearLayout(context);
         group.setTag(GROUP_TAG);
         group.setOrientation(LinearLayout.VERTICAL);
-        group.setLayoutDirection(LocaleController.isRTL
-                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         // No second white/slate parent panel behind Telegram's own Glass cards.
         group.setBackground(null);
         group.setClipChildren(false);
@@ -68,6 +67,7 @@ public final class NabdhCompactSettings {
         title.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
         title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         title.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        if (Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
         title.setPadding(dp(context, 10), dp(context, 16),
                 dp(context, 10), dp(context, 8));
         parent.addView(title, new LinearLayout.LayoutParams(-1, -2));
@@ -90,7 +90,9 @@ public final class NabdhCompactSettings {
 
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setLayoutDirection(rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        // Telegram disables Android's automatic RTL layout in its manifest.
+        // Use physical positions so Arabic layout works independently of that flag.
+        row.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setMinimumHeight(dp(context, TextUtils.isEmpty(subtitle) ? 54 : 66));
         row.setPadding(dp(context, 14), dp(context, 9),
@@ -120,27 +122,27 @@ public final class NabdhCompactSettings {
                 }
             };
             image.setImageResource(NabdhAppearancePrefs.icon(context, icon));
+            image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
             image.setColorFilter(accent);
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
             LinearLayout.LayoutParams imageParams =
                     new LinearLayout.LayoutParams(dp(context, 24), dp(context, 24));
-            imageParams.setMarginEnd(dp(context, 17));
+            if (rtl) imageParams.leftMargin = dp(context, 17);
+            else imageParams.rightMargin = dp(context, 17);
             row.addView(image, imageParams);
         }
 
         LinearLayout text = new LinearLayout(context);
         text.setOrientation(LinearLayout.VERTICAL);
         text.setGravity(Gravity.CENTER_VERTICAL);
-        text.setLayoutDirection(rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        text.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        row.addView(text, textParams);
+        row.addView(text, rtl ? 0 : row.getChildCount(), textParams);
 
         TextView heading = new TextView(context);
         heading.setText(title);
         heading.setTextColor(primary);
         heading.setTextSize(15);
-        heading.setMaxLines(2);
-        heading.setEllipsize(TextUtils.TruncateAt.END);
         heading.setGravity(rtl ? Gravity.RIGHT : Gravity.LEFT);
         heading.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
         text.addView(heading, new LinearLayout.LayoutParams(-1, -2));
@@ -148,10 +150,8 @@ public final class NabdhCompactSettings {
         if (!TextUtils.isEmpty(subtitle)) {
             TextView summary = new TextView(context);
             summary.setText(subtitle);
-            summary.setTextSize(11);
+            summary.setTextSize(12);
             summary.setTextColor(secondary);
-            summary.setMaxLines(2);
-            summary.setEllipsize(TextUtils.TruncateAt.END);
             summary.setGravity(rtl ? Gravity.RIGHT : Gravity.LEFT);
             LinearLayout.LayoutParams summaryParams =
                     new LinearLayout.LayoutParams(-1, -2);
@@ -167,8 +167,9 @@ public final class NabdhCompactSettings {
         arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         LinearLayout.LayoutParams arrowParams =
                 new LinearLayout.LayoutParams(dp(context, 22), dp(context, 32));
-        arrowParams.setMarginStart(dp(context, 8));
-        row.addView(arrow, arrowParams);
+        if (rtl) arrowParams.rightMargin = dp(context, 8);
+        else arrowParams.leftMargin = dp(context, 8);
+        row.addView(arrow, rtl ? 0 : row.getChildCount(), arrowParams);
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
         rowParams.bottomMargin = dp(context, 3);
         group.addView(row, rowParams);

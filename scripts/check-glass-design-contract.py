@@ -87,7 +87,8 @@ credits_script = (ROOT / "scripts/apply-nabdhgram-settings.py").read_text(encodi
 assert "APP_VERSION_NAME=" in credits_script and "APP_VERSION_CODE=" in credits_script and '"NabdhGramCredits": branded_credits' in credits_script, "NabdhGram credits must match pinned Telegram version"
 assert bubble.count("(currentType == TYPE_TEXT || currentType == TYPE_MEDIA)") >= 2 and '"bubble_no_tail"' in bubble, "Text/media and opt-in tail-free design is inconsistent"
 assert "!themePreview && !isSelected" in bubble, "Selection or preview protection was removed"
-assert finishing.count("if ((currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected)") == 2, "Final overlay no longer matches text/media anchor"
+final_bubble_anchor = "if (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() != org.telegram.ui.Components.NabdhAppearancePrefs.UI_CLASSIC && (currentType == TYPE_TEXT || currentType == TYPE_MEDIA) && !themePreview && !isSelected)"
+assert finishing.count(final_bubble_anchor) == 2 and bubble.count(final_bubble_anchor) == 1, "Final overlay must match the style-aware text/media anchor exactly"
 assert "0x330098A3" not in profile, "Hard-coded profile press color returned"
 assert "Theme.key_windowBackgroundWhiteBlueText" in profile, "Theme-aware profile tint missing"
 for family in ("Readex Pro", "Vazirmatn", "Noto Sans Arabic", "Tajawal", "Rubik", "Sans-serif", "Serif"):
@@ -151,7 +152,7 @@ assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native
 for obsolete in ("GradientDrawable glassCard =", "GradientDrawable infoCard =", "GradientDrawable fontGlass =", "RippleDrawable touchSurface ="):
     assert obsolete not in settings, f"Second per-card surface allocation survived: {obsolete}"
 assert "scroll.setBackground(new GradientDrawable(" not in settings, "NabdhGram scroll snapshots old theme colors"
-assert "topView.setBackground(" in native_surfaces and "NabdhGlassRowDecoration.newHeroBackground());" in native_surfaces, "Main Settings hero must use the soft Glass renderer"
+assert "topView.setBackground(" in native_surfaces and "NabdhGlassRowDecoration.newHeroBackground(listView.getNabdhSectionInset()));" in native_surfaces, "Main Settings hero must use the soft Glass renderer"
 remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
 for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java", "ThemeActivity.java"):
     assert screen in remaining, f"Missing dedicated folder / lite mode coverage for {screen}"
@@ -196,8 +197,8 @@ assert "view instanceof org.telegram.ui.Cells.LanguageCell" in native_surfaces, 
 # Main settings uses a custom UItem factory, not any legacy TextCell.
 assert "view instanceof org.telegram.ui.SettingsActivity.SettingCell" in native_surfaces, "Actual SettingsActivity factory rows are excluded from Glass styling"
 assert "holder.itemView instanceof org.telegram.ui.SettingsActivity.SettingCell" in native_surfaces, "UniversalAdapter factory rows are excluded from Glass after binding"
-assert "nabdhOriginalAlpha * 136 / 255" in bubble, "Cached normal bubbles remain opaque"
-assert "nabdhOriginalPaintAlpha * 136 / 255" in bubble, "Canvas-drawn normal bubbles remain opaque"
+assert "nabdhOriginalAlpha * (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == org.telegram.ui.Components.NabdhAppearancePrefs.UI_GLASS ? 112 : 136) / 255" in bubble, "Cached normal bubbles remain opaque"
+assert "nabdhOriginalPaintAlpha * (org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == org.telegram.ui.Components.NabdhAppearancePrefs.UI_GLASS ? 112 : 136) / 255" in bubble, "Canvas-drawn normal bubbles remain opaque"
 assert "crossfadeFromDrawable == null" in bubble, "Bubble translucency must preserve transition rendering"
 assert "nabdhDrawFrostedWallpaper(canvas, path)" in bubble and "nabdhDrawFrostedWallpaper(canvas, makePath())" in bubble, "Both cached and path text bubbles need blurred wallpaper"
 assert "Utilities.stackBlurBitmap(bitmap, 7)" in bubble and "nabdhLastWallpaper" in bubble, "Bubble blur must cache source wallpaper and avoid per-message reblur"
@@ -211,12 +212,12 @@ assert "public void nabdhHideSectionBackgroundOnly()" in native_surfaces, "Glass
 assert "nabdhSuppressLegacySectionFill" in native_surfaces and "bitmapSectionsItemDecoration.setDrawBackground(false)" in native_surfaces, "Telegram 13.2 bitmap section fills can still appear"
 assert "native_list_fill = (" in native_surfaces and "native_rounded_fill = (" in native_surfaces, "Cached native section draw entrypoints not protected"
 assert "if (nabdhSuppressLegacySectionFill) return;" in native_surfaces, "Native section draw callbacks still paint white groups"
-assert "if (nabdhGlassSettings) return;" in native_surfaces, "UniversalAdapter can still paint white fallback groups"
+assert "if (nabdhGlassSettings && !NabdhAppearancePrefs.isClassic()) return;" in native_surfaces, "UniversalAdapter must preserve Classic native section painting"
 assert 'group_anchor = "        listView.setSectionsDrawBackground(true);"' in native_surfaces, "Main Settings section suppression runs before native bitmap setup"
 assert "final int maxRowHeight = dp(mini ? 96 : 200);" in native_surfaces and "MeasureSpec.AT_MOST" in native_surfaces, "Arabic descriptions may clip at fixed 60dp"
 assert "newOpaquePageBackground()" in native_surfaces and "Theme.key_windowBackgroundGray" in native_surfaces and "PixelFormat.OPAQUE" in native_surfaces, "Nested settings may leak content from previous fragments"
 assert "contentView.setBackground(" in native_surfaces and "Main Settings root/list initialization anchor changed" in native_surfaces, "Main Settings needs an opaque root-level canvas"
-assert "topView.setBackground(" in native_surfaces and "newHeroBackground());" in native_surfaces, "Account hero must use one inset"
+assert "topView.setBackground(" in native_surfaces and "newHeroBackground(listView.getNabdhSectionInset()));" in native_surfaces, "Account hero must use one inset"
 assert "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_surfaces, "Double-inset account hero regressed"
 assert 'settings_source.replace(enable_anchor, enable_anchor' not in native_surfaces, "Main Settings must not add a redundant ItemDecoration"
 
@@ -268,5 +269,5 @@ assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/ap
 assert "nabdhRestoreChatTitle" not in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Duplicate title-restoration owner must be removed"
 assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Native title must retain Telegram status drawable"
 assert "telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Stories wordmark must retain native positioning"
-assert "newHeroBackground()" in native_surfaces and "hero.setAlpha(190)" in native_surfaces, "Main hero remains near-white opaque"
+assert "newHeroBackground(int sectionInset)" in native_surfaces, "Settings hero must use the shared card and native section inset"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")

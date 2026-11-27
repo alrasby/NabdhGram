@@ -18,19 +18,32 @@ replacement = """    // Reuse clipping geometry while the user presses a dialog 
         // Telegram draws the pressed overlay at the RecyclerListView level,
         // *above* DialogCell.onDraw. Clip that overlay rather than trying to
         // cover it from the child; leave non-dialog selectors unchanged.
-        final boolean nabdhDialog = selectorView instanceof org.telegram.ui.Cells.DialogCell;
+        final boolean nabdhDialog = selectorView instanceof org.telegram.ui.Cells.DialogCell
+                && ((org.telegram.ui.Cells.DialogCell) selectorView).nabdhOwnsCard();
         final boolean nabdhCard = nabdhDialog
                 || org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(selectorView);
         if (nabdhCard) {
             final float density = getResources().getDisplayMetrics().density;
+            // Dialog cards keep the established swipe geometry; settings
+            // selectors follow the same live geometry as their surfaces.
+            final boolean classic = NabdhAppearancePrefs.uiStyle() == NabdhAppearancePrefs.UI_CLASSIC;
+            final float inset = nabdhDialog
+                    ? (classic ? 0 : AndroidUtilities.dp(NabdhCardGeometry.HORIZONTAL_INSET_DP))
+                    : (classic ? 0f : 10f) * density;
+            final float vertical = nabdhDialog
+                    ? (classic ? 0 : AndroidUtilities.dp(NabdhCardGeometry.VERTICAL_INSET_DP))
+                    : (classic ? 0f : 2f) * density;
+            final float radius = nabdhDialog
+                    ? (classic ? 0 : AndroidUtilities.dp(NabdhCardGeometry.CORNER_RADIUS_DP))
+                    : NabdhAppearancePrefs.surfaceRadius() * density;
             nabdhDialogSelectorBounds.set(
-                    selectorRect.left + 7f * density,
-                    selectorRect.top + 3f * density,
-                    selectorRect.right - 7f * density,
-                    selectorRect.bottom - 3f * density);
+                    selectorRect.left + inset,
+                    selectorRect.top + vertical,
+                    selectorRect.right - inset,
+                    selectorRect.bottom - vertical);
             nabdhDialogSelectorPath.reset();
             nabdhDialogSelectorPath.addRoundRect(nabdhDialogSelectorBounds,
-                    17f * density, 17f * density, android.graphics.Path.Direction.CW);
+                    radius, radius, android.graphics.Path.Direction.CW);
             canvas.save();
             canvas.clipPath(nabdhDialogSelectorPath);
         }

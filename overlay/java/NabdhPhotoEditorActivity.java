@@ -1,7 +1,7 @@
 package org.telegram.ui;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import org.telegram.ui.ActionBar.AlertDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapRegionDecoder;

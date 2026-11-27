@@ -1,0 +1,21 @@
+name: NabdhGram verified ARM64 Debug APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  android-validation:
+    uses: ./.github/workflows/nabdhgram-identity-build.yml
+    with:
+      dialog_cell_validation: true
+
+  phone-apk:
+    needs: android-validation
+    uses: ./.github/workflows/nabdhgram-identity-build.yml
+    with:
+      publish_artifacts: true
+    secrets: inherit

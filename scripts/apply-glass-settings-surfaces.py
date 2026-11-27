@@ -71,12 +71,15 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         return new GlassCardLayers();
     }
 
-    public static android.graphics.drawable.Drawable newHeroBackground() {
-        // Same radius and theme as rows, but remove the nearly white
-        // appearance of the account hero over the opaque Settings root.
-        GlassCardLayers hero = new GlassCardLayers();
-        hero.setAlpha(190);
-        return hero;
+    public static android.graphics.drawable.Drawable newHeroBackground(int sectionInset) {
+        // The hero is a non-section row. Match the section offset applied to
+        // regular rows before the shared card drawable applies its own inset.
+        return new android.graphics.drawable.InsetDrawable(newCardBackground(), sectionInset, 0, sectionInset, 0) {
+            @Override public boolean getPadding(@NonNull android.graphics.Rect padding) {
+                padding.setEmpty();
+                return false;
+            }
+        };
     }
 
     // The removed Telegram section-group fills no longer mask old fragments.
@@ -119,6 +122,7 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
     // appear in the legacy class whitelist. Only its explicitly opted-in
     // SettingsActivity and approved row types may use this override.
     public static void applyCardStyle(View child, boolean settingsRow) {
+        if (NabdhAppearancePrefs.isClassic()) return;
         if (!settingsRow && !isSettingRow(child)) return;
         android.graphics.drawable.Drawable existing = child.getBackground();
         if (existing instanceof GlassCardLayers) {
@@ -137,6 +141,11 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
 
     private static final class GlassCardLayers extends android.graphics.drawable.RippleDrawable {
         private int lastTint;
+        private int lastStyle = NabdhAppearancePrefs.uiStyle();
+        @Override public void draw(@NonNull Canvas canvas) {
+            refreshThemeTint();
+            super.draw(canvas);
+        }
         GlassCardLayers() {
             super(android.content.res.ColorStateList.valueOf(
                     Theme.getColor(Theme.key_listSelector)),
@@ -147,14 +156,21 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
             android.graphics.drawable.GradientDrawable mask =
                     new android.graphics.drawable.GradientDrawable();
             mask.setColor(Color.WHITE);
-            mask.setCornerRadius(AndroidUtilities.dp(20));
+            mask.setCornerRadius(AndroidUtilities.dp(NabdhAppearancePrefs.surfaceRadius()));
+            final boolean classic = NabdhAppearancePrefs.uiStyle() == NabdhAppearancePrefs.UI_CLASSIC;
             return new android.graphics.drawable.InsetDrawable(mask,
-                    AndroidUtilities.dp(10), AndroidUtilities.dp(2),
-                    AndroidUtilities.dp(10), AndroidUtilities.dp(2));
+                    AndroidUtilities.dp(classic ? 0 : 10), AndroidUtilities.dp(classic ? 0 : 2),
+                    AndroidUtilities.dp(classic ? 0 : 10), AndroidUtilities.dp(classic ? 0 : 2));
         }
         void refreshThemeTint() {
             // Called during RecyclerView decoration. Updating the RippleDrawable
             // unconditionally here would schedule an endless draw/invalidate loop.
+            int style = NabdhAppearancePrefs.uiStyle();
+            if (style != lastStyle) {
+                lastStyle = style;
+                setDrawableByLayerId(android.R.id.mask, makeRippleMask());
+                invalidateSelf();
+            }
             int tint = Theme.getColor(Theme.key_listSelector);
             if (tint != lastTint) {
                 lastTint = tint;
@@ -183,15 +199,33 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
             final int blue = (Color.blue(base) * 82 + Color.blue(accent) * 18) / 100;
             float inset = AndroidUtilities.dp(10);
             float vertical = AndroidUtilities.dp(2);
-            float round = AndroidUtilities.dp(20);
+            final int style = NabdhAppearancePrefs.uiStyle();
+            float round = AndroidUtilities.dp(NabdhAppearancePrefs.surfaceRadius());
+            if (style == NabdhAppearancePrefs.UI_CLASSIC) {
+                inset = 0;
+                vertical = 0;
+            }
             rect.set(bounds.left + inset, bounds.top + vertical,
                     bounds.right - inset, bounds.bottom - vertical);
             if (rect.width() <= 0 || rect.height() <= 0) return;
             fill.setStyle(Paint.Style.FILL);
             // A partially translucent surface lets the active theme canvas
             // show through instead of painting another opaque pale-blue row.
-            fill.setColor(Color.argb(218 * opacity / 255, red, green, blue));
+            final boolean glass = NabdhAppearancePrefs.glassSurface();
+            if (style == NabdhAppearancePrefs.UI_CLASSIC) {
+                fill.setColor(base);
+            } else if (!glass) {
+                // Match the neutral Material 3 surface used by ordinary chat cards.
+                final int canvasColor = Theme.getColor(Theme.key_windowBackgroundGray);
+                fill.setColor(Color.rgb(
+                        Math.round(Color.red(base) * .70f + Color.red(canvasColor) * .30f),
+                        Math.round(Color.green(base) * .70f + Color.green(canvasColor) * .30f),
+                        Math.round(Color.blue(base) * .70f + Color.blue(canvasColor) * .30f)));
+            } else {
+                fill.setColor(Color.argb((style == NabdhAppearancePrefs.UI_GLASS ? 185 : 218) * opacity / 255, red, green, blue));
+            }
             canvas.drawRoundRect(rect, round, round, fill);
+            if (!glass) return;
             edge.setStyle(Paint.Style.STROKE);
             edge.setStrokeWidth(AndroidUtilities.dpf2(.8f));
             edge.setColor(Color.argb(73 * opacity / 255,
@@ -292,7 +326,12 @@ list_src = list_src.replace(native_draw_mode, native_draw_mode + """
         }""", 1)
 section_helper = """    private boolean nabdhSuppressLegacySectionFill;
 
+    public int getNabdhSectionInset() {
+        return sectionPadding;
+    }
+
     public void nabdhHideSectionBackgroundOnly() {
+        if (NabdhAppearancePrefs.isClassic()) return;
         // Telegram 13.2.x can paint group fills using bitmap decoration,
         // independent of the legacy drawSectionBackground callback.
         // Disable BOTH fill paths without removing section row geometry.
@@ -320,7 +359,7 @@ for cell_name in ("TextCell", "TextSettingsCell", "TextCheckCell", "TextCheckCel
     if cell_src.count(before_divider) != 1:
         raise SystemExit(f"{cell_name}: divider draw anchor changed")
     cell_src = cell_src.replace(before_divider,
-        "        if (needDivider && !org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this)) {",
+        "        if (needDivider && (!org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this) || org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == 0)) {",
         1)
     cell_path.write_text(cell_src, encoding="utf-8")
 
@@ -354,11 +393,13 @@ for name in GLASS_SETTINGS_SCREENS:
             else "        listView.setSections();"
     if source.count(anchor) != 1:
         raise SystemExit(f"{name}: settings list anchor changed ({source.count(anchor)} occurrences)")
-    radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\n"
+    radius = "" if name == "ProfileActivity.java" else (
+        "        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) listView.setSelectorRadius(17);\n"
+    )
     # The collapsing Profile hero uses custom visuals; other settings lists
     # require an opaque page canvas to avoid displaying previous fragments.
     page_canvas = "" if name == "ProfileActivity.java" else (
-        "        listView.setBackground("
+        "        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) listView.setBackground("
         "org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());\n"
     )
     source = source.replace(anchor, anchor + """
@@ -495,10 +536,10 @@ settings_hero = ui / "SettingsActivity.java"
 hero_source = settings_hero.read_text(encoding="utf-8")
 hero_old = "        topView = new FrameLayout(context);"
 hero_new = """        topView = new FrameLayout(context);
-        // GlassCardLayers already insets 10dp on both sides. The extra
-        // InsetDrawable doubled this margin and misaligned the hero.
-        topView.setBackground(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newHeroBackground());"""
+        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) {
+            topView.setBackground(
+                    org.telegram.ui.Components.NabdhGlassRowDecoration.newHeroBackground(listView.getNabdhSectionInset()));
+        }"""
 if hero_source.count(hero_old) != 1:
     raise SystemExit("SettingsActivity account hero constructor changed")
 settings_hero.write_text(hero_source.replace(hero_old, hero_new, 1), encoding="utf-8")
@@ -572,7 +613,7 @@ end = universal_source.find("\n    }", begin)
 if end < 0 or "nabdhGlassSettings" not in universal_source[begin:end]:
     raise SystemExit("UniversalAdapter native settings styling was not applied")
 universal_source = universal_source[:end] + """
-        if (nabdhGlassSettings) {
+        if (nabdhGlassSettings && !NabdhAppearancePrefs.isClassic()) {
             int glassType = holder.getItemViewType();
             // Do not turn section headers, profile hero, media, or spacer
             // rows into cards; force only these Settings-specific row types.
@@ -602,7 +643,7 @@ if universal_source.count(white_fallback_anchor) != 1:
 universal_source = universal_source.replace(
     white_fallback_anchor,
     white_fallback_anchor + """
-        if (nabdhGlassSettings) return;""", 1)
+        if (nabdhGlassSettings && !NabdhAppearancePrefs.isClassic()) return;""", 1)
 universal_path.write_text(universal_source, encoding="utf-8")
 
 # The modern Settings screen has a SizeNotifierFrameLayout root with its
@@ -628,8 +669,10 @@ if settings_source.count(native_list_anchor) != 1:
 settings_source = settings_source.replace(native_list_anchor,
     """        // This root covers the avatar, glass action bar and over-scrolled
         // list; only individual cards are semi-transparent.
-        contentView.setBackground(
-                org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());
+        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) {
+            contentView.setBackground(
+                    org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());
+        }
 """ + native_list_anchor, 1)
 settings_main.write_text(settings_source, encoding="utf-8")
 
@@ -655,12 +698,15 @@ profile_path = ui / "ProfileActivity.java"
 profile_src = profile_path.read_text(encoding="utf-8")
 old_scrim = ".setScrimViewBackground(listView.getClipBackground(view))"
 new_scrim = """.setRoundRadius(
-                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                        !org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()
+                                && org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
                                 ? org.telegram.messenger.AndroidUtilities.dp(20) : 0,
-                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                        !org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()
+                                && org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
                                 ? org.telegram.messenger.AndroidUtilities.dp(10) : 0)
                     .setScrimViewBackground(
-                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                        !org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()
+                                && org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
                                 ? org.telegram.ui.Components.NabdhGlassRowDecoration.newProfileScrim()
                                 : listView.getClipBackground(view))"""
 if profile_src.count(old_scrim) != 3:

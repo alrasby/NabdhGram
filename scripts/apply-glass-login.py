@@ -20,6 +20,9 @@ helper = """    // NabdhGram Glass: native Telegram theme keys respect installed
     // palettes. Backgrounds are decorative only; no focus or click interceptors.
     private static android.graphics.drawable.GradientDrawable nabdhLoginSurface(
             float radiusDp, float tintStrength) {
+        int style = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();
+        if (style == 0) tintStrength = 0f;
+        else if (style == 1) tintStrength *= .5f;
         int base = Theme.getColor(Theme.key_windowBackgroundWhite);
         int tint = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
         int red = Math.round(Color.red(base) * (1f - tintStrength) + Color.red(tint) * tintStrength);
@@ -28,7 +31,7 @@ helper = """    // NabdhGram Glass: native Telegram theme keys respect installed
         android.graphics.drawable.GradientDrawable shape =
                 new android.graphics.drawable.GradientDrawable();
         shape.setColor(Color.rgb(red, green, blue));
-        shape.setCornerRadius(dp(radiusDp));
+        shape.setCornerRadius(dp(style == 0 ? 0 : style == 1 ? Math.min(radiusDp, 16f) : radiusDp));
         // The upstream OutlineTextContainerView and code boxes already draw
         // their own focus borders. A second stroke causes the double-outline
         // artifact visible in phone and verification screenshots.

@@ -23,6 +23,12 @@ themes = [
     ("nabdh_sand.attheme", "NabdhGram • Gray Avalanche Sand", 0xFFD4C4AE, 0xFFE4D7C6, 0xFFD7C8B7,
      "b32ed42b89ac7375e7fddbe6833a506e89fe25436651696af5ff4346a5c46f7f"),
 ]
+THEME_ORDER = {
+    "nabdh_soft_mint.attheme": 1,
+    "nabdh_siri_refined.attheme": 2,
+    "nabdh_sand.attheme": 3,
+    "nabdh_dark.attheme": 4,
+}
 # Accept the validated existing archive until the new binary ZIP is staged.
 # Select each preview palette only after verifying the matching asset digest.
 UPDATED_THEME_SPECS = {
@@ -119,6 +125,7 @@ for filename, name, background, incoming, outgoing, sha in themes:
         "        themeInfo = new ThemeInfo();",
         f'        themeInfo.name = "{name}";',
         f'        themeInfo.assetName = "{filename}";',
+        f"        themeInfo.sortIndex = {THEME_ORDER[filename] - len(THEME_ORDER) - 1};",
         f"        themeInfo.previewBackgroundColor = 0x{background:08X};",
         f"        themeInfo.previewInColor = 0x{incoming:08X};",
         f"        themeInfo.previewOutColor = 0x{outgoing:08X};",
@@ -133,6 +140,11 @@ for filename, name, background, incoming, outgoing, sha in themes:
         "        themesDict.put(themeInfo.getKey(), themeInfo);",
     ])
 source = source.replace(anchor, "\n".join(lines) + "\n\n" + anchor, 1)
+day_theme_preference = '            String theme = preferences.getString("theme", null);'
+if source.count(day_theme_preference) != 1:
+    raise SystemExit("Pinned day theme preference anchor changed")
+source = source.replace(day_theme_preference,
+    '            String theme = preferences.getString("theme", "NabdhGram • Soft Mint");', 1)
 # Defensive support for asset themes: if a future bundled theme doesn't have a
 # cached isDark value, it must read its asset rather than constructing File(null).
 is_dark_old = """            if (isDark == UNKNOWN) {
@@ -164,6 +176,40 @@ wallpaper_new = "currentColorsNoAccent = getThemeFileValues(null, themeInfo.asse
 if source.count(wallpaper_old) != 1:
     raise SystemExit("Telegram built-in asset wallpaper parser anchor changed")
 source = source.replace(wallpaper_old, wallpaper_new, 1)
+
+import_anchor = '''    public static ThemeInfo applyThemeFile(File file, String themeName, TLRPC.TL_theme theme, boolean temporary) {
+        try {'''
+if source.count(import_anchor) != 1:
+    raise SystemExit("Pinned theme import entry changed")
+source = source.replace(import_anchor, '''    private static boolean nabdhCanReadThemeFile(File file) {
+        if (file == null || !file.isFile() || file.length() == 0 || file.length() > 20L * 1024 * 1024) {
+            return false;
+        }
+        String[] wallpaperLink = new String[1];
+        SparseIntArray colors = getThemeFileValues(file, null, wallpaperLink);
+        int offset = colors.get(key_wallpaperFileOffset, -1);
+        if (offset < 0) {
+            return colors.size() > 1 || !TextUtils.isEmpty(wallpaperLink[0]);
+        }
+        try (FileInputStream input = new FileInputStream(file)) {
+            input.getChannel().position(offset);
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(input, null, options);
+            return options.outWidth > 0 && options.outHeight > 0
+                    && options.outWidth <= 8192 && options.outHeight <= 8192
+                    && (long) options.outWidth * options.outHeight <= 24_000_000L;
+        } catch (java.io.IOException | RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    public static ThemeInfo applyThemeFile(File file, String themeName, TLRPC.TL_theme theme, boolean temporary) {
+        if (!nabdhCanReadThemeFile(file) || themeName == null || themeName.trim().isEmpty()
+                || (theme == null && (themeName.indexOf('/') >= 0 || themeName.indexOf((char) 92) >= 0))) {
+            return null;
+        }
+        try {''', 1)
 
 target.write_text(source, encoding="utf-8")
 print("Registered 4 bundled NabdhGram theme assets in native Telegram selector.")
@@ -314,14 +360,18 @@ replace_cell(
         }
         final android.content.Context context = fragment.getParentActivity();
         final boolean arabic = LocaleController.isRTL;
-        final int background = selected.getPreviewBackgroundColor();
-        final int incoming = selected.getPreviewInColor();
-        final int outgoing = selected.getPreviewOutColor();
+        final android.util.SparseIntArray palette = Theme.getThemeFileValues(null, selected.assetName, null);
+        final int background = palette.get(Theme.key_windowBackgroundWhite, selected.getPreviewBackgroundColor());
+        final int incoming = palette.get(Theme.key_chat_inBubble, selected.getPreviewInColor());
+        final int outgoing = palette.get(Theme.key_chat_outBubble, selected.getPreviewOutColor());
+        final int actionBar = palette.get(Theme.key_actionBarDefault, background);
         final boolean night = currentType == ThemeActivity.THEME_TYPE_NIGHT;
         final SharedPreferences prefs = ApplicationLoader.applicationContext
                 .getSharedPreferences("nabdh_theme_gallery", Activity.MODE_PRIVATE);
         final String key = night ? "previousNightTheme" : "previousDayTheme";
+        final Theme.ThemeInfo active = night ? Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
         final Theme.ThemeInfo previous = Theme.getTheme(prefs.getString(key, ""));
+        final int previousAccent = prefs.getInt(key + "_accent", -1);
         // These are Telegram's own stable bundled defaults, not new themes.
         final Theme.ThemeInfo defaultChoice = Theme.getTheme(night ? "Night" : "Blue");
         android.widget.LinearLayout content = new android.widget.LinearLayout(context);
@@ -334,18 +384,6 @@ replace_cell(
 
         // Colors AND wallpaper both come from the verified bundled .attheme.
         // No temporary theme changes are made when opening a preview.
-        android.widget.TextView header = new android.widget.TextView(context);
-        header.setText("NabdhGram   •   " + selected.name);
-        header.setTextSize(15);
-        header.setSingleLine(false);
-        header.setMaxLines(2);
-        header.setTextColor(foreground);
-        header.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(8),
-                AndroidUtilities.dp(10), AndroidUtilities.dp(8));
-        content.addView(header, new android.widget.LinearLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
-
         android.widget.LinearLayout mock = new android.widget.LinearLayout(context);
         mock.setOrientation(android.widget.LinearLayout.VERTICAL);
         mock.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12),
@@ -359,28 +397,14 @@ replace_cell(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                         android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         block.setMargins(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
-        // Decode a bounded sample of the actual embedded WPS JPEG only when
-        // opening details (never while scrolling the four miniature cards).
-        android.graphics.Bitmap wallpaper = nabdhBundledWallpaper(context, selected);
-        if (wallpaper != null) {
-            android.graphics.drawable.BitmapDrawable actual =
-                    new android.graphics.drawable.BitmapDrawable(context.getResources(), wallpaper);
-            actual.setGravity(android.view.Gravity.FILL);
-            mock.setBackground(actual);
-            mock.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                @Override public void getOutline(View view, android.graphics.Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
-                            AndroidUtilities.dp(16));
-                }
-            });
-            mock.setClipToOutline(true);
-        }
         content.addView(mock, block);
 
         android.widget.TextView chatTitle = new android.widget.TextView(context);
         chatTitle.setText(arabic ? "المحادثات  •  معاينة" : "Chats  •  Preview");
         chatTitle.setTextSize(14);
-        chatTitle.setTextColor(nabdhThemePreviewInk(background));
+        chatTitle.setBackgroundColor(actionBar);
+        chatTitle.setTextColor(palette.get(Theme.key_actionBarDefaultTitle, nabdhThemePreviewInk(actionBar)));
+        chatTitle.setGravity(arabic ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
         chatTitle.setPadding(AndroidUtilities.dp(9), AndroidUtilities.dp(5),
                 AndroidUtilities.dp(9), AndroidUtilities.dp(12));
         mock.addView(chatTitle);
@@ -388,7 +412,8 @@ replace_cell(
         android.widget.TextView row = new android.widget.TextView(context);
         row.setText(arabic ? "◉  محادثة تجريبية\\n      آخر رسالة" : "◉  Sample conversation\\n      Last message");
         row.setTextSize(13);
-        row.setTextColor(nabdhThemePreviewInk(background));
+        row.setTextColor(nabdhThemePreviewInk(incoming));
+        row.setGravity(arabic ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
         row.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
                 AndroidUtilities.dp(12), AndroidUtilities.dp(10));
         android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
@@ -402,7 +427,7 @@ replace_cell(
         android.widget.TextView received = new android.widget.TextView(context);
         received.setText(arabic ? "رسالة واردة" : "Incoming message");
         received.setTextSize(13);
-        received.setTextColor(nabdhThemePreviewInk(incoming));
+        received.setTextColor(palette.get(Theme.key_chat_messageTextIn, nabdhThemePreviewInk(incoming)));
         received.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
                 AndroidUtilities.dp(12), AndroidUtilities.dp(10));
         android.graphics.drawable.GradientDrawable receiveBg = new android.graphics.drawable.GradientDrawable();
@@ -413,13 +438,14 @@ replace_cell(
                 new android.widget.LinearLayout.LayoutParams(
                         android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
                         android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        receivedParams.gravity = arabic ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT;
         receivedParams.setMargins(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(4));
         mock.addView(received, receivedParams);
 
         android.widget.TextView sent = new android.widget.TextView(context);
         sent.setText(arabic ? "رسالة صادرة ✓✓" : "Outgoing message ✓✓");
         sent.setTextSize(13);
-        sent.setTextColor(nabdhThemePreviewInk(outgoing));
+        sent.setTextColor(palette.get(Theme.key_chat_messageTextOut, nabdhThemePreviewInk(outgoing)));
         sent.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
                 AndroidUtilities.dp(12), AndroidUtilities.dp(10));
         android.graphics.drawable.GradientDrawable sendBg = new android.graphics.drawable.GradientDrawable();
@@ -437,17 +463,15 @@ replace_cell(
         android.widget.TextView settings = new android.widget.TextView(context);
         settings.setText(arabic ? "⚙  الإعدادات    •    الملف الشخصي" :
                 "⚙  Settings    •    Profile");
-        settings.setTextColor(nabdhThemePreviewInk(background));
+        settings.setBackgroundColor(background);
+        settings.setTextColor(palette.get(Theme.key_windowBackgroundWhiteBlackText, nabdhThemePreviewInk(background)));
+        settings.setGravity(arabic ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
         settings.setTextSize(13);
         settings.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(9),
                 AndroidUtilities.dp(10), AndroidUtilities.dp(9));
         mock.addView(settings);
         android.widget.TextView hint = new android.widget.TextView(context);
-        hint.setText(wallpaper != null
-                ? (arabic ? "معاينة الخلفية الأصلية مع ألوان الثيم. يمكنك التمرير لعرض التفاصيل."
-                         : "Original embedded wallpaper with theme colors. Scroll for details.")
-                : (arabic ? "معاينة الألوان؛ لم تتوفر خلفية مضمّنة صالحة."
-                          : "Color preview; no readable embedded wallpaper found."));
+        hint.setText(arabic ? "معاينة ألوان الثيم" : "Theme color preview");
         hint.setTextColor(dim);
         hint.setTextSize(12);
         content.addView(hint);
@@ -461,10 +485,11 @@ replace_cell(
         copyHint.setTextColor(dim);
         copyHint.setTextSize(12);
         copyHint.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
-        content.addView(copyHint);
+        if (!night) content.addView(copyHint);
         final org.telegram.ui.ActionBar.AlertDialog[] shown =
                 new org.telegram.ui.ActionBar.AlertDialog[1];
-        if (previous != null && previous != selected) {
+        if (previous != null && previous != active
+                && (previous.pathToFile == null || new java.io.File(previous.pathToFile).isFile())) {
             android.widget.TextView restore = new android.widget.TextView(context);
             restore.setText(arabic ? "↶ الرجوع إلى الثيم السابق" : "↶ Restore previous theme");
             restore.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
@@ -474,10 +499,19 @@ replace_cell(
             content.addView(restore);
             restore.setOnClickListener(v -> {
                 if (shown[0] != null) shown[0].dismiss();
+                Theme.ThemeInfo before = night ? Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
+                if (before != null && before != previous) {
+                    nabdhRememberTheme(prefs, key, before);
+                }
+                if (previousAccent >= 0 && previous.themeAccentsMap != null
+                        && previous.themeAccentsMap.get(previousAccent) != null) {
+                    previous.setCurrentAccentId(previousAccent);
+                }
                 selectTheme(previous, null);
+                if (night) Theme.saveAutoNightThemeConfig();
             });
         }
-        if (defaultChoice != null && defaultChoice != selected) {
+        if (defaultChoice != null && defaultChoice != active) {
             android.widget.TextView reset = new android.widget.TextView(context);
             reset.setText(arabic ? "استعادة ثيم Telegram الافتراضي" :
                     "Restore Telegram default theme");
@@ -490,51 +524,165 @@ replace_cell(
                 Theme.ThemeInfo before = night
                         ? Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
                 if (before != null && before != defaultChoice) {
-                    prefs.edit().putString(key, before.getKey()).apply();
+                    nabdhRememberTheme(prefs, key, before);
                 }
                 if (shown[0] != null) shown[0].dismiss();
-                selectTheme(defaultChoice, null); // Persist with Telegram's native API.
+                selectTheme(defaultChoice, null);
+                if (night) Theme.saveAutoNightThemeConfig();
             });
         }
+        // Preview remains outside the scrolling controls.
+        content.removeView(mock);
+        android.widget.LinearLayout fixed = new android.widget.LinearLayout(context);
+        fixed.setOrientation(android.widget.LinearLayout.VERTICAL);
+        fixed.setPadding(AndroidUtilities.dp(12), 0, AndroidUtilities.dp(12), 0);
+        fixed.addView(mock, block);
         android.widget.ScrollView scrolling = new android.widget.ScrollView(context);
         scrolling.setFillViewport(false);
         scrolling.addView(content);
+        fixed.addView(scrolling, new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        int maxHeight = context.getResources().getDisplayMetrics().heightPixels * 65 / 100;
+        fixed.setMinimumHeight(Math.min(maxHeight, AndroidUtilities.dp(460)));
+        if (maxHeight < AndroidUtilities.dp(340)
+                || context.getResources().getConfiguration().fontScale >= 1.3f) {
+            // Keep actions reachable when the preview itself needs more room.
+            fixed.removeView(mock);
+            content.addView(mock, 0, block);
+        }
         org.telegram.ui.ActionBar.AlertDialog.Builder dialog =
                 new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
                         .setTitle(selected.name)
-                        .setView(scrolling)
+                        .setView(fixed)
                         .setPositiveButton(arabic ? "تطبيق" : "Apply", (d, which) -> {
                             Theme.ThemeInfo before = night ?
                                     Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
                             if (before != null && before != selected) {
-                                prefs.edit().putString(key, before.getKey()).apply();
+                                nabdhRememberTheme(prefs, key, before);
                             }
                             selectTheme(selected, tapped); // Native commit + instant update.
-                        }).setNegativeButton(arabic ? "إغلاق" : "Close", null)
-                        .setNeutralButton(arabic ? "نسخة شخصية" : "Personal copy",
+                            if (night) Theme.saveAutoNightThemeConfig();
+                        }).setNegativeButton(arabic ? "إغلاق" : "Close", null);
+        // Telegram's theme editor imports into the day slot. Keep the clone
+        // action in the main gallery so a night selection never edits the day theme.
+        if (!night) {
+            dialog.setNeutralButton(arabic ? "نسخة شخصية" : "Personal copy",
                                 (d, which) -> {
-                                    // Use Telegram's built-in .attheme importer:
-                                    // it copies the original immutable asset to
-                                    // a distinct user-owned file and registers it.
-                                    String copyName = "Nabdh Personal "
-                                            + System.currentTimeMillis() + ".attheme";
-                                    Theme.ThemeInfo copy = Theme.applyThemeFile(
-                                            Theme.getAssetFile(selected.assetName),
-                                            copyName, null, false);
-                                    if (copy != null && fragment.getParentActivity() != null) {
-                                        new org.telegram.ui.Components.ThemeEditorView()
-                                                .show(fragment.getParentActivity(), copy);
-                                    }
+                                    // Prompt before importing; cancellation changes nothing.
+                                    android.widget.EditText name = new android.widget.EditText(context);
+                                    name.setSingleLine(true);
+                                    name.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+                                    name.setHintTextColor(Theme.getColor(Theme.key_dialogTextHint));
+                                    name.setBackground(Theme.createEditTextDrawable(context, true));
+                                    name.setHint(arabic ? "اسم الثيم" : "Theme name");
+                                    name.setFilters(new android.text.InputFilter[]{
+                                            new android.text.InputFilter.LengthFilter(60)});
+                                    android.widget.LinearLayout nameBox = new android.widget.LinearLayout(context);
+                                    nameBox.setLayoutDirection(arabic ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+                                    name.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
+                                    nameBox.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(8),
+                                            AndroidUtilities.dp(20), AndroidUtilities.dp(8));
+                                    nameBox.addView(name, new android.widget.LinearLayout.LayoutParams(
+                                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                            android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+                                    org.telegram.ui.ActionBar.AlertDialog naming =
+                                            new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
+                                            .setTitle(arabic ? "تسمية النسخة الشخصية" : "Name personal copy")
+                                            .setView(nameBox)
+                                            .setNegativeButton(arabic ? "إلغاء" : "Cancel", null)
+                                            .setPositiveButton(arabic ? "إنشاء" : "Create", null)
+                                            .create();
+                                    naming.show();
+                                    naming.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
+                                                .setOnClickListener(button -> {
+                                            String chosen = name.getText().toString().trim();
+                                            if (chosen.isEmpty() || chosen.equals(".") || chosen.equals("..")
+                                                    || chosen.indexOf('/') >= 0 || chosen.indexOf((char) 92) >= 0
+                                                    || nabdhInvalidThemeName(chosen)) {
+                                                name.setError(arabic ? "أدخل اسماً صالحاً" : "Enter a valid name");
+                                                return;
+                                            }
+                                            String copyName = chosen + ".attheme";
+                                            if (Theme.getTheme(chosen) != null || Theme.getTheme(copyName) != null
+                                                    || new java.io.File(context.getFilesDir(), copyName).exists()) {
+                                                name.setError(arabic ? "الاسم مستخدم" : "Name already exists");
+                                                return;
+                                            }
+                                            Theme.ThemeInfo before = Theme.getCurrentTheme();
+                                            Theme.ThemeInfo copy = Theme.applyThemeFile(
+                                                    Theme.getAssetFile(selected.assetName), copyName, null, false);
+                                            if (copy == null) {
+                                                name.setError(arabic ? "تعذر إنشاء النسخة" : "Could not create copy");
+                                                return;
+                                            }
+                                            if (before != null) nabdhRememberTheme(prefs, key, before);
+                                            naming.dismiss();
+                                            if (fragment.getParentActivity() != null) {
+                                                new org.telegram.ui.Components.ThemeEditorView()
+                                                        .show(fragment.getParentActivity(), copy);
+                                            }
+                                        });
+                                    name.requestFocus();
                                 });
+        }
         shown[0] = dialog.create();
         fragment.showDialog(shown[0]);
+        final android.content.Context application = context.getApplicationContext();
+        final java.lang.ref.WeakReference<android.widget.LinearLayout> previewRef =
+                new java.lang.ref.WeakReference<>(mock);
+        final java.lang.ref.WeakReference<android.widget.TextView> hintRef =
+                new java.lang.ref.WeakReference<>(hint);
+        Utilities.globalQueue.postRunnable(() -> {
+            android.graphics.Bitmap wallpaper = nabdhBundledWallpaper(application, selected);
+            if (wallpaper == null) return;
+            AndroidUtilities.runOnUIThread(() -> {
+                android.widget.LinearLayout preview = previewRef.get();
+                android.widget.TextView description = hintRef.get();
+                if (preview == null || !preview.isAttachedToWindow()) return;
+                android.graphics.drawable.BitmapDrawable actual =
+                        new android.graphics.drawable.BitmapDrawable(preview.getResources(), wallpaper);
+                actual.setGravity(android.view.Gravity.FILL);
+                preview.setBackground(actual);
+                preview.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override public void getOutline(View view, android.graphics.Outline outline) {
+                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
+                                AndroidUtilities.dp(16));
+                    }
+                });
+                preview.setClipToOutline(true);
+                if (description != null) {
+                    description.setText(arabic ? "الخلفية الأصلية وألوان الثيم" : "Original wallpaper and theme colors");
+                }
+            });
+        });
     }
+
+    private static void nabdhRememberTheme(SharedPreferences prefs, String key, Theme.ThemeInfo theme) {
+        prefs.edit().putString(key, theme.getKey())
+                .putInt(key + "_accent", theme.currentAccentId).apply();
+    }
+
+    private static boolean nabdhInvalidThemeName(String name) {
+        for (int i = 0; i < name.length(); i++) {
+            if (Character.isISOControl(name.charAt(i))) return true;
+        }
+        return false;
+    }
+
+    private static final android.util.LruCache<String, android.graphics.Bitmap> nabdhPreviewCache =
+            new android.util.LruCache<String, android.graphics.Bitmap>(4 * 1024 * 1024) {
+                @Override protected int sizeOf(String name, android.graphics.Bitmap bitmap) {
+                    return bitmap.getAllocationByteCount();
+                }
+            };
 
     private static android.graphics.Bitmap nabdhBundledWallpaper(
             android.content.Context context, Theme.ThemeInfo theme) {
         if (theme.assetName == null || !theme.assetName.startsWith("nabdh_")) {
             return null;
         }
+        android.graphics.Bitmap cached = nabdhPreviewCache.get(theme.assetName);
+        if (cached != null) return cached;
         // Bundled files are verified during the overlay step (max 5 MiB).
         // Keep the same limit here to protect memory on lower-end phones.
         try (java.io.InputStream input = context.getAssets().open(theme.assetName);
@@ -561,12 +709,14 @@ replace_cell(
                     if (options.outWidth <= 0 || options.outHeight <= 0) return null;
                     options.inJustDecodeBounds = false;
                     options.inSampleSize = 1;
-                    while (options.outWidth / options.inSampleSize > 960
-                            || options.outHeight / options.inSampleSize > 1280) {
+                    while (options.outWidth / options.inSampleSize > 720
+                            || options.outHeight / options.inSampleSize > 960) {
                         options.inSampleSize *= 2;
                     }
-                    return android.graphics.BitmapFactory.decodeByteArray(data,
-                            start, length, options);
+                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(
+                            data, start, length, options);
+                    if (bitmap != null) nabdhPreviewCache.put(theme.assetName, bitmap);
+                    return bitmap;
                 }
             }
         } catch (Exception ignored) {
@@ -588,3 +738,103 @@ replace_cell(
 
 cell.write_text(cell_src, encoding="utf-8")
 print("PASS: NabdhGram theme cards show mini chats and readable two-line labels")
+
+
+# Use an app-owned key so downloaded Telegram language packs cannot restore
+# the original Dubai sample. Preserve existing translations where available.
+import re
+city_pairs = (
+    ("Дубае", "Маскате"), ("Дубая", "Маската"), ("Дубай", "Маскат"),
+    ("Дубаї", "Маскаті"), ("Дубаю", "Маскату"), ("Дубай", "Маскат"),
+    ("دبئی", "مسقط"), ("دُبَيّ", "مسقط"), ("دبي", "مسقط"), ("دبی", "مسقط"),
+    ("दुबई", "मस्कट"), ("দুবাই", "মাস্কাট"), ("دوبۍ", "مسقط"),
+    ("杜拜", "馬斯喀特"), ("迪拜", "马斯喀特"), ("ドバイ", "マスカット"),
+    ("두바이", "무스카트"), ("ดูไบ", "มัสกัต"), ("ဒူဘိုင်း", "မတ်စ်ကတ်"),
+    ("Ντουμπάι", "Μουσκάτ"), ("דובאי", "מוסקט"), ("Դուբայում", "Մասկատում"),
+    ("დუბაიში", "მასკატში"), ("Дубайд", "Маскатад"),
+    ("Dubaiju", "Maskatu"), ("Dubaijā", "Maskatā"), ("Dubaï", "Mascate"),
+    ("Dubái", "Mascate"), ("Dubaj", "Maskat"), ("Dubai", "Muscat"),
+)
+res_dir = root / "TMessagesProj/src/main/res"
+pattern = re.compile(r'<string\s+name="FontSizePreviewLine2"[^>]*>(.*?)</string>', re.S)
+count = 0
+for directory in sorted(res_dir.glob("values*")):
+    strings = directory / "strings.xml"
+    if not strings.is_file():
+        continue
+    match = pattern.search(strings.read_text(encoding="utf-8"))
+    if not match:
+        continue
+    # Decode XML entities first, then serialize Android string syntax once.
+    # AAPT interprets apostrophes even when originally written as &apos;.
+    import xml.etree.ElementTree as ET
+    from xml.sax.saxutils import escape
+    original = ET.fromstring("<string>" + match.group(1) + "</string>").text or ""
+    localized = original
+    for old, new in city_pairs:
+        localized = localized.replace(old, new)
+    if directory.name == "values":
+        localized = "It's morning here in Muscat 😎"
+    elif directory.name == "values-ar":
+        localized = "الوقت صباح هنا في مسقط 😎"
+    elif localized == original:
+        localized = "It's morning here in Muscat 😎"
+        print("Muscat preview fallback:", directory.name)
+    # Preserve valid upstream Android escapes; normalize only quotes that
+    # are not already escaped. XML escaping is a separate final step.
+    localized = re.sub(r"(?<!\\)['\"]", lambda m: "\\" + m.group(0), localized)
+    serialized = escape(localized)
+    output = directory / "nabdh_muscat_preview.xml"
+    xml = '<resources>\n    <string name="NabdhMuscatPreviewLine2">' + serialized + '</string>\n</resources>\n'
+    assert ET.fromstring(xml).find("string").text == localized
+    output.write_text(xml, encoding="utf-8")
+    count += 1
+assert (res_dir / "values/nabdh_muscat_preview.xml").is_file()
+assert (res_dir / "values-ar/nabdh_muscat_preview.xml").is_file()
+preview_cell = root / "TMessagesProj/src/main/java/org/telegram/ui/Cells/ThemePreviewMessagesCell.java"
+preview_source = preview_cell.read_text(encoding="utf-8")
+old = "LocaleController.getString(R.string.FontSizePreviewLine2)"
+if preview_source.count(old) != 1:
+    raise SystemExit("Font preview localization anchor changed")
+preview_cell.write_text(preview_source.replace(old,
+    "nabdhMuscatPreviewLine()", 1), encoding="utf-8")
+# Resolve the actual in-app locale, not the device configuration. Use a
+# configuration-scoped resource lookup rather than changing global resources.
+preview_source = preview_cell.read_text(encoding="utf-8")
+class_end = preview_source.rfind("}")
+if class_end < 0:
+    raise SystemExit("Preview class end missing")
+# Generate a Java replacement table from the same reviewed locale spellings.
+import json
+java_pairs = ", ".join("{" + json.dumps(a, ensure_ascii=False) + ", " +
+                       json.dumps(b, ensure_ascii=False) + "}" for a, b in city_pairs)
+helper = """
+    private String nabdhMuscatPreviewLine() {
+        // The native sample already resolves the selected Telegram language,
+        // including downloaded packs. Replace only its city, not its grammar.
+        java.util.Locale locale = LocaleController.getInstance().getCurrentLocale();
+        if (locale == null) locale = java.util.Locale.ENGLISH;
+        if ("ar".equals(locale.getLanguage())) {
+            return "الوقت صباح هنا في مسقط 😎";
+        }
+        String nativeSample = LocaleController.getString(R.string.FontSizePreviewLine2);
+        if (nativeSample != null && nativeSample.contains("دبي")) {
+            return nativeSample.replace("دبي", "مسقط");
+        }
+        if (nativeSample != null) {
+            for (String[] pair : new String[][] {""" + java_pairs + """}) {
+                if (nativeSample.contains(pair[0])) {
+                    return nativeSample.replace(pair[0], pair[1]);
+                }
+            }
+        }
+        android.content.res.Configuration configuration =
+                new android.content.res.Configuration(getContext().getResources().getConfiguration());
+        configuration.setLocale(locale);
+        return getContext().createConfigurationContext(configuration)
+                .getString(R.string.NabdhMuscatPreviewLine2);
+    }
+"""
+preview_cell.write_text(preview_source[:class_end] + helper +
+                        preview_source[class_end:], encoding="utf-8")
+print("PASS: Muscat preview resource variants:", count)

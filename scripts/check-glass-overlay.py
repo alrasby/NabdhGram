@@ -101,7 +101,7 @@ checks = {
                 (ui / page).read_text(encoding="utf-8")
             for page in ("Cells/SessionCell.java", "SessionBottomSheet.java")),
     "Glass cards suppress native separator strokes without touching other pages":
-        all("if (needDivider && !org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this))" in
+        all("if (needDivider && (!org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(this) || org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle() == 0))" in
             (ui / "Cells" / (name + ".java")).read_text(encoding="utf-8")
             for name in ("TextCell", "TextSettingsCell", "TextCheckCell", "TextCheckCell2",
                          "NotificationsCheckCell", "TextDetailCell", "TextRadioCell"))
@@ -149,7 +149,7 @@ checks = {
         "contentView.setBackground(" in native_settings
         and "NabdhGlassRowDecoration.newOpaquePageBackground()" in native_settings
         and "topView.setBackground(" in native_settings
-        and "newHeroBackground()" in native_settings
+        and "newHeroBackground(listView.getNabdhSectionInset())" in native_settings
         and "glassType == VIEW_TYPE_HEADER" in universal
         and "getThemedColor(Theme.key_windowBackgroundGray)" in universal,
     "chat settings preview uses native rounded inset and styles text options":
@@ -164,7 +164,7 @@ checks = {
         and "scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);" in login_source,
     "main Settings hero uses exactly one shared Glass inset":
         "topView.setBackground(" in native_settings
-        and "NabdhGlassRowDecoration.newHeroBackground()" in native_settings
+        and "NabdhGlassRowDecoration.newHeroBackground(listView.getNabdhSectionInset())" in native_settings
         and "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_settings,
     "NabdhGram settings categories have no competing pre-renderer":
         not any(token in settings + feature for token in
@@ -331,7 +331,7 @@ checks = {
     "compact Glass card text and height":
         "row.setMinimumHeight(dp(context, TextUtils.isEmpty(subtitle) ? 54 : 66))" in
             (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
-        and "summary.setTextSize(11);" in
+        and "summary.setTextSize(12);" in
             (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "device default font preserves native weights, custom fonts keep headings": all(
         part in typefaces for part in (
@@ -445,7 +445,7 @@ checks = {
     "document title and metadata do not share fixed spacing": 
         "subtitleY = titleY + Math.max(dp(23), docTitleLayout.getHeight() + dp(7));" in document_cell
         and "photoHeight = Math.max(photoHeight, docTitleLayout.getHeight() + dp(32));" in document_cell,
-    "archive gets its own rounded card": "final boolean archived = isFolderCell();" in cell,
+    "archive gets its own rounded card": "drawContent(canvas, surface, accent, alternate, isFolderCell()" in cell,
     "archive folder remains outside pinned group": all(
         token in dialogs for token in (
             "if (dialog.isFolder) continue;",
@@ -519,9 +519,10 @@ checks = {
         and "ThemeBind.textColor(messageEditText, Theme.key_chat_messagePanelText, resourcesProvider)" in composer,
     "dialog selector rounded clipping installed": "selectorView instanceof org.telegram.ui.Cells.DialogCell" in selector
         and "canvas.clipPath(nabdhDialogSelectorPath)" in selector
-        and "selectorRect.left + 7f * density" in selector
-        and "selectorRect.bottom - 3f * density" in selector
-        and "17f * density, 17f * density" in selector,
+        and "AndroidUtilities.dp(NabdhCardGeometry.HORIZONTAL_INSET_DP)" in selector
+        and "AndroidUtilities.dp(NabdhCardGeometry.VERTICAL_INSET_DP)" in selector
+        and "AndroidUtilities.dp(NabdhCardGeometry.CORNER_RADIUS_DP)" in selector
+        and "radius, radius, android.graphics.Path.Direction.CW" in selector,
     "selector canvas state restored": "if (nabdhCard) {" in selector and "canvas.restore();" in selector,
     "all section labels honor normal-weight selected typography":
         'labelPaint.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rregular.ttf"))' in dialogs,
@@ -555,24 +556,16 @@ checks = {
         and "if (left == 0)" in cell
         and "nameWidth -= dp(27);" in cell,
     "dialog card paint created once": cell.count("private final android.graphics.Paint nabdhCardPaint") == 1,
-    "dialog card canvas drawing present": cell.count("canvas.drawRoundRect(nabdhCardBounds") == 2,
-    "dialog surface remains drawn during swipe and reveal":
-        "if (translationX == 0 && currentRevealProgress == 0.0f" not in cell
-        and "if (!isTopic" in cell
-        and "canvas.drawRoundRect(nabdhCardBounds" in cell
-        and cell.index("canvas.translate(translationX, 0);") < cell.index(
-            "canvas.drawRoundRect(nabdhCardBounds")
-        and cell.index("rect.set(getMeasuredWidth() - dp(64)") < cell.index(
-            "canvas.drawRoundRect(nabdhCardBounds"),
-    "dialog card selection uses native state and matching rounded bounds":
-        "final boolean selected = isSelected;" in cell
-        and "isPressed() || isSelected || isSelected()" not in cell
-        and "final int fill = selected" in cell
-        and "rect.set(dp(7), dp(3), getMeasuredWidth() - dp(7)," in cell
-        and "canvas.drawRoundRect(rect, dp(17), dp(17), Theme.dialogs_tabletSeletedPaint);" in cell,
-    "dialog borders use subtle theme-aware stroke":
-        "pinned ? 0.34f : 0.22f" in cell
-        and "nabdhCardPaint.setAlpha(176);" in cell,
+    "independent card surface renderer owns content and reveal":
+        "nabdhCardEngine.drawContent(canvas, surface, accent, alternate" in cell
+        and "nabdhCardEngine.drawAction(canvas," in cell
+        and "nabdhCardEngine.clipViewport(canvas)" in cell
+        and "canvas.drawRoundRect(nabdhCardBounds" not in cell,
+    "selected card is rendered once":
+        "getIsPinned(), isSelected," in cell
+        and "if (isSelected && !nabdhOwnsCard())" in cell,
+    "theme-aware border":
+        "NabdhAppearancePrefs.uiStyle()," in cell,
     "dialog card has no experimental swipe alpha interpolation":
         "Math.abs(translationX) / dp(56f)" not in cell
         and "swipeFade" not in cell
@@ -613,7 +606,7 @@ checks["ordinary settings and folders have opaque themed page canvases"] = all(
 checks["all three white section painter paths are guarded on Glass settings"] = (
     selector.count("if (nabdhSuppressLegacySectionFill) return;") >= 2
     and "listView.setSectionsDrawBackground(true);\n        listView.nabdhHideSectionBackgroundOnly();" in native_settings
-    and "if (nabdhGlassSettings) return;" in universal
+    and "if (nabdhGlassSettings && !NabdhAppearancePrefs.isClassic()) return;" in universal
 )
 checks["main settings Arabic titles and subtitles use adaptive row height"] = (
     "final int minRowHeight = dp(mini ? 44 : twoLines ? 60 : 50);" in native_settings
@@ -625,7 +618,7 @@ checks["main Settings uses opaque root behind avatar and glass header"] = (
     "contentView.setBackground(" in native_settings
     and "NabdhGlassRowDecoration.newOpaquePageBackground()" in native_settings
     and "topView.setBackground(" in native_settings
-    and "NabdhGlassRowDecoration.newHeroBackground()" in native_settings
+    and "NabdhGlassRowDecoration.newHeroBackground(listView.getNabdhSectionInset())" in native_settings
     and "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_settings
 )
 checks["main Settings uses exactly one card drawing path"] = (
@@ -647,7 +640,7 @@ checks["global font renderer respects secondary explanatory labels"] = (
 checks["NabdhGram settings descriptions opt into readable body weight"] = (
     'summary.setTextColor(secondary);' in
         (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
-    and 'summary.setTextSize(11);' in
+    and 'summary.setTextSize(12);' in
         (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
 )
 checks["feature category explanations opt into readable body weight"] = (
@@ -758,7 +751,8 @@ checks["selection toolbar icon and count colors adapt to light/dark themes"] = (
 checks["pinned chat reorder grip theme-aware and does not change drag callbacks"] = (
     "for (int dragLine = 0; dragLine < 3; dragLine++)" in reorder_source
     and "Theme.key_windowBackgroundWhiteBlueText, resourcesProvider" in reorder_source
-    and "Theme.dialogs_reorderDrawable.draw(canvas);" not in reorder_source
+    and "if (nabdhUsesClassicStyle()) {" in reorder_source
+    and "Theme.dialogs_reorderDrawable.draw(canvas);" in reorder_source
 )
 checks["opt-in symmetric no-tail card uses real message renderer"] = (
     '"bubble_no_tail"' in bubble_settings
@@ -770,7 +764,7 @@ checks["opt-in symmetric no-tail card uses real message renderer"] = (
 
 folder_source = (ui / "Components/FilterTabsView.java").read_text(encoding="utf-8")
 checks["native reorder stays inside rounded card without rectangular light gradient"] = (
-    "getPaintReorderGradient();" not in reorder_source[reorder_source.index("if (drawReorder || reorderIconProgress != 0)") :
+    "if (nabdhUsesClassicStyle() && !LocaleController.isRTL) {" in reorder_source[reorder_source.index("if (drawReorder || reorderIconProgress != 0)") :
                                              reorder_source.index("final float pollVotesMentionsVisibility")]
     and "for (int dragLine = 0; dragLine < 3; dragLine++)" in reorder_source
 )

@@ -60,14 +60,23 @@ assert "selectTheme(previous, null)" in preview
 assert "getPreviewBackgroundColor()" in preview
 assert "getPreviewInColor()" in preview
 assert "getPreviewOutColor()" in preview
+assert "Theme.getThemeFileValues(null, selected.assetName, null)" in preview
+assert "palette.get(Theme.key_chat_inBubble" in preview
+assert "palette.get(Theme.key_chat_outBubble" in preview
+assert "if (!nabdhCanReadThemeFile(file)" in theme_source
+assert "options.inJustDecodeBounds = true;" in theme_source
+assert "options.outWidth * options.outHeight <= 24_000_000L" in theme_source
 assert "AlertsCreator.createThemeCreateDialog" not in preview  # existing creation entry remains in ThemeActivity
 # Phase 2: full preview with real local embedded asset wallpaper,
 # bounded decode, explicit clone, and native persistent theme selection.
-assert "nabdhBundledWallpaper(context, selected)" in preview
+assert "nabdhBundledWallpaper(application, selected)" in preview
 assert "context.getAssets().open(theme.assetName)" in preview
 assert "total > 5 * 1024 * 1024" in preview
 assert "android.graphics.BitmapFactory.decodeByteArray" in preview
-assert "mock.setClipToOutline(true);" in preview
+assert "preview.setClipToOutline(true);" in preview
+assert "!preview.isAttachedToWindow()" in preview
+assert "bitmap.getAllocationByteCount()" in preview
+assert "Utilities.globalQueue.postRunnable" in preview
 assert "new android.widget.ScrollView(context)" in preview
 assert "shown[0] = dialog.create();" in preview
 assert '"Personal copy"' in preview
@@ -85,11 +94,42 @@ assert "EmojiThemes.saveCustomTheme(themeInfo, themeInfo.currentAccentId)" in pr
 # native selection. Defaults must come from Telegram's own registered IDs.
 assert 'Theme.getTheme(night ? "Night" : "Blue")' in preview
 assert 'selectTheme(defaultChoice, null)' in preview
-assert 'prefs.edit().putString(key, before.getKey()).apply();' in preview
+assert 'nabdhRememberTheme(prefs, key, before);' in preview
+assert 'previous.setCurrentAccentId(previousAccent);' in preview
+assert 'content.addView(mock, 0, block);' in preview
 assert '"Restore Telegram default theme"' in preview
 assert 'for (int pos = cardName.indexOf(' in preview
 assert 'Math.max(a, b)' in preview
 assert 'TextUtils.ellipsize(first, textPaint, maxWidth' in preview
 assert 'TextUtils.ellipsize(second, textPaint, maxWidth' in preview
 assert 'Theme.getCurrentNightTheme() : Theme.getCurrentTheme()' in preview
+assert "fixed.addView(mock, block)" in preview
+assert "content.removeView(mock)" in preview
+assert ".setView(fixed)" in preview
+assert '"Name personal copy"' in preview
+assert 'android.app.AlertDialog' not in preview
+assert 'Theme.getColor(Theme.key_dialogTextBlack)' in preview
+assert 'Theme.createEditTextDrawable(context, true)' in preview
+assert 'String copyName = chosen + ".attheme";' in preview
+assert "Theme.getTheme(copyName)" in preview
+assert "nabdhInvalidThemeName(chosen)" in preview
+assert 'String copyName = "Nabdh Personal "' not in preview
+prefs = (root / "java/org/telegram/ui/Components/NabdhAppearancePrefs.java").read_text(encoding="utf-8")
+surface = (root / "java/org/telegram/ui/Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
+category = (root / "java/org/telegram/ui/NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
+assert '"ui_style_v2"' in prefs
+assert 'preferences.getString("theme", "NabdhGram • Soft Mint")' in theme_source
+assert "DEFAULT_UI_STYLE = UI_HYBRID" in prefs
+assert ".getInt(UI_STYLE, DEFAULT_UI_STYLE)" in prefs
+assert 'putInt(UI_STYLE, style)' in prefs
+assert 'NabdhAppearancePrefs.surfaceRadius()' in surface
+assert 'NabdhAppearancePrefs.glassSurface()' in surface
+assert 'NabdhAppearancePrefs.setUiStyle(context, which)' in category
 print("PASS: exactly four owned themes retained, previews use stable palette and cached Paint; native selection preserved")
+
+# Verify real locale resolution and shared style integration in generated source.
+message_preview = (root / "java/org/telegram/ui/Cells/ThemePreviewMessagesCell.java").read_text(encoding="utf-8")
+assert "nabdhMuscatPreviewLine()" in message_preview
+assert "LocaleController.getInstance().getCurrentLocale()" in message_preview
+assert "الوقت صباح هنا في مسقط" in message_preview
+assert message_preview.index('"ar".equals(locale.getLanguage())') < message_preview.index("String nativeSample =")

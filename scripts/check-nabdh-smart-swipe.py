@@ -8,6 +8,7 @@ if len(sys.argv) != 2:
 root = Path(sys.argv[1]) / "TMessagesProj/src/main"
 dialogs = (root / "java/org/telegram/ui/DialogsActivity.java").read_text(encoding="utf-8")
 cell = (root / "java/org/telegram/ui/Cells/DialogCell.java").read_text(encoding="utf-8")
+controller = (root / "java/org/telegram/ui/Components/NabdhSmartSwipeController.java").read_text(encoding="utf-8")
 receiver = (root / "java/org/telegram/ui/NabdhSwipeReminder.java").read_text(encoding="utf-8")
 manifest = ET.parse(root / "AndroidManifest.xml").getroot()
 android = "{http://schemas.android.com/apk/res/android}"
@@ -20,31 +21,35 @@ checks = {
         dialogs.index("installNabdhSmartSwipe(viewPage);") <
         dialogs.index("viewPage.itemTouchhelper = new ItemTouchHelper("),
     "gesture respects touch-slop, vertical scroll, and edge back":
-        "getScaledTouchSlop()" in dialogs
-        and "Math.abs(dy) * 1.5f" in dialogs
-        and "downX <= dp(24)" in dialogs,
+        "getScaledTouchSlop()" in controller
+        and "NabdhSwipeMotion.classify(" in controller
+        and "downX <= dp(24)" in controller,
     "reverse gesture and tap-outside close":
-        "expanded.setTranslationX(Math.max(0f, dp(212) + dx));" in dialogs
-        and "row.getTranslationX() < dp(135)" in dialogs
-        and "Outside tap dismisses without chat opening." in dialogs,
+        "actionStartOffset, dx, dp(212)" in controller
+        and "row.getTranslationX() < dp(135)" in controller
+        and "Outside tap dismisses without chat opening." in controller,
     "physical spring with damping and stiffness":
-        "new androidx.dynamicanimation.animation.SpringAnimation" in dialogs
-        and "force.setStiffness(550f);" in dialogs
-        and "force.setDampingRatio(0.88f);" in dialogs
-        and "spring.setMinimumVisibleChange(0.7f);" in dialogs,
+        "new SpringAnimation" in controller
+        and "force.setStiffness(550f);" in controller
+        and "force.setDampingRatio(0.88f);" in controller
+        and "spring.setMinimumVisibleChange(0.7f);" in controller,
     "four actual tappable row views not canvas labels":
         "nabdhSmartBar.addView(button" in cell
         and "button.setOnClickListener(" in cell
         and 'new String[]{"Remind", "Mute", "Pin", "Archive"}' in cell
-        and "row.nabdhSetSmartSwipeActions(index ->" in dialogs,
+        and "row.nabdhSetSmartSwipeActions(callback," in dialogs,
     "actions require explicit tap":
-        "nabdhRunSmartAction(dialogId, index)" in dialogs
-        and "performSelectedDialogsAction(selected, archive, true, false)" in dialogs
+        "nabdhRunSmartAction(dialogId, action)" in dialogs
+        and "getMessagesController().addDialogToFolder(" in dialogs
+        and "updated.folder_id != targetFolder" in dialogs
+        and "canMoveToFolder(" in dialogs
         and "performSelectedDialogsAction(selected, pin, true, false)" in dialogs,
     "card surface remains fixed while reveal slides":
         "if (translationX < 0)" in cell
-        and "nabdhCardBounds.set(dp(7), dp(3)" in cell
-        and "nabdhSmartBar.setAlpha(Math.min(1f, value / dp(100)))" in cell,
+        and "nabdhCardEngine.setViewport(" in cell
+        and "nabdhUpdateSmartTrayClip(value);" in cell
+        and "nabdhSmartBar.setClipBounds(nabdhSmartTrayClip);" in cell
+        and "nabdhSmartBar.setAlpha(Math.min" not in cell,
     "haptic once, obeys device vibration preference":
         "nabdhSwipeHapticTriggered = true;" in cell
         and "nabdhSwipeHapticTriggered = false;" in cell
@@ -55,12 +60,12 @@ checks = {
         and "nabdhHitSmartAction(event)" in cell
         and "return super.dispatchTouchEvent(ev);" in cell,
     "active spring cancels before vertical list scroll":
-        "stopSwipeOnScroll[0].run();" in dialogs
-        and "if (spring != null) spring.cancel();" in dialogs
-        and "expanded.nabdhClearSmartSwipeActions();" in dialogs,
+        "page.nabdhCancelSwipe.run();" in dialogs
+        and "if (spring != null) spring.cancel();" in controller
+        and "row.nabdhClearSmartSwipeActions();" in controller,
     "RTL actions layout and reduced motion preference":
-        "setLayoutDirection(LocaleController.isRTL" in cell
-        and "ValueAnimator.areAnimatorsEnabled()" in dialogs,
+        "button.layout(width - button.getRight(), button.getTop()," in cell
+        and "ValueAnimator.areAnimatorsEnabled()" in controller,
     "opposite-direction reveal skips native Telegram circle animation":
         "drawRevealBackground = translationX < 0" in cell
         and "translationX >= dp(70)" in cell,
@@ -70,34 +75,45 @@ checks = {
         and "page.listView.cancelClickRunnables(true);" in dialogs,
     "expanded tray consumes DOWN-UP without opening background chat":
         "page.listView.cancelClickRunnables(true);" in dialogs
-        and "consumedDown = true;" in dialogs
-        and "row.nabdhPerformSmartAction(actionIndex);" in dialogs
-        and "pressedAction = LocaleController.isRTL ? 3 - visual : visual;" in dialogs,
+        and "gesture = Gesture.TRAY_TOUCH;" in controller
+        and "row.nabdhPerformSmartAction(actionIndex);" in controller
+        and "pressedAction = expanded.nabdhSmartActionAt(cx, cy);" in controller
+        and "expanded.nabdhSmartActionAt(" in controller
+        and "actionPress.release(" in controller
+        and "button.getLeft()" in cell and "button.getRight()" in cell
+        and "nabdhSetSmartPressed(-1)" in cell,
     "reverse swipe closes the tray without tapping":
-        "expanded.setTranslationX(Math.max(0f, dp(212) + dx));" in dialogs
-        and "row.getTranslationX() < dp(135)" in dialogs,
+        "actionStartOffset, dx, dp(212)" in controller
+        and "row.getTranslationX() < dp(135)" in controller,
     "dynamic labels match actual muted/pinned/archived state":
-        "getMessagesController().isDialogMuted(dialogId, 0)" in dialogs
-        and "isDialogPinned(current), current.folder_id != 0" in dialogs
+        "getMessagesController().isDialogMuted(id, 0)" in dialogs
+        and "isDialogPinned(dialog), dialog.folder_id != 0" in dialogs
         and '"Unmute"' in cell and '"Unpin"' in cell and '"Unarchive"' in cell
         and "nabdhSetSmartSwipeActions(NabdhSmartAction callback," in cell,
     "native READ reveal clipped to same rounded Glass card":
-        "nabdhSwipeRevealClip.reset();" in cell
-        and "canvas.clipPath(nabdhSwipeRevealClip);" in cell
-        and "nabdhCardBounds.set(dp(7), dp(3)" in cell,
+        "nabdhCardEngine.clipViewport(canvas)" in cell
+        and "nabdhCardEngine.clipTrailingAction(canvas, translationX)" in cell
+        and "nabdhCardEngine.setViewport(" in cell,
     "four independent rounded pill backgrounds and Android ripple":
         "new android.graphics.drawable.RippleDrawable" in cell
         and "lp.setMargins(dp(2), dp(3), dp(2), dp(3));" in cell
         and "pill.setCornerRadius(dp(11));" in cell,
-    "RIGHT tray has no opaque window background":
-        "surface.setColor(android.graphics.Color.argb(30," in cell
-        and "final int glassAccent = Theme.getColor(Theme.key_chats_archiveBackground);" in cell,
+    "RIGHT tray has opaque themed reveal and clipped interactive buttons":
+        "nabdhSmartBar.setBackground(null);" in cell
+        and "super.draw(canvas);" in cell
+        and "canvas.restoreToCount(saved);" in cell
+        and "if (translationX > 0 && nabdhOwnsCard())" in cell
+        and cell.index("Stationary reveal surface:") < cell.index("canvas.translate(translationX, 0);"),
     "native reveal does not run when spring keeps stale corner progress on RIGHT":
         "if (translationX < 0)" in cell
         and "drawRevealBackground = translationX < 0" in cell,
-    "native RIGHT white backing suppressed without changing LEFT":
-        "if (translationX < 0 || (translationX == 0 && cornerProgress != 0.0f))" in cell
-        and "Theme.dialogs_pinnedPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite" in cell,
+    "native rectangular and circle fills excluded from owned card action surface":
+        "if (!nabdhOwnsCard()) {\n                    canvas.drawRect(tx - dp(8)" in cell
+        and "if (!nabdhOwnsCard()) {\n                    canvas.drawCircle(drawableCx" in cell
+        and "nabdhCardEngine.drawAction(canvas, backgroundColor, revealBackgroundColor," in cell,
+    "native backing excluded for owned cards in both directions":
+        "if (!nabdhOwnsCard() && (translationX != 0 || cornerProgress != 0.0f))" in cell
+        and "nabdhCardEngine.clipTrailingAction(canvas, translationX)" in cell,
     "reminder chooser uses NabdhGram-themed rounded Glass options":
         "nabdhSwipeBlend(background, accent, 0.075f)" in dialogs
         and "capsule.setCornerRadius(dp(14));" in dialogs

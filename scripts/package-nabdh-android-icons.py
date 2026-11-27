@@ -54,11 +54,11 @@ def export(root: Path, target: Path) -> None:
             location = "res/mipmap-" + density + "/" + filename_png
             payload[location] = raw
             hashes[location] = hashlib.sha256(raw).hexdigest()
-        # Include the actual API 26+ files. Previously this export contained
-        # legacy PNGs only, which could not reproduce what Samsung renders.
+        # Include the same foreground and opaque backing used by the app.
         adaptive = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
         foreground = res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
-        for path in (adaptive, foreground):
+        background = res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_background.png")
+        for path in (adaptive, foreground, background):
             if not path.is_file():
                 raise ValueError("Missing adaptive launcher resource: " + str(path))
             location = "res/" + path.relative_to(res).as_posix()
@@ -87,7 +87,7 @@ def export(root: Path, target: Path) -> None:
         if archive.testzip():
             raise ValueError("Export archive checksum invalid")
         assert set(archive.namelist()) == set(payload)
-    print("PASS: icon archive includes all 20 density assets, four adaptive layers and SHA-256 hashes")
+    print("PASS: icon archive includes all 20 density assets, four adaptive icons and SHA-256 hashes")
     print("ZIP:", target)
 
 

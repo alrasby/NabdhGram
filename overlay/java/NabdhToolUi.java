@@ -57,7 +57,7 @@ public final class NabdhToolUi {
         field.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
         field.setPadding(d, dp(activity, 10), d, dp(activity, 10));
         field.setMinHeight(dp(activity, 52));
-        field.setBackground(surface(activity, 12));
+        field.setBackground(surface(activity, Math.min(12, NabdhAppearancePrefs.surfaceRadius())));
         field.setTextDirection(LocaleController.isRTL
                 ? View.TEXT_DIRECTION_RTL : View.TEXT_DIRECTION_FIRST_STRONG);
     }
@@ -70,11 +70,12 @@ public final class NabdhToolUi {
         int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
         GradientDrawable mask = new GradientDrawable();
         mask.setColor(Color.WHITE);
-        mask.setCornerRadius(dp(activity, 12));
+        int corner = Math.min(12, NabdhAppearancePrefs.surfaceRadius());
+        mask.setCornerRadius(dp(activity, corner));
         button.setBackground(new RippleDrawable(
                 ColorStateList.valueOf(Color.argb(36, Color.red(accent),
                         Color.green(accent), Color.blue(accent))),
-                surface(activity, 12), mask));
+                surface(activity, corner), mask));
         button.setPadding(dp(activity, 16), dp(activity, 10),
                 dp(activity, 16), dp(activity, 10));
     }
@@ -138,38 +139,40 @@ public final class NabdhToolUi {
         shell.setOrientation(LinearLayout.VERTICAL);
         // Keep the native bar and bottom controls outside Android 15+ system insets.
         shell.setFitsSystemWindows(true);
-        shell.setLayoutDirection(LocaleController.isRTL
-                ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
-        shell.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        final boolean rtl = LocaleController.isRTL;
+        shell.setBackground(NabdhGlassRowDecoration.newOpaquePageBackground());
 
         LinearLayout bar = new LinearLayout(activity);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(activity, 12), 0, dp(activity, 16), 0);
-        bar.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        // The manifest disables automatic RTL; order the toolbar physically.
+        bar.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        bar.setPadding(dp(activity, rtl ? 16 : 12), 0, dp(activity, rtl ? 12 : 16), 0);
+        bar.setBackgroundColor(Theme.getColor(Theme.key_actionBarDefault));
 
         TextView back = new TextView(activity);
-        back.setText(LocaleController.isRTL ? "›" : "‹");
-        back.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        back.setText(rtl ? "›" : "‹");
+        back.setTextColor(Theme.getColor(Theme.key_actionBarDefaultIcon));
         back.setTextSize(31);
         back.setGravity(Gravity.CENTER);
-        back.setContentDescription(LocaleController.isRTL ? "رجوع" : "Back");
+        back.setContentDescription(rtl ? "رجوع" : "Back");
         back.setClickable(true);
         back.setFocusable(true);
         back.setOnClickListener(v -> activity.onBackPressed());
-        bar.addView(back, new LinearLayout.LayoutParams(dp(activity, 42), dp(activity, 52)));
+        bar.addView(back, new LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 52)));
 
         TextView heading = new TextView(activity);
         heading.setText(title);
-        heading.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        heading.setTextColor(Theme.getColor(Theme.key_actionBarDefaultTitle));
         heading.setTextSize(18);
         heading.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
-        heading.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        heading.setGravity(rtl ? Gravity.RIGHT : Gravity.LEFT);
         heading.setSingleLine(true);
         heading.setEllipsize(android.text.TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        titleParams.leftMargin = dp(activity, 6);
-        bar.addView(heading, titleParams);
+        if (rtl) titleParams.rightMargin = dp(activity, 6);
+        else titleParams.leftMargin = dp(activity, 6);
+        bar.addView(heading, rtl ? 0 : bar.getChildCount(), titleParams);
         shell.addView(bar, new LinearLayout.LayoutParams(-1, dp(activity, 56)));
 
         View line = new View(activity);
