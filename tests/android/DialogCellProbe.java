@@ -36,7 +36,7 @@ public final class DialogCellProbe extends Instrumentation {
             }
         });
         if (failure[0] == null) {
-            result.putString("stream", "\nDIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch and native local folder move\n");
+            result.putString("stream", "\nDIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch and native local action transitions\n");
             finish(Activity.RESULT_OK, result);
         } else {
             result.putString("stream", "\nDIALOG_CELL_FAIL: " + Log.getStackTraceString(failure[0]));
@@ -70,7 +70,7 @@ public final class DialogCellProbe extends Instrumentation {
         if (!Boolean.TRUE.equals(ownsCard.invoke(cell))) {
             throw new AssertionError("Fixture does not use production card rendering");
         }
-        exerciseNativeArchive(loader);
+        exerciseNativeActions(loader, app);
         exerciseTray(cell, type, loader, width, density);
         exerciseController(cell, type, loader, width, density, app);
         Bitmap frame = Bitmap.createBitmap(width, cell.getHeight(), Bitmap.Config.ARGB_8888);
@@ -100,7 +100,7 @@ public final class DialogCellProbe extends Instrumentation {
         sendStatus(0, status);
     }
 
-    private void exerciseNativeArchive(ClassLoader loader) throws Exception {
+    private void exerciseNativeActions(ClassLoader loader, Context app) throws Exception {
         Class<?> controllerType = loader.loadClass("org.telegram.messenger.MessagesController");
         Class<?> configType = loader.loadClass("org.telegram.messenger.UserConfig");
         int account = configType.getField("selectedAccount").getInt(null);
@@ -127,10 +127,56 @@ public final class DialogCellProbe extends Instrumentation {
             if (!Integer.valueOf(0).equals(move.invoke(controller, 777000L, 1, -1, 0L))) {
                 throw new AssertionError("Telegram service dialog accepted for archive");
             }
+            Class<?> peer = loader.loadClass("org.telegram.tgnet.TLRPC$InputPeer");
+            Method pin = controllerType.getMethod("pinDialog",
+                    long.class, boolean.class, peer, long.class);
+            Field pinned = dialog.getClass().getField("pinned");
+            for (boolean expected : new boolean[]{true, false}) {
+                if (!Boolean.TRUE.equals(pin.invoke(controller, id, expected, null, 0L))
+                        || pinned.getBoolean(dialog) != expected) {
+                    throw new AssertionError("Native pin transition failed");
+                }
+            }
+
+            Class<?> notifications = loader.loadClass("org.telegram.messenger.NotificationsController");
+            Object notifier = notifications.getMethod("getInstance", int.class).invoke(null, account);
+            Method setMute = notifications.getMethod("setDialogNotificationsSettings",
+                    long.class, long.class, int.class);
+            Method isMuted = controllerType.getMethod("isDialogMuted", long.class, long.class);
+            setMute.invoke(notifier, id, 0L, notifications.getField("SETTING_MUTE_FOREVER").getInt(null));
+            if (!Boolean.TRUE.equals(isMuted.invoke(controller, id, 0L))) {
+                throw new AssertionError("Native mute did not take effect");
+            }
+            setMute.invoke(notifier, id, 0L, notifications.getField("SETTING_MUTE_UNMUTE").getInt(null));
+            if (!Boolean.FALSE.equals(isMuted.invoke(controller, id, 0L))) {
+                throw new AssertionError("Native unmute did not take effect");
+            }
+
+            Class<?> reminder = loader.loadClass("org.telegram.ui.NabdhSwipeReminder");
+            Method scheduled = reminder.getMethod("getScheduledTime", Context.class, int.class, long.class);
+            Method cancelReminder = reminder.getMethod("cancel", Context.class, int.class, long.class);
+            long when = System.currentTimeMillis() + 3_600_000L;
+            try {
+                reminder.getMethod("schedule", Context.class, int.class, long.class, long.class)
+                        .invoke(null, app, account, id, when);
+                if (!Long.valueOf(when).equals(scheduled.invoke(null, app, account, id))) {
+                    throw new AssertionError("Reminder time was not stored");
+                }
+            } finally {
+                cancelReminder.invoke(null, app, account, id);
+            }
+            if (!Long.valueOf(0).equals(scheduled.invoke(null, app, account, id))) {
+                throw new AssertionError("Reminder time survived cancellation");
+            }
+            controllerType.getMethod("markDialogAsUnread", long.class, peer, long.class)
+                    .invoke(controller, id, null, 0L);
+            if (!dialog.getClass().getField("unread_mark").getBoolean(dialog)) {
+                throw new AssertionError("Native unread mark was not applied");
+            }
         } finally {
             remove.invoke(dialogs, id);
         }
-        status("Native folder state: archived, restored, Telegram service dialog rejected");
+        status("Native local states: archive, unarchive, service-chat rejection, pin, unpin, mute, unmute, reminder schedule/cancel and unread");
     }
 
     private void exerciseController(View cell, Class<?> type, ClassLoader loader, int width,
