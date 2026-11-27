@@ -27,6 +27,7 @@ import android.view.ViewGroup;
 /** Runs in the debug application's process and renders its actual DialogCell. */
 public final class DialogCellProbe extends Instrumentation {
     private static final String PERSISTED_THEME = "NabdhGram • Soft Mint";
+    private static final String PERSISTED_NIGHT_THEME = "NabdhGram • Dark Glass";
     private static final int PERSISTED_STYLE = 2;
     private String phase;
 
@@ -74,20 +75,27 @@ public final class DialogCellProbe extends Instrumentation {
                 loader.loadClass("org.telegram.messenger.MessagesController")
                         .getMethod("getGlobalMainSettings").invoke(null);
         Object selected = theme.getMethod("getTheme", String.class).invoke(null, PERSISTED_THEME);
-        if (selected == null) throw new AssertionError("Bundled theme missing");
+        Object night = theme.getMethod("getTheme", String.class).invoke(null, PERSISTED_NIGHT_THEME);
+        if (selected == null || night == null) throw new AssertionError("Bundled day or night theme missing");
         if ("save-theme".equals(phase)) {
             theme.getMethod("applyTheme", info, boolean.class, boolean.class)
                     .invoke(null, selected, true, false);
             appearance.getMethod("setUiStyle", Context.class, int.class)
                     .invoke(null, app, PERSISTED_STYLE);
+            theme.getMethod("setCurrentNightTheme", info).invoke(null, night);
+            theme.getMethod("saveAutoNightThemeConfig").invoke(null);
         }
         Object current = theme.getMethod("getCurrentTheme").invoke(null);
         int style = (Integer) appearance.getMethod("uiStyle").invoke(null);
         String savedTheme = prefs.getString("theme", null);
-        if (current != selected || style != PERSISTED_STYLE || !PERSISTED_THEME.equals(savedTheme)) {
+        String savedNightTheme = prefs.getString("nighttheme", null);
+        if (current != selected || style != PERSISTED_STYLE || !PERSISTED_THEME.equals(savedTheme)
+                || !PERSISTED_NIGHT_THEME.equals(savedNightTheme)
+                || theme.getMethod("getCurrentNightTheme").invoke(null) != night) {
             throw new AssertionError("Appearance mismatch in " + phase
                     + ": active theme=" + info.getMethod("getKey").invoke(current)
-                    + ", saved theme=" + savedTheme + ", UI style=" + style);
+                    + ", saved theme=" + savedTheme + ", saved night theme=" + savedNightTheme
+                    + ", UI style=" + style);
         }
         if ("save-theme".equals(phase)) {
             // Instrumentation exits without the normal Activity stop lifecycle.
@@ -206,12 +214,14 @@ public final class DialogCellProbe extends Instrumentation {
     private void exerciseThemeImport(Context app, ClassLoader loader) throws Exception {
         Class<?> theme = loader.loadClass("org.telegram.ui.ActionBar.Theme");
         Class<?> remote = loader.loadClass("org.telegram.tgnet.TLRPC$TL_theme");
+        Class<?> themeInfo = loader.loadClass("org.telegram.ui.ActionBar.Theme$ThemeInfo");
         Method preview = theme.getMethod("applyThemeFile", File.class, String.class,
                 remote, boolean.class);
         Method current = theme.getMethod("getCurrentTheme");
         Method restore = theme.getMethod("applyPreviousTheme");
         Object before = current.invoke(null);
         File input = File.createTempFile("nabdh-theme-probe", ".attheme", app.getCacheDir());
+        Object personalCopy = null;
         try {
             try (InputStream asset = app.getAssets().open("nabdh_soft_mint.attheme");
                     FileOutputStream destination = new FileOutputStream(input)) {
@@ -226,6 +236,16 @@ public final class DialogCellProbe extends Instrumentation {
             if (current.invoke(null) != before) {
                 throw new AssertionError("Closing local preview did not restore the previous theme");
             }
+            String copyName = input.getName();
+            personalCopy = preview.invoke(null, input, copyName, null, false);
+            if (personalCopy == null || current.invoke(null) != personalCopy
+                    || theme.getMethod("getTheme", String.class).invoke(null, copyName) != personalCopy
+                    || theme.getMethod("getTheme", String.class).invoke(null, PERSISTED_THEME) == personalCopy
+                    || !Boolean.TRUE.equals(theme.getMethod("hasWallpaperFromTheme").invoke(null))) {
+                throw new AssertionError("Native import did not create an independent theme with its wallpaper");
+            }
+            theme.getMethod("applyTheme", themeInfo, boolean.class, boolean.class)
+                    .invoke(null, before, true, false);
             try (RandomAccessFile file = new RandomAccessFile(input, "rw")) {
                 file.setLength(21L * 1024 * 1024);
             }
@@ -234,9 +254,10 @@ public final class DialogCellProbe extends Instrumentation {
                 throw new AssertionError("Oversize theme reached native preview");
             }
         } finally {
+            if (personalCopy != null) theme.getMethod("deleteTheme", themeInfo).invoke(null, personalCopy);
             input.delete();
         }
-        status("Theme import: verified local asset previews, restores, and oversized file is rejected");
+        status("Theme import: local preview, restoration, independent wallpaper copy and oversize rejection");
     }
 
     private void exerciseSettingsRows(Context app, ClassLoader loader, float density) throws Exception {

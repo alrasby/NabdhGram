@@ -473,7 +473,7 @@ replace_cell(
         copyHint.setTextColor(dim);
         copyHint.setTextSize(12);
         copyHint.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
-        content.addView(copyHint);
+        if (!night) content.addView(copyHint);
         final org.telegram.ui.ActionBar.AlertDialog[] shown =
                 new org.telegram.ui.ActionBar.AlertDialog[1];
         if (previous != null && previous != active
@@ -496,6 +496,7 @@ replace_cell(
                     previous.setCurrentAccentId(previousAccent);
                 }
                 selectTheme(previous, null);
+                if (night) Theme.saveAutoNightThemeConfig();
             });
         }
         if (defaultChoice != null && defaultChoice != active) {
@@ -514,7 +515,8 @@ replace_cell(
                     nabdhRememberTheme(prefs, key, before);
                 }
                 if (shown[0] != null) shown[0].dismiss();
-                selectTheme(defaultChoice, null); // Persist with Telegram's native API.
+                selectTheme(defaultChoice, null);
+                if (night) Theme.saveAutoNightThemeConfig();
             });
         }
         // Preview remains outside the scrolling controls.
@@ -547,8 +549,12 @@ replace_cell(
                                 nabdhRememberTheme(prefs, key, before);
                             }
                             selectTheme(selected, tapped); // Native commit + instant update.
-                        }).setNegativeButton(arabic ? "إغلاق" : "Close", null)
-                        .setNeutralButton(arabic ? "نسخة شخصية" : "Personal copy",
+                            if (night) Theme.saveAutoNightThemeConfig();
+                        }).setNegativeButton(arabic ? "إغلاق" : "Close", null);
+        // Telegram's theme editor imports into the day slot. Keep the clone
+        // action in the main gallery so a night selection never edits the day theme.
+        if (!night) {
+            dialog.setNeutralButton(arabic ? "نسخة شخصية" : "Personal copy",
                                 (d, which) -> {
                                     // Prompt before importing; cancellation changes nothing.
                                     android.widget.EditText name = new android.widget.EditText(context);
@@ -584,7 +590,7 @@ replace_cell(
                                                 name.setError(arabic ? "الاسم مستخدم" : "Name already exists");
                                                 return;
                                             }
-                                            Theme.ThemeInfo before = night ? Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
+                                            Theme.ThemeInfo before = Theme.getCurrentTheme();
                                             Theme.ThemeInfo copy = Theme.applyThemeFile(
                                                     Theme.getAssetFile(selected.assetName), copyName, null, false);
                                             if (copy == null) {
@@ -602,6 +608,7 @@ replace_cell(
                                     });
                                     naming.show();
                                 });
+        }
         shown[0] = dialog.create();
         fragment.showDialog(shown[0]);
         final android.content.Context application = context.getApplicationContext();
