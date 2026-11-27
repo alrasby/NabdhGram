@@ -19,10 +19,10 @@ public final class NabdhAppearancePrefs {
         int value = cachedUiStyle;
         if (value >= 0) return value;
         Context context = org.telegram.messenger.ApplicationLoader.applicationContext;
-        if (context == null) return UI_HYBRID;
+        if (context == null) return UI_CLASSIC;
         value = context.getSharedPreferences(STORE, Context.MODE_PRIVATE)
-                .getInt(UI_STYLE, UI_HYBRID);
-        cachedUiStyle = value >= 0 && value <= 3 ? value : UI_HYBRID;
+                .getInt(UI_STYLE, UI_CLASSIC);
+        cachedUiStyle = value >= 0 && value <= UI_HYBRID ? value : UI_CLASSIC;
         return cachedUiStyle;
     }
     public static void setUiStyle(Context context, int style) {

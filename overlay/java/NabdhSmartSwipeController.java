@@ -172,7 +172,7 @@ public final class NabdhSmartSwipeController implements RecyclerView.OnItemTouch
             if (!(child instanceof DialogCell)) return false;
             DialogCell row = (DialogCell) child;
             long id = row.getDialogId();
-            if (!row.nabdhOwnsCard() || !host.isEligible(id)) return false;
+            if (!row.nabdhCanSwipe() || !host.isEligible(id)) return false;
             candidate = row;
             gesture = Gesture.TOUCH_PENDING;
             gestureDialogId = id;

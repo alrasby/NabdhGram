@@ -70,6 +70,24 @@ public final class DialogCellProbe extends Instrumentation {
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         cell.layout(0, 0, width, cell.getMeasuredHeight());
         Method ownsCard = type.getMethod("nabdhOwnsCard");
+        Class<?> appearance = loader.loadClass("org.telegram.ui.Components.NabdhAppearancePrefs");
+        Method chooseStyle = appearance.getMethod("setUiStyle", Context.class, int.class);
+        if (!Integer.valueOf(0).equals(appearance.getMethod("uiStyle").invoke(null))
+                || Boolean.TRUE.equals(ownsCard.invoke(cell))
+                || !Boolean.TRUE.equals(type.getMethod("nabdhCanSwipe").invoke(cell))) {
+            throw new AssertionError("Classic should preserve native rows and swipe eligibility");
+        }
+        cell.setTranslationX(-Math.round(80 * density));
+        if (Boolean.TRUE.equals(ownsCard.invoke(cell))) {
+            throw new AssertionError("Classic left swipe should retain native drawing");
+        }
+        cell.setTranslationX(Math.round(80 * density));
+        if (!Boolean.TRUE.equals(ownsCard.invoke(cell))) {
+            throw new AssertionError("Classic right swipe should use the rectangular tray");
+        }
+        cell.setTranslationX(0);
+        exerciseBundledThemes(app, loader, appearance, chooseStyle);
+        chooseStyle.invoke(null, app, 3);
         if (!Boolean.TRUE.equals(ownsCard.invoke(cell))) {
             throw new AssertionError("Fixture does not use production card rendering");
         }
@@ -96,6 +114,35 @@ public final class DialogCellProbe extends Instrumentation {
             cell.setTranslationX(0);
             frame.recycle();
         }
+    }
+
+    private void exerciseBundledThemes(Context app, ClassLoader loader, Class<?> appearance,
+            Method chooseStyle) throws Exception {
+        Class<?> theme = loader.loadClass("org.telegram.ui.ActionBar.Theme");
+        Class<?> themeInfo = loader.loadClass("org.telegram.ui.ActionBar.Theme$ThemeInfo");
+        Method current = theme.getMethod("getCurrentTheme");
+        Method apply = theme.getMethod("applyTheme", themeInfo, boolean.class, boolean.class);
+        Method lookup = theme.getMethod("getTheme", String.class);
+        Method selectedStyle = appearance.getMethod("uiStyle");
+        Object original = current.invoke(null);
+        String[] names = {"Siri Glass Refined", "Soft Mint", "Dark Glass", "Gray Avalanche Sand"};
+        try {
+            for (String name : names) {
+                Object bundled = lookup.invoke(null, "NabdhGram • " + name);
+                if (bundled == null) throw new AssertionError("Missing bundled theme: " + name);
+                apply.invoke(null, bundled, false, false);
+                for (int style = 0; style < 4; style++) {
+                    chooseStyle.invoke(null, app, style);
+                    if (current.invoke(null) != bundled || !Integer.valueOf(style).equals(selectedStyle.invoke(null))) {
+                        throw new AssertionError("Theme/style independence failed: " + name + "/" + style);
+                    }
+                }
+            }
+        } finally {
+            apply.invoke(null, original, false, false);
+        }
+        if (current.invoke(null) != original) throw new AssertionError("Native theme restoration failed");
+        status("Theme integration: four bundled themes applied and restored, 16 independent style combinations");
     }
 
     private void exerciseSettingsRows(Context app, ClassLoader loader, float density) throws Exception {

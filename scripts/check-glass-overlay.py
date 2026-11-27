@@ -751,7 +751,8 @@ checks["selection toolbar icon and count colors adapt to light/dark themes"] = (
 checks["pinned chat reorder grip theme-aware and does not change drag callbacks"] = (
     "for (int dragLine = 0; dragLine < 3; dragLine++)" in reorder_source
     and "Theme.key_windowBackgroundWhiteBlueText, resourcesProvider" in reorder_source
-    and "Theme.dialogs_reorderDrawable.draw(canvas);" not in reorder_source
+    and "if (nabdhUsesClassicStyle()) {" in reorder_source
+    and "Theme.dialogs_reorderDrawable.draw(canvas);" in reorder_source
 )
 checks["opt-in symmetric no-tail card uses real message renderer"] = (
     '"bubble_no_tail"' in bubble_settings
@@ -763,7 +764,7 @@ checks["opt-in symmetric no-tail card uses real message renderer"] = (
 
 folder_source = (ui / "Components/FilterTabsView.java").read_text(encoding="utf-8")
 checks["native reorder stays inside rounded card without rectangular light gradient"] = (
-    "getPaintReorderGradient();" not in reorder_source[reorder_source.index("if (drawReorder || reorderIconProgress != 0)") :
+    "if (nabdhUsesClassicStyle() && !LocaleController.isRTL) {" in reorder_source[reorder_source.index("if (drawReorder || reorderIconProgress != 0)") :
                                              reorder_source.index("final float pollVotesMentionsVisibility")]
     and "for (int dragLine = 0; dragLine < 3; dragLine++)" in reorder_source
 )

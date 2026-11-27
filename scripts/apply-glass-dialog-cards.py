@@ -27,11 +27,22 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
     private final android.graphics.Paint nabdhCardPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
     private final org.telegram.ui.Components.NabdhCardEngine nabdhCardEngine =
             new org.telegram.ui.Components.NabdhCardEngine();
-    public boolean nabdhOwnsCard() {
+    public boolean nabdhCanSwipe() {
         return !isTopic && rightFragmentOpenedProgress == 0f
                 && !(getParent() instanceof ProfileChannelCell)
                 && getMeasuredWidth() > dp(20) && getMeasuredHeight() > dp(12);
     }
+    private boolean nabdhUsesClassicStyle() {
+        return org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle()
+                == org.telegram.ui.Components.NabdhAppearancePrefs.UI_CLASSIC;
+    }
+
+    public boolean nabdhOwnsCard() {
+        // Classic keeps native rows and native left-swipe drawing. The
+        // custom right tray still needs a rectangular translated surface.
+        return nabdhCanSwipe() && (!nabdhUsesClassicStyle() || translationX > 0);
+    }
+
     // One outer viewport for background, native canvas and child views.
     @Override
     public void draw(android.graphics.Canvas canvas) {
@@ -41,10 +52,11 @@ s = s.replace(field_anchor, """    // NabdhGram Glass: cached paint for rounded 
         }
         final int saved = canvas.save();
         try {
+            final boolean classic = nabdhUsesClassicStyle();
             nabdhCardEngine.setViewport(getMeasuredWidth(), getMeasuredHeight(),
-                    dp(org.telegram.ui.Components.NabdhCardGeometry.HORIZONTAL_INSET_DP),
-                    dp(org.telegram.ui.Components.NabdhCardGeometry.VERTICAL_INSET_DP),
-                    dp(org.telegram.ui.Components.NabdhCardGeometry.CORNER_RADIUS_DP));
+                    classic ? 0 : dp(org.telegram.ui.Components.NabdhCardGeometry.HORIZONTAL_INSET_DP),
+                    classic ? 0 : dp(org.telegram.ui.Components.NabdhCardGeometry.VERTICAL_INSET_DP),
+                    classic ? 0 : dp(org.telegram.ui.Components.NabdhCardGeometry.CORNER_RADIUS_DP));
             nabdhCardEngine.clipViewport(canvas);
             super.draw(canvas);
         } finally {
@@ -100,7 +112,9 @@ original_reorder = "                Theme.dialogs_reorderDrawable.setAlpha((int)
 branded_reorder = "                // Glass-friendly drag grip on pinned chat cards only.\n                // Native reordering hit targets and sorting remain unchanged.\n                final int dragAccent = Theme.getColor(\n                        Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);\n                nabdhCardPaint.setStyle(android.graphics.Paint.Style.STROKE);\n                nabdhCardPaint.setStrokeCap(android.graphics.Paint.Cap.ROUND);\n                nabdhCardPaint.setStrokeWidth(dp(2));\n                nabdhCardPaint.setColor(dragAccent);\n                nabdhCardPaint.setAlpha((int) (reorderIconProgress * 235));\n                final float dragX = pinLeft + dp(4);\n                for (int dragLine = 0; dragLine < 3; dragLine++) {\n                    final float dragY = pinTop + dp(5 + dragLine * 5);\n                    canvas.drawLine(dragX, dragY, dragX + dp(13), dragY, nabdhCardPaint);\n                }\n                nabdhCardPaint.setAlpha(255);\n                nabdhCardPaint.setStrokeCap(android.graphics.Paint.Cap.BUTT);\n                nabdhCardPaint.setStyle(android.graphics.Paint.Style.FILL);"
 if s.count(original_reorder) != 1:
     raise SystemExit("Pinned DialogCell reorder drawing changed")
-s = s.replace(original_reorder, branded_reorder, 1)
+s = s.replace(original_reorder,
+    "                if (nabdhUsesClassicStyle()) {\n" + original_reorder +
+    "\n                } else {\n" + branded_reorder + "\n                }", 1)
 
 # Native Telegram paints a light full-width rectangular gradient behind the
 # reorder handle. It escapes the rounded Glass card and appears as a white box.
@@ -109,7 +123,8 @@ s = s.replace(original_reorder, branded_reorder, 1)
 reorder_gradient = "                if (!LocaleController.isRTL) {\n                    final Paint reorderGradientPaint = getPaintReorderGradient();\n                    reorderGradientPaint.setAlpha((int) (reorderIconProgress * 255));\n                    canvas.save();\n                    canvas.translate(pinLeft - dp(24), pinTop);\n                    canvas.drawRect(0, 0, getMeasuredWidth() - (pinLeft - dp(24)), dp(24), reorderGradientPaint);\n                    canvas.restore();\n                }"
 if s.count(reorder_gradient) != 1:
     raise SystemExit("Pinned reorder gradient anchor changed")
-s = s.replace(reorder_gradient, "", 1)
+s = s.replace(reorder_gradient,
+    reorder_gradient.replace("if (!LocaleController.isRTL)", "if (nabdhUsesClassicStyle() && !LocaleController.isRTL)"), 1)
 
 p.write_text(s, encoding="utf-8")
 print("NabdhGram Glass dialog card drawing overlay installed.")

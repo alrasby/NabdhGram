@@ -60,6 +60,9 @@ assert "selectTheme(previous, null)" in preview
 assert "getPreviewBackgroundColor()" in preview
 assert "getPreviewInColor()" in preview
 assert "getPreviewOutColor()" in preview
+assert "Theme.getThemeFileValues(null, selected.assetName, null)" in preview
+assert "palette.get(Theme.key_chat_inBubble" in preview
+assert "palette.get(Theme.key_chat_outBubble" in preview
 assert "AlertsCreator.createThemeCreateDialog" not in preview  # existing creation entry remains in ThemeActivity
 # Phase 2: full preview with real local embedded asset wallpaper,
 # bounded decode, explicit clone, and native persistent theme selection.
@@ -85,7 +88,9 @@ assert "EmojiThemes.saveCustomTheme(themeInfo, themeInfo.currentAccentId)" in pr
 # native selection. Defaults must come from Telegram's own registered IDs.
 assert 'Theme.getTheme(night ? "Night" : "Blue")' in preview
 assert 'selectTheme(defaultChoice, null)' in preview
-assert 'prefs.edit().putString(key, before.getKey()).apply();' in preview
+assert 'nabdhRememberTheme(prefs, key, before);' in preview
+assert 'previous.setCurrentAccentId(previousAccent);' in preview
+assert 'content.addView(mock, 0, block);' in preview
 assert '"Restore Telegram default theme"' in preview
 assert 'for (int pos = cardName.indexOf(' in preview
 assert 'Math.max(a, b)' in preview
@@ -104,6 +109,7 @@ prefs = (root / "java/org/telegram/ui/Components/NabdhAppearancePrefs.java").rea
 surface = (root / "java/org/telegram/ui/Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
 category = (root / "java/org/telegram/ui/NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
 assert '"ui_style_v2"' in prefs
+assert ".getInt(UI_STYLE, UI_CLASSIC)" in prefs
 assert 'putInt(UI_STYLE, style)' in prefs
 assert 'NabdhAppearancePrefs.surfaceRadius()' in surface
 assert 'NabdhAppearancePrefs.glassSurface()' in surface

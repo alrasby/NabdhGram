@@ -314,14 +314,17 @@ replace_cell(
         }
         final android.content.Context context = fragment.getParentActivity();
         final boolean arabic = LocaleController.isRTL;
-        final int background = selected.getPreviewBackgroundColor();
-        final int incoming = selected.getPreviewInColor();
-        final int outgoing = selected.getPreviewOutColor();
+        final android.util.SparseIntArray palette = Theme.getThemeFileValues(null, selected.assetName, null);
+        final int background = palette.get(Theme.key_windowBackgroundWhite, selected.getPreviewBackgroundColor());
+        final int incoming = palette.get(Theme.key_chat_inBubble, selected.getPreviewInColor());
+        final int outgoing = palette.get(Theme.key_chat_outBubble, selected.getPreviewOutColor());
+        final int actionBar = palette.get(Theme.key_actionBarDefault, background);
         final boolean night = currentType == ThemeActivity.THEME_TYPE_NIGHT;
         final SharedPreferences prefs = ApplicationLoader.applicationContext
                 .getSharedPreferences("nabdh_theme_gallery", Activity.MODE_PRIVATE);
         final String key = night ? "previousNightTheme" : "previousDayTheme";
         final Theme.ThemeInfo previous = Theme.getTheme(prefs.getString(key, ""));
+        final int previousAccent = prefs.getInt(key + "_accent", -1);
         // These are Telegram's own stable bundled defaults, not new themes.
         final Theme.ThemeInfo defaultChoice = Theme.getTheme(night ? "Night" : "Blue");
         android.widget.LinearLayout content = new android.widget.LinearLayout(context);
@@ -368,7 +371,9 @@ replace_cell(
         android.widget.TextView chatTitle = new android.widget.TextView(context);
         chatTitle.setText(arabic ? "المحادثات  •  معاينة" : "Chats  •  Preview");
         chatTitle.setTextSize(14);
-        chatTitle.setTextColor(nabdhThemePreviewInk(background));
+        chatTitle.setBackgroundColor(actionBar);
+        chatTitle.setTextColor(palette.get(Theme.key_actionBarDefaultTitle, nabdhThemePreviewInk(actionBar)));
+        chatTitle.setGravity(arabic ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
         chatTitle.setPadding(AndroidUtilities.dp(9), AndroidUtilities.dp(5),
                 AndroidUtilities.dp(9), AndroidUtilities.dp(12));
         mock.addView(chatTitle);
@@ -377,6 +382,7 @@ replace_cell(
         row.setText(arabic ? "◉  محادثة تجريبية\\n      آخر رسالة" : "◉  Sample conversation\\n      Last message");
         row.setTextSize(13);
         row.setTextColor(nabdhThemePreviewInk(incoming));
+        row.setGravity(arabic ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
         row.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
                 AndroidUtilities.dp(12), AndroidUtilities.dp(10));
         android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
@@ -390,7 +396,7 @@ replace_cell(
         android.widget.TextView received = new android.widget.TextView(context);
         received.setText(arabic ? "رسالة واردة" : "Incoming message");
         received.setTextSize(13);
-        received.setTextColor(nabdhThemePreviewInk(incoming));
+        received.setTextColor(palette.get(Theme.key_chat_messageTextIn, nabdhThemePreviewInk(incoming)));
         received.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
                 AndroidUtilities.dp(12), AndroidUtilities.dp(10));
         android.graphics.drawable.GradientDrawable receiveBg = new android.graphics.drawable.GradientDrawable();
@@ -401,13 +407,14 @@ replace_cell(
                 new android.widget.LinearLayout.LayoutParams(
                         android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
                         android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        receivedParams.gravity = arabic ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT;
         receivedParams.setMargins(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(4));
         mock.addView(received, receivedParams);
 
         android.widget.TextView sent = new android.widget.TextView(context);
         sent.setText(arabic ? "رسالة صادرة ✓✓" : "Outgoing message ✓✓");
         sent.setTextSize(13);
-        sent.setTextColor(nabdhThemePreviewInk(outgoing));
+        sent.setTextColor(palette.get(Theme.key_chat_messageTextOut, nabdhThemePreviewInk(outgoing)));
         sent.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
                 AndroidUtilities.dp(12), AndroidUtilities.dp(10));
         android.graphics.drawable.GradientDrawable sendBg = new android.graphics.drawable.GradientDrawable();
@@ -425,7 +432,9 @@ replace_cell(
         android.widget.TextView settings = new android.widget.TextView(context);
         settings.setText(arabic ? "⚙  الإعدادات    •    الملف الشخصي" :
                 "⚙  Settings    •    Profile");
-        settings.setTextColor(nabdhThemePreviewInk(background));
+        settings.setBackgroundColor(background);
+        settings.setTextColor(palette.get(Theme.key_windowBackgroundWhiteBlackText, nabdhThemePreviewInk(background)));
+        settings.setGravity(arabic ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT);
         settings.setTextSize(13);
         settings.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(9),
                 AndroidUtilities.dp(10), AndroidUtilities.dp(9));
@@ -452,7 +461,8 @@ replace_cell(
         content.addView(copyHint);
         final org.telegram.ui.ActionBar.AlertDialog[] shown =
                 new org.telegram.ui.ActionBar.AlertDialog[1];
-        if (previous != null && previous != selected) {
+        if (previous != null && previous != selected
+                && (previous.pathToFile == null || new java.io.File(previous.pathToFile).isFile())) {
             android.widget.TextView restore = new android.widget.TextView(context);
             restore.setText(arabic ? "↶ الرجوع إلى الثيم السابق" : "↶ Restore previous theme");
             restore.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
@@ -462,6 +472,14 @@ replace_cell(
             content.addView(restore);
             restore.setOnClickListener(v -> {
                 if (shown[0] != null) shown[0].dismiss();
+                Theme.ThemeInfo before = night ? Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
+                if (before != null && before != previous) {
+                    nabdhRememberTheme(prefs, key, before);
+                }
+                if (previousAccent >= 0 && previous.themeAccentsMap != null
+                        && previous.themeAccentsMap.get(previousAccent) != null) {
+                    previous.setCurrentAccentId(previousAccent);
+                }
                 selectTheme(previous, null);
             });
         }
@@ -478,7 +496,7 @@ replace_cell(
                 Theme.ThemeInfo before = night
                         ? Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
                 if (before != null && before != defaultChoice) {
-                    prefs.edit().putString(key, before.getKey()).apply();
+                    nabdhRememberTheme(prefs, key, before);
                 }
                 if (shown[0] != null) shown[0].dismiss();
                 selectTheme(defaultChoice, null); // Persist with Telegram's native API.
@@ -497,6 +515,12 @@ replace_cell(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         int maxHeight = context.getResources().getDisplayMetrics().heightPixels * 65 / 100;
         fixed.setMinimumHeight(Math.min(maxHeight, AndroidUtilities.dp(460)));
+        if (maxHeight < AndroidUtilities.dp(340)
+                || context.getResources().getConfiguration().fontScale >= 1.3f) {
+            // Keep actions reachable when the preview itself needs more room.
+            fixed.removeView(mock);
+            content.addView(mock, 0, block);
+        }
         org.telegram.ui.ActionBar.AlertDialog.Builder dialog =
                 new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
                         .setTitle(selected.name)
@@ -505,7 +529,7 @@ replace_cell(
                             Theme.ThemeInfo before = night ?
                                     Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
                             if (before != null && before != selected) {
-                                prefs.edit().putString(key, before.getKey()).apply();
+                                nabdhRememberTheme(prefs, key, before);
                             }
                             selectTheme(selected, tapped); // Native commit + instant update.
                         }).setNegativeButton(arabic ? "إغلاق" : "Close", null)
@@ -552,7 +576,7 @@ replace_cell(
                                                 name.setError(arabic ? "تعذر إنشاء النسخة" : "Could not create copy");
                                                 return;
                                             }
-                                            if (before != null) prefs.edit().putString(key, before.getKey()).apply();
+                                            if (before != null) nabdhRememberTheme(prefs, key, before);
                                             naming.dismiss();
                                             if (fragment.getParentActivity() != null) {
                                                 new org.telegram.ui.Components.ThemeEditorView()
@@ -565,6 +589,11 @@ replace_cell(
                                 });
         shown[0] = dialog.create();
         fragment.showDialog(shown[0]);
+    }
+
+    private static void nabdhRememberTheme(SharedPreferences prefs, String key, Theme.ThemeInfo theme) {
+        prefs.edit().putString(key, theme.getKey())
+                .putInt(key + "_accent", theme.currentAccentId).apply();
     }
 
     private static boolean nabdhInvalidThemeName(String name) {
