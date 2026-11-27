@@ -152,7 +152,7 @@ assert "newCardBackground()" in native_surfaces and "makeRippleMask()" in native
 for obsolete in ("GradientDrawable glassCard =", "GradientDrawable infoCard =", "GradientDrawable fontGlass =", "RippleDrawable touchSurface ="):
     assert obsolete not in settings, f"Second per-card surface allocation survived: {obsolete}"
 assert "scroll.setBackground(new GradientDrawable(" not in settings, "NabdhGram scroll snapshots old theme colors"
-assert "topView.setBackground(" in native_surfaces and "NabdhGlassRowDecoration.newHeroBackground());" in native_surfaces, "Main Settings hero must use the soft Glass renderer"
+assert "topView.setBackground(" in native_surfaces and "NabdhGlassRowDecoration.newHeroBackground(listView.getNabdhSectionInset()));" in native_surfaces, "Main Settings hero must use the soft Glass renderer"
 remaining = (ROOT / "scripts/apply-glass-remaining-settings.py").read_text(encoding="utf-8")
 for screen in ("FiltersSetupActivity.java", "FilterCreateActivity.java", "FilterChatlistActivity.java", "LiteModeSettingsActivity.java", "ThemeActivity.java"):
     assert screen in remaining, f"Missing dedicated folder / lite mode coverage for {screen}"
@@ -217,7 +217,7 @@ assert 'group_anchor = "        listView.setSectionsDrawBackground(true);"' in n
 assert "final int maxRowHeight = dp(mini ? 96 : 200);" in native_surfaces and "MeasureSpec.AT_MOST" in native_surfaces, "Arabic descriptions may clip at fixed 60dp"
 assert "newOpaquePageBackground()" in native_surfaces and "Theme.key_windowBackgroundGray" in native_surfaces and "PixelFormat.OPAQUE" in native_surfaces, "Nested settings may leak content from previous fragments"
 assert "contentView.setBackground(" in native_surfaces and "Main Settings root/list initialization anchor changed" in native_surfaces, "Main Settings needs an opaque root-level canvas"
-assert "topView.setBackground(" in native_surfaces and "newHeroBackground());" in native_surfaces, "Account hero must use one inset"
+assert "topView.setBackground(" in native_surfaces and "newHeroBackground(listView.getNabdhSectionInset()));" in native_surfaces, "Account hero must use one inset"
 assert "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_surfaces, "Double-inset account hero regressed"
 assert 'settings_source.replace(enable_anchor, enable_anchor' not in native_surfaces, "Main Settings must not add a redundant ItemDecoration"
 
@@ -269,5 +269,5 @@ assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/ap
 assert "nabdhRestoreChatTitle" not in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Duplicate title-restoration owner must be removed"
 assert 'actionBar.setTitle("NabdhGram", statusDrawable);' in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Native title must retain Telegram status drawable"
 assert "telegramLogoView.setTranslationX(titleView.getTranslationX() + dp(1));" in (ROOT / "scripts/apply-dialogs-title.py").read_text(encoding="utf-8"), "Stories wordmark must retain native positioning"
-assert "newHeroBackground() {\n        return newCardBackground();" in native_surfaces, "Settings hero must share the style and opacity of the other cards"
+assert "newHeroBackground(int sectionInset)" in native_surfaces, "Settings hero must use the shared card and native section inset"
 print("PASS: Glass pipeline order, shared text/media styling, theme colors, and stable font names")

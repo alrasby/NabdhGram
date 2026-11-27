@@ -149,7 +149,7 @@ checks = {
         "contentView.setBackground(" in native_settings
         and "NabdhGlassRowDecoration.newOpaquePageBackground()" in native_settings
         and "topView.setBackground(" in native_settings
-        and "newHeroBackground()" in native_settings
+        and "newHeroBackground(listView.getNabdhSectionInset())" in native_settings
         and "glassType == VIEW_TYPE_HEADER" in universal
         and "getThemedColor(Theme.key_windowBackgroundGray)" in universal,
     "chat settings preview uses native rounded inset and styles text options":
@@ -164,7 +164,7 @@ checks = {
         and "scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);" in login_source,
     "main Settings hero uses exactly one shared Glass inset":
         "topView.setBackground(" in native_settings
-        and "NabdhGlassRowDecoration.newHeroBackground()" in native_settings
+        and "NabdhGlassRowDecoration.newHeroBackground(listView.getNabdhSectionInset())" in native_settings
         and "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_settings,
     "NabdhGram settings categories have no competing pre-renderer":
         not any(token in settings + feature for token in
@@ -618,7 +618,7 @@ checks["main Settings uses opaque root behind avatar and glass header"] = (
     "contentView.setBackground(" in native_settings
     and "NabdhGlassRowDecoration.newOpaquePageBackground()" in native_settings
     and "topView.setBackground(" in native_settings
-    and "NabdhGlassRowDecoration.newHeroBackground()" in native_settings
+    and "NabdhGlassRowDecoration.newHeroBackground(listView.getNabdhSectionInset())" in native_settings
     and "topView.setBackground(new android.graphics.drawable.InsetDrawable(" not in native_settings
 )
 checks["main Settings uses exactly one card drawing path"] = (

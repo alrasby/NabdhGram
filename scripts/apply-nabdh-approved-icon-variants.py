@@ -87,13 +87,16 @@ def clean_edge_fringe(image):
 
 # Adaptive icons show the center 72dp of a 108dp layer. Keep the circular
 # artwork inside this viewport and its circular safe area on all launchers.
+# Adaptive layers are kept for the downloadable icon pack only.
+# The installed aliases use the unchanged PNGs at every Android version.
 ADAPTIVE_CANVAS = 1080
 ADAPTIVE_SAFE_FRACTION = 0.60
 CIRCULAR_SAFE_FRACTION = 0.60
 IPHONE_EXPERIMENT_FRACTION = 0.76
-modern = res / "mipmap-anydpi-v26"
+export_res = root / "nabdh-icon-export-res"
+modern = export_res / "mipmap-anydpi-v26"
 modern.mkdir(parents=True, exist_ok=True)
-drawable = res / "drawable-nodpi"
+drawable = export_res / "drawable-nodpi"
 drawable.mkdir(parents=True, exist_ok=True)
 for slug, _, _, _, _ in VARIANTS:
     icon = compose_icon(slug)
@@ -103,9 +106,6 @@ for slug, _, _, _, _ in VARIANTS:
         directory.mkdir(parents=True, exist_ok=True)
         scaled = icon.resize((pixels, pixels), Image.Resampling.LANCZOS)
         scaled.save(directory / ("nabdh_icon_" + slug + ".png"),
-                    format="PNG", optimize=True)
-        # Distinct preview resource prevents adaptive masks in the chooser.
-        scaled.save(directory / ("nabdh_icon_preview_" + slug + ".png"),
                     format="PNG", optimize=True)
 
     fraction = (CIRCULAR_SAFE_FRACTION if slug in ("silver", "dark", "glass")
@@ -120,11 +120,6 @@ for slug, _, _, _, _ in VARIANTS:
                   (ADAPTIVE_CANVAS - side) // 2))
     foreground.save(drawable / ("nabdh_icon_" + slug + "_foreground.png"),
                     format="PNG", optimize=True)
-    # iPhone's chooser preview must use the same exact foreground layer as
-    # Android's adaptive icon, instead of a raw 192px icon at another scale.
-    if slug == "iphone":
-        foreground.save(drawable / "nabdh_icon_iphone_picker_foreground.png",
-                        format="PNG", optimize=True)
     (modern / ("nabdh_icon_" + slug + ".xml")).write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
@@ -174,6 +169,7 @@ with Image.open(source_fg) as master_foreground:
     ImageDraw.Draw(rounded).rounded_rectangle(
         (0, 0, 1079, 1079), radius=255, fill=255)
     preview.putalpha(ImageChops.multiply(preview.getchannel("A"), rounded))
+    (res / "drawable-nodpi").mkdir(parents=True, exist_ok=True)
     preview.save(res / "drawable-nodpi/nabdh_icon_default_picker_foreground.png",
                  format="PNG", optimize=True)
 
@@ -186,8 +182,7 @@ branded_default = '        DEFAULT("DefaultIcon", R.drawable.nabdh_icon_default_
 java = java.replace(anchor, branded_default, 1)
 addition = ',\n'.join(
     '        NABDH_' + slug.upper() + '("' + alias + '", R.drawable.nabdh_icon_preview_background, '
-    + ('R.drawable.nabdh_icon_iphone_picker_foreground' if slug == "iphone"
-       else 'R.mipmap.nabdh_icon_preview_' + slug)
+    + 'R.mipmap.nabdh_icon_' + slug
     + ', R.string.' + string_name + ')'
     for slug, alias, string_name, _, _ in VARIANTS
 )
@@ -376,8 +371,11 @@ replace_selector(
             if (nabdhFrameless) {
                 android.content.pm.PackageManager packages = getContext().getPackageManager();
                 try {
-                    launcherIcon = packages.getActivityInfo(icon.getComponentName(getContext()),
-                            android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS).loadIcon(packages);
+                    android.content.pm.ActivityInfo activity = packages.getActivityInfo(
+                            icon.getComponentName(getContext()),
+                            android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
+                    launcherIcon = packages.getDrawable(activity.packageName,
+                            activity.getIconResource(), activity.applicationInfo);
                 } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {
                     // A missing alias still has its offline preview resource.
                 }

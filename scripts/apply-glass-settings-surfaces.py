@@ -71,8 +71,15 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
         return new GlassCardLayers();
     }
 
-    public static android.graphics.drawable.Drawable newHeroBackground() {
-        return newCardBackground();
+    public static android.graphics.drawable.Drawable newHeroBackground(int sectionInset) {
+        // The hero is a non-section row. Match the section offset applied to
+        // regular rows before the shared card drawable applies its own inset.
+        return new android.graphics.drawable.InsetDrawable(newCardBackground(), sectionInset, 0, sectionInset, 0) {
+            @Override public boolean getPadding(@NonNull android.graphics.Rect padding) {
+                padding.setEmpty();
+                return false;
+            }
+        };
     }
 
     // The removed Telegram section-group fills no longer mask old fragments.
@@ -319,6 +326,10 @@ list_src = list_src.replace(native_draw_mode, native_draw_mode + """
         }""", 1)
 section_helper = """    private boolean nabdhSuppressLegacySectionFill;
 
+    public int getNabdhSectionInset() {
+        return sectionPadding;
+    }
+
     public void nabdhHideSectionBackgroundOnly() {
         if (NabdhAppearancePrefs.isClassic()) return;
         // Telegram 13.2.x can paint group fills using bitmap decoration,
@@ -525,11 +536,9 @@ settings_hero = ui / "SettingsActivity.java"
 hero_source = settings_hero.read_text(encoding="utf-8")
 hero_old = "        topView = new FrameLayout(context);"
 hero_new = """        topView = new FrameLayout(context);
-        // GlassCardLayers already insets 10dp on both sides. The extra
-        // InsetDrawable doubled this margin and misaligned the hero.
         if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) {
             topView.setBackground(
-                    org.telegram.ui.Components.NabdhGlassRowDecoration.newHeroBackground());
+                    org.telegram.ui.Components.NabdhGlassRowDecoration.newHeroBackground(listView.getNabdhSectionInset()));
         }"""
 if hero_source.count(hero_old) != 1:
     raise SystemExit("SettingsActivity account hero constructor changed")

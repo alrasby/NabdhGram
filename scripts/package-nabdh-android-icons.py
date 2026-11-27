@@ -24,6 +24,7 @@ SOURCES = {"silver": "nabdh-icon-silver-circle.webp",
 
 def export(root: Path, target: Path) -> None:
     res = root / "TMessagesProj/src/main/res"
+    export_res = root / "nabdh-icon-export-res"
     sources = Path(__file__).resolve().parents[1] / "branding/approved"
     payload = {}
     manifest = {"format": "NabdhGram Android launcher icons v1",
@@ -54,14 +55,13 @@ def export(root: Path, target: Path) -> None:
             location = "res/mipmap-" + density + "/" + filename_png
             payload[location] = raw
             hashes[location] = hashlib.sha256(raw).hexdigest()
-        # Include the actual API 26+ files. Previously this export contained
-        # legacy PNGs only, which could not reproduce what Samsung renders.
-        adaptive = res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
-        foreground = res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
+        # Include optional adaptive artwork for projects that want it.
+        adaptive = export_res / "mipmap-anydpi-v26" / ("nabdh_icon_" + slug + ".xml")
+        foreground = export_res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
         for path in (adaptive, foreground):
             if not path.is_file():
                 raise ValueError("Missing adaptive launcher resource: " + str(path))
-            location = "res/" + path.relative_to(res).as_posix()
+            location = "res/" + path.relative_to(export_res).as_posix()
             payload[location] = path.read_bytes()
             hashes[location] = hashlib.sha256(payload[location]).hexdigest()
         manifest["variants"][slug] = hashes

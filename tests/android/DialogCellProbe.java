@@ -169,6 +169,8 @@ public final class DialogCellProbe extends Instrumentation {
             throw new AssertionError("Fixture does not use production card rendering");
         }
         exerciseSettingsRows(app, loader, density);
+        exerciseSettingsCardAlignment(app, loader, density);
+        exerciseLauncherIcons(app);
         exerciseNativeActions(loader, app);
         exerciseTray(cell, type, loader, width, density);
         exerciseController(cell, type, loader, width, density, app);
@@ -281,6 +283,66 @@ public final class DialogCellProbe extends Instrumentation {
             input.delete();
         }
         status("Theme import: local preview, restoration, independent wallpaper copy and oversize rejection");
+    }
+
+    private void exerciseSettingsCardAlignment(Context app, ClassLoader loader, float density)
+            throws Exception {
+        Class<?> recycler = loader.loadClass("org.telegram.ui.Components.RecyclerListView");
+        Object list = recycler.getConstructor(Context.class).newInstance(app);
+        recycler.getMethod("setSections").invoke(list);
+        int inset = (Integer) recycler.getMethod("getNabdhSectionInset").invoke(list);
+        if (inset <= 0) throw new AssertionError("Missing native settings section inset");
+        Class<?> surfaces = loader.loadClass("org.telegram.ui.Components.NabdhGlassRowDecoration");
+        android.graphics.drawable.Drawable hero = (android.graphics.drawable.Drawable)
+                surfaces.getMethod("newHeroBackground", int.class).invoke(null, inset);
+        android.graphics.drawable.Drawable row = (android.graphics.drawable.Drawable)
+                surfaces.getMethod("newCardBackground").invoke(null);
+        int width = Math.round(360 * density);
+        int height = Math.round(70 * density);
+        Bitmap heroFrame = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Bitmap rowFrame = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        try {
+            hero.setBounds(0, 0, width, height);
+            row.setBounds(inset, 0, width - inset, height);
+            hero.draw(new Canvas(heroFrame));
+            row.draw(new Canvas(rowFrame));
+            if (!heroFrame.sameAs(rowFrame) || (heroFrame.getPixel(width / 2, height / 2) >>> 24) == 0) {
+                throw new AssertionError("Settings hero and native-inset rows have different painted bounds");
+            }
+        } finally {
+            heroFrame.recycle();
+            rowFrame.recycle();
+        }
+        status("Settings card alignment: hero and native-inset row have identical pixels");
+    }
+
+    private void exerciseLauncherIcons(Context app) throws Exception {
+        android.content.pm.PackageManager manager = app.getPackageManager();
+        String[] aliases = {"NabdhSilverCircleIcon", "NabdhDarkCircleIcon",
+                "NabdhGlassCircleIcon", "NabdhIphoneIcon"};
+        Bitmap frame = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888);
+        try {
+            Canvas canvas = new Canvas(frame);
+            for (String alias : aliases) {
+                android.content.pm.ActivityInfo activity = manager.getActivityInfo(
+                        new android.content.ComponentName(app.getPackageName(), "org.telegram.messenger." + alias),
+                        android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
+                android.graphics.drawable.Drawable icon = manager.getDrawable(
+                        activity.packageName, activity.getIconResource(), activity.applicationInfo);
+                if (icon == null || icon instanceof android.graphics.drawable.AdaptiveIconDrawable) {
+                    throw new AssertionError("Incorrect Android raster icon for " + alias);
+                }
+                frame.eraseColor(0);
+                icon.setBounds(0, 0, 96, 96);
+                icon.draw(canvas);
+                if ((frame.getPixel(0, 0) >>> 24) != 0 || (frame.getPixel(48, 48) >>> 24) == 0) {
+                    throw new AssertionError("Android icon corner or center is incorrect for " + alias);
+                }
+            }
+        } finally {
+            frame.recycle();
+        }
+        status("Launcher aliases: four packaged rasters retain transparent corners");
     }
 
     private void exerciseSettingsRows(Context app, ClassLoader loader, float density) throws Exception {
