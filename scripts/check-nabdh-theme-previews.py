@@ -63,6 +63,9 @@ assert "getPreviewOutColor()" in preview
 assert "Theme.getThemeFileValues(null, selected.assetName, null)" in preview
 assert "palette.get(Theme.key_chat_inBubble" in preview
 assert "palette.get(Theme.key_chat_outBubble" in preview
+assert "if (!nabdhCanReadThemeFile(file)" in theme_source
+assert "options.inJustDecodeBounds = true;" in theme_source
+assert "options.outWidth * options.outHeight <= 24_000_000L" in theme_source
 assert "AlertsCreator.createThemeCreateDialog" not in preview  # existing creation entry remains in ThemeActivity
 # Phase 2: full preview with real local embedded asset wallpaper,
 # bounded decode, explicit clone, and native persistent theme selection.

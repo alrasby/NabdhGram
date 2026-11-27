@@ -165,6 +165,40 @@ if source.count(wallpaper_old) != 1:
     raise SystemExit("Telegram built-in asset wallpaper parser anchor changed")
 source = source.replace(wallpaper_old, wallpaper_new, 1)
 
+import_anchor = '''    public static ThemeInfo applyThemeFile(File file, String themeName, TLRPC.TL_theme theme, boolean temporary) {
+        try {'''
+if source.count(import_anchor) != 1:
+    raise SystemExit("Pinned theme import entry changed")
+source = source.replace(import_anchor, '''    private static boolean nabdhCanReadThemeFile(File file) {
+        if (file == null || !file.isFile() || file.length() == 0 || file.length() > 20L * 1024 * 1024) {
+            return false;
+        }
+        String[] wallpaperLink = new String[1];
+        SparseIntArray colors = getThemeFileValues(file, null, wallpaperLink);
+        int offset = colors.get(key_wallpaperFileOffset, -1);
+        if (offset < 0) {
+            return colors.size() > 1 || !TextUtils.isEmpty(wallpaperLink[0]);
+        }
+        try (FileInputStream input = new FileInputStream(file)) {
+            input.getChannel().position(offset);
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(input, null, options);
+            return options.outWidth > 0 && options.outHeight > 0
+                    && options.outWidth <= 8192 && options.outHeight <= 8192
+                    && (long) options.outWidth * options.outHeight <= 24_000_000L;
+        } catch (java.io.IOException | RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    public static ThemeInfo applyThemeFile(File file, String themeName, TLRPC.TL_theme theme, boolean temporary) {
+        if (!nabdhCanReadThemeFile(file) || themeName == null || themeName.trim().isEmpty()
+                || (theme == null && (themeName.indexOf('/') >= 0 || themeName.indexOf((char) 92) >= 0))) {
+            return null;
+        }
+        try {''', 1)
+
 target.write_text(source, encoding="utf-8")
 print("Registered 4 bundled NabdhGram theme assets in native Telegram selector.")
 
