@@ -11,6 +11,9 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -70,6 +73,7 @@ public final class DialogCellProbe extends Instrumentation {
         if (!Boolean.TRUE.equals(ownsCard.invoke(cell))) {
             throw new AssertionError("Fixture does not use production card rendering");
         }
+        exerciseSettingsRows(app, loader, density);
         exerciseNativeActions(loader, app);
         exerciseTray(cell, type, loader, width, density);
         exerciseController(cell, type, loader, width, density, app);
@@ -92,6 +96,49 @@ public final class DialogCellProbe extends Instrumentation {
             cell.setTranslationX(0);
             frame.recycle();
         }
+    }
+
+    private void exerciseSettingsRows(Context app, ClassLoader loader, float density) throws Exception {
+        Class<?> renderer = loader.loadClass("org.telegram.ui.Components.NabdhCompactSettings");
+        Method row = renderer.getMethod("row", Context.class, LinearLayout.class, String.class,
+                String.class, int.class, Runnable.class);
+        Field rtl = loader.loadClass("org.telegram.messenger.LocaleController").getField("isRTL");
+        boolean original = rtl.getBoolean(null);
+        int icon = loader.loadClass("org.telegram.messenger.R$drawable").getField("settings_chat").getInt(null);
+        int[] clicks = {0};
+        try {
+            for (boolean arabic : new boolean[]{false, true}) {
+                rtl.setBoolean(null, arabic);
+                LinearLayout screen = new LinearLayout(app);
+                screen.setOrientation(LinearLayout.VERTICAL);
+                String title = arabic ? "إدارة التخزين الذكية" : "Smart Storage";
+                String summary = arabic ? "تعرض هذه الشاشة تفاصيل مساحة التخزين المحلية والوسائط وقواعد البيانات وملفات التطبيق الأخرى"
+                        : "Inspect the local storage footprint for media, databases and other app files without deleting anything.";
+                row.invoke(null, app, screen, title, summary, icon, (Runnable) () -> clicks[0]++);
+                int width = Math.round(270 * density);
+                screen.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                screen.layout(0, 0, width, screen.getMeasuredHeight());
+                LinearLayout group = (LinearLayout) screen.getChildAt(0);
+                LinearLayout option = (LinearLayout) group.getChildAt(0);
+                View leading = option.getChildAt(0);
+                View trailing = option.getChildAt(2);
+                LinearLayout labels = (LinearLayout) option.getChildAt(1);
+                TextView description = (TextView) labels.getChildAt(1);
+                if (!((arabic ? trailing : leading) instanceof ImageView)
+                        || leading.getRight() > labels.getLeft()
+                        || labels.getRight() > trailing.getLeft()
+                        || description.getLineCount() <= 2
+                        || description.getLayout().getEllipsisCount(description.getLineCount() - 1) != 0
+                        || !option.performClick()) {
+                    throw new AssertionError("Settings row layout/action failed for RTL=" + arabic);
+                }
+            }
+        } finally {
+            rtl.setBoolean(null, original);
+        }
+        if (clicks[0] != 2) throw new AssertionError("Unexpected settings callback count");
+        status("Nabdh settings: physical RTL/LTR placement, full summary and row callback verified");
     }
 
     private void status(String message) {

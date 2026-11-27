@@ -83,16 +83,18 @@ marker = '''        nabdhFeatureRow(context, content, 602);
 p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
 
         org.telegram.ui.Components.NabdhCompactSettings.row(context, content,
-                org.telegram.messenger.LocaleController.isRTL ? "نمط الواجهة" : "UI style",
-                org.telegram.messenger.LocaleController.isRTL
-                        ? "اختر مظهر البطاقات وعناصر الواجهة" : "Choose the appearance of cards and controls",
+                NabdhStrings.get(context, R.string.NabdhUiStyleTitle),
+                NabdhStrings.get(context, R.string.NabdhUiStyleSummary),
                 R.drawable.settings_chat,
                 () -> {
-                    final String[] styles = org.telegram.messenger.LocaleController.isRTL
-                            ? new String[]{"كلاسيكي", "ماتيريال 3", "زجاج سيري", "ماتيريال 3 مع الزجاج"}
-                            : new String[]{"Classic", "Material 3", "Siri Glass", "Material 3 with Glass"};
+                    final String[] styles = {
+                        NabdhStrings.get(context, R.string.NabdhUiStyleClassic),
+                        NabdhStrings.get(context, R.string.NabdhUiStyleMaterial),
+                        NabdhStrings.get(context, R.string.NabdhUiStyleGlass),
+                        NabdhStrings.get(context, R.string.NabdhUiStyleHybrid)
+                    };
                     new android.app.AlertDialog.Builder(context)
-                            .setTitle(org.telegram.messenger.LocaleController.isRTL ? "نمط الواجهة" : "UI style")
+                            .setTitle(NabdhStrings.get(context, R.string.NabdhUiStyleTitle))
                             .setSingleChoiceItems(styles,
                                     org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle(),
                                     (dialog, which) -> {
@@ -108,10 +110,10 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
                 });
 
         org.telegram.ui.Components.NabdhCompactSettings.header(context, content,
-                org.telegram.messenger.LocaleController.isRTL ? "التخزين" : "Storage");
+                NabdhStrings.get(context, R.string.NabdhStorageSection));
         org.telegram.ui.Components.NabdhCompactSettings.row(context, content,
-                org.telegram.messenger.LocaleController.isRTL ? "إدارة التخزين الذكية" : "Smart Storage",
-                org.telegram.messenger.LocaleController.isRTL ? "تحليل مساحة التطبيق والبيانات دون حذفها" : "Analyze app data without deleting it",
+                NabdhStrings.get(context, R.string.NabdhStorageAuditTitle),
+                NabdhStrings.get(context, R.string.NabdhStorageAuditSummary),
                 R.drawable.settings_data,
                 () -> org.telegram.ui.Components.NabdhStorageAudit.show(context));
 
@@ -159,6 +161,15 @@ page.write_text(p, encoding="utf-8")
 
 strings = {
     "values": {
+        "NabdhUiStyleTitle": "UI style",
+        "NabdhUiStyleSummary": "Choose the appearance of cards and controls",
+        "NabdhUiStyleClassic": "Classic",
+        "NabdhUiStyleMaterial": "Material 3",
+        "NabdhUiStyleGlass": "Siri Glass",
+        "NabdhUiStyleHybrid": "Material 3 with Glass",
+        "NabdhStorageSection": "Storage",
+        "NabdhStorageAuditTitle": "Smart Storage",
+        "NabdhStorageAuditSummary": "See how much space app data uses",
         "NabdhPersonalizeSection": "Layout and message bubbles",
         "NabdhPersonalizeHome": "Main screen layout",
         "NabdhPersonalizeHomeInfo": "Title, stories, search, compose button and folder tabs",
@@ -168,6 +179,15 @@ strings = {
         "NabdhPersonalizeCameraInfo": "Lens, stabilization, mirror, resolution and zoom",
     },
     "values-ar": {
+        "NabdhUiStyleTitle": "نمط الواجهة",
+        "NabdhUiStyleSummary": "اختر مظهر البطاقات وعناصر الواجهة",
+        "NabdhUiStyleClassic": "كلاسيكي",
+        "NabdhUiStyleMaterial": "ماتيريال 3",
+        "NabdhUiStyleGlass": "زجاج سيري",
+        "NabdhUiStyleHybrid": "ماتيريال 3 مع الزجاج",
+        "NabdhStorageSection": "التخزين",
+        "NabdhStorageAuditTitle": "إدارة التخزين الذكية",
+        "NabdhStorageAuditSummary": "اعرف ما يشغل مساحة بيانات التطبيق",
         "NabdhPersonalizeSection": "التنسيق وفقاعات المحادثات",
         "NabdhPersonalizeHome": "تنسيق الشاشة الرئيسية",
         "NabdhPersonalizeHomeInfo": "العنوان والقصص والبحث والزر العائم والمجلدات",
