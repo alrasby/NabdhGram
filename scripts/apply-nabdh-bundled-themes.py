@@ -350,22 +350,6 @@ replace_cell(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                         android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         block.setMargins(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
-        // Decode a bounded sample of the actual embedded WPS JPEG only when
-        // opening details (never while scrolling the four miniature cards).
-        android.graphics.Bitmap wallpaper = nabdhBundledWallpaper(context, selected);
-        if (wallpaper != null) {
-            android.graphics.drawable.BitmapDrawable actual =
-                    new android.graphics.drawable.BitmapDrawable(context.getResources(), wallpaper);
-            actual.setGravity(android.view.Gravity.FILL);
-            mock.setBackground(actual);
-            mock.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                @Override public void getOutline(View view, android.graphics.Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
-                            AndroidUtilities.dp(16));
-                }
-            });
-            mock.setClipToOutline(true);
-        }
         content.addView(mock, block);
 
         android.widget.TextView chatTitle = new android.widget.TextView(context);
@@ -440,11 +424,7 @@ replace_cell(
                 AndroidUtilities.dp(10), AndroidUtilities.dp(9));
         mock.addView(settings);
         android.widget.TextView hint = new android.widget.TextView(context);
-        hint.setText(wallpaper != null
-                ? (arabic ? "معاينة ثابتة للخلفية الأصلية وألوان الثيم."
-                         : "Fixed preview of the original wallpaper and theme colors.")
-                : (arabic ? "معاينة الألوان؛ لم تتوفر خلفية مضمّنة صالحة."
-                          : "Color preview; no readable embedded wallpaper found."));
+        hint.setText(arabic ? "معاينة ألوان الثيم" : "Theme color preview");
         hint.setTextColor(dim);
         hint.setTextSize(12);
         content.addView(hint);
@@ -589,6 +569,34 @@ replace_cell(
                                 });
         shown[0] = dialog.create();
         fragment.showDialog(shown[0]);
+        final android.content.Context application = context.getApplicationContext();
+        final java.lang.ref.WeakReference<android.widget.LinearLayout> previewRef =
+                new java.lang.ref.WeakReference<>(mock);
+        final java.lang.ref.WeakReference<android.widget.TextView> hintRef =
+                new java.lang.ref.WeakReference<>(hint);
+        Utilities.globalQueue.postRunnable(() -> {
+            android.graphics.Bitmap wallpaper = nabdhBundledWallpaper(application, selected);
+            if (wallpaper == null) return;
+            AndroidUtilities.runOnUIThread(() -> {
+                android.widget.LinearLayout preview = previewRef.get();
+                android.widget.TextView description = hintRef.get();
+                if (preview == null || !preview.isAttachedToWindow()) return;
+                android.graphics.drawable.BitmapDrawable actual =
+                        new android.graphics.drawable.BitmapDrawable(preview.getResources(), wallpaper);
+                actual.setGravity(android.view.Gravity.FILL);
+                preview.setBackground(actual);
+                preview.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override public void getOutline(View view, android.graphics.Outline outline) {
+                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
+                                AndroidUtilities.dp(16));
+                    }
+                });
+                preview.setClipToOutline(true);
+                if (description != null) {
+                    description.setText(arabic ? "الخلفية الأصلية وألوان الثيم" : "Original wallpaper and theme colors");
+                }
+            });
+        });
     }
 
     private static void nabdhRememberTheme(SharedPreferences prefs, String key, Theme.ThemeInfo theme) {
@@ -603,11 +611,20 @@ replace_cell(
         return false;
     }
 
+    private static final android.util.LruCache<String, android.graphics.Bitmap> nabdhPreviewCache =
+            new android.util.LruCache<String, android.graphics.Bitmap>(4 * 1024 * 1024) {
+                @Override protected int sizeOf(String name, android.graphics.Bitmap bitmap) {
+                    return bitmap.getAllocationByteCount();
+                }
+            };
+
     private static android.graphics.Bitmap nabdhBundledWallpaper(
             android.content.Context context, Theme.ThemeInfo theme) {
         if (theme.assetName == null || !theme.assetName.startsWith("nabdh_")) {
             return null;
         }
+        android.graphics.Bitmap cached = nabdhPreviewCache.get(theme.assetName);
+        if (cached != null) return cached;
         // Bundled files are verified during the overlay step (max 5 MiB).
         // Keep the same limit here to protect memory on lower-end phones.
         try (java.io.InputStream input = context.getAssets().open(theme.assetName);
@@ -634,12 +651,14 @@ replace_cell(
                     if (options.outWidth <= 0 || options.outHeight <= 0) return null;
                     options.inJustDecodeBounds = false;
                     options.inSampleSize = 1;
-                    while (options.outWidth / options.inSampleSize > 960
-                            || options.outHeight / options.inSampleSize > 1280) {
+                    while (options.outWidth / options.inSampleSize > 720
+                            || options.outHeight / options.inSampleSize > 960) {
                         options.inSampleSize *= 2;
                     }
-                    return android.graphics.BitmapFactory.decodeByteArray(data,
-                            start, length, options);
+                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(
+                            data, start, length, options);
+                    if (bitmap != null) nabdhPreviewCache.put(theme.assetName, bitmap);
+                    return bitmap;
                 }
             }
         } catch (Exception ignored) {

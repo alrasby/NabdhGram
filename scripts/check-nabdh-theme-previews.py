@@ -66,11 +66,14 @@ assert "palette.get(Theme.key_chat_outBubble" in preview
 assert "AlertsCreator.createThemeCreateDialog" not in preview  # existing creation entry remains in ThemeActivity
 # Phase 2: full preview with real local embedded asset wallpaper,
 # bounded decode, explicit clone, and native persistent theme selection.
-assert "nabdhBundledWallpaper(context, selected)" in preview
+assert "nabdhBundledWallpaper(application, selected)" in preview
 assert "context.getAssets().open(theme.assetName)" in preview
 assert "total > 5 * 1024 * 1024" in preview
 assert "android.graphics.BitmapFactory.decodeByteArray" in preview
-assert "mock.setClipToOutline(true);" in preview
+assert "preview.setClipToOutline(true);" in preview
+assert "!preview.isAttachedToWindow()" in preview
+assert "bitmap.getAllocationByteCount()" in preview
+assert "Utilities.globalQueue.postRunnable" in preview
 assert "new android.widget.ScrollView(context)" in preview
 assert "shown[0] = dialog.create();" in preview
 assert '"Personal copy"' in preview
