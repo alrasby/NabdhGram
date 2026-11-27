@@ -14,15 +14,17 @@ public final class NabdhAppearancePrefs {
     // Independent from Telegram themeconfig and from icon_style.
     private static final String UI_STYLE = "ui_style_v2";
     public static final int UI_CLASSIC = 0, UI_MATERIAL = 1, UI_GLASS = 2, UI_HYBRID = 3;
+    // Retain the NabdhGram appearance for users who never picked a style.
+    private static final int DEFAULT_UI_STYLE = UI_HYBRID;
     private static volatile int cachedUiStyle = -1;
     public static int uiStyle() {
         int value = cachedUiStyle;
         if (value >= 0) return value;
         Context context = org.telegram.messenger.ApplicationLoader.applicationContext;
-        if (context == null) return UI_CLASSIC;
+        if (context == null) return DEFAULT_UI_STYLE;
         value = context.getSharedPreferences(STORE, Context.MODE_PRIVATE)
-                .getInt(UI_STYLE, UI_CLASSIC);
-        cachedUiStyle = value >= 0 && value <= UI_HYBRID ? value : UI_CLASSIC;
+                .getInt(UI_STYLE, DEFAULT_UI_STYLE);
+        cachedUiStyle = value >= UI_CLASSIC && value <= UI_HYBRID ? value : DEFAULT_UI_STYLE;
         return cachedUiStyle;
     }
     public static void setUiStyle(Context context, int style) {

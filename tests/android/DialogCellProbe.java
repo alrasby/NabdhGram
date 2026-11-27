@@ -28,7 +28,7 @@ import android.view.ViewGroup;
 public final class DialogCellProbe extends Instrumentation {
     private static final String PERSISTED_THEME = "NabdhGram • Soft Mint";
     private static final String PERSISTED_NIGHT_THEME = "NabdhGram • Dark Glass";
-    private static final int PERSISTED_STYLE = 2;
+    private static final int PERSISTED_STYLE = 0;
     private String phase;
 
     @Override public void onCreate(Bundle arguments) {
@@ -133,7 +133,17 @@ public final class DialogCellProbe extends Instrumentation {
         Method ownsCard = type.getMethod("nabdhOwnsCard");
         Class<?> appearance = loader.loadClass("org.telegram.ui.Components.NabdhAppearancePrefs");
         Method chooseStyle = appearance.getMethod("setUiStyle", Context.class, int.class);
-        if (!Integer.valueOf(0).equals(appearance.getMethod("uiStyle").invoke(null))
+        Method currentStyle = appearance.getMethod("uiStyle");
+        if (app.getSharedPreferences("nabdh_appearance_packs_v1", Context.MODE_PRIVATE)
+                .contains("ui_style_v2")) {
+            throw new AssertionError("Default style check requires an install with no saved style");
+        }
+        if (!Integer.valueOf(3).equals(currentStyle.invoke(null))
+                || !Boolean.TRUE.equals(ownsCard.invoke(cell))) {
+            throw new AssertionError("Install with no saved style lost the default NabdhGram cards");
+        }
+        chooseStyle.invoke(null, app, 0);
+        if (!Integer.valueOf(0).equals(currentStyle.invoke(null))
                 || Boolean.TRUE.equals(ownsCard.invoke(cell))
                 || !Boolean.TRUE.equals(type.getMethod("nabdhCanSwipe").invoke(cell))) {
             throw new AssertionError("Classic should preserve native rows and swipe eligibility");

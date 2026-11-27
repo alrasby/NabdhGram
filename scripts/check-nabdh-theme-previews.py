@@ -115,7 +115,8 @@ prefs = (root / "java/org/telegram/ui/Components/NabdhAppearancePrefs.java").rea
 surface = (root / "java/org/telegram/ui/Components/NabdhGlassRowDecoration.java").read_text(encoding="utf-8")
 category = (root / "java/org/telegram/ui/NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
 assert '"ui_style_v2"' in prefs
-assert ".getInt(UI_STYLE, UI_CLASSIC)" in prefs
+assert "DEFAULT_UI_STYLE = UI_HYBRID" in prefs
+assert ".getInt(UI_STYLE, DEFAULT_UI_STYLE)" in prefs
 assert 'putInt(UI_STYLE, style)' in prefs
 assert 'NabdhAppearancePrefs.surfaceRadius()' in surface
 assert 'NabdhAppearancePrefs.glassSurface()' in surface
