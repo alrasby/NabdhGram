@@ -33,6 +33,7 @@ public final class NabdhAppearancePrefs {
         cachedUiStyle = style;
     }
     public static boolean glassSurface() { return uiStyle() >= UI_GLASS; }
+    public static boolean isClassic() { return uiStyle() == UI_CLASSIC; }
     public static int surfaceRadius() {
         switch (uiStyle()) {
             case UI_CLASSIC: return 0;

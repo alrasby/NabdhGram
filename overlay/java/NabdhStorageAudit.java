@@ -1,6 +1,5 @@
 package org.telegram.ui.Components;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
@@ -12,6 +11,7 @@ import java.util.HashSet;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.telegram.messenger.LocaleController;
+import org.telegram.ui.ActionBar.AlertDialog;
 
 /** Read-only private storage inventory; no permissions, network, or deletion. */
 public final class NabdhStorageAudit {

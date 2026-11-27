@@ -8,10 +8,10 @@ root = Path(sys.argv[1]) / "TMessagesProj/src/main/java/org/telegram/ui"
 changes = [
     ("SettingsActivity.java",
      "        listView.setSections();\n",
-     "        listView.setSections();\n        // NabdhGram Glass: rounded touch feedback on native settings rows.\n        listView.setSelectorRadius(17);\n"),
+     "        listView.setSections();\n        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) listView.setSelectorRadius(17);\n"),
     ("ProfileActivity.java",
      "        listView.setSections();\n        listView.applyPaddingToSections = false;",
-     "        listView.setSections();\n        // NabdhGram Glass: rounded profile action selection.\n        listView.setSelectorRadius(17);\n        listView.applyPaddingToSections = false;"),
+     "        listView.setSections();\n        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) listView.setSelectorRadius(17);\n        listView.applyPaddingToSections = false;"),
 ]
 for name, anchor, replacement in changes:
     p = root / name
@@ -36,26 +36,28 @@ if source.count(old) != 1:
 source = source.replace(old, """        canvas.clipRect(action.rect);
         // Consistent Glass tiles behind all profile action icons, with a
         // stronger native press state. These never intercept touch handling.
-        int nabdhAccent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
         final int nabdhStyle = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();
-        final float nabdhRadius = nabdhStyle == 0 ? 0f : nabdhStyle == 1
-                ? Math.min(getRoundRadius(), AndroidUtilities.dp(16))
-                : nabdhStyle == 2 ? Math.min(getRoundRadius(), AndroidUtilities.dp(24))
-                : getRoundRadius();
-        nabdhPressPaint.setStyle(Paint.Style.FILL);
-        nabdhPressPaint.setColor(android.graphics.Color.argb(hit == action ? 52 : nabdhStyle == 0 ? 0 : nabdhStyle == 1 ? 30 : 19,
-                android.graphics.Color.red(nabdhAccent),
-                android.graphics.Color.green(nabdhAccent),
-                android.graphics.Color.blue(nabdhAccent)));
-        canvas.drawRoundRect(action.rect, nabdhRadius, nabdhRadius, nabdhPressPaint);
-        nabdhPressPaint.setStyle(Paint.Style.STROKE);
-        nabdhPressPaint.setStrokeWidth(AndroidUtilities.dpf2(.75f));
-        nabdhPressPaint.setColor(android.graphics.Color.argb(nabdhStyle < 2 ? 0 : hit == action ? 95 : 53,
-                android.graphics.Color.red(nabdhAccent),
-                android.graphics.Color.green(nabdhAccent),
-                android.graphics.Color.blue(nabdhAccent)));
-        canvas.drawRoundRect(action.rect, nabdhRadius, nabdhRadius, nabdhPressPaint);
-        nabdhPressPaint.setStyle(Paint.Style.FILL);
+        if (nabdhStyle != NabdhAppearancePrefs.UI_CLASSIC) {
+            int nabdhAccent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+            final float nabdhRadius = nabdhStyle == 1
+                    ? Math.min(getRoundRadius(), AndroidUtilities.dp(16))
+                    : nabdhStyle == 2 ? Math.min(getRoundRadius(), AndroidUtilities.dp(24))
+                    : getRoundRadius();
+            nabdhPressPaint.setStyle(Paint.Style.FILL);
+            nabdhPressPaint.setColor(android.graphics.Color.argb(hit == action ? 52 : nabdhStyle == 1 ? 30 : 19,
+                    android.graphics.Color.red(nabdhAccent),
+                    android.graphics.Color.green(nabdhAccent),
+                    android.graphics.Color.blue(nabdhAccent)));
+            canvas.drawRoundRect(action.rect, nabdhRadius, nabdhRadius, nabdhPressPaint);
+            nabdhPressPaint.setStyle(Paint.Style.STROKE);
+            nabdhPressPaint.setStrokeWidth(AndroidUtilities.dpf2(.75f));
+            nabdhPressPaint.setColor(android.graphics.Color.argb(nabdhStyle < 2 ? 0 : hit == action ? 95 : 53,
+                    android.graphics.Color.red(nabdhAccent),
+                    android.graphics.Color.green(nabdhAccent),
+                    android.graphics.Color.blue(nabdhAccent)));
+            canvas.drawRoundRect(action.rect, nabdhRadius, nabdhRadius, nabdhPressPaint);
+            nabdhPressPaint.setStyle(Paint.Style.FILL);
+        }
 
         updateBounds(action);""", 1)
 old = "                    hit.bounce.setPressed(true);"

@@ -107,6 +107,9 @@ assert "fixed.addView(mock, block)" in preview
 assert "content.removeView(mock)" in preview
 assert ".setView(fixed)" in preview
 assert '"Name personal copy"' in preview
+assert 'android.app.AlertDialog' not in preview
+assert 'Theme.getColor(Theme.key_dialogTextBlack)' in preview
+assert 'Theme.createEditTextDrawable(context, true)' in preview
 assert 'String copyName = chosen + ".attheme";' in preview
 assert "Theme.getTheme(copyName)" in preview
 assert "nabdhInvalidThemeName(chosen)" in preview

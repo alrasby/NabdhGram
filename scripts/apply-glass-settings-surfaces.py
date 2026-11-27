@@ -323,6 +323,7 @@ list_src = list_src.replace(native_draw_mode, native_draw_mode + """
 section_helper = """    private boolean nabdhSuppressLegacySectionFill;
 
     public void nabdhHideSectionBackgroundOnly() {
+        if (NabdhAppearancePrefs.isClassic()) return;
         // Telegram 13.2.x can paint group fills using bitmap decoration,
         // independent of the legacy drawSectionBackground callback.
         // Disable BOTH fill paths without removing section row geometry.
@@ -384,11 +385,13 @@ for name in GLASS_SETTINGS_SCREENS:
             else "        listView.setSections();"
     if source.count(anchor) != 1:
         raise SystemExit(f"{name}: settings list anchor changed ({source.count(anchor)} occurrences)")
-    radius = "" if name == "ProfileActivity.java" else "        listView.setSelectorRadius(17);\n"
+    radius = "" if name == "ProfileActivity.java" else (
+        "        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) listView.setSelectorRadius(17);\n"
+    )
     # The collapsing Profile hero uses custom visuals; other settings lists
     # require an opaque page canvas to avoid displaying previous fragments.
     page_canvas = "" if name == "ProfileActivity.java" else (
-        "        listView.setBackground("
+        "        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) listView.setBackground("
         "org.telegram.ui.Components.NabdhGlassRowDecoration.newOpaquePageBackground());\n"
     )
     source = source.replace(anchor, anchor + """
@@ -685,12 +688,15 @@ profile_path = ui / "ProfileActivity.java"
 profile_src = profile_path.read_text(encoding="utf-8")
 old_scrim = ".setScrimViewBackground(listView.getClipBackground(view))"
 new_scrim = """.setRoundRadius(
-                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                        !org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()
+                                && org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
                                 ? org.telegram.messenger.AndroidUtilities.dp(20) : 0,
-                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                        !org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()
+                                && org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
                                 ? org.telegram.messenger.AndroidUtilities.dp(10) : 0)
                     .setScrimViewBackground(
-                        org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
+                        !org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()
+                                && org.telegram.ui.Components.NabdhGlassRowDecoration.isGlassCard(view)
                                 ? org.telegram.ui.Components.NabdhGlassRowDecoration.newProfileScrim()
                                 : listView.getClipBackground(view))"""
 if profile_src.count(old_scrim) != 3:

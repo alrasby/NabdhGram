@@ -559,23 +559,29 @@ replace_cell(
                                     // Prompt before importing; cancellation changes nothing.
                                     android.widget.EditText name = new android.widget.EditText(context);
                                     name.setSingleLine(true);
+                                    name.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+                                    name.setHintTextColor(Theme.getColor(Theme.key_dialogTextHint));
+                                    name.setBackground(Theme.createEditTextDrawable(context, true));
                                     name.setHint(arabic ? "اسم الثيم" : "Theme name");
                                     name.setFilters(new android.text.InputFilter[]{
                                             new android.text.InputFilter.LengthFilter(60)});
                                     android.widget.LinearLayout nameBox = new android.widget.LinearLayout(context);
+                                    nameBox.setLayoutDirection(arabic ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+                                    name.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
                                     nameBox.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(8),
                                             AndroidUtilities.dp(20), AndroidUtilities.dp(8));
                                     nameBox.addView(name, new android.widget.LinearLayout.LayoutParams(
                                             android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                                             android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
-                                    android.app.AlertDialog naming = new android.app.AlertDialog.Builder(context)
+                                    org.telegram.ui.ActionBar.AlertDialog naming =
+                                            new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
                                             .setTitle(arabic ? "تسمية النسخة الشخصية" : "Name personal copy")
                                             .setView(nameBox)
                                             .setNegativeButton(arabic ? "إلغاء" : "Cancel", null)
                                             .setPositiveButton(arabic ? "إنشاء" : "Create", null)
                                             .create();
-                                    naming.setOnShowListener(ignored -> {
-                                        naming.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+                                    naming.show();
+                                    naming.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
                                                 .setOnClickListener(button -> {
                                             String chosen = name.getText().toString().trim();
                                             if (chosen.isEmpty() || chosen.equals(".") || chosen.equals("..")
@@ -604,9 +610,7 @@ replace_cell(
                                                         .show(fragment.getParentActivity(), copy);
                                             }
                                         });
-                                        name.requestFocus();
-                                    });
-                                    naming.show();
+                                    name.requestFocus();
                                 });
         }
         shown[0] = dialog.create();

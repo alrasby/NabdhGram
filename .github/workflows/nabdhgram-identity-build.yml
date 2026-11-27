@@ -1074,7 +1074,7 @@ jobs:
           jq -e --arg repo "$GITHUB_REPOSITORY" '
             .head_repository.full_name == $repo and
             .path == ".github/workflows/nabdhgram-identity-build.yml" and
-            .event == "pull_request" and .conclusion == "success" and
+            .event == "pull_request" and
             (.pull_requests | length) == 1
           ' <<< "$proof" >/dev/null
           tested="$(jq -er '.head_sha' <<< "$proof")"
@@ -1085,6 +1085,22 @@ jobs:
           # the application and tests being compared are exactly what ran.
           git merge-base --is-ancestor "$tested_base" "$tested"
           git diff --exit-code "$tested" HEAD -- . ':(exclude).github/workflows/**'
+          # Phone and validation builds run concurrently and can finish out of order.
+          deadline=$((SECONDS + 1800))
+          while [[ "$(jq -r '.status' <<< "$proof")" != completed ]]; do
+            if (( SECONDS >= deadline )); then
+              echo "::error::Timed out waiting for Android validation run $VALIDATION_RUN"
+              exit 1
+            fi
+            echo "Waiting for Android validation run $VALIDATION_RUN"
+            sleep 20
+            proof="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN")"
+          done
+          conclusion="$(jq -r '.conclusion' <<< "$proof")"
+          if [[ "$conclusion" != success ]]; then
+            echo "::error::Android validation run $VALIDATION_RUN concluded $conclusion"
+            exit 1
+          fi
           evidence="$(mktemp -d)"
           gh run download "$VALIDATION_RUN" --name nabdh-card-android-evidence --dir "$evidence"
           grep -Fq 'DIALOG_CELL_PASS' "$evidence/dialog-android.log"

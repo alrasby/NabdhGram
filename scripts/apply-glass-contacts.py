@@ -11,7 +11,7 @@ if s.count(anchor) != 1:
     raise SystemExit("Contacts list anchor changed")
 s = s.replace(anchor, anchor + """        // NabdhGram Glass: use the existing Telegram selector with rounded
         // corners. No changes to contacts adapters, permissions or actions.
-        listView.setSelectorRadius(17);
+        if (!org.telegram.ui.Components.NabdhAppearancePrefs.isClassic()) listView.setSelectorRadius(17);
 """, 1)
 # IMPORTANT: preserve Telegram's native Contacts section decorator and all
 # offsets/fast scroll/clip behavior; hiding the decorator itself previously
