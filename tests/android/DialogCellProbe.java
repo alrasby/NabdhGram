@@ -329,20 +329,32 @@ public final class DialogCellProbe extends Instrumentation {
                         android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
                 android.graphics.drawable.Drawable icon = manager.getDrawable(
                         activity.packageName, activity.getIconResource(), activity.applicationInfo);
-                if (icon == null || icon instanceof android.graphics.drawable.AdaptiveIconDrawable) {
-                    throw new AssertionError("Incorrect Android raster icon for " + alias);
+                if (!(icon instanceof android.graphics.drawable.AdaptiveIconDrawable)) {
+                    throw new AssertionError("Missing Android adaptive icon for " + alias);
+                }
+                android.graphics.drawable.Drawable background =
+                        ((android.graphics.drawable.AdaptiveIconDrawable) icon).getBackground();
+                frame.eraseColor(0);
+                background.setBounds(0, 0, 96, 96);
+                background.draw(canvas);
+                int[] samples = new int[96 * 96];
+                frame.getPixels(samples, 0, 96, 0, 0, 96, 96);
+                for (int pixel : samples) {
+                    if ((pixel >>> 24) != 255) {
+                        throw new AssertionError("Launcher can replace transparent backing for " + alias);
+                    }
                 }
                 frame.eraseColor(0);
                 icon.setBounds(0, 0, 96, 96);
                 icon.draw(canvas);
-                if ((frame.getPixel(0, 0) >>> 24) != 0 || (frame.getPixel(48, 48) >>> 24) == 0) {
-                    throw new AssertionError("Android icon corner or center is incorrect for " + alias);
+                if ((frame.getPixel(48, 48) >>> 24) != 255) {
+                    throw new AssertionError("Android icon center is incorrect for " + alias);
                 }
             }
         } finally {
             frame.recycle();
         }
-        status("Launcher aliases: four packaged rasters retain transparent corners");
+        status("Launcher aliases: four installed adaptive icons have opaque backing");
     }
 
     private void exerciseSettingsRows(Context app, ClassLoader loader, float density) throws Exception {

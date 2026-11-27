@@ -114,16 +114,25 @@ for activity, mipmap in (
             fail(activity + ": compiled launcher icon resource missing: " + attr)
         if int(icon_ref.group(1), 16) != int(expected_ref.group(1), 16):
             fail(activity + ": launcher maps to wrong resource " + attr)
-    # Confirm the selected resource has density PNGs and cannot resolve to
-    # an API-26 adaptive XML that a launcher may fill with black.
     with ZipFile(apk) as package:
         modern = [entry for entry in package.namelist() if entry.endswith("/" + mipmap + ".xml")]
-        pngs = [entry for entry in package.namelist() if entry.endswith("/" + mipmap + ".png")]
-        if modern or len(pngs) != 5:
-            fail(activity + ": expected five raster densities and no adaptive override")
-        for entry in pngs:
-            with Image.open(BytesIO(package.read(entry))) as bitmap:
-                alpha = bitmap.convert("RGBA").getchannel("A")
-                if alpha.getpixel((0, 0)) != 0 or alpha.getextrema()[1] != 255:
-                    fail(activity + ": packaged icon lost transparent corners")
-print("PASS: all four selectable aliases resolve to their own transparent raster artwork")
+        backing = [entry for entry in package.namelist() if entry.endswith("/" + mipmap + "_background.png")]
+        if len(modern) != 1 or len(backing) != 1:
+            fail(activity + ": adaptive icon or opaque backing is missing")
+        with Image.open(BytesIO(package.read(backing[0]))) as bitmap:
+            if bitmap.convert("RGBA").getchannel("A").getextrema() != (255, 255):
+                fail(activity + ": adaptive backing is not completely opaque")
+    compiled = subprocess.run([str(tool), "dump", "xmltree", str(apk), modern[0]],
+                              capture_output=True, text=True, timeout=40)
+    if compiled.returncode or "E: adaptive-icon" not in compiled.stdout:
+        fail(activity + ": invalid compiled adaptive icon XML")
+    for layer in ("background", "foreground"):
+        element = re.search(r"(?m)^\s*E: " + layer + r"\b[\s\S]*?(?=^\s*E: |\Z)",
+                            compiled.stdout)
+        ref = re.search(r"android:drawable[^\n]*?@0x([0-9a-fA-F]+)", element.group(0)) if element else None
+        expected = re.search(
+            r"(?m)^\s*spec resource\s+(0x[0-9a-fA-F]+)\s+[^\n]*:drawable/"
+            + re.escape(mipmap + "_" + layer) + r":", resources)
+        if not ref or not expected or int(ref.group(1), 16) != int(expected.group(1), 16):
+            fail(activity + ": compiled adaptive " + layer + " points to the wrong artwork")
+print("PASS: all four selectable aliases have installed opaque adaptive backing and approved artwork")

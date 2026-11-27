@@ -4,6 +4,7 @@
 No public releases or third-party installations exist yet. Legacy and
 experimental aliases are intentionally removed, not migrated.
 """
+from math import atan2, cos, pi, sin
 from pathlib import Path
 import sys
 from PIL import Image
@@ -85,18 +86,39 @@ def clean_edge_fringe(image):
                 target[x, y] = (*nearest[:3], alpha)
     return corrected
 
-# Adaptive icons show the center 72dp of a 108dp layer. Keep the circular
-# artwork inside this viewport and its circular safe area on all launchers.
-# Adaptive layers are kept for the downloadable icon pack only.
-# The installed aliases use the unchanged PNGs at every Android version.
+def adaptive_background(icon):
+    """Extend the artwork's perimeter colors under the launcher mask."""
+    center = (icon.width - 1) / 2
+    perimeter = []
+    for angle in range(360):
+        x, y = cos(angle * pi / 180), sin(angle * pi / 180)
+        for radius in range(int(center * 2 ** .5), 0, -1):
+            point = (round(center + radius * x), round(center + radius * y))
+            if (0 <= point[0] < icon.width and 0 <= point[1] < icon.height
+                    and icon.getpixel(point)[3] >= 248):
+                sample = max(0, radius - 2)
+                perimeter.append(icon.getpixel((round(center + sample * x),
+                                                round(center + sample * y)))[:3])
+                break
+        else:
+            raise SystemExit("Approved launcher artwork has no opaque perimeter")
+    size = 256
+    center = (size - 1) / 2
+    background = Image.new("RGB", (size, size))
+    background.putdata([
+        perimeter[round(atan2(y - center, x - center) * 180 / pi) % 360]
+        for y in range(size) for x in range(size)
+    ])
+    return background
+
+
+# The visible icon occupies about 72dp of a 108dp layer. Keep the original
+# mark prominent and supply opaque, art-matched pixels beyond its edge.
 ADAPTIVE_CANVAS = 1080
-ADAPTIVE_SAFE_FRACTION = 0.60
-CIRCULAR_SAFE_FRACTION = 0.60
-IPHONE_EXPERIMENT_FRACTION = 0.76
-export_res = root / "nabdh-icon-export-res"
-modern = export_res / "mipmap-anydpi-v26"
+ARTWORK_FRACTION = 0.76
+modern = res / "mipmap-anydpi-v26"
 modern.mkdir(parents=True, exist_ok=True)
-drawable = export_res / "drawable-nodpi"
+drawable = res / "drawable-nodpi"
 drawable.mkdir(parents=True, exist_ok=True)
 for slug, _, _, _, _ in VARIANTS:
     icon = compose_icon(slug)
@@ -108,10 +130,9 @@ for slug, _, _, _, _ in VARIANTS:
         scaled.save(directory / ("nabdh_icon_" + slug + ".png"),
                     format="PNG", optimize=True)
 
-    fraction = (CIRCULAR_SAFE_FRACTION if slug in ("silver", "dark", "glass")
-                else IPHONE_EXPERIMENT_FRACTION if slug == "iphone"
-                else ADAPTIVE_SAFE_FRACTION)
-    side = round(ADAPTIVE_CANVAS * fraction)
+    side = round(ADAPTIVE_CANVAS * ARTWORK_FRACTION)
+    adaptive_background(icon).save(drawable / ("nabdh_icon_" + slug + "_background.png"),
+                                   format="PNG", optimize=True)
     foreground = Image.new("RGBA", (ADAPTIVE_CANVAS, ADAPTIVE_CANVAS),
                            (0, 0, 0, 0))
     artwork = clean_edge_fringe(icon).resize((side, side), Image.Resampling.LANCZOS)
@@ -123,7 +144,7 @@ for slug, _, _, _, _ in VARIANTS:
     (modern / ("nabdh_icon_" + slug + ".xml")).write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-        '    <background android:drawable="@android:color/transparent" />\n'
+        '    <background android:drawable="@drawable/nabdh_icon_' + slug + '_background" />\n'
         '    <foreground android:drawable="@drawable/nabdh_icon_'
         + slug + '_foreground" />\n'
         '</adaptive-icon>\n',

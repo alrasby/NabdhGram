@@ -180,39 +180,30 @@ for slug, alias, label in names:
     assert ('"' + alias + '"') in java, "Missing icon enum " + alias
     preview_reference = 'R.mipmap.nabdh_icon_' + slug
     assert preview_reference in java, "Wrong picker foreground: " + slug
-    # Validate the optional adaptive export independently of the installed icon.
-    export_res = root / "nabdh-icon-export-res"
     adaptive_name = "nabdh_icon_" + slug + ".xml"
-    assert not (res / "mipmap-anydpi-v26" / adaptive_name).exists(), "Installed alias can still load an adaptive backplate: " + slug
-    modern = export_res / "mipmap-anydpi-v26" / adaptive_name
+    modern = res / "mipmap-anydpi-v26" / adaptive_name
     assert modern.is_file(), "Missing adaptive icon for modern launchers: " + slug
     modern_xml = modern.read_text(encoding="utf-8")
     assert '<adaptive-icon' in modern_xml
-    assert '<background android:drawable="@android:color/transparent" />' in modern_xml, (
-        "Unexpected solid/synthesized launcher background: " + slug)
+    assert f'<background android:drawable="@drawable/nabdh_icon_{slug}_background" />' in modern_xml
+    backing = res / "drawable-nodpi" / f"nabdh_icon_{slug}_background.png"
+    with Image.open(backing) as image:
+        assert image.size == (256, 256) and image.mode == "RGB", "Backing must be opaque"
+        assert len(image.getcolors(65536)) > 1, "Backing must use the icon's perimeter colors"
+
     assert ('<foreground android:drawable="@drawable/nabdh_icon_' + slug +
             '_foreground" />') in modern_xml, "Wrong adaptive foreground: " + slug
     from xml.etree import ElementTree
     ElementTree.fromstring(modern_xml)
-    foreground = export_res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
+    foreground = res / "drawable-nodpi" / ("nabdh_icon_" + slug + "_foreground.png")
     with Image.open(foreground) as art:
         art.load()
         rgba = art.convert("RGBA")
         assert rgba.size == (1080, 1080), "Wrong adaptive canvas: " + slug
         bounds = rgba.getchannel("A").getbbox()
         assert bounds is not None, "Empty adaptive artwork: " + slug
-        circular = slug in ("silver", "dark", "glass")
-        inset = 210 if circular else 120
-        assert bounds[0] >= inset and bounds[1] >= inset and (
-            bounds[2] <= 1080 - inset and bounds[3] <= 1080 - inset), (
-            "Adaptive icon exceeds its mask safe area: " + slug)
-        assert bounds[2] - bounds[0] > (590 if circular else 730), (
-            "Approved icon scaling was unexpectedly reduced: " + slug)
-        if circular:
-            safe = Image.new("L", rgba.size)
-            ImageDraw.Draw(safe).ellipse((210, 210, 869, 869), fill=255)
-            outside = ImageChops.subtract(rgba.getchannel("A"), safe)
-            assert outside.getextrema()[1] <= 16, "Circle extends outside the adaptive safe area: " + slug
+        assert bounds[0] >= 120 and bounds[1] >= 120 and bounds[2] <= 960 and bounds[3] <= 960
+        assert bounds[2] - bounds[0] > 730, "Approved icon scaling was unexpectedly reduced: " + slug
         assert rgba.getpixel((0, 0))[3] == 0, "Opaque adaptive corner: " + slug
     assert ('android:name="org.telegram.messenger.' + alias + '"') in manifest, "Missing launcher alias " + alias
     # No historical aliases: exactly one selectable launcher uses this icon.
