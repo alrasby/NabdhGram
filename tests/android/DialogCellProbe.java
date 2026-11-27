@@ -14,7 +14,10 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -127,6 +130,7 @@ public final class DialogCellProbe extends Instrumentation {
         }
         cell.setTranslationX(0);
         exerciseBundledThemes(app, loader, appearance, chooseStyle);
+        exerciseThemeImport(app, loader);
         chooseStyle.invoke(null, app, 3);
         if (!Boolean.TRUE.equals(ownsCard.invoke(cell))) {
             throw new AssertionError("Fixture does not use production card rendering");
@@ -183,6 +187,42 @@ public final class DialogCellProbe extends Instrumentation {
         }
         if (current.invoke(null) != original) throw new AssertionError("Native theme restoration failed");
         status("Theme integration: four bundled themes applied and restored, 16 independent style combinations");
+    }
+
+    private void exerciseThemeImport(Context app, ClassLoader loader) throws Exception {
+        Class<?> theme = loader.loadClass("org.telegram.ui.ActionBar.Theme");
+        Class<?> remote = loader.loadClass("org.telegram.tgnet.TLRPC$TL_theme");
+        Method preview = theme.getMethod("applyThemeFile", File.class, String.class,
+                remote, boolean.class);
+        Method current = theme.getMethod("getCurrentTheme");
+        Method restore = theme.getMethod("applyPreviousTheme");
+        Object before = current.invoke(null);
+        File input = File.createTempFile("nabdh-theme-probe", ".attheme", app.getCacheDir());
+        try {
+            try (InputStream asset = app.getAssets().open("nabdh_soft_mint.attheme");
+                    FileOutputStream destination = new FileOutputStream(input)) {
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = asset.read(buffer)) != -1) destination.write(buffer, 0, count);
+            }
+            if (preview.invoke(null, input, "Local visual check", null, true) == null) {
+                throw new AssertionError("Verified theme copy could not enter native preview");
+            }
+            restore.invoke(null);
+            if (current.invoke(null) != before) {
+                throw new AssertionError("Closing local preview did not restore the previous theme");
+            }
+            try (RandomAccessFile file = new RandomAccessFile(input, "rw")) {
+                file.setLength(21L * 1024 * 1024);
+            }
+            if (preview.invoke(null, input, "Oversize fixture", null, true) != null
+                    || current.invoke(null) != before) {
+                throw new AssertionError("Oversize theme reached native preview");
+            }
+        } finally {
+            input.delete();
+        }
+        status("Theme import: verified local asset previews, restores, and oversized file is rejected");
     }
 
     private void exerciseSettingsRows(Context app, ClassLoader loader, float density) throws Exception {
