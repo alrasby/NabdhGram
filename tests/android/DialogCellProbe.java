@@ -218,8 +218,10 @@ public final class DialogCellProbe extends Instrumentation {
         Method preview = theme.getMethod("applyThemeFile", File.class, String.class,
                 remote, boolean.class);
         Method current = theme.getMethod("getCurrentTheme");
+        Method active = theme.getMethod("getActiveTheme");
         Method restore = theme.getMethod("applyPreviousTheme");
         Object before = current.invoke(null);
+        Object activeBefore = active.invoke(null);
         File input = File.createTempFile("nabdh-theme-probe", ".attheme", app.getCacheDir());
         Object personalCopy = null;
         try {
@@ -229,11 +231,12 @@ public final class DialogCellProbe extends Instrumentation {
                 int count;
                 while ((count = asset.read(buffer)) != -1) destination.write(buffer, 0, count);
             }
-            if (preview.invoke(null, input, "Local visual check", null, true) == null) {
+            Object temporary = preview.invoke(null, input, "Local visual check", null, true);
+            if (temporary == null || active.invoke(null) != temporary || current.invoke(null) != before) {
                 throw new AssertionError("Verified theme copy could not enter native preview");
             }
             restore.invoke(null);
-            if (current.invoke(null) != before) {
+            if (current.invoke(null) != before || active.invoke(null) != activeBefore) {
                 throw new AssertionError("Closing local preview did not restore the previous theme");
             }
             String copyName = input.getName();
@@ -250,7 +253,7 @@ public final class DialogCellProbe extends Instrumentation {
                 file.setLength(21L * 1024 * 1024);
             }
             if (preview.invoke(null, input, "Oversize fixture", null, true) != null
-                    || current.invoke(null) != before) {
+                    || current.invoke(null) != before || active.invoke(null) != activeBefore) {
                 throw new AssertionError("Oversize theme reached native preview");
             }
         } finally {

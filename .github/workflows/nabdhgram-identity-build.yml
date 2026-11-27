@@ -17,6 +17,14 @@ on:
         type: boolean
         required: false
         default: false
+      dialog_cell_validation:
+        description: 'Run the production Android app and instrumented appearance tests'
+        type: boolean
+        default: false
+      publish_artifacts:
+        description: 'Upload APK after the calling workflow has completed real Android validation'
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       source_preflight_only:
@@ -31,11 +39,6 @@ on:
         type: boolean
       internal_phone_build:
         description: 'Build and verify the ARM64 debug APK without publishing it'
-        required: false
-        default: false
-        type: boolean
-      release_mode:
-        description: 'Build signed Release from main using project-owned signing credentials'
         required: false
         default: false
         type: boolean
@@ -60,25 +63,41 @@ permissions:
 # Supersede older *PR* commits only. Never cancel a manual dispatch because
 # the very same branch also received a pull_request event.
 concurrency:
-  group: nabdhgram-android-${{ inputs.source_preflight_only && 'preflight' || inputs.dialog_cell_validation && 'dialog-cell' || inputs.internal_phone_build && 'internal-phone' || 'full' }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  group: nabdhgram-android-${{ inputs.source_preflight_only && 'preflight' || inputs.dialog_cell_validation && 'dialog-cell' || inputs.internal_phone_build && 'internal-phone' || 'full' }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    env:
+      DIALOG_CELL_VALIDATION: ${{ inputs.dialog_cell_validation || (github.event_name == 'pull_request' && !inputs.source_preflight_only) }}
     steps:
       - name: Checkout NabdhGram automation
         uses: actions/checkout@v4
         with:
           path: nabdhgram
-      - name: Validate internal Android test inputs
-        if: ${{ inputs.dialog_cell_validation || inputs.internal_phone_build }}
+      - name: Validate Android build mode
+        env:
+          PUBLISH_ARTIFACTS: ${{ inputs.publish_artifacts }}
+          RELEASE_MODE: ${{ inputs.release_mode }}
+          SOURCE_PREFLIGHT: ${{ inputs.source_preflight_only }}
+          INTERNAL_PHONE_BUILD: ${{ inputs.internal_phone_build }}
         run: |
-          test "${{ inputs.release_mode }}" != true
-          test "${{ inputs.source_preflight_only }}" != true
-          if [[ "${{ inputs.dialog_cell_validation }}" == true ]]; then
-            test "${{ inputs.internal_phone_build }}" != true
+          if [[ "$DIALOG_CELL_VALIDATION" == true || "$INTERNAL_PHONE_BUILD" == true ]]; then
+            test "$RELEASE_MODE" != true
+            test "$SOURCE_PREFLIGHT" != true
+            test "$PUBLISH_ARTIFACTS" != true
+          fi
+          if [[ "$DIALOG_CELL_VALIDATION" == true ]]; then
+            test "$INTERNAL_PHONE_BUILD" != true
+          fi
+          if [[ "$RELEASE_MODE" == true ]]; then
+            test "$PUBLISH_ARTIFACTS" = true
+          fi
+          if [[ "$PUBLISH_ARTIFACTS" == true ]]; then
+            test "$GITHUB_EVENT_NAME" = workflow_dispatch
+            test "$SOURCE_PREFLIGHT" != true
           fi
       - name: Validate private Release dispatch before cloning sources
         if: ${{ inputs.release_mode }}
@@ -695,7 +714,7 @@ jobs:
         run: |
           set -euo pipefail
           args=()
-          if [[ "${{ inputs.dialog_cell_validation }}" == true ]]; then args+=(--emulator); fi
+          if [[ "$DIALOG_CELL_VALIDATION" == true ]]; then args+=(--emulator); fi
           python3 nabdhgram/scripts/apply-arm64-debug.py Telegram-upstream "${args[@]}"
 
       - name: Preserve Telegram native Java APIs before Gradle
@@ -1018,7 +1037,7 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash nabdhgram/scripts/run-card-android-gate.sh Telegram-upstream ${{ inputs.dialog_cell_validation && 'Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk' || '' }}
+          script: bash nabdhgram/scripts/run-card-android-gate.sh Telegram-upstream ${{ env.DIALOG_CELL_VALIDATION == 'true' && 'Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk' || '' }}
       - name: Upload Android card regression evidence
         if: ${{ always() && !inputs.source_preflight_only }}
         uses: actions/upload-artifact@v4
@@ -1028,7 +1047,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Publish verified APK with a clean filename
-        if: ${{ success() && !inputs.source_preflight_only && !inputs.dialog_cell_validation && !inputs.internal_phone_build && steps.compile.outcome == 'success' && steps.card_android_gate.outcome == 'success' }}
+        if: ${{ success() && inputs.publish_artifacts && steps.compile.outcome == 'success' && steps.card_android_gate.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1103,12 +1122,12 @@ jobs:
           find Telegram-upstream -type f -name '*.apk' -print > apk-paths.txt || true
           cat apk-paths.txt
       - name: Upload APK when available
-        if: ${{ success() && !inputs.source_preflight_only && !inputs.dialog_cell_validation && !inputs.internal_phone_build && steps.card_android_gate.outcome == 'success' }}
+        if: ${{ success() && inputs.publish_artifacts && steps.card_android_gate.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.release_mode && 'nabdhgram-owner-signed-release-apk' || 'nabdhgram-identity-debug-apk' }}
           path: dist/nabdhgram*.apk
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 7
       - name: Upload diagnostics
         if: ${{ always() && !inputs.source_preflight_only }}
@@ -1157,13 +1176,16 @@ jobs:
         shell: bash
         env:
           BUILD_RESULT: ${{ steps.compile.outcome }}
+          PUBLISH_ARTIFACTS: ${{ inputs.publish_artifacts }}
         run: |
           test "$BUILD_RESULT" = success
           test "${{ steps.card_android_gate.outcome }}" = success
-          if [[ "${{ inputs.dialog_cell_validation }}" == true ]]; then
+          if [[ "$DIALOG_CELL_VALIDATION" == true ]]; then
             test -s card-android-evidence/dialog-android.log
             test -s card-android-evidence/dialog-rest.png
-          elif [[ "${{ inputs.internal_phone_build }}" == true ]]; then
+            test -s card-android-evidence/verify-theme.log
+            grep -Fq 'THEME_RESTART_PASS: verify-theme' card-android-evidence/verify-theme.log
+          elif [[ "$PUBLISH_ARTIFACTS" != true ]]; then
             test -s apk-sha256.txt
             test -s apk-signature.txt
             test -s Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk

@@ -14,10 +14,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  signed-release:
+  android-validation:
     if: ${{ github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/nabdhgram-identity-build.yml
     with:
-      source_preflight_only: false
+      dialog_cell_validation: true
+
+  signed-release:
+    needs: android-validation
+    uses: ./.github/workflows/nabdhgram-identity-build.yml
+    with:
       release_mode: true
+      publish_artifacts: true
     secrets: inherit
