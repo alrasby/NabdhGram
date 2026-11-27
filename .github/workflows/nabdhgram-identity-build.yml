@@ -953,14 +953,17 @@ jobs:
               echo "::error::APK has no compiled private-backup rules"; exit 1;
             }
           # Verify the actual APK permissions, not only the source manifest.
-          ! grep -E "uses-permission: name='android.permission.(READ_SMS|RECEIVE_SMS|QUERY_ALL_PACKAGES|BIND_ACCESSIBILITY_SERVICE)'" apk-permissions.txt
+          if grep -E "uses-permission: name='android\.permission\.(READ_SMS|RECEIVE_SMS|QUERY_ALL_PACKAGES|BIND_ACCESSIBILITY_SERVICE)'" apk-permissions.txt; then
+            echo "::error::Unexpected sensitive permission in packaged APK"
+            exit 1
+          fi
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then
             ! grep -E "uses-permission: name='android.permission.(REQUEST_INSTALL_PACKAGES|READ_CALL_LOG)'" apk-permissions.txt || {
               echo "::error::Restricted Play installation/call-log permission in signed APK"
               exit 1
             }
           fi
-          "$APKSIGNER" verify --verbose "$APK" > apk-signature.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > apk-signature.txt
           if [[ "${{ inputs.release_mode }}" == "true" ]]; then
             python3 nabdhgram/scripts/check-nabdh-16kb-elf.py "$APK" --enforce
           else
@@ -1047,7 +1050,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Publish verified APK with a clean filename
-        if: ${{ success() && inputs.publish_artifacts && steps.compile.outcome == 'success' && steps.card_android_gate.outcome == 'success' }}
+        if: ${{ success() && !inputs.source_preflight_only && inputs.publish_artifacts && steps.compile.outcome == 'success' && steps.card_android_gate.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1122,7 +1125,7 @@ jobs:
           find Telegram-upstream -type f -name '*.apk' -print > apk-paths.txt || true
           cat apk-paths.txt
       - name: Upload APK when available
-        if: ${{ success() && inputs.publish_artifacts && steps.card_android_gate.outcome == 'success' }}
+        if: ${{ success() && !inputs.source_preflight_only && inputs.publish_artifacts && steps.card_android_gate.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.release_mode && 'nabdhgram-owner-signed-release-apk' || 'nabdhgram-identity-debug-apk' }}
