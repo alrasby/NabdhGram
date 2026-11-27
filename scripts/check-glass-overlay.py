@@ -331,7 +331,7 @@ checks = {
     "compact Glass card text and height":
         "row.setMinimumHeight(dp(context, TextUtils.isEmpty(subtitle) ? 54 : 66))" in
             (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
-        and "summary.setTextSize(11);" in
+        and "summary.setTextSize(12);" in
             (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8"),
     "device default font preserves native weights, custom fonts keep headings": all(
         part in typefaces for part in (
@@ -640,7 +640,7 @@ checks["global font renderer respects secondary explanatory labels"] = (
 checks["NabdhGram settings descriptions opt into readable body weight"] = (
     'summary.setTextColor(secondary);' in
         (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
-    and 'summary.setTextSize(11);' in
+    and 'summary.setTextSize(12);' in
         (ui / "Components/NabdhCompactSettings.java").read_text(encoding="utf-8")
 )
 checks["feature category explanations opt into readable body weight"] = (

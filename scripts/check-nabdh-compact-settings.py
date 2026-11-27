@@ -64,6 +64,10 @@ check('GROUP_TAG = "nabdh:compact-setting-group:v1"' in renderer and
       "new RippleDrawable(" not in renderer and
       "surface.setColor(blended)" not in renderer,
       "each row must own a theme-live Glass surface and bounded ripple; no pale parent or giant press circle")
+check("row.addView(text, rtl ? 0 : row.getChildCount()" in renderer and
+      "row.addView(arrow, rtl ? 0 : row.getChildCount()" in renderer and
+      "setMaxLines(" not in renderer and "setEllipsize(" not in renderer,
+      "Arabic row order and wrapping of settings labels")
 check("getTypeface(\"fonts/rmedium.ttf\")" in renderer and
       "R.drawable.nabdh_alt_shield" in page and
       "R.drawable.nabdh_alt_lock" in page and
