@@ -211,7 +211,12 @@ public final class NabdhGlassRowDecoration extends RecyclerView.ItemDecoration {
             if (style == NabdhAppearancePrefs.UI_CLASSIC) {
                 fill.setColor(base);
             } else if (!glass) {
-                fill.setColor(Color.rgb(red, green, blue));
+                // Match the neutral Material 3 surface used by ordinary chat cards.
+                final int canvasColor = Theme.getColor(Theme.key_windowBackgroundGray);
+                fill.setColor(Color.rgb(
+                        Math.round(Color.red(base) * .70f + Color.red(canvasColor) * .30f),
+                        Math.round(Color.green(base) * .70f + Color.green(canvasColor) * .30f),
+                        Math.round(Color.blue(base) * .70f + Color.blue(canvasColor) * .30f)));
             } else {
                 fill.setColor(Color.argb((style == NabdhAppearancePrefs.UI_GLASS ? 185 : 218) * opacity / 255, red, green, blue));
             }

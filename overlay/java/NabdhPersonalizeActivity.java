@@ -16,6 +16,7 @@ import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.NabdhCompactSettings;
+import org.telegram.ui.Components.NabdhGlassRowDecoration;
 import org.telegram.ui.Components.NabdhHomePrefs;
 import org.telegram.ui.Components.NabdhToolUi;
 
@@ -46,7 +47,6 @@ public final class NabdhPersonalizeActivity extends Activity {
         content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(16), dp(8), dp(16), dp(24));
-        content.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
         scroll.addView(content);
         render();
         NabdhToolUi.install(this, scroll,
@@ -72,16 +72,15 @@ public final class NabdhPersonalizeActivity extends Activity {
         line.setOrientation(LinearLayout.HORIZONTAL);
         line.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         line.setGravity(Gravity.CENTER_VERTICAL);
-        line.setPadding(dp(12), dp(8), dp(12), dp(8));
-        GradientDrawable shape = new GradientDrawable();
-        shape.setCornerRadius(dp(18));
-        shape.setColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-        line.setBackground(shape);
+        line.setPadding(dp(16), dp(8), dp(16), dp(8));
+        line.setBackground(NabdhGlassRowDecoration.newCardBackground());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.bottomMargin = dp(8);
         content.addView(line, lp);
         Switch control = new Switch(this);
         control.setChecked(NabdhHomePrefs.enabled(this, key));
+        NabdhToolUi.styleToggle(this, control);
+        control.setContentDescription(local(en, ar));
         line.addView(control, new LinearLayout.LayoutParams(dp(58), dp(48)));
         LinearLayout textStack = new LinearLayout(this);
         textStack.setOrientation(LinearLayout.VERTICAL);
@@ -92,12 +91,14 @@ public final class NabdhPersonalizeActivity extends Activity {
         title.setText(local(en, ar));
         title.setTextSize(15);
         title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        title.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
         TextView description = new TextView(this);
         description.setText(local(detailEn, detailAr));
         description.setTextSize(12);
         description.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
-        textStack.addView(title);
-        textStack.addView(description);
+        description.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        textStack.addView(title, new LinearLayout.LayoutParams(-1, -2));
+        textStack.addView(description, new LinearLayout.LayoutParams(-1, -2));
         line.addView(textStack, new LinearLayout.LayoutParams(0, -2, 1));
         control.setOnCheckedChangeListener((button, checked) -> {
             NabdhHomePrefs.set(this, key, checked);

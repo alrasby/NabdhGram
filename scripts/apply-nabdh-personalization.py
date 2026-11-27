@@ -93,17 +93,19 @@ p = once(p, marker, '''        nabdhFeatureRow(context, content, 602);
                         NabdhStrings.get(context, R.string.NabdhUiStyleGlass),
                         NabdhStrings.get(context, R.string.NabdhUiStyleHybrid)
                     };
-                    new android.app.AlertDialog.Builder(context)
+                    int selected = org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle();
+                    String selectedLabel = styles[selected];
+                    styles[selected] = "✓  " + selectedLabel;
+                    new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
                             .setTitle(NabdhStrings.get(context, R.string.NabdhUiStyleTitle))
-                            .setSingleChoiceItems(styles,
-                                    org.telegram.ui.Components.NabdhAppearancePrefs.uiStyle(),
-                                    (dialog, which) -> {
+                            .setItems(styles, (dialog, which) -> {
                                         org.telegram.ui.Components.NabdhAppearancePrefs.setUiStyle(context, which);
                                         dialog.dismiss();
                                         nabdhInvalidateStyleTree(content.getRootView());
                                         content.requestLayout();
                                         android.widget.Toast.makeText(context,
-                                                styles[which], android.widget.Toast.LENGTH_SHORT).show();
+                                                which == selected ? selectedLabel : styles[which],
+                                                android.widget.Toast.LENGTH_SHORT).show();
                                     })
                             .setNegativeButton(org.telegram.messenger.LocaleController.isRTL ? "إغلاق" : "Close", null)
                             .show();
