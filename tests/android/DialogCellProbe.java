@@ -23,8 +23,13 @@ import android.view.ViewGroup;
 
 /** Runs in the debug application's process and renders its actual DialogCell. */
 public final class DialogCellProbe extends Instrumentation {
+    private static final String PERSISTED_THEME = "NabdhGram • Soft Mint";
+    private static final int PERSISTED_STYLE = 2;
+    private String phase;
+
     @Override public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
+        phase = arguments == null ? null : arguments.getString("phase");
         start();
     }
 
@@ -33,17 +38,52 @@ public final class DialogCellProbe extends Instrumentation {
         Throwable[] failure = new Throwable[1];
         runOnMainSync(() -> {
             try {
-                exerciseCell();
+                if ("save-theme".equals(phase) || "verify-theme".equals(phase)) {
+                    exerciseThemeRestart();
+                } else {
+                    exerciseCell();
+                }
             } catch (Throwable error) {
                 failure[0] = error;
             }
         });
         if (failure[0] == null) {
-            result.putString("stream", "\nDIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch and native local action transitions\n");
+            String success = phase == null
+                    ? "DIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch and native local action transitions"
+                    : "THEME_RESTART_PASS: " + phase;
+            result.putString("stream", "\n" + success + "\n");
             finish(Activity.RESULT_OK, result);
         } else {
             result.putString("stream", "\nDIALOG_CELL_FAIL: " + Log.getStackTraceString(failure[0]));
             finish(Activity.RESULT_CANCELED, result);
+        }
+    }
+
+    private void exerciseThemeRestart() throws Exception {
+        Context app = getTargetContext();
+        ClassLoader loader = app.getClassLoader();
+        loader.loadClass("org.telegram.messenger.ApplicationLoader")
+                .getMethod("postInitApplication").invoke(null);
+        Class<?> theme = loader.loadClass("org.telegram.ui.ActionBar.Theme");
+        Class<?> info = loader.loadClass("org.telegram.ui.ActionBar.Theme$ThemeInfo");
+        Class<?> appearance = loader.loadClass("org.telegram.ui.Components.NabdhAppearancePrefs");
+        Object selected = theme.getMethod("getTheme", String.class).invoke(null, PERSISTED_THEME);
+        if (selected == null) throw new AssertionError("Bundled theme missing");
+        if ("save-theme".equals(phase)) {
+            theme.getMethod("applyTheme", info, boolean.class, boolean.class)
+                    .invoke(null, selected, true, false);
+            appearance.getMethod("setUiStyle", Context.class, int.class)
+                    .invoke(null, app, PERSISTED_STYLE);
+        }
+        if (theme.getMethod("getCurrentTheme").invoke(null) != selected
+                || !Integer.valueOf(PERSISTED_STYLE).equals(appearance.getMethod("uiStyle").invoke(null))) {
+            throw new AssertionError("Native theme or independent style did not survive " + phase);
+        }
+        Object settings = loader.loadClass("org.telegram.messenger.MessagesController")
+                .getMethod("getGlobalMainSettings").invoke(null);
+        android.content.SharedPreferences prefs = (android.content.SharedPreferences) settings;
+        if (!PERSISTED_THEME.equals(prefs.getString("theme", null))) {
+            throw new AssertionError("Telegram did not persist the selected theme key");
         }
     }
 
