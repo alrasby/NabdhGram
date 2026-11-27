@@ -357,6 +357,7 @@ replace_cell(
         final SharedPreferences prefs = ApplicationLoader.applicationContext
                 .getSharedPreferences("nabdh_theme_gallery", Activity.MODE_PRIVATE);
         final String key = night ? "previousNightTheme" : "previousDayTheme";
+        final Theme.ThemeInfo active = night ? Theme.getCurrentNightTheme() : Theme.getCurrentTheme();
         final Theme.ThemeInfo previous = Theme.getTheme(prefs.getString(key, ""));
         final int previousAccent = prefs.getInt(key + "_accent", -1);
         // These are Telegram's own stable bundled defaults, not new themes.
@@ -475,7 +476,7 @@ replace_cell(
         content.addView(copyHint);
         final org.telegram.ui.ActionBar.AlertDialog[] shown =
                 new org.telegram.ui.ActionBar.AlertDialog[1];
-        if (previous != null && previous != selected
+        if (previous != null && previous != active
                 && (previous.pathToFile == null || new java.io.File(previous.pathToFile).isFile())) {
             android.widget.TextView restore = new android.widget.TextView(context);
             restore.setText(arabic ? "↶ الرجوع إلى الثيم السابق" : "↶ Restore previous theme");
@@ -497,7 +498,7 @@ replace_cell(
                 selectTheme(previous, null);
             });
         }
-        if (defaultChoice != null && defaultChoice != selected) {
+        if (defaultChoice != null && defaultChoice != active) {
             android.widget.TextView reset = new android.widget.TextView(context);
             reset.setText(arabic ? "استعادة ثيم Telegram الافتراضي" :
                     "Restore Telegram default theme");

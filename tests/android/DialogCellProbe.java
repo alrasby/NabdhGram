@@ -70,6 +70,9 @@ public final class DialogCellProbe extends Instrumentation {
         Class<?> theme = loader.loadClass("org.telegram.ui.ActionBar.Theme");
         Class<?> info = loader.loadClass("org.telegram.ui.ActionBar.Theme$ThemeInfo");
         Class<?> appearance = loader.loadClass("org.telegram.ui.Components.NabdhAppearancePrefs");
+        android.content.SharedPreferences prefs = (android.content.SharedPreferences)
+                loader.loadClass("org.telegram.messenger.MessagesController")
+                        .getMethod("getGlobalMainSettings").invoke(null);
         Object selected = theme.getMethod("getTheme", String.class).invoke(null, PERSISTED_THEME);
         if (selected == null) throw new AssertionError("Bundled theme missing");
         if ("save-theme".equals(phase)) {
@@ -78,15 +81,22 @@ public final class DialogCellProbe extends Instrumentation {
             appearance.getMethod("setUiStyle", Context.class, int.class)
                     .invoke(null, app, PERSISTED_STYLE);
         }
-        if (theme.getMethod("getCurrentTheme").invoke(null) != selected
-                || !Integer.valueOf(PERSISTED_STYLE).equals(appearance.getMethod("uiStyle").invoke(null))) {
-            throw new AssertionError("Native theme or independent style did not survive " + phase);
+        Object current = theme.getMethod("getCurrentTheme").invoke(null);
+        int style = (Integer) appearance.getMethod("uiStyle").invoke(null);
+        String savedTheme = prefs.getString("theme", null);
+        if (current != selected || style != PERSISTED_STYLE || !PERSISTED_THEME.equals(savedTheme)) {
+            throw new AssertionError("Appearance mismatch in " + phase
+                    + ": active theme=" + info.getMethod("getKey").invoke(current)
+                    + ", saved theme=" + savedTheme + ", UI style=" + style);
         }
-        Object settings = loader.loadClass("org.telegram.messenger.MessagesController")
-                .getMethod("getGlobalMainSettings").invoke(null);
-        android.content.SharedPreferences prefs = (android.content.SharedPreferences) settings;
-        if (!PERSISTED_THEME.equals(prefs.getString("theme", null))) {
-            throw new AssertionError("Telegram did not persist the selected theme key");
+        if ("save-theme".equals(phase)) {
+            // Instrumentation exits without the normal Activity stop lifecycle.
+            // Wait for preceding asynchronous writes without supplying replacement values.
+            android.content.SharedPreferences stylePrefs =
+                    app.getSharedPreferences("nabdh_appearance_packs_v1", Context.MODE_PRIVATE);
+            if (!prefs.edit().commit() || !stylePrefs.edit().commit()) {
+                throw new AssertionError("Could not flush pending appearance preferences to disk");
+            }
         }
     }
 
@@ -167,6 +177,8 @@ public final class DialogCellProbe extends Instrumentation {
         Method current = theme.getMethod("getCurrentTheme");
         Method apply = theme.getMethod("applyTheme", themeInfo, boolean.class, boolean.class);
         Method lookup = theme.getMethod("getTheme", String.class);
+        Method active = theme.getMethod("getActiveTheme");
+        Method hasWallpaper = theme.getMethod("hasWallpaperFromTheme");
         Method selectedStyle = appearance.getMethod("uiStyle");
         Object original = current.invoke(null);
         String[] names = {"Siri Glass Refined", "Soft Mint", "Dark Glass", "Gray Avalanche Sand"};
@@ -177,7 +189,9 @@ public final class DialogCellProbe extends Instrumentation {
                 apply.invoke(null, bundled, false, false);
                 for (int style = 0; style < 4; style++) {
                     chooseStyle.invoke(null, app, style);
-                    if (current.invoke(null) != bundled || !Integer.valueOf(style).equals(selectedStyle.invoke(null))) {
+                    if (current.invoke(null) != bundled || active.invoke(null) != bundled
+                            || !Boolean.TRUE.equals(hasWallpaper.invoke(null))
+                            || !Integer.valueOf(style).equals(selectedStyle.invoke(null))) {
                         throw new AssertionError("Theme/style independence failed: " + name + "/" + style);
                     }
                 }
