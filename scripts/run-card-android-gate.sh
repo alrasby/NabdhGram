@@ -51,6 +51,7 @@ if [[ -n "$TARGET_APK" ]]; then
   adb install "$WORK/dialog-target.apk" | tee "$OUT/dialog-install.log"
   # Collect startup/idle evidence on the fresh emulator before instrumentation.
   TARGET_PACKAGE=net.nabdhserv.nabdhgram
+  adb shell pm grant "$TARGET_PACKAGE" android.permission.CAMERA
   launcher="$(adb shell cmd package resolve-activity --brief \
     -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$TARGET_PACKAGE" | tr -d '\r' | tail -1)"
   printf '%s\n' "$launcher" > "$OUT/runtime-launcher-component.txt"

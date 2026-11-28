@@ -3,6 +3,8 @@ package net.nabdhserv.cardtest;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
+import android.content.Intent;
+import android.webkit.WebView;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Bundle;
@@ -46,20 +48,130 @@ public final class DialogCellProbe extends Instrumentation {
                     exerciseThemeRestart();
                 } else {
                     exerciseCell();
+                    exerciseCenteredTitle();
                 }
             } catch (Throwable error) {
                 failure[0] = error;
             }
         });
+        if (failure[0] == null && phase == null) {
+            try {
+                exerciseBrowser();
+                exerciseCamera();
+            } catch (Throwable error) {
+                failure[0] = error;
+            }
+        }
         if (failure[0] == null) {
             String success = phase == null
-                    ? "DIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch, native local action transitions and encrypted Workspace"
+                    ? "DIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch, native local action transitions encrypted Workspace, full centered title, offline WebView and Camera2 capture"
                     : "THEME_RESTART_PASS: " + phase;
             result.putString("stream", "\n" + success + "\n");
             finish(Activity.RESULT_OK, result);
         } else {
             result.putString("stream", "\nDIALOG_CELL_FAIL: " + Log.getStackTraceString(failure[0]));
             finish(Activity.RESULT_CANCELED, result);
+        }
+    }
+
+    private void exerciseCenteredTitle() throws Exception {
+        Context app = getTargetContext();
+        Class<?> actionBar = app.getClassLoader().loadClass("org.telegram.ui.ActionBar.ActionBar");
+        Class<?> simpleText = app.getClassLoader().loadClass("org.telegram.ui.ActionBar.SimpleTextView");
+        Field titles = actionBar.getDeclaredField("titleTextView");
+        titles.setAccessible(true);
+        float density = app.getResources().getDisplayMetrics().density;
+        for (int direction : new int[]{View.LAYOUT_DIRECTION_LTR, View.LAYOUT_DIRECTION_RTL}) {
+            View bar = (View) actionBar.getConstructor(Context.class).newInstance(app);
+            bar.setLayoutDirection(direction);
+            actionBar.getMethod("setCenterTitleAndGlass", boolean.class).invoke(bar, true);
+            Object menu = actionBar.getMethod("createMenu").invoke(bar);
+            Method add = menu.getClass().getMethod("addItemWithWidth", int.class, int.class, int.class);
+            for (int i = 1; i <= 3; i++) add.invoke(menu, i, 0, Math.round(48 * density));
+            actionBar.getMethod("setTitle", CharSequence.class).invoke(bar, "NabdhGram");
+            int width = Math.round(324 * density);
+            bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(Math.round(56 * density), View.MeasureSpec.EXACTLY));
+            bar.layout(0, 0, width, bar.getMeasuredHeight());
+            View title = (View) ((Object[]) titles.get(bar))[0];
+            android.text.Layout layout = (android.text.Layout) simpleText.getMethod("getLayout").invoke(title);
+            if (layout == null || !"NabdhGram".contentEquals(layout.getText())
+                    || title.getRight() > ((View) menu).getLeft()) {
+                throw new AssertionError("Centered title was clipped or overlapped the toolbar, direction=" + direction);
+            }
+        }
+    }
+
+    private void exerciseBrowser() throws Exception {
+        Context target = getTargetContext();
+        Intent launch = new Intent().setClassName(target, "org.telegram.ui.NabdhBrowserActivity")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Activity browser = startActivitySync(launch);
+        try {
+            Field webField = browser.getClass().getDeclaredField("web");
+            webField.setAccessible(true);
+            WebView web = (WebView) webField.get(browser);
+            final boolean[] secured = new boolean[1];
+            final String title = "Nabdh offline browser check";
+            runOnMainSync(() -> {
+                android.webkit.WebSettings settings = web.getSettings();
+                secured[0] = web.getUrl() == null && !settings.getJavaScriptEnabled()
+                        && !settings.getAllowContentAccess() && !settings.getAllowFileAccess()
+                        && settings.getMixedContentMode() == android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW;
+                web.loadDataWithBaseURL("https://example.test/",
+                        "<title>" + title + "</title><script>document.title='unexpected';</script>"
+                                + "<p>Offline test page</p>", "text/html", "UTF-8", null);
+            });
+            if (!secured[0]) throw new AssertionError("Browser unexpectedly navigated or relaxed defaults");
+            String[] result = new String[1];
+            long deadline = SystemClock.uptimeMillis() + 10000;
+            do {
+                runOnMainSync(() -> result[0] = web.getTitle());
+                if (title.equals(result[0])) return;
+                SystemClock.sleep(100);
+            } while (SystemClock.uptimeMillis() < deadline);
+            throw new AssertionError("Offline WebView did not load with JavaScript off");
+        } finally {
+            runOnMainSync(browser::finish);
+        }
+    }
+
+    private void exerciseCamera() throws Exception {
+        Context target = getTargetContext();
+        Intent launch = new Intent().setClassName(target, "org.telegram.ui.NabdhCameraActivity")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Activity camera = startActivitySync(launch);
+        Field shutterField = camera.getClass().getDeclaredField("shutterButton");
+        Field photoField = camera.getClass().getDeclaredField("lastPhotoFile");
+        shutterField.setAccessible(true);
+        photoField.setAccessible(true);
+        View shutter = (View) shutterField.get(camera);
+        try {
+            boolean[] ready = new boolean[1];
+            long deadline = SystemClock.uptimeMillis() + 15000;
+            do {
+                runOnMainSync(() -> ready[0] = shutter.isEnabled());
+                if (ready[0]) break;
+                SystemClock.sleep(100);
+            } while (SystemClock.uptimeMillis() < deadline);
+            if (!ready[0]) throw new AssertionError("Camera2 emulator preview did not become ready");
+            runOnMainSync(shutter::performClick);
+            deadline = SystemClock.uptimeMillis() + 15000;
+            do {
+                File photo = (File) photoField.get(camera);
+                if (photo != null && photo.isFile() && photo.length() > 0) {
+                    try (InputStream input = new java.io.FileInputStream(photo)) {
+                        if (input.read() == 0xff && input.read() == 0xd8) return;
+                    }
+                    throw new AssertionError("Camera2 capture was not a JPEG");
+                }
+                SystemClock.sleep(100);
+            } while (SystemClock.uptimeMillis() < deadline);
+            throw new AssertionError("Camera2 did not save an emulator capture");
+        } finally {
+            runOnMainSync(camera::finish);
+            File photo = (File) photoField.get(camera);
+            if (photo != null) photo.delete();
         }
     }
 

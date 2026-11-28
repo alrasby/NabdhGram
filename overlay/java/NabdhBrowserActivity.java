@@ -3,8 +3,6 @@ package org.telegram.ui;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.Context;
-import android.content.Intent;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -13,7 +11,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
-import android.webkit.DownloadListener;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -35,7 +32,7 @@ import java.util.Locale;
 public final class NabdhBrowserActivity extends Activity {
     private WebView web;
     private EditText address;
-    private boolean blocking = true;
+    private volatile boolean blocking = true;
     private boolean scripts = false;
     private String local(String en, String ar) {
         return org.telegram.messenger.LocaleController.isRTL ? ar : en;
@@ -81,7 +78,8 @@ public final class NabdhBrowserActivity extends Activity {
         if (text == null) return;
         String candidate = text.trim();
         if (candidate.length() > 2048) {
-            Toast.makeText(this, "Address too long", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, local("Address too long", "عنوان الصفحة طويل جدًا"),
+                    Toast.LENGTH_SHORT).show();
             return;
         }
         if (!candidate.contains("://")) candidate = "https://" + candidate;
@@ -89,9 +87,14 @@ public final class NabdhBrowserActivity extends Activity {
             Uri url = safe(Uri.parse(candidate));
             if (url == null || new URI(candidate).getHost() == null)
                 throw new IllegalArgumentException();
+            android.view.inputmethod.InputMethodManager keyboard =
+                    getSystemService(android.view.inputmethod.InputMethodManager.class);
+            if (keyboard != null) keyboard.hideSoftInputFromWindow(address.getWindowToken(), 0);
+            address.clearFocus();
             web.loadUrl(url.toString());
         } catch (Exception rejected) {
-            Toast.makeText(this, "Only http and https pages can be opened", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, local("Enter a valid HTTP or HTTPS address",
+                    "أدخل عنوان HTTP أو HTTPS صالحًا"), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -117,7 +120,14 @@ public final class NabdhBrowserActivity extends Activity {
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
         address.setHintTextColor(org.telegram.ui.ActionBar.Theme.getColor(
                 org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteGrayText2));
-        address.setHint("https://");
+        address.setHint(local("Web address", "عنوان الموقع"));
+        address.setTextDirection(View.TEXT_DIRECTION_LTR);
+        address.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+        address.setOnEditorActionListener((field, action, event) -> {
+            if (action != android.view.inputmethod.EditorInfo.IME_ACTION_GO) return false;
+            visit(field.getText().toString());
+            return true;
+        });
         address.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
                              android.text.InputType.TYPE_TEXT_VARIATION_URI);
         toolbar.addView(address, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -160,6 +170,8 @@ public final class NabdhBrowserActivity extends Activity {
         page.addView(controls, navParams);
         page.addView(security);
         web = new WebView(this);
+        web.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(
+                org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
         WebSettings cfg = web.getSettings();
         cfg.setJavaScriptEnabled(false);
         cfg.setDomStorageEnabled(false);
@@ -196,7 +208,15 @@ public final class NabdhBrowserActivity extends Activity {
                 return false;
             }
             @Override public void onPageFinished(WebView view, String url) {
-                address.setText(url);
+                if (!address.hasFocus() && safe(Uri.parse(url)) != null) address.setText(url);
+            }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request,
+                                                  android.webkit.WebResourceError error) {
+                if (request.isForMainFrame()) {
+                    Toast.makeText(NabdhBrowserActivity.this,
+                            local("Page could not load", "تعذّر تحميل الصفحة"),
+                            Toast.LENGTH_SHORT).show();
+                }
             }
             @Override public WebResourceResponse shouldInterceptRequest(
                     WebView view, WebResourceRequest request) {
@@ -230,8 +250,10 @@ public final class NabdhBrowserActivity extends Activity {
         page.addView(web, new LinearLayout.LayoutParams(-1, 0, 1f));
         org.telegram.ui.Components.NabdhToolUi.install(this, page,
                 local("Nabdh Browser", "متصفح نبض جرام"));
+        page.setFocusableInTouchMode(true);
+        page.requestFocus();
         String initial = getIntent().getStringExtra("url");
-        visit(initial == null ? "https://nabdhserv.net" : initial);
+        if (initial != null && !initial.trim().isEmpty()) visit(initial);
     }
 
     @Override public void onBackPressed() {

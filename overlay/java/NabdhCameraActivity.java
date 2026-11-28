@@ -73,6 +73,7 @@ public final class NabdhCameraActivity extends Activity {
     private Surface previewSurface;
     private ImageReader reader;
     private volatile boolean openingCamera;
+    private boolean requestingPermission;
     private volatile long cameraGeneration;
     private CaptureRequest.Builder repeating;
     private String cameraId;
@@ -146,6 +147,7 @@ public final class NabdhCameraActivity extends Activity {
         commands.setGravity(Gravity.CENTER);
         commands.setPadding(dp(6), dp(4), dp(6), dp(4));
         Button switchCamera = control("↻", () -> {
+            requestingPermission = false;
             cancelCountdown();
             facing = facing == CameraCharacteristics.LENS_FACING_BACK
                      ? CameraCharacteristics.LENS_FACING_FRONT
@@ -226,6 +228,7 @@ public final class NabdhCameraActivity extends Activity {
                                 android.graphics.Color.blue(accent))),
                 ring, mask));
         shutterButton = shutter;
+        shutter.setEnabled(false);
         shutter.setOnClickListener(v -> startTimedPhoto());
         timerButton = control(local("Timer off", "المؤقت مغلق"), () -> {
             cancelCountdown();
@@ -307,9 +310,16 @@ public final class NabdhCameraActivity extends Activity {
     }
 
     private void startCamera() {
-        if (!active || manager == null || device != null || openingCamera || cameraHandler == null) return;
+        if (!active || !preview.isAvailable() || device != null || openingCamera || cameraHandler == null) return;
+        if (manager == null) {
+            notifyUser(local("Camera service unavailable", "خدمة الكاميرا غير متاحة"));
+            return;
+        }
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION);
+            if (!requestingPermission) {
+                requestingPermission = true;
+                requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION);
+            }
             return;
         }
         try {
@@ -324,6 +334,8 @@ public final class NabdhCameraActivity extends Activity {
             if (selected == null) throw new IllegalStateException("No camera");
             cameraId = selected;
             CameraCharacteristics info = manager.getCameraCharacteristics(cameraId);
+            Integer actualFacing = info.get(CameraCharacteristics.LENS_FACING);
+            if (actualFacing != null) facing = actualFacing;
             Rect sensor = info.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
             activeArray = sensor;
             Float max = info.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
@@ -397,20 +409,17 @@ public final class NabdhCameraActivity extends Activity {
                 @Override public void onDisconnected(CameraDevice opened) {
                     opened.close();
                     if (generation != cameraGeneration) return;
-                    openingCamera = false;
-                    if (device == opened) device = null;
-                    notifyUser(local("Camera disconnected", "انقطع اتصال الكاميرا"));
+                    onCameraUnavailable(generation, local("Camera disconnected", "انقطع اتصال الكاميرا"));
                 }
                 @Override public void onError(CameraDevice opened, int error) {
                     opened.close();
                     if (generation != cameraGeneration) return;
-                    openingCamera = false;
-                    if (device == opened) device = null;
-                    notifyUser(local("Camera unavailable", "الكاميرا غير متاحة") + " (" + error + ")");
+                    onCameraUnavailable(generation,
+                            local("Camera unavailable", "الكاميرا غير متاحة") + " (" + error + ")");
                 }
             }, cameraHandler);
         } catch (Exception problem) {
-            notifyUser("Camera unavailable on this device");
+            notifyUser(local("Camera unavailable on this device", "الكاميرا غير متاحة على هذا الجهاز"));
             closeCamera();
         }
     }
@@ -436,7 +445,16 @@ public final class NabdhCameraActivity extends Activity {
                                 return;
                             }
                             session = ready;
-                            refreshRepeating();
+                            try {
+                                applySettings(repeating);
+                                ready.setRepeatingRequest(repeating.build(), null, cameraHandler);
+                                runOnUiThread(() -> {
+                                    if (active && generation == cameraGeneration) shutterButton.setEnabled(true);
+                                });
+                            } catch (CameraAccessException | IllegalStateException | IllegalArgumentException failure) {
+                                onCameraUnavailable(generation,
+                                        local("Camera preview unavailable", "معاينة الكاميرا غير متاحة"));
+                            }
                         }
                         @Override public void onConfigureFailed(CameraCaptureSession failed) {
                             failed.close();
@@ -450,12 +468,14 @@ public final class NabdhCameraActivity extends Activity {
                                     if (active && generation == cameraGeneration) restartCamera();
                                 });
                             } else {
-                                notifyUser(local("Camera preview failed", "فشلت معاينة الكاميرا"));
+                                onCameraUnavailable(generation,
+                                        local("Camera preview failed", "فشلت معاينة الكاميرا"));
                             }
                         }
                     }, cameraHandler);
         } catch (Exception failure) {
-            notifyUser("Camera preview unavailable");
+            onCameraUnavailable(generation,
+                    local("Camera preview unavailable", "معاينة الكاميرا غير متاحة"));
         }
     }
 
@@ -731,7 +751,17 @@ public final class NabdhCameraActivity extends Activity {
         runOnUiThread(() -> Toast.makeText(this, message, Toast.LENGTH_SHORT).show());
     }
 
+    private void onCameraUnavailable(long generation, String message) {
+        runOnUiThread(() -> {
+            if (!active || generation != cameraGeneration) return;
+            cancelCountdown();
+            closeCamera();
+            notifyUser(message);
+        });
+    }
+
     private void closeCamera() {
+        if (shutterButton != null) shutterButton.setEnabled(false);
         cameraGeneration++;
         openingCamera = false;
         if (session != null) { session.close(); session = null; }
@@ -751,8 +781,13 @@ public final class NabdhCameraActivity extends Activity {
     @Override public void onRequestPermissionsResult(
             int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
-        if (requestCode == CAMERA_PERMISSION && results.length > 0
-                && results[0] == PackageManager.PERMISSION_GRANTED) startCamera();
-        else if (requestCode == CAMERA_PERMISSION) notifyUser("Camera permission is required");
+        if (requestCode != CAMERA_PERMISSION) return;
+        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+            requestingPermission = false;
+            startCamera();
+        } else {
+            // Keep the request suppressed if onResume follows the denial.
+            notifyUser(local("Camera permission is required", "يلزم السماح باستخدام الكاميرا"));
+        }
     }
 }

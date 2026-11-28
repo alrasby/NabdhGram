@@ -1073,7 +1073,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back emulated
           script: bash nabdhgram/scripts/run-card-android-gate.sh Telegram-upstream ${{ env.DIALOG_CELL_VALIDATION == 'true' && 'Telegram-upstream/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk' || '' }}
       - name: Upload Android card regression evidence
         if: ${{ always() && !inputs.source_preflight_only }}

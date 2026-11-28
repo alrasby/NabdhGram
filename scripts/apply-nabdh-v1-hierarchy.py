@@ -91,6 +91,12 @@ replace("""        if (titleRes == R.string.NabdhShieldTitle ||
         } else if (featureId == 101 || featureId == 103 || featureId == 301 ||
                    featureId == 302 || featureId == 303) {
             addNabdhV1Tools(context, content);
+        } else if (featureId == 401) {
+            nabdhV1Button(context, content, R.string.NabdhHOpenTranslation, () -> {
+                LanguageSelectActivity language = new LanguageSelectActivity();
+                language.setCurrentAccount(getCurrentAccount());
+                presentFragment(language);
+            });
         } else if (featureId == 501 || featureId == 502 || featureId == 503) {
             addNabdhNetworkTools(context, content);
         }""", "category-to-detail routing")
@@ -309,6 +315,7 @@ page.write_text(s, encoding="utf-8")
 
 locales = {
     "values": {
+        "NabdhHOpenTranslation": "Open language and translation settings",
         "NabdhHShieldOverview": "Local link and scam signals, manual file inspection, and limited checks when opening downloaded chat documents.",
         "NabdhHPrivacyOverview": "Privacy controls, native chat preview and Telegram scheduled messages.",
         "NabdhHProductivityOverview": "Use Message tools in a chat to review a message or save linked items. Catch Me Up uses unread messages already cached on this device.",
@@ -339,7 +346,7 @@ locales = {
         "NabdhHCatchUp": "Catch Me Up",
         "NabdhHCatchUpDescription": "Review a pasted excerpt or request a local digest of up to 12 unread chats. The digest uses only messages already in the cache.",
         "NabdhHTranslation": "Translation",
-        "NabdhHTranslationDescription": "Telegram's built-in translation options remain accessible in chats and Telegram Settings. Optional automatic live translation is not implemented here.",
+        "NabdhHTranslationDescription": "Enable the Translate menu in language settings, then press and hold a message and choose Translate. Whole-chat translation depends on your Telegram account.",
         "NabdhHVoice": "Voice Clarity",
         "NabdhHVoiceDescription": "Optional gentle boost for voice messages is available below. Noise removal and advanced clarity DSP remain in development.",
         "NabdhHData": "Wi-Fi and mobile downloads",
@@ -354,6 +361,7 @@ locales = {
         "NabdhHThemesDescription": "Telegram's native theme manager supports built-in and .attheme themes. Use Telegram Appearance settings to change them; no duplicate theme engine is added.",
     },
     "values-ar": {
+        "NabdhHOpenTranslation": "فتح إعدادات اللغة والترجمة",
         "NabdhHShieldOverview": "مؤشرات محلية للروابط والاحتيال، وفحص يدوي للملفات، وفحص محدود عند فتح مستندات المحادثات المنزّلة.",
         "NabdhHPrivacyOverview": "إعدادات الخصوصية ومعاينة المحادثات الأصلية والرسائل المجدولة في Telegram.",
         "NabdhHProductivityOverview": "افتح أدوات الرسالة داخل المحادثة لتحليل رسالة أو حفظ عنصر مرتبط بها. يستخدم ملخص غير المقروء الرسائل المتاحة محليًا.",
@@ -384,7 +392,7 @@ locales = {
         "NabdhHCatchUp": "ملخص ما فاتك",
         "NabdhHCatchUpDescription": "راجع مقتطفًا تلصقه أو اطلب ملخصًا محليًا لما يصل إلى 12 محادثة غير مقروءة. يقتصر الملخص على الرسائل المتاحة محليًا.",
         "NabdhHTranslation": "الترجمة",
-        "NabdhHTranslationDescription": "خيارات ترجمة Telegram الأصلية متاحة من المحادثات والإعدادات. الترجمة المباشرة الإضافية غير مدمجة هنا.",
+        "NabdhHTranslationDescription": "فعّل خيار إظهار الترجمة من إعدادات اللغة، ثم اضغط مطولًا على رسالة واختر ترجمة. إتاحة ترجمة المحادثة كاملة تعتمد على حساب Telegram.",
         "NabdhHVoice": "وضوح الصوت",
         "NabdhHVoiceDescription": "يتوفر أدناه تعزيز اختياري خفيف لصوت الرسائل. إزالة الضوضاء ومعالجة الوضوح المتقدمة قيد التطوير.",
         "NabdhHData": "تنزيلات الواي فاي والبيانات",

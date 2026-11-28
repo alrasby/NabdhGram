@@ -178,6 +178,13 @@ methods = """    private void nabdhV1Button(Context context, LinearLayout conten
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
         p.topMargin = nabdhDp(context, 12);
         content.addView(input, p);
+        if (featureId == 101 || featureId == 301) {
+            nabdhV1Button(context, content, R.string.NabdhV1TryExample, () ->
+                nabdhV1Result(context, nabdhText(context, featureId == 301
+                                ? R.string.NabdhV1FocusExample : R.string.NabdhV1ShieldExample),
+                        featureId == 301 ? R.string.NabdhHFocus : R.string.NabdhHLinks,
+                        featureId == 301 ? 0 : 2));
+        }
         if (titleRes == R.string.NabdhShieldTitle) {
             nabdhV1Button(context, content, R.string.NabdhV1Shield, () ->
                 nabdhV1Result(context, input.getText(), R.string.NabdhV1Shield, 2));
@@ -214,6 +221,9 @@ category.write_text(s, encoding="utf-8")
 
 strings = {
     "values": {
+        "NabdhV1TryExample": "Try an example",
+        "NabdhV1FocusExample": "We agreed to send the report by 2026-12-05. Please review the figures. What still needs approval?",
+        "NabdhV1ShieldExample": "http://example.test/report",
         "NabdhV1MessageTools": "Message tools",
         "NabdhV1FocusMessage": "Extract focus signals",
         "NabdhV1CreateLinkedNote": "Save linked note",
@@ -268,6 +278,9 @@ strings = {
         "NabdhV1Copy": "Copy result",
     },
     "values-ar": {
+        "NabdhV1TryExample": "جرّب مثالًا",
+        "NabdhV1FocusExample": "تم الاتفاق على إرسال التقرير في 2026-12-05. يرجى مراجعة الأرقام. ماذا بقي للموافقة؟",
+        "NabdhV1ShieldExample": "http://example.test/report",
         "NabdhV1MessageTools": "أدوات الرسالة",
         "NabdhV1FocusMessage": "استخراج النقاط المهمة",
         "NabdhV1CreateLinkedNote": "حفظ كملاحظة مرتبطة",
