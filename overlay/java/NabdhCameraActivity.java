@@ -371,6 +371,8 @@ public final class NabdhCameraActivity extends Activity {
             Size size = choosePhotoSize(formats, cameraOption("camera_quality")
                     && !resolutionFallback);
             if (size == null) throw new IllegalStateException("No supported JPEG size");
+            Size previewSize = choosePreviewSize(formats.getOutputSizes(SurfaceTexture.class));
+            if (previewSize == null) throw new IllegalStateException("No supported preview size");
             reader = ImageReader.newInstance(size.getWidth(), size.getHeight(),
                     ImageFormat.JPEG, 2);
             final long readerGeneration = cameraGeneration;
@@ -404,7 +406,7 @@ public final class NabdhCameraActivity extends Activity {
                     if (!active || generation != cameraGeneration) { opened.close(); return; }
                     openingCamera = false;
                     device = opened;
-                    createPreview(generation);
+                    createPreview(generation, previewSize);
                 }
                 @Override public void onDisconnected(CameraDevice opened) {
                     opened.close();
@@ -424,13 +426,13 @@ public final class NabdhCameraActivity extends Activity {
         }
     }
 
-    private void createPreview(long generation) {
+    private void createPreview(long generation, Size previewSize) {
         if (!active || generation != cameraGeneration || device == null || reader == null
                 || !preview.isAvailable()) return;
         try {
             SurfaceTexture texture = preview.getSurfaceTexture();
             if (texture == null) return;
-            texture.setDefaultBufferSize(1280, 720);
+            texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
             Surface screen = new Surface(texture);
             previewSurface = screen;
             repeating = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -595,6 +597,21 @@ public final class NabdhCameraActivity extends Activity {
             takingPhoto = false;
             notifyUser("Capture failed");
         }
+    }
+
+    private static Size choosePreviewSize(Size[] supported) {
+        if (supported == null || supported.length == 0) return null;
+        Size closest = null;
+        long minimumDistance = Long.MAX_VALUE;
+        for (Size candidate : supported) {
+            long pixels = (long) candidate.getWidth() * candidate.getHeight();
+            long distance = Math.abs(pixels - 1280L * 720L);
+            if (distance < minimumDistance) {
+                minimumDistance = distance;
+                closest = candidate;
+            }
+        }
+        return closest;
     }
 
     private static boolean hasMode(int[] supported, int requested) {
