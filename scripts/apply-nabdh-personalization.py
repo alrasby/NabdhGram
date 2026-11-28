@@ -15,6 +15,62 @@ def once(text, before, after, desc):
         raise SystemExit(f"Personalization {desc}: expected one anchor, got {text.count(before)}")
     return text.replace(before, after, 1)
 
+bar = ui / "ActionBar/ActionBar.java"
+bar_source = bar.read_text(encoding="utf-8")
+bar_source = once(bar_source, "    private boolean centerTitleAndGlass;",
+    """    private boolean centerTitleAndGlass;
+    private int centeredTitleStart;
+    private int centeredTitleEnd;
+
+    private int centeredTitleLeft(int titleWidth) {
+        int midpointLeft = (getMeasuredWidth() - titleWidth) / 2;
+        return Math.max(centeredTitleStart, Math.min(midpointLeft, centeredTitleEnd - titleWidth));
+    }
+
+    private void measureTitle(SimpleTextView title, int availableWidth, int heightSpec) {
+        if (centerTitleAndGlass) title.setWidthWrapContent(true);
+        title.measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST), heightSpec);
+        if (centerTitleAndGlass) {
+            // Recompute text drawing offsets for the final, wrapped width.
+            title.setWidthWrapContent(false);
+            title.measure(MeasureSpec.makeMeasureSpec(title.getMeasuredWidth(), MeasureSpec.EXACTLY), heightSpec);
+        }
+    }""", "centered title bounds")
+bar_source = once(bar_source, """                int menuWidth = menu != null ? menu.getMeasuredWidth() : 0;
+                int availableWidth;
+                if (centerTitleAndGlass) {
+                    int sideInset = Math.max(textLeft, menuWidth + dp(16) + titleRightMargin);
+                    availableWidth = width - sideInset * 2;""", """                int menuWidth = menu != null && menu.getVisibility() != GONE ? menu.getMeasuredWidth() : 0;
+                int availableWidth;
+                if (centerTitleAndGlass) {
+                    centeredTitleStart = Math.min(width, textLeft + Math.max(0, additionalTextLeft));
+                    centeredTitleEnd = Math.max(centeredTitleStart, width - menuWidth - dp(16) - titleRightMargin);
+                    availableWidth = centeredTitleEnd - centeredTitleStart;""", "measure title between occupied controls")
+bar_source = once(bar_source,
+    "titleTextView[i].measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(24) + titleTextView[i].getPaddingTop() + titleTextView[i].getPaddingBottom(), MeasureSpec.AT_MOST));",
+    "measureTitle(titleTextView[i], availableWidth, MeasureSpec.makeMeasureSpec(dp(24) + titleTextView[i].getPaddingTop() + titleTextView[i].getPaddingBottom(), MeasureSpec.AT_MOST));",
+    "wrap centered title")
+bar_source = once(bar_source,
+    "subtitleTextView.measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.AT_MOST));",
+    "measureTitle(subtitleTextView, availableWidth, MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.AT_MOST));",
+    "wrap centered subtitle")
+for view in ("titleTextView[i]", "subtitleTextView"):
+    bar_source = once(bar_source,
+        f"centerTitleAndGlass ? (getMeasuredWidth() - {view}.getMeasuredWidth()) / 2 : textLeft",
+        f"centerTitleAndGlass ? centeredTitleLeft({view}.getMeasuredWidth()) : textLeft",
+        f"keep centered {view} clear of controls")
+bar_source = once(bar_source,
+    """                int titleLeft = (getWidth() - titleWidth) / 2 + Math.round(titleTextView[0].getTranslationX());
+                glassDrawable.setBounds(titleLeft, t, titleLeft + titleWidth, b);""",
+    """                int titleCenter = titleTextView[0].getLeft()
+                        + titleTextView[0].getMeasuredWidth() / 2
+                        + Math.round(titleTextView[0].getTranslationX());
+                int titleLeft = Math.max(centeredTitleStart, titleCenter - titleWidth / 2);
+                int titleRight = Math.min(centeredTitleEnd, titleCenter + (titleWidth + 1) / 2);
+                glassDrawable.setBounds(titleLeft, t, Math.max(titleLeft, titleRight), b);""",
+    "align glass with the laid-out title")
+bar.write_text(bar_source, encoding="utf-8")
+
 for file, destination in [
     ("NabdhHomePrefs.java", "Components/NabdhHomePrefs.java"),
     ("NabdhStorageAudit.java", "Components/NabdhStorageAudit.java"),

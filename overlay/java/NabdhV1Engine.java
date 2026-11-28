@@ -93,6 +93,8 @@ public final class NabdhV1Engine {
             if (count >= MAX_ITEMS) break;
         }
         if (count == 0) result.append("—\n");
+        result.append('\n').append(lang(ar, "روابط ظاهرة:\n", "Visible links:\n"));
+        extract(lines, URL, result, MAX_ITEMS);
         return result.toString().trim();
     }
 

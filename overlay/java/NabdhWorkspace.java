@@ -1,5 +1,7 @@
 package org.telegram.ui.Components;
 
+import static org.telegram.messenger.LocaleController.getString;
+
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -10,9 +12,13 @@ import android.util.Base64;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+
+import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.AlertDialog;
+import org.telegram.ui.ActionBar.BaseFragment;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -23,7 +29,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * Explicitly user-saved, local-only encrypted draft notes.
+ * Explicitly user-saved, local-only encrypted notes and tasks.
  *
  * AndroidKeyStore AES-256-GCM. NO fallback to plaintext, no network, no
  * background message scanning, no fake Telegram synchronization. User must
@@ -35,17 +41,32 @@ public final class NabdhWorkspace {
     private static final String DATA = "entries";
     private static final String ALIAS = "nabdhgram.workspace.v1.aesgcm";
     private static final int LIMIT = 40;
-    private static final int MAX_ENTRY = 1600;
+    static final int MAX_ENTRY = 1600;
     private static final int IV_LENGTH = 12;
 
     public static final class Note {
         public final String text;
         public final String source;
         public final long createdAt;
-        Note(String text, String source, long createdAt) {
-            this.text = text;
-            this.source = source;
-            this.createdAt = createdAt;
+        final String id;
+        final int account;
+        final long ownerId;
+        final long dialogId;
+        final int messageId;
+        final boolean task;
+        final boolean done;
+
+        Note(JSONObject entry) {
+            text = entry.optString("text");
+            source = entry.optString("source");
+            createdAt = entry.optLong("created");
+            id = entry.optString("id");
+            account = entry.optInt("account", -1);
+            ownerId = entry.optLong("owner");
+            dialogId = entry.optLong("dialog");
+            messageId = entry.optInt("message");
+            task = entry.optBoolean("task");
+            done = entry.optBoolean("done");
         }
     }
 
@@ -113,6 +134,12 @@ public final class NabdhWorkspace {
     }
 
     public static int save(Context context, CharSequence text, String source) throws Exception {
+        return save(context, text, source, -1, 0, 0, 0, false);
+    }
+
+    static synchronized int save(Context context, CharSequence text, String source,
+                                 int account, long ownerId, long dialogId, int messageId, boolean task)
+            throws Exception {
         String value = NabdhV1Engine.bounded(text);
         if (value.isEmpty()) throw new IllegalArgumentException("Empty note");
         if (value.length() > MAX_ENTRY) value = value.substring(0, MAX_ENTRY);
@@ -122,6 +149,14 @@ public final class NabdhWorkspace {
         fresh.put("text", value);
         fresh.put("source", source == null ? "manual" : source);
         fresh.put("created", System.currentTimeMillis());
+        fresh.put("id", UUID.randomUUID().toString());
+        if (account >= 0) {
+            fresh.put("account", account);
+            fresh.put("owner", ownerId);
+            fresh.put("dialog", dialogId);
+            fresh.put("message", messageId);
+            fresh.put("task", task);
+        }
         next.put(fresh);
         for (int i = 0; i < old.length() && i < LIMIT - 1; i++) {
             JSONObject entry = old.optJSONObject(i);
@@ -137,21 +172,31 @@ public final class NabdhWorkspace {
         for (int i = 0; i < Math.min(notes.length(), LIMIT); i++) {
             JSONObject entry = notes.optJSONObject(i);
             if (entry != null) {
-                out.add(new Note(entry.optString("text"), entry.optString("source"),
-                        entry.optLong("created")));
+                out.add(new Note(entry));
             }
         }
         return out;
     }
 
-    public static void delete(Context context, int index) throws Exception {
+    private static synchronized void update(Context context, Note note, boolean delete)
+            throws Exception {
         JSONArray entries = readJson(context);
-        if (index < 0 || index >= entries.length()) throw new IllegalArgumentException("Invalid note");
-        JSONArray remaining = new JSONArray();
         for (int i = 0; i < entries.length(); i++) {
-            if (i != index) remaining.put(entries.get(i));
+            JSONObject entry = entries.getJSONObject(i);
+            boolean matches = note.id.isEmpty()
+                    ? entry.optString("id").isEmpty() && entry.optLong("created") == note.createdAt
+                        && note.text.equals(entry.optString("text")) && note.source.equals(entry.optString("source"))
+                    : note.id.equals(entry.optString("id"));
+            if (!matches) continue;
+            if (delete) {
+                entries.remove(i);
+            } else {
+                entry.put("done", !entry.optBoolean("done"));
+            }
+            write(context, entries);
+            return;
         }
-        write(context, remaining);
+        throw new IllegalStateException("Workspace entry is no longer available");
     }
 
     private static String label(boolean ar, String arText, String enText) {
@@ -183,9 +228,17 @@ public final class NabdhWorkspace {
     }
 
     public static void show(Context context, boolean ar) {
-        final List<Note> notes;
+        show(context, ar, null);
+    }
+
+    public static void show(Context context, boolean ar, BaseFragment fragment) {
+        final List<Note> notes = new ArrayList<>();
         try {
-            notes = list(context);
+            for (Note note : list(context)) {
+                if (visible(fragment, note)) {
+                    notes.add(note);
+                }
+            }
         } catch (Exception e) {
             error(context, ar);
             return;
@@ -195,45 +248,77 @@ public final class NabdhWorkspace {
                 .setTitle(label(ar, "مساحة الرسائل", "Message Workspace"))
                 .setMessage(label(ar, "لا توجد ملاحظات محفوظة محليًا.",
                         "No locally saved notes yet."))
-                .setPositiveButton(label(ar, "إغلاق", "Close"), null).show();
+                .setPositiveButton(getString(R.string.NabdhV1Close), null).show();
             return;
         }
         String[] titles = new String[notes.size()];
         for (int i = 0; i < notes.size(); i++) {
             String v = notes.get(i).text.replace('\n', ' ').trim();
-            titles[i] = (i + 1) + ". " + (v.length() > 65 ? v.substring(0, 65) + "…" : v);
+            Note note = notes.get(i);
+            titles[i] = (note.task ? (note.done ? "✓ " : "□ ") : "")
+                    + (v.length() > 65 ? v.substring(0, 65) + "…" : v);
         }
         new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
             .setTitle(label(ar, "ملاحظات محلية مشفرة", "Encrypted local notes"))
             .setItems(titles, (dialog, selected) -> {
                 Note note = notes.get(selected);
-                new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
-                    .setTitle(label(ar, "ملاحظة محفوظة", "Saved note"))
-                    .setMessage(note.text)
-                    .setPositiveButton(label(ar, "نسخ", "Copy"), (d, action) -> {
-                        ClipboardManager clipboard = (ClipboardManager)
-                                context.getSystemService(Context.CLIPBOARD_SERVICE);
-                        if (clipboard != null) clipboard.setPrimaryClip(
-                                ClipData.newPlainText("Nabdh local note", note.text));
-                    })
-                    .setNeutralButton(label(ar, "حذف", "Delete"), (d, action) ->
-                        new org.telegram.ui.ActionBar.AlertDialog.Builder(context)
-                            .setTitle(label(ar, "حذف هذه الملاحظة؟", "Delete this note?"))
-                            .setMessage(label(ar, "سيُحذف النص المحفوظ محليًا فقط.",
-                                    "Only the local saved note will be deleted."))
-                            .setNegativeButton(label(ar, "إلغاء", "Cancel"), null)
-                            .setPositiveButton(label(ar, "حذف", "Delete"), (confirm, which) -> {
-                                try {
-                                    delete(context, selected);
-                                } catch (Exception error) {
-                                    error(context, ar);
-                                }
-                            }).show()
-                    )
-                    .setNegativeButton(label(ar, "إغلاق", "Close"), null)
-                    .show();
+                showNote(context, ar, fragment, note);
             })
-            .setNegativeButton(label(ar, "إغلاق", "Close"), null)
+            .setNegativeButton(getString(R.string.NabdhV1Close), null)
             .show();
     }
+
+    private static boolean visible(BaseFragment fragment, Note note) {
+        return note.account < 0 || (fragment != null && note.ownerId != 0
+                && note.account == fragment.getCurrentAccount()
+                && note.ownerId == fragment.getUserConfig().getClientUserId()
+                && NabdhMessageTools.canAccess(fragment, note.dialogId));
+    }
+
+    private static void showNote(Context context, boolean ar, BaseFragment fragment, Note note) {
+        if (!visible(fragment, note)) return;
+        List<String> titles = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        if (fragment != null && note.messageId > 0) {
+            titles.add(getString(R.string.NabdhV1ReturnToMessage));
+            actions.add(() -> NabdhMessageTools.openMessage(fragment, note.dialogId, note.messageId));
+        }
+        if (note.task) {
+            titles.add(note.done ? getString(R.string.NabdhV1ReopenTask)
+                    : getString(R.string.NabdhV1CompleteTask));
+            actions.add(() -> {
+                try {
+                    update(context, note, false);
+                    show(context, ar, fragment);
+                } catch (Exception error) {
+                    error(context, ar);
+                }
+            });
+        }
+        titles.add(getString(R.string.NabdhV1CopyItem));
+        actions.add(() -> {
+            ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+            if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Nabdh local note", note.text));
+        });
+        titles.add(getString(R.string.NabdhV1DeleteItem));
+        actions.add(() -> new AlertDialog.Builder(context)
+                .setTitle(getString(R.string.NabdhV1ConfirmDeleteItem))
+                .setNegativeButton(getString(R.string.NabdhV1Cancel), null)
+                .setPositiveButton(getString(R.string.NabdhV1DeleteItem), (dialog, which) -> {
+                    try {
+                        update(context, note, true);
+                    } catch (Exception error) {
+                        error(context, ar);
+                    }
+                }).show());
+        new AlertDialog.Builder(context)
+                .setTitle(note.task ? getString(R.string.NabdhV1SavedTaskTitle) : getString(R.string.NabdhV1SavedNoteTitle))
+                .setMessage(note.text)
+                .setItems(titles.toArray(new String[0]), (dialog, which) -> {
+                    if (visible(fragment, note)) actions.get(which).run();
+                })
+                .setNegativeButton(getString(R.string.NabdhV1Close), null)
+                .show();
+    }
+
 }

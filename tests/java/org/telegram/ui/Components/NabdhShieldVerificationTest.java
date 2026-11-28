@@ -10,7 +10,7 @@ public final class NabdhShieldVerificationTest {
     private static void contains(String actual, String value, String id) {
         check(actual.contains(value), id + " missing: " + value);
     }
-    public static void main(String[] args) {
+    public static void main(String[] args) throws java.io.IOException {
         contains(NabdhV1Engine.shield("http://example.test/a", false),
                 "Unencrypted HTTP", "http");
         contains(NabdhV1Engine.shield("https://user:pass@example.test/a", false),
@@ -73,6 +73,27 @@ public final class NabdhShieldVerificationTest {
                 "توقيع غير معروف", "arabic-unknown-file");
         contains(NabdhFileGuard.inspect("image.png", null, new byte[0], true),
                 "لا يتحقق من سلامة الملف", "arabic-no-file-safety-cert");
+        java.nio.file.Path local = java.nio.file.Files.createTempFile("nabdh-shield-fixture", ".dat");
+        try {
+            java.nio.file.Files.write(local, zip);
+            contains(NabdhFileGuard.warningBeforeOpen(local.toFile(), "INVOICE.PDF", null, false),
+                    "does not match", "real-file-open-zip-as-pdf");
+            check(NabdhFileGuard.warningBeforeOpen(local.toFile(), "archive.zip", null, false) == null,
+                    "real-file-open-matching-zip");
+            java.nio.file.Files.write(local, pdf);
+            check(NabdhFileGuard.warningBeforeOpen(local.toFile(), "report.pdf", "application/pdf", false) == null,
+                    "real-file-open-matching-pdf");
+            java.nio.file.Files.write(local, elf);
+            contains(NabdhFileGuard.warningBeforeOpen(local.toFile(), null, null, false),
+                    "Executable header", "real-file-open-elf-without-extension");
+            java.nio.file.Files.write(local, new byte[]{'P'});
+            check(NabdhFileGuard.warningBeforeOpen(local.toFile(), "partial.pdf", null, false) == null,
+                    "real-file-open-unknown-header");
+        } finally {
+            java.nio.file.Files.deleteIfExists(local);
+        }
+        check(NabdhFileGuard.warningBeforeOpen(local.toFile(), "missing.pdf", null, false) == null,
+                "real-file-open-missing-file");
         System.out.println("PASS: " + count + " synthetic NabdhShield assertions");
         System.out.println("NOTE: unit regressions are not real-world precision/recall");
     }

@@ -1,10 +1,14 @@
 package org.telegram.ui.Components;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.Locale;
 
 /**
  * On-demand, offline, bounded file-signature checks. This is NOT an antivirus
- * engine, reputation system, or intercept of Telegram file opening.
+ * engine or reputation system.
  * The Android caller reads only the first 16 bytes of a user-chosen document.
  */
 public final class NabdhFileGuard {
@@ -32,23 +36,56 @@ public final class NabdhFileGuard {
         return "UNKNOWN";
     }
 
-    public static String inspect(String displayName, String mime, byte[] header, boolean arabic) {
-        String name = displayName == null ? "" : displayName.trim();
-        if (name.length() > 180) name = name.substring(0, 180);
-        String lower = name.toLowerCase(Locale.ROOT);
-        String type = signature(header);
-        StringBuilder out = new StringBuilder(arabic
-                ? "تحليل محلي يدوي لأول بايتات الملف فقط. لا يتحقق من سلامة الملف أو خلوه من البرمجيات الضارة.\n"
-                : "Manual offline header check only. This does not verify the file is safe or malware-free.\n");
-        out.append(arabic ? "توقيع البداية: " : "Header signature: ").append(type).append('\n');
-        boolean mismatch =
-                (lower.endsWith(".pdf") && !"PDF".equals(type))
+    private static boolean isExecutable(String type) {
+        return "ELF".equals(type) || "MZ".equals(type);
+    }
+
+    private static boolean extensionMismatch(String lower, String type) {
+        return (lower.endsWith(".pdf") && !"PDF".equals(type))
                 || (lower.endsWith(".png") && !"PNG".equals(type))
                 || ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && !"JPEG".equals(type))
                 || (lower.endsWith(".gif") && !"GIF".equals(type))
                 || (lower.endsWith(".zip") && !"ZIP".equals(type))
                 || (lower.endsWith(".apk") && !"ZIP".equals(type));
-        boolean executable = "ELF".equals(type) || "MZ".equals(type);
+    }
+
+    static boolean shouldWarn(String name, String mime, byte[] header) {
+        String type = signature(header);
+        if ("UNKNOWN".equals(type)) return false;
+        String lower = name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
+        return isExecutable(type) || extensionMismatch(lower, type)
+                || ("application/pdf".equalsIgnoreCase(mime) && !"PDF".equals(type));
+    }
+
+    /** Returns a warning only for identified inconsistencies in a local regular file. */
+    public static String warningBeforeOpen(File file, String name, String mime, boolean arabic) {
+        if (file == null || !file.isFile()) return null;
+        byte[] header = new byte[16];
+        try (FileInputStream input = new FileInputStream(file)) {
+            int size = 0;
+            while (size < header.length) {
+                int read = input.read(header, size, header.length - size);
+                if (read <= 0) break;
+                size += read;
+            }
+            byte[] prefix = Arrays.copyOf(header, size);
+            return shouldWarn(name, mime, prefix) ? inspect(name, mime, prefix, arabic) : null;
+        } catch (IOException | SecurityException unavailable) {
+            return null;
+        }
+    }
+
+    public static String inspect(String displayName, String mime, byte[] header, boolean arabic) {
+        String name = displayName == null ? "" : displayName.trim();
+        String lower = name.toLowerCase(Locale.ROOT);
+        String type = signature(header);
+        StringBuilder out = new StringBuilder(arabic
+                ? "تحليل محلي لأول بايتات الملف فقط. لا يتحقق من سلامة الملف أو خلوه من البرمجيات الضارة.\n"
+                : "Offline header check only. This does not verify the file is safe or malware-free.\n");
+        out.append(arabic ? "توقيع البداية: " : "Header signature: ").append(type).append('\n');
+        boolean mismatch = extensionMismatch(lower, type);
+        boolean executable = isExecutable(type);
+        boolean mimeMismatch = "application/pdf".equalsIgnoreCase(mime) && !"PDF".equals(type);
         if (mismatch) out.append(arabic
                 ? "⚠ نوع الملف لا يطابق الامتداد الظاهر؛ تحقق قبل فتحه.\n"
                 : "⚠ File header does not match its displayed extension; verify before opening.\n");
@@ -61,12 +98,12 @@ public final class NabdhFileGuard {
                     ? "⚠ قد تكون حزمة ZIP أو APK متنكرة بمظهر مستند أو صورة.\n"
                     : "⚠ This could be a ZIP/APK package disguised as a document or image.\n");
         }
-        if (mime != null && mime.equalsIgnoreCase("application/pdf") && !"PDF".equals(type)) {
+        if (mimeMismatch) {
             out.append(arabic
                     ? "⚠ نوع MIME المُعلن PDF لا يطابق توقيع البداية.\n"
                     : "⚠ Declared PDF MIME type conflicts with file signature.\n");
         }
-        if (!mismatch && !executable) {
+        if (!mismatch && !executable && !mimeMismatch) {
             out.append(arabic
                     ? "لم يظهر تعارض معروف في هذا الفحص المحدود؛ هذا ليس إثبات أمان.\n"
                     : "No known mismatch found by this limited check; NOT a safety certification.\n");

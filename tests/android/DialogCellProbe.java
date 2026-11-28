@@ -3,6 +3,8 @@ package net.nabdhserv.cardtest;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
+import android.content.Intent;
+import android.webkit.WebView;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Bundle;
@@ -46,20 +48,137 @@ public final class DialogCellProbe extends Instrumentation {
                     exerciseThemeRestart();
                 } else {
                     exerciseCell();
+                    exerciseCenteredTitle();
                 }
             } catch (Throwable error) {
                 failure[0] = error;
             }
         });
+        if (failure[0] == null && phase == null) {
+            try {
+                exerciseBrowser();
+                exerciseCamera();
+            } catch (Throwable error) {
+                failure[0] = error;
+            }
+        }
         if (failure[0] == null) {
             String success = phase == null
-                    ? "DIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch and native local action transitions"
+                    ? "DIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch, native local action transitions encrypted Workspace, full centered title, offline WebView and Camera2 capture"
                     : "THEME_RESTART_PASS: " + phase;
             result.putString("stream", "\n" + success + "\n");
             finish(Activity.RESULT_OK, result);
         } else {
             result.putString("stream", "\nDIALOG_CELL_FAIL: " + Log.getStackTraceString(failure[0]));
             finish(Activity.RESULT_CANCELED, result);
+        }
+    }
+
+    private void exerciseCenteredTitle() throws Exception {
+        Context app = getTargetContext();
+        Class<?> actionBar = app.getClassLoader().loadClass("org.telegram.ui.ActionBar.ActionBar");
+        Class<?> simpleText = app.getClassLoader().loadClass("org.telegram.ui.ActionBar.SimpleTextView");
+        Field titles = actionBar.getDeclaredField("titleTextView");
+        titles.setAccessible(true);
+        float density = app.getResources().getDisplayMetrics().density;
+        for (int direction : new int[]{View.LAYOUT_DIRECTION_LTR, View.LAYOUT_DIRECTION_RTL}) {
+            View bar = (View) actionBar.getConstructor(Context.class).newInstance(app);
+            bar.setLayoutDirection(direction);
+            actionBar.getMethod("setCenterTitleAndGlass", boolean.class).invoke(bar, true);
+            Object menu = actionBar.getMethod("createMenu").invoke(bar);
+            Method add = menu.getClass().getMethod("addItemWithWidth", int.class, int.class, int.class);
+            for (int i = 1; i <= 3; i++) add.invoke(menu, i, 0, Math.round(48 * density));
+            actionBar.getMethod("setTitle", CharSequence.class).invoke(bar, "NabdhGram");
+            int width = Math.round(324 * density);
+            bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(Math.round(56 * density), View.MeasureSpec.EXACTLY));
+            bar.layout(0, 0, width, bar.getMeasuredHeight());
+            View title = (View) ((Object[]) titles.get(bar))[0];
+            android.text.Layout layout = (android.text.Layout) simpleText.getMethod("getLayout").invoke(title);
+            if (layout == null || !"NabdhGram".contentEquals(layout.getText())
+                    || title.getRight() > ((View) menu).getLeft()) {
+                throw new AssertionError("Centered title was clipped or overlapped the toolbar, direction=" + direction);
+            }
+            width = Math.round(480 * density);
+            bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(Math.round(56 * density), View.MeasureSpec.EXACTLY));
+            bar.layout(0, 0, width, bar.getMeasuredHeight());
+            if (Math.abs(title.getLeft() + title.getRight() - width) > 2) {
+                throw new AssertionError("Title is not at the screen midpoint when room is available");
+            }
+        }
+    }
+
+    private void exerciseBrowser() throws Exception {
+        Context target = getTargetContext();
+        Intent launch = new Intent().setClassName(target, "org.telegram.ui.NabdhBrowserActivity")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Activity browser = startActivitySync(launch);
+        try {
+            Field webField = browser.getClass().getDeclaredField("web");
+            webField.setAccessible(true);
+            WebView web = (WebView) webField.get(browser);
+            final boolean[] secured = new boolean[1];
+            final String title = "Nabdh offline browser check";
+            runOnMainSync(() -> {
+                android.webkit.WebSettings settings = web.getSettings();
+                secured[0] = web.getUrl() == null && !settings.getJavaScriptEnabled()
+                        && !settings.getAllowContentAccess() && !settings.getAllowFileAccess()
+                        && settings.getMixedContentMode() == android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW;
+                web.loadDataWithBaseURL("https://example.test/",
+                        "<title>" + title + "</title><script>document.title='unexpected';</script>"
+                                + "<p>Offline test page</p>", "text/html", "UTF-8", null);
+            });
+            if (!secured[0]) throw new AssertionError("Browser unexpectedly navigated or relaxed defaults");
+            String[] result = new String[1];
+            long deadline = SystemClock.uptimeMillis() + 10000;
+            do {
+                runOnMainSync(() -> result[0] = web.getTitle());
+                if (title.equals(result[0])) return;
+                SystemClock.sleep(100);
+            } while (SystemClock.uptimeMillis() < deadline);
+            throw new AssertionError("Offline WebView did not load with JavaScript off");
+        } finally {
+            runOnMainSync(browser::finish);
+        }
+    }
+
+    private void exerciseCamera() throws Exception {
+        Context target = getTargetContext();
+        Intent launch = new Intent().setClassName(target, "org.telegram.ui.NabdhCameraActivity")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Activity camera = startActivitySync(launch);
+        Field shutterField = camera.getClass().getDeclaredField("shutterButton");
+        Field photoField = camera.getClass().getDeclaredField("lastPhotoFile");
+        shutterField.setAccessible(true);
+        photoField.setAccessible(true);
+        View shutter = (View) shutterField.get(camera);
+        try {
+            boolean[] ready = new boolean[1];
+            long deadline = SystemClock.uptimeMillis() + 15000;
+            do {
+                runOnMainSync(() -> ready[0] = shutter.isEnabled());
+                if (ready[0]) break;
+                SystemClock.sleep(100);
+            } while (SystemClock.uptimeMillis() < deadline);
+            if (!ready[0]) throw new AssertionError("Camera2 emulator preview did not become ready");
+            runOnMainSync(shutter::performClick);
+            deadline = SystemClock.uptimeMillis() + 15000;
+            do {
+                File photo = (File) photoField.get(camera);
+                if (photo != null && photo.isFile() && photo.length() > 0) {
+                    try (InputStream input = new java.io.FileInputStream(photo)) {
+                        if (input.read() == 0xff && input.read() == 0xd8) return;
+                    }
+                    throw new AssertionError("Camera2 capture was not a JPEG");
+                }
+                SystemClock.sleep(100);
+            } while (SystemClock.uptimeMillis() < deadline);
+            throw new AssertionError("Camera2 did not save an emulator capture");
+        } finally {
+            runOnMainSync(camera::finish);
+            File photo = (File) photoField.get(camera);
+            if (photo != null) photo.delete();
         }
     }
 
@@ -108,11 +227,63 @@ public final class DialogCellProbe extends Instrumentation {
         }
     }
 
+    private void exerciseEncryptedWorkspace(Context app, ClassLoader loader) throws Exception {
+        Class<?> workspace = loader.loadClass("org.telegram.ui.Components.NabdhWorkspace");
+        Class<?> noteType = loader.loadClass("org.telegram.ui.Components.NabdhWorkspace$Note");
+        Class<?> fragmentType = loader.loadClass("org.telegram.ui.ActionBar.BaseFragment");
+        Method save = workspace.getDeclaredMethod("save", Context.class, CharSequence.class,
+                String.class, int.class, long.class, long.class, int.class, boolean.class);
+        Method visible = workspace.getDeclaredMethod("visible", fragmentType, noteType);
+        Method update = workspace.getDeclaredMethod("update", Context.class, noteType, boolean.class);
+        save.setAccessible(true);
+        visible.setAccessible(true);
+        update.setAccessible(true);
+        Method list = workspace.getMethod("list", Context.class);
+        android.content.SharedPreferences prefs =
+                app.getSharedPreferences("nabdh_workspace_encrypted_v1", Context.MODE_PRIVATE);
+        String previous = prefs.getString("entries", null);
+        String task = "CI local task about a sample message";
+        String manual = "CI manual note";
+        try {
+            workspace.getMethod("save", Context.class, CharSequence.class, String.class)
+                    .invoke(null, app, manual, "fixture");
+            save.invoke(null, app, task, "fixture", 0, 345L, 42L, 73, true);
+            String envelope = prefs.getString("entries", "");
+            if (!envelope.contains(".") || envelope.contains(task) || envelope.contains(manual)) {
+                throw new AssertionError("Workspace does not store an encrypted envelope");
+            }
+            java.util.List<?> notes = (java.util.List<?>) list.invoke(null, app);
+            Object linked = notes.get(0);
+            Object unlinked = notes.get(1);
+            if (!task.equals(noteType.getField("text").get(linked))
+                    || (Boolean) visible.invoke(null, null, linked)
+                    || !(Boolean) visible.invoke(null, null, unlinked)) {
+                throw new AssertionError("Workspace lost notes or exposed a linked task without its account");
+            }
+            update.invoke(null, app, linked, false);
+            Field done = noteType.getDeclaredField("done");
+            done.setAccessible(true);
+            if (!done.getBoolean(((java.util.List<?>) list.invoke(null, app)).get(0))) {
+                throw new AssertionError("Linked task completion did not persist");
+            }
+            update.invoke(null, app, linked, true);
+            Object remaining = ((java.util.List<?>) list.invoke(null, app)).get(0);
+            if (!manual.equals(noteType.getField("text").get(remaining))) {
+                throw new AssertionError("Workspace removed the wrong note");
+            }
+        } finally {
+            if (!prefs.edit().putString("entries", previous).commit()) {
+                throw new AssertionError("Could not restore test device workspace");
+            }
+        }
+    }
+
     private void exerciseCell() throws Exception {
         Context app = getTargetContext();
         ClassLoader loader = app.getClassLoader();
         loader.loadClass("org.telegram.messenger.ApplicationLoader")
                 .getMethod("postInitApplication").invoke(null);
+        exerciseEncryptedWorkspace(app, loader);
         String cellName = "org.telegram.ui.Cells.DialogCell";
         Class<?> type = loader.loadClass(cellName);
         Class<?> activity = loader.loadClass("org.telegram.ui.DialogsActivity");
