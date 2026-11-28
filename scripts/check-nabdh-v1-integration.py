@@ -45,7 +45,7 @@ check("public static String inspect(" in fileguard
       and "No known mismatch found" in fileguard,
       "manual file guard lacks bounded file-header check and safety disclaimer")
 check("NabdhV1Engine.bounded(text)" in workspace and
-      "private static final int MAX_ENTRY = 1600;" in workspace and
+      "static final int MAX_ENTRY = 1600;" in workspace and
       "private static final int LIMIT = 40;" in workspace,
       "private workspace data budget missing")
 check(not any(term in (engine + workspace) for term in (
@@ -103,12 +103,23 @@ if len(sys.argv) != 2:
     raise SystemExit("Usage: check-nabdh-v1-integration.py --self-test | TELEGRAM_SOURCE")
 target = Path(sys.argv[1])
 ui = target / "TMessagesProj/src/main/java/org/telegram/ui"
-for name in ("NabdhV1Engine", "NabdhWorkspace", "NabdhFileGuard"):
+for name in ("NabdhV1Engine", "NabdhWorkspace", "NabdhFileGuard", "NabdhMessageTools"):
     f = ui / "Components" / (name + ".java")
     check(f.is_file(), "Missing generated " + name)
     check(f.read_text(encoding="utf-8") == (ROOT / "overlay/java" / (name + ".java")).read_text(encoding="utf-8"),
           name + " differs from pinned template")
 page = (ui / "NabdhGramFeatureCategoryActivity.java").read_text(encoding="utf-8")
+chat = (ui / "ChatActivity.java").read_text(encoding="utf-8")
+utilities = (ui.parent / "messenger/AndroidUtilities.java").read_text(encoding="utf-8")
+check(chat.count("case NABDH_V1_MESSAGE_TOOLS:") == 1
+      and "NabdhMessageTools.show(this, selectedObject)" in chat
+      and "NabdhMessageTools.canUse(this, message)" in chat,
+      "selected-message menu must route through the native ChatActivity")
+check(utilities.count("NabdhFileGuard.warningBeforeOpen(") == 1
+      and "openForView(localFile, fileName, mimeType, activity, resourcesProvider, restrict)" in utilities,
+      "Shield must check the same downloaded file prior to the native open path")
+check("if (featureId == 303) nabdhV1Button(context, content, R.string.NabdhV1UnreadDigest" in page,
+      "bounded unread digest must live on Catch Me Up")
 theme = (ui / "ActionBar/Theme.java").read_text(encoding="utf-8")
 native_manager = (ui / "Components/NabdhTypefaceManager.java")
 check(native_manager.is_file()

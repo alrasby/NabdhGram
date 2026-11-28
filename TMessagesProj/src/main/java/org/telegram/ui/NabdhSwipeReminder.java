@@ -15,6 +15,10 @@ import android.net.Uri;
 import android.os.Build;
 import java.util.Map;
 
+import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.UserConfig;
+import org.telegram.ui.Components.NabdhChatLock;
+
 /**
  * Local-only, per-account chat reminder. No Telegram message is ever sent.
  * Inexact while-idle alarms avoid requiring SCHEDULE_EXACT_ALARM privileges.
@@ -34,23 +38,49 @@ public final class NabdhSwipeReminder extends BroadcastReceiver {
     }
 
     public static void schedule(Context context, int account, long dialogId, long when) {
-        if (dialogId == 0L || account < 0 || when <= System.currentTimeMillis()) {
-            return;
+        schedule(context, account, 0, dialogId, 0, when);
+    }
+
+    public static boolean scheduleMessage(Context context, int account, long ownerId, long dialogId,
+                                          int messageId, long when) {
+        if (ownerId == 0 || messageId <= 0) return false;
+        return schedule(context, account, ownerId, dialogId, messageId, when);
+    }
+
+    private static boolean schedule(Context context, int account, long ownerId, long dialogId,
+                                    int messageId, long when) {
+        if (dialogId == 0L || account < 0 || account >= UserConfig.MAX_ACCOUNT_COUNT
+                || when <= System.currentTimeMillis()) return false;
+        String key = key(account, dialogId);
+        SharedPreferences.Editor edit = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putLong(key, when);
+        if (messageId > 0) {
+            edit.putLong(key + ":owner", ownerId).putInt(key + ":message", messageId);
+        } else {
+            edit.remove(key + ":owner").remove(key + ":message");
         }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .putLong(key(account, dialogId), when).apply();
-        arm(context, account, dialogId, when);
+        try {
+            if (!arm(context, account, dialogId, when)) return false;
+            edit.apply();
+            return true;
+        } catch (SecurityException unavailable) {
+            return false;
+        }
     }
 
     public static void cancel(Context context, int account, long dialogId) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .remove(key(account, dialogId)).apply();
+        clear(context, key(account, dialogId));
         AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         PendingIntent pending = alarmIntent(context, account, dialogId, PendingIntent.FLAG_NO_CREATE);
         if (manager != null && pending != null) {
             manager.cancel(pending);
             pending.cancel();
         }
+    }
+
+    private static void clear(Context context, String key) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .remove(key).remove(key + ":owner").remove(key + ":message").apply();
     }
 
     private static Uri identity(int account, long dialogId) {
@@ -65,17 +95,16 @@ public final class NabdhSwipeReminder extends BroadcastReceiver {
                 flag | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    private static void arm(Context context, int account, long dialogId, long when) {
+    private static boolean arm(Context context, int account, long dialogId, long when) {
         AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (manager == null) {
-            return;
-        }
+        if (manager == null) return false;
         PendingIntent alarm = alarmIntent(context, account, dialogId, PendingIntent.FLAG_UPDATE_CURRENT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, alarm);
         } else {
             manager.set(AlarmManager.RTC_WAKEUP, when, alarm);
         }
+        return true;
     }
 
     @Override
@@ -106,7 +135,7 @@ public final class NabdhSwipeReminder extends BroadcastReceiver {
         }
         int account = intent.getIntExtra("account", -1);
         long dialogId = intent.getLongExtra("dialogId", 0L);
-        if (account < 0 || dialogId == 0L) {
+        if (account < 0 || account >= UserConfig.MAX_ACCOUNT_COUNT || dialogId == 0L) {
             return;
         }
         long when = getScheduledTime(context, account, dialogId);
@@ -117,8 +146,16 @@ public final class NabdhSwipeReminder extends BroadcastReceiver {
             arm(context, account, dialogId, when); // Older replacement alarm.
             return;
         }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .remove(key(account, dialogId)).apply();
+        String key = key(account, dialogId);
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        long ownerId = prefs.getLong(key + ":owner", 0L);
+        int messageId = prefs.getInt(key + ":message", 0);
+        clear(context, key);
+        if (messageId > 0) {
+            ApplicationLoader.postInitApplication();
+            if (ownerId == 0 || UserConfig.getInstance(account).getClientUserId() != ownerId
+                    || NabdhChatLock.isLocked(context, account, dialogId)) return;
+        }
         if (Build.VERSION.SDK_INT >= 33
                 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -147,6 +184,7 @@ public final class NabdhSwipeReminder extends BroadcastReceiver {
         } else {
             open.putExtra("chatId", -dialogId);
         }
+        if (messageId > 0) open.putExtra("message_id", messageId);
         PendingIntent openPending = PendingIntent.getActivity(context, 0, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         boolean arabic = java.util.Locale.getDefault().getLanguage().equals("ar");
@@ -154,8 +192,10 @@ public final class NabdhSwipeReminder extends BroadcastReceiver {
                 ? new Notification.Builder(context, CHANNEL) : new Notification.Builder(context);
         Notification notification = builder
                 .setSmallIcon(android.R.drawable.ic_popup_reminder)
-                .setContentTitle(arabic ? "تذكير بمحادثة" : "Chat reminder")
-                .setContentText(arabic ? "اضغط للعودة إلى المحادثة" : "Tap to return to the conversation")
+                .setContentTitle(messageId > 0 ? (arabic ? "تذكير برسالة" : "Message reminder")
+                        : (arabic ? "تذكير بمحادثة" : "Chat reminder"))
+                .setContentText(messageId > 0 ? (arabic ? "اضغط لفتح الرسالة" : "Tap to open the message")
+                        : (arabic ? "اضغط للعودة إلى المحادثة" : "Tap to return to the conversation"))
                 .setContentIntent(openPending).setAutoCancel(true)
                 .setCategory(Notification.CATEGORY_REMINDER).build();
         manager.notify((account * 31 + (int) (dialogId ^ (dialogId >>> 32))) & 0x7fffffff, notification);

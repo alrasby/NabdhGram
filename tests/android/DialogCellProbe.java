@@ -53,7 +53,7 @@ public final class DialogCellProbe extends Instrumentation {
         });
         if (failure[0] == null) {
             String success = phase == null
-                    ? "DIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch and native local action transitions"
+                    ? "DIALOG_CELL_PASS: 500 gesture cycles, 500 render cycles, tray dispatch, native local action transitions and encrypted Workspace"
                     : "THEME_RESTART_PASS: " + phase;
             result.putString("stream", "\n" + success + "\n");
             finish(Activity.RESULT_OK, result);
@@ -108,11 +108,63 @@ public final class DialogCellProbe extends Instrumentation {
         }
     }
 
+    private void exerciseEncryptedWorkspace(Context app, ClassLoader loader) throws Exception {
+        Class<?> workspace = loader.loadClass("org.telegram.ui.Components.NabdhWorkspace");
+        Class<?> noteType = loader.loadClass("org.telegram.ui.Components.NabdhWorkspace$Note");
+        Class<?> fragmentType = loader.loadClass("org.telegram.ui.ActionBar.BaseFragment");
+        Method save = workspace.getDeclaredMethod("save", Context.class, CharSequence.class,
+                String.class, int.class, long.class, long.class, int.class, boolean.class);
+        Method visible = workspace.getDeclaredMethod("visible", fragmentType, noteType);
+        Method update = workspace.getDeclaredMethod("update", Context.class, noteType, boolean.class);
+        save.setAccessible(true);
+        visible.setAccessible(true);
+        update.setAccessible(true);
+        Method list = workspace.getMethod("list", Context.class);
+        android.content.SharedPreferences prefs =
+                app.getSharedPreferences("nabdh_workspace_encrypted_v1", Context.MODE_PRIVATE);
+        String previous = prefs.getString("entries", null);
+        String task = "CI local task about a sample message";
+        String manual = "CI manual note";
+        try {
+            workspace.getMethod("save", Context.class, CharSequence.class, String.class)
+                    .invoke(null, app, manual, "fixture");
+            save.invoke(null, app, task, "fixture", 0, 345L, 42L, 73, true);
+            String envelope = prefs.getString("entries", "");
+            if (!envelope.contains(".") || envelope.contains(task) || envelope.contains(manual)) {
+                throw new AssertionError("Workspace does not store an encrypted envelope");
+            }
+            java.util.List<?> notes = (java.util.List<?>) list.invoke(null, app);
+            Object linked = notes.get(0);
+            Object unlinked = notes.get(1);
+            if (!task.equals(noteType.getField("text").get(linked))
+                    || (Boolean) visible.invoke(null, null, linked)
+                    || !(Boolean) visible.invoke(null, null, unlinked)) {
+                throw new AssertionError("Workspace lost notes or exposed a linked task without its account");
+            }
+            update.invoke(null, app, linked, false);
+            Field done = noteType.getDeclaredField("done");
+            done.setAccessible(true);
+            if (!done.getBoolean(((java.util.List<?>) list.invoke(null, app)).get(0))) {
+                throw new AssertionError("Linked task completion did not persist");
+            }
+            update.invoke(null, app, linked, true);
+            Object remaining = ((java.util.List<?>) list.invoke(null, app)).get(0);
+            if (!manual.equals(noteType.getField("text").get(remaining))) {
+                throw new AssertionError("Workspace removed the wrong note");
+            }
+        } finally {
+            if (!prefs.edit().putString("entries", previous).commit()) {
+                throw new AssertionError("Could not restore test device workspace");
+            }
+        }
+    }
+
     private void exerciseCell() throws Exception {
         Context app = getTargetContext();
         ClassLoader loader = app.getClassLoader();
         loader.loadClass("org.telegram.messenger.ApplicationLoader")
                 .getMethod("postInitApplication").invoke(null);
+        exerciseEncryptedWorkspace(app, loader);
         String cellName = "org.telegram.ui.Cells.DialogCell";
         Class<?> type = loader.loadClass(cellName);
         Class<?> activity = loader.loadClass("org.telegram.ui.DialogsActivity");
