@@ -29,7 +29,7 @@ for anchor, replacement in (
      """        if (chatMode == MODE_DEFAULT && !isThreadChat() && !isInPreviewMode()
                 && allowChatActions && !noforwardsOrPaidMedia && message.getDialogId() == getDialogId()
                 && NabdhMessageTools.canUse(this, message)) {
-            items.add(NabdhMessageTools.isArabic() ? "أدوات الرسالة" : "Message tools");
+            items.add(LocaleController.getString(R.string.NabdhV1MessageTools));
             options.add(NABDH_V1_MESSAGE_TOOLS);
             icons.add(R.drawable.msg_pin);
         }
@@ -61,10 +61,10 @@ utilities_source = utilities_source.replace(open_call, """        String fileNam
             if (warning != null) {
                 final File localFile = f;
                 new AlertDialog.Builder(activity, resourcesProvider)
-                        .setTitle("NabdhShield")
+                        .setTitle(LocaleController.getString(R.string.NabdhShieldTitle))
                         .setMessage(warning)
-                        .setNegativeButton(arabic ? "إلغاء" : "Cancel", null)
-                        .setPositiveButton(arabic ? "فتح على أي حال" : "Open anyway", (dialog, which) -> {
+                        .setNegativeButton(LocaleController.getString(R.string.NabdhV1Cancel), null)
+                        .setPositiveButton(LocaleController.getString(R.string.NabdhV1OpenAnyway), (dialog, which) -> {
                             if (!activity.isFinishing() && !activity.isDestroyed()) {
                                 openForView(localFile, fileName, mimeType, activity, resourcesProvider, restrict);
                             }
@@ -214,6 +214,41 @@ category.write_text(s, encoding="utf-8")
 
 strings = {
     "values": {
+        "NabdhV1MessageTools": "Message tools",
+        "NabdhV1FocusMessage": "Extract focus signals",
+        "NabdhV1CreateLinkedNote": "Save linked note",
+        "NabdhV1CreateLinkedTask": "Save linked task",
+        "NabdhV1RemindMessage": "Remind about this message in an hour",
+        "NabdhV1CheckMessageSafety": "Check link and scam signals",
+        "NabdhV1ReturnToMessage": "Return to message",
+        "NabdhV1TaskHint": "Enter a task",
+        "NabdhV1NoteHint": "Enter a note",
+        "NabdhV1LinkedTask": "Linked task",
+        "NabdhV1LinkedNote": "Linked note",
+        "NabdhV1Cancel": "Cancel",
+        "NabdhV1SaveItem": "Save",
+        "NabdhV1SavedItem": "Saved encrypted on this device.",
+        "NabdhV1SaveItemFailed": "Could not save the item.",
+        "NabdhV1MediaMessage": "Media message",
+        "NabdhV1ReminderAlreadySet": "This chat already has a reminder.",
+        "NabdhV1ReminderEnableNotifications": "Enable notifications to receive reminders.",
+        "NabdhV1ReminderScheduled": "Local reminder set for about one hour.",
+        "NabdhV1ReminderFailed": "Could not schedule the reminder.",
+        "NabdhV1UnreadDigestTitle": "Local unread digest",
+        "NabdhV1UnreadDigestEmpty": "No eligible unread chats are available in this account's cache.",
+        "NabdhV1UnreadDigestScope": "Shows up to 12 chats and the latest unread message available locally.",
+        "NabdhV1ReopenTask": "Reopen task",
+        "NabdhV1CompleteTask": "Complete task",
+        "NabdhV1CopyItem": "Copy",
+        "NabdhV1DeleteItem": "Delete",
+        "NabdhV1ConfirmDeleteItem": "Delete local item?",
+        "NabdhV1SavedTaskTitle": "Saved task",
+        "NabdhV1SavedNoteTitle": "Saved note",
+        "NabdhV1AttachedFile": "Attached file: %1$s",
+        "NabdhV1UnreadDigestRow": "%1$s · Unread: %2$d",
+        "NabdhV1OpenAnyway": "Open anyway",
+        "NabdhV1MessageReminderTitle": "Message reminder",
+        "NabdhV1MessageReminderText": "Tap to open the message",
         "NabdhV1InputHint": "Paste text, a link or a conversation excerpt (nothing is read automatically)",
         "NabdhV1Shield": "Check local URL warning signals",
         "NabdhV1Scam": "Check local message scam signals",
@@ -233,6 +268,41 @@ strings = {
         "NabdhV1Copy": "Copy result",
     },
     "values-ar": {
+        "NabdhV1MessageTools": "أدوات الرسالة",
+        "NabdhV1FocusMessage": "استخراج النقاط المهمة",
+        "NabdhV1CreateLinkedNote": "حفظ كملاحظة مرتبطة",
+        "NabdhV1CreateLinkedTask": "حفظ كمهمة مرتبطة",
+        "NabdhV1RemindMessage": "تذكير بالرسالة بعد ساعة",
+        "NabdhV1CheckMessageSafety": "فحص مؤشرات الروابط والاحتيال",
+        "NabdhV1ReturnToMessage": "العودة إلى الرسالة",
+        "NabdhV1TaskHint": "اكتب المهمة",
+        "NabdhV1NoteHint": "اكتب ملاحظتك",
+        "NabdhV1LinkedTask": "مهمة مرتبطة",
+        "NabdhV1LinkedNote": "ملاحظة مرتبطة",
+        "NabdhV1Cancel": "إلغاء",
+        "NabdhV1SaveItem": "حفظ",
+        "NabdhV1SavedItem": "حُفظ العنصر مشفراً على الجهاز.",
+        "NabdhV1SaveItemFailed": "تعذّر حفظ العنصر.",
+        "NabdhV1MediaMessage": "رسالة وسائط",
+        "NabdhV1ReminderAlreadySet": "يوجد تذكير لهذه المحادثة.",
+        "NabdhV1ReminderEnableNotifications": "فعّل الإشعارات أولاً لتلقي التذكير.",
+        "NabdhV1ReminderScheduled": "ضُبط تذكير محلي خلال نحو ساعة.",
+        "NabdhV1ReminderFailed": "تعذّر ضبط التذكير.",
+        "NabdhV1UnreadDigestTitle": "ملخص غير المقروء محلياً",
+        "NabdhV1UnreadDigestEmpty": "لا توجد محادثات غير مقروءة متاحة في ذاكرة الحساب.",
+        "NabdhV1UnreadDigestScope": "يعرض حتى 12 محادثة وآخر رسالة غير مقروءة متاحة محلياً.",
+        "NabdhV1ReopenTask": "إعادة فتح المهمة",
+        "NabdhV1CompleteTask": "إكمال المهمة",
+        "NabdhV1CopyItem": "نسخ",
+        "NabdhV1DeleteItem": "حذف",
+        "NabdhV1ConfirmDeleteItem": "حذف العنصر المحلي؟",
+        "NabdhV1SavedTaskTitle": "مهمة محفوظة",
+        "NabdhV1SavedNoteTitle": "ملاحظة محفوظة",
+        "NabdhV1AttachedFile": "الملف المرفق: %1$s",
+        "NabdhV1UnreadDigestRow": "%1$s · غير مقروءة: %2$d",
+        "NabdhV1OpenAnyway": "فتح على أي حال",
+        "NabdhV1MessageReminderTitle": "تذكير برسالة",
+        "NabdhV1MessageReminderText": "اضغط لفتح الرسالة",
         "NabdhV1InputHint": "الصق نصًا أو رابطًا أو مقتطف محادثة (لا تتم قراءة الرسائل تلقائيًا)",
         "NabdhV1Shield": "فحص مؤشرات الروابط محليًا",
         "NabdhV1Scam": "فحص مؤشرات احتيال النص محليًا",

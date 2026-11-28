@@ -16,6 +16,8 @@ import android.os.Build;
 import java.util.Map;
 
 import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.ui.Components.NabdhChatLock;
 
@@ -192,9 +194,9 @@ public final class NabdhSwipeReminder extends BroadcastReceiver {
                 ? new Notification.Builder(context, CHANNEL) : new Notification.Builder(context);
         Notification notification = builder
                 .setSmallIcon(android.R.drawable.ic_popup_reminder)
-                .setContentTitle(messageId > 0 ? (arabic ? "تذكير برسالة" : "Message reminder")
+                .setContentTitle(messageId > 0 ? LocaleController.getString(R.string.NabdhV1MessageReminderTitle)
                         : (arabic ? "تذكير بمحادثة" : "Chat reminder"))
-                .setContentText(messageId > 0 ? (arabic ? "اضغط لفتح الرسالة" : "Tap to open the message")
+                .setContentText(messageId > 0 ? LocaleController.getString(R.string.NabdhV1MessageReminderText)
                         : (arabic ? "اضغط للعودة إلى المحادثة" : "Tap to return to the conversation"))
                 .setContentIntent(openPending).setAutoCancel(true)
                 .setCategory(Notification.CATEGORY_REMINDER).build();

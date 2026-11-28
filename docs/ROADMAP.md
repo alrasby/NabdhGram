@@ -159,7 +159,24 @@ Owner explicitly deferred NabdhAI on 2026-11-24 to study a distinctive, correct 
 5. Translation, voice, network and storage refinements.
 6. Security/performance/regression tests, beta feedback, stable release.
 
-## Status snapshot
-- The upstream unbranded Telegram debug APK has built in GitHub Actions.
-- NabdhGram identity build is still being debugged; do **not** describe v1.0 features as implemented.
-- Approved icon binaries have not yet been verified as integrated into the APK.
+## v1.0 acceptance snapshot
+
+The [owner-signed Release run #11](https://github.com/alrasby/NabdhGram/actions/runs/46065138487)
+produced the signed APK and the Google Play upload AAB from
+`235681903985f077dc2a9da24d22df54262a5fe4`. That run includes Android
+validation for its own revision. Google Play acceptance and physical-device
+QA require separate evidence.
+
+| Scope | Implementation evidence | Open acceptance checks |
+|---|---|---|
+| A — Sign-in and languages | Pinned Telegram login and language settings, separate translation preference, NabdhGram Arabic and English resources | Server-offered login routes, native QR and session recovery on a phone, Persian and Urdu RTL, TalkBack, system/app language selection, independent translation target |
+| B — Identity and personalization | Verified app identity and launcher resources in Release, four bundled themes, native theme and font controls | OEM launcher variations, user theme restoration on device, large text and contrast across themes |
+| C — Productivity and safety | [V1 integration branch](https://github.com/alrasby/NabdhGram/pull/115) with contextual Focus, linked notes/tasks/reminders, on-demand cached unread digest, and local header warnings in the external-viewer path for downloaded chat documents | Source-message navigation, task round trip and account isolation, reminder delivery, unread counters, warnings and actual viewer handoff on Android |
+| D — Privacy and messaging | Native chat preview and proxies, NabdhGram local PIN and recents controls | Verify read receipts from a second session, protected content during app switching, notifications, deletion and self-destruct behavior |
+| E — Media and network | Native translation, download, cache and proxy controls, opt-in voice gain | Phone tests for calls, media and audio quality, battery, Wi-Fi/mobile transitions and background delivery |
+| F — User trust and Release | Signed APK/AAB tooling and evidence in Actions, NabdhAI remains deferred | Compare memory, battery and stability against the prior Release on a physical device. Review Play declarations and licensing before distribution |
+
+The first Android acceptance pass should cover a fresh install and a signed
+upgrade, with the device/Android version and the exact commit recorded in
+the results. See the [device acceptance cases](V1_RELEASE_QA_2026-11-16_AR.md)
+and [Play Console acceptance requirements](V1_PLAY_INTERNAL_TESTING_AR.md).

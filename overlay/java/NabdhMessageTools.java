@@ -1,5 +1,7 @@
 package org.telegram.ui.Components;
 
+import static org.telegram.messenger.LocaleController.getString;
+
 import android.content.Context;
 import android.os.Bundle;
 import android.text.InputFilter;
@@ -13,10 +15,12 @@ import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
+import org.telegram.messenger.R;
 import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.NabdhSwipeReminder;
 
@@ -32,10 +36,6 @@ public final class NabdhMessageTools {
         return locale != null && "ar".equals(locale.getLanguage());
     }
 
-    private static String label(String arabic, String english) {
-        return isArabic() ? arabic : english;
-    }
-
     static boolean canAccess(BaseFragment fragment, long dialogId) {
         Context context = fragment.getParentActivity();
         return context != null && dialogId != 0 && !DialogObject.isEncryptedDialog(dialogId)
@@ -46,6 +46,8 @@ public final class NabdhMessageTools {
     public static boolean canUse(BaseFragment fragment, MessageObject message) {
         return message != null && message.messageOwner != null && message.getId() > 0
                 && !message.isSponsored() && !message.isEphemeral() && !message.isExpiredStory()
+                && !message.isSecretMedia() && !message.isHiddenSensitive()
+                && !message.hasMediaSpoilers()
                 && !message.messageOwner.noforwards && message.messageOwner.ttl_period == 0
                 && message.type != MessageObject.TYPE_PAID_MEDIA
                 && !(message.messageOwner instanceof TLRPC.TL_messageService)
@@ -59,27 +61,27 @@ public final class NabdhMessageTools {
         long ownerId = fragment.getUserConfig().getClientUserId();
         if (ownerId == 0) return;
         long dialogId = source.getDialogId();
-        new AlertDialog.Builder(context)
-                .setTitle(label("أدوات الرسالة", "Message tools"))
+        new AlertDialog.Builder(context, fragment.getResourceProvider())
+                .setTitle(getString(R.string.NabdhV1MessageTools))
                 .setItems(new String[] {
-                        label("استخراج النقاط المهمة", "Extract focus signals"),
-                        label("حفظ كملاحظة مرتبطة", "Save linked note"),
-                        label("حفظ كمهمة مرتبطة", "Save linked task"),
-                        label("تذكير بالرسالة بعد ساعة", "Remind about this message in an hour"),
-                        label("فحص مؤشرات الروابط والاحتيال", "Check link and scam signals")
+                        getString(R.string.NabdhV1FocusMessage),
+                        getString(R.string.NabdhV1CreateLinkedNote),
+                        getString(R.string.NabdhV1CreateLinkedTask),
+                        getString(R.string.NabdhV1RemindMessage),
+                        getString(R.string.NabdhV1CheckMessageSafety)
                 }, (dialog, which) -> {
                     if (fragment.getCurrentAccount() != account ||
                             fragment.getUserConfig().getClientUserId() != ownerId || !canUse(fragment, source)) return;
                     if (which == 0) {
                         String text = NabdhV1Engine.focus(excerpt(source, 1600), isArabic());
                         if (source.type == MessageObject.TYPE_FILE) {
-                            text += "\n\n" + label("الملف المرفق: ", "Attached file: ")
-                                    + NabdhV1Engine.bounded(source.getFileName());
+                            text += "\n\n" + LocaleController.formatString(R.string.NabdhV1AttachedFile,
+                                    NabdhV1Engine.bounded(source.getFileName()));
                         }
-                        new AlertDialog.Builder(context)
-                                .setTitle("Focus Lens")
+                        new AlertDialog.Builder(context, fragment.getResourceProvider())
+                                .setTitle(getString(R.string.NabdhHFocus))
                                 .setMessage(text)
-                                .setPositiveButton(label("العودة إلى الرسالة", "Return to message"),
+                                .setPositiveButton(getString(R.string.NabdhV1ReturnToMessage),
                                         (d, ignored) -> {
                                             if (fragment.getCurrentAccount() == account
                                                     && fragment.getUserConfig().getClientUserId() == ownerId
@@ -92,31 +94,34 @@ public final class NabdhMessageTools {
                         remind(context, account, ownerId, dialogId, source.getId());
                     } else if (which == 4) {
                         String text = excerpt(source, 1600);
-                        new AlertDialog.Builder(context)
-                                .setTitle("NabdhShield")
+                        new AlertDialog.Builder(context, fragment.getResourceProvider())
+                                .setTitle(getString(R.string.NabdhShieldTitle))
                                 .setMessage(NabdhV1Engine.shield(text, isArabic()) + "\n\n"
                                         + NabdhV1Engine.scam(text, isArabic()))
-                                .setPositiveButton(label("إغلاق", "Close"), null)
+                                .setPositiveButton(getString(R.string.NabdhV1Close), null)
                                 .show();
                     } else {
                         composeLinkedNote(fragment, context, source, account, ownerId, which == 2);
                     }
                 })
-                .setNegativeButton(label("إغلاق", "Close"), null)
+                .setNegativeButton(getString(R.string.NabdhV1Close), null)
                 .show();
     }
 
     private static void composeLinkedNote(ChatActivity fragment, Context context,
                                           MessageObject source, int account, long ownerId, boolean task) {
         EditText input = new EditText(context);
-        input.setHint(task ? label("اكتب المهمة", "Enter a task") : label("اكتب ملاحظتك", "Enter a note"));
+        input.setHint(task ? getString(R.string.NabdhV1TaskHint) : getString(R.string.NabdhV1NoteHint));
         input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(NabdhWorkspace.MAX_ENTRY)});
         input.setTextDirection(android.view.View.TEXT_DIRECTION_FIRST_STRONG);
-        new AlertDialog.Builder(context)
-                .setTitle(task ? label("مهمة مرتبطة", "Linked task") : label("ملاحظة مرتبطة", "Linked note"))
+        Theme.ResourcesProvider colors = fragment.getResourceProvider();
+        input.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, colors));
+        input.setHintTextColor(Theme.getColor(Theme.key_dialogTextHint, colors));
+        new AlertDialog.Builder(context, fragment.getResourceProvider())
+                .setTitle(task ? getString(R.string.NabdhV1LinkedTask) : getString(R.string.NabdhV1LinkedNote))
                 .setView(input)
-                .setNegativeButton(label("إلغاء", "Cancel"), null)
-                .setPositiveButton(label("حفظ", "Save"), (dialog, ignored) -> {
+                .setNegativeButton(getString(R.string.NabdhV1Cancel), null)
+                .setPositiveButton(getString(R.string.NabdhV1SaveItem), (dialog, ignored) -> {
                     if (fragment.getCurrentAccount() != account
                             || fragment.getUserConfig().getClientUserId() != ownerId || !canUse(fragment, source)) return;
                     String text = NabdhV1Engine.bounded(input.getText());
@@ -124,10 +129,9 @@ public final class NabdhMessageTools {
                     try {
                         NabdhWorkspace.save(context, text, "linked-note",
                                 account, ownerId, source.getDialogId(), source.getId(), task);
-                        Toast.makeText(context, label("حُفظ العنصر مشفراً على الجهاز.",
-                                "Saved encrypted on this device."), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, getString(R.string.NabdhV1SavedItem), Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
-                        Toast.makeText(context, label("تعذّر حفظ العنصر.", "Could not save the item."),
+                        Toast.makeText(context, getString(R.string.NabdhV1SaveItemFailed),
                                 Toast.LENGTH_SHORT).show();
                     }
                 }).show();
@@ -136,7 +140,7 @@ public final class NabdhMessageTools {
     private static String excerpt(MessageObject message, int limit) {
         String value = NabdhV1Engine.bounded(message.messageOwner.message);
         if (value.isEmpty()) value = NabdhV1Engine.bounded(message.messageText);
-        if (value.isEmpty()) return label("رسالة وسائط", "Media message");
+        if (value.isEmpty()) return getString(R.string.NabdhV1MediaMessage);
         if (value.length() <= limit) return value;
         int end = Character.isHighSurrogate(value.charAt(limit - 1)) ? limit - 1 : limit;
         return value.substring(0, end);
@@ -145,20 +149,18 @@ public final class NabdhMessageTools {
     private static void remind(Context context, int account, long ownerId, long dialogId, int messageId) {
         long now = System.currentTimeMillis();
         if (NabdhSwipeReminder.getScheduledTime(context, account, dialogId) > now) {
-            Toast.makeText(context, label("يوجد تذكير لهذه المحادثة.",
-                    "This chat already has a reminder."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, getString(R.string.NabdhV1ReminderAlreadySet), Toast.LENGTH_SHORT).show();
             return;
         }
         if (!androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()) {
-            Toast.makeText(context, label("فعّل الإشعارات أولاً لتلقي التذكير.",
-                    "Enable notifications to receive reminders."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, getString(R.string.NabdhV1ReminderEnableNotifications), Toast.LENGTH_SHORT).show();
             return;
         }
         boolean scheduled = NabdhSwipeReminder.scheduleMessage(
                 context, account, ownerId, dialogId, messageId, now + 3600000L);
         Toast.makeText(context, scheduled
-                ? label("ضُبط تذكير محلي خلال نحو ساعة.", "Local reminder set for about one hour.")
-                : label("تعذّر ضبط التذكير.", "Could not schedule the reminder."), Toast.LENGTH_SHORT).show();
+                ? getString(R.string.NabdhV1ReminderScheduled)
+                : getString(R.string.NabdhV1ReminderFailed), Toast.LENGTH_SHORT).show();
     }
 
     static void openMessage(BaseFragment fragment, long dialogId, int messageId) {
@@ -181,7 +183,7 @@ public final class NabdhMessageTools {
         if (ownerId == 0) return;
         MessagesController controller = fragment.getMessagesController();
         List<String> summaries = new ArrayList<>();
-        List<TLRPC.Dialog> sources = new ArrayList<>();
+        List<Long> sources = new ArrayList<>();
         List<Integer> targets = new ArrayList<>();
         List<TLRPC.Dialog> dialogs = controller.getAllDialogs();
         for (int i = 0; i < Math.min(dialogs.size(), MAX_SCAN)
@@ -199,7 +201,8 @@ public final class NabdhMessageTools {
                 if (chat == null) continue;
                 title = chat.title;
             }
-            String summary = title + " · " + dialog.unread_count + label(" غير مقروءة", " unread");
+            String summary = LocaleController.formatString(
+                    R.string.NabdhV1UnreadDigestRow, title, dialog.unread_count);
             int target = 0;
             List<MessageObject> cached = controller.dialogMessage.get(dialog.id);
             if (cached != null) {
@@ -213,22 +216,20 @@ public final class NabdhMessageTools {
                 }
             }
             summaries.add(summary);
-            sources.add(dialog);
+            sources.add(dialog.id);
             targets.add(target);
         }
-        AlertDialog.Builder builder = new AlertDialog.Builder(context)
-                .setTitle(label("ملخص غير المقروء محلياً", "Local unread digest"))
-                .setNegativeButton(label("إغلاق", "Close"), null);
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, fragment.getResourceProvider())
+                .setTitle(getString(R.string.NabdhV1UnreadDigestTitle))
+                .setNegativeButton(getString(R.string.NabdhV1Close), null);
         if (summaries.isEmpty()) {
-            builder.setMessage(label("لا توجد محادثات غير مقروءة متاحة في ذاكرة الحساب.",
-                    "No eligible unread chats are available in this account's cache."));
+            builder.setMessage(getString(R.string.NabdhV1UnreadDigestEmpty));
         } else {
-            builder.setMessage(label("يعرض حتى 12 محادثة وآخر رسالة غير مقروءة متاحة محلياً.",
-                    "Shows up to 12 chats and the latest unread message available locally."));
+            builder.setMessage(getString(R.string.NabdhV1UnreadDigestScope));
             builder.setItems(summaries.toArray(new String[0]), (dialog, which) -> {
                 if (fragment.getCurrentAccount() == account
                         && fragment.getUserConfig().getClientUserId() == ownerId) {
-                    openMessage(fragment, sources.get(which).id, targets.get(which));
+                    openMessage(fragment, sources.get(which), targets.get(which));
                 }
             });
         }

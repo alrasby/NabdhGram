@@ -1,5 +1,7 @@
 package org.telegram.ui.Components;
 
+import static org.telegram.messenger.LocaleController.getString;
+
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -14,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 
@@ -245,7 +248,7 @@ public final class NabdhWorkspace {
                 .setTitle(label(ar, "مساحة الرسائل", "Message Workspace"))
                 .setMessage(label(ar, "لا توجد ملاحظات محفوظة محليًا.",
                         "No locally saved notes yet."))
-                .setPositiveButton(label(ar, "إغلاق", "Close"), null).show();
+                .setPositiveButton(getString(R.string.NabdhV1Close), null).show();
             return;
         }
         String[] titles = new String[notes.size()];
@@ -261,7 +264,7 @@ public final class NabdhWorkspace {
                 Note note = notes.get(selected);
                 showNote(context, ar, fragment, note);
             })
-            .setNegativeButton(label(ar, "إغلاق", "Close"), null)
+            .setNegativeButton(getString(R.string.NabdhV1Close), null)
             .show();
     }
 
@@ -277,12 +280,12 @@ public final class NabdhWorkspace {
         List<String> titles = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
         if (fragment != null && note.messageId > 0) {
-            titles.add(label(ar, "فتح الرسالة الأصلية", "Open original message"));
+            titles.add(getString(R.string.NabdhV1ReturnToMessage));
             actions.add(() -> NabdhMessageTools.openMessage(fragment, note.dialogId, note.messageId));
         }
         if (note.task) {
-            titles.add(note.done ? label(ar, "إعادة فتح المهمة", "Reopen task")
-                    : label(ar, "إكمال المهمة", "Complete task"));
+            titles.add(note.done ? getString(R.string.NabdhV1ReopenTask)
+                    : getString(R.string.NabdhV1CompleteTask));
             actions.add(() -> {
                 try {
                     update(context, note, false);
@@ -292,16 +295,16 @@ public final class NabdhWorkspace {
                 }
             });
         }
-        titles.add(label(ar, "نسخ", "Copy"));
+        titles.add(getString(R.string.NabdhV1CopyItem));
         actions.add(() -> {
             ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
             if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Nabdh local note", note.text));
         });
-        titles.add(label(ar, "حذف", "Delete"));
+        titles.add(getString(R.string.NabdhV1DeleteItem));
         actions.add(() -> new AlertDialog.Builder(context)
-                .setTitle(label(ar, "حذف العنصر المحلي؟", "Delete local item?"))
-                .setNegativeButton(label(ar, "إلغاء", "Cancel"), null)
-                .setPositiveButton(label(ar, "حذف", "Delete"), (dialog, which) -> {
+                .setTitle(getString(R.string.NabdhV1ConfirmDeleteItem))
+                .setNegativeButton(getString(R.string.NabdhV1Cancel), null)
+                .setPositiveButton(getString(R.string.NabdhV1DeleteItem), (dialog, which) -> {
                     try {
                         update(context, note, true);
                     } catch (Exception error) {
@@ -309,12 +312,12 @@ public final class NabdhWorkspace {
                     }
                 }).show());
         new AlertDialog.Builder(context)
-                .setTitle(note.task ? label(ar, "مهمة محفوظة", "Saved task") : label(ar, "ملاحظة محفوظة", "Saved note"))
+                .setTitle(note.task ? getString(R.string.NabdhV1SavedTaskTitle) : getString(R.string.NabdhV1SavedNoteTitle))
                 .setMessage(note.text)
                 .setItems(titles.toArray(new String[0]), (dialog, which) -> {
                     if (visible(fragment, note)) actions.get(which).run();
                 })
-                .setNegativeButton(label(ar, "إغلاق", "Close"), null)
+                .setNegativeButton(getString(R.string.NabdhV1Close), null)
                 .show();
     }
 

@@ -165,9 +165,12 @@ for locale in ("values", "values-ar"):
     root = ET.parse(src).getroot()
     names = [node.attrib.get("name") for node in root]
     check(len(names) == len(set(names)), "Duplicate translation: " + locale)
-    for key in ("NabdhV1Focus", "NabdhV1CatchUp", "NabdhV1Shield", "NabdhV1Save",
-                "NabdhV1OpenWorkspace", "NabdhV1ManualDisclosure", "NabdhV1Empty"):
-        check(key in names, "Missing translated Android resource: " + key)
+    reminders = (ui / "NabdhSwipeReminder.java").read_text(encoding="utf-8")
+    message_tools = (ui / "Components/NabdhMessageTools.java").read_text(encoding="utf-8")
+    local_tools = chat + utilities + page + reminders + message_tools + workspace
+    required_keys = set(re.findall(r"R\.string\.(NabdhV1\w+)", local_tools))
+    for key in sorted(required_keys):
+        check(key in names, "Missing " + locale + " Android resource: " + key)
 for contract in ("private final int featureId;", "addNabdhFeatureMenu(context, content);",
                  "nabdhFeatureRow(context, content, 101);",
                  "nabdhFeatureRow(context, content, 201);",
