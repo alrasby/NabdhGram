@@ -435,10 +435,11 @@ public final class NabdhCameraActivity extends Activity {
             texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
             Surface screen = new Surface(texture);
             previewSurface = screen;
-            repeating = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            repeating.addTarget(screen);
-            repeating.set(CaptureRequest.CONTROL_AF_MODE,
+            CaptureRequest.Builder previewRequest = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            previewRequest.addTarget(screen);
+            previewRequest.set(CaptureRequest.CONTROL_AF_MODE,
                     CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            repeating = previewRequest;
             device.createCaptureSession(Arrays.asList(screen, reader.getSurface()),
                     new CameraCaptureSession.StateCallback() {
                         @Override public void onConfigured(CameraCaptureSession ready) {
@@ -448,8 +449,8 @@ public final class NabdhCameraActivity extends Activity {
                             }
                             session = ready;
                             try {
-                                applySettings(repeating);
-                                ready.setRepeatingRequest(repeating.build(), null, cameraHandler);
+                                applySettings(previewRequest);
+                                ready.setRepeatingRequest(previewRequest.build(), null, cameraHandler);
                                 runOnUiThread(() -> {
                                     if (active && generation == cameraGeneration) shutterButton.setEnabled(true);
                                 });
@@ -565,6 +566,7 @@ public final class NabdhCameraActivity extends Activity {
             return;
         }
         takingPhoto = true;
+        final long generation = cameraGeneration;
         try {
             CaptureRequest.Builder capture = device.createCaptureRequest(
                     CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -585,12 +587,13 @@ public final class NabdhCameraActivity extends Activity {
             session.capture(capture.build(), new CameraCaptureSession.CaptureCallback() {
                 @Override public void onCaptureFailed(CameraCaptureSession current,
                         CaptureRequest request, CaptureFailure failure) {
+                    if (!active || generation != cameraGeneration) return;
                     takingPhoto = false;
                     notifyUser(local("Capture failed; retry", "فشل الالتقاط؛ أعد المحاولة"));
                 }
                 @Override public void onCaptureSequenceAborted(CameraCaptureSession current,
                         int sequenceId) {
-                    takingPhoto = false;
+                    if (generation == cameraGeneration) takingPhoto = false;
                 }
             }, cameraHandler);
         } catch (Exception error) {
