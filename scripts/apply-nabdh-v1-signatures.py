@@ -235,7 +235,7 @@ strings = {
         "NabdhV1ReminderScheduled": "Local reminder set for about one hour.",
         "NabdhV1ReminderFailed": "Could not schedule the reminder.",
         "NabdhV1UnreadDigestTitle": "Local unread digest",
-        "NabdhV1UnreadDigestEmpty": "No eligible unread chats are available in this account's cache.",
+        "NabdhV1UnreadDigestEmpty": "No eligible unread chats are cached for this account.",
         "NabdhV1UnreadDigestScope": "Shows up to 12 chats and the latest unread message available locally.",
         "NabdhV1ReopenTask": "Reopen task",
         "NabdhV1CompleteTask": "Complete task",
