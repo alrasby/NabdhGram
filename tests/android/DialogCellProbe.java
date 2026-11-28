@@ -99,6 +99,13 @@ public final class DialogCellProbe extends Instrumentation {
                     || title.getRight() > ((View) menu).getLeft()) {
                 throw new AssertionError("Centered title was clipped or overlapped the toolbar, direction=" + direction);
             }
+            width = Math.round(480 * density);
+            bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(Math.round(56 * density), View.MeasureSpec.EXACTLY));
+            bar.layout(0, 0, width, bar.getMeasuredHeight());
+            if (Math.abs(title.getLeft() + title.getRight() - width) > 2) {
+                throw new AssertionError("Title is not at the screen midpoint when room is available");
+            }
         }
     }
 

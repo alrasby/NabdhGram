@@ -25,6 +25,16 @@ bar_source = once(bar_source, "    private boolean centerTitleAndGlass;",
     private int centeredTitleLeft(int titleWidth) {
         int midpointLeft = (getMeasuredWidth() - titleWidth) / 2;
         return Math.max(centeredTitleStart, Math.min(midpointLeft, centeredTitleEnd - titleWidth));
+    }
+
+    private void measureTitle(SimpleTextView title, int availableWidth, int heightSpec) {
+        if (centerTitleAndGlass) title.setWidthWrapContent(true);
+        title.measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST), heightSpec);
+        if (centerTitleAndGlass) {
+            // Recompute text drawing offsets for the final, wrapped width.
+            title.setWidthWrapContent(false);
+            title.measure(MeasureSpec.makeMeasureSpec(title.getMeasuredWidth(), MeasureSpec.EXACTLY), heightSpec);
+        }
     }""", "centered title bounds")
 bar_source = once(bar_source, """                int menuWidth = menu != null ? menu.getMeasuredWidth() : 0;
                 int availableWidth;
@@ -36,6 +46,14 @@ bar_source = once(bar_source, """                int menuWidth = menu != null ? 
                     centeredTitleStart = Math.min(width, textLeft + Math.max(0, additionalTextLeft));
                     centeredTitleEnd = Math.max(centeredTitleStart, width - menuWidth - dp(16) - titleRightMargin);
                     availableWidth = centeredTitleEnd - centeredTitleStart;""", "measure title between occupied controls")
+bar_source = once(bar_source,
+    "titleTextView[i].measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(24) + titleTextView[i].getPaddingTop() + titleTextView[i].getPaddingBottom(), MeasureSpec.AT_MOST));",
+    "measureTitle(titleTextView[i], availableWidth, MeasureSpec.makeMeasureSpec(dp(24) + titleTextView[i].getPaddingTop() + titleTextView[i].getPaddingBottom(), MeasureSpec.AT_MOST));",
+    "wrap centered title")
+bar_source = once(bar_source,
+    "subtitleTextView.measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.AT_MOST));",
+    "measureTitle(subtitleTextView, availableWidth, MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.AT_MOST));",
+    "wrap centered subtitle")
 for view in ("titleTextView[i]", "subtitleTextView"):
     bar_source = once(bar_source,
         f"centerTitleAndGlass ? (getMeasuredWidth() - {view}.getMeasuredWidth()) / 2 : textLeft",
